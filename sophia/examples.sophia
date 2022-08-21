@@ -1,0 +1,147 @@
+// The meta-statement
+
+string name: input("Enter a name: ")
+record switch: ['alice': '"a" in name',
+				'bob': '"b" in name',
+				'carol': '"c" in name']
+
+for key, condition in enumerate(switch):
+	if {condition}:
+		{key}()
+		break
+
+// Implementing a switch statement using a single if statement, a for loop, and the meta-statement.
+// The meta-statement integrates any expression that evaluates to a string into the program code.
+// One might think of it as an 'un-quote' - it signals that a string is to be read as program code, the opposite of quote marks.
+// One might also think of it as 'code interpolation', as opposed to string interpolation.
+
+type prime extends integer:
+
+	constraint: self > 1
+	if self > 3:
+		for all n in range(2, floor(self ^ 1/2)):
+			constraint: self % n != 0
+
+integer x: input('Enter integer:')
+assert type prime for x:
+	print('Is prime')
+else:
+	print('Is not prime')
+
+// Demonstrating some special language features with an idiomatic prime checker.
+// The program defines a user type 'prime' that is a subtype of the integer type.
+// The 'constraint' keyword takes any conditional expression. It does nothing if true, and throws a type error if false.
+// The 'for all' statement parallelises instructions across an iterable, implementing SIMD processing. It splits an operation over as many processes as possible.
+// The 'assert' statement checks that a reference exists, does not evaluate to null, and is of a certain type. Invalid data does not throw a type error when checked with this statement.
+// The above implementation uses a mathementically proven shortcut to shorten the possible length of the loop.
+
+prime x: 4
+
+// Throws a type error
+
+x: 4
+assert type prime for x:
+	pass
+else:
+	pass
+
+// Executes the else statement instead of throwing a type error
+
+---
+
+function main n // Defines a function main with parameter n in the current namespace
+
+if_statement // Introduces an if statement
+push n // Pushes n to stack
+push 0 // Pushes 0 to stack
+eq // Pops two values off the stack, pushes true if equivalent, pushes false if not
+branch_if_false // Pops one value off the stack and skips to the end of the code block if false
+push 0 // Pushes 0 to the stack
+return // Pushes the return value to the stack and exits the function body
+end_if // Ends the if statement
+
+else // Associates the block below with the if statement above
+if_statement // Introduces an if statement
+push n // Pushes n to stack
+push 1 // Pushes 0 to stack
+eq // Pops two values off the stack, pushes true if equivalent, pushes false if not
+branch_if_false // Pops one value off the stack and skips to the end of the code block if false
+push 1 // Pushes 0 to the stack
+return // Pushes the return value to the stack and exits the function body
+end_if // Ends the if statement
+end_else // Ends the else statement
+
+else // Associates the block below with the if statement above
+push n // Pushes n to stack
+push 1 // Pushes 1 to stack
+sub // Pops two values off the stack, subtracts the first from the second, and pushes the result to the stack
+call main // Pops a number of values off the stack less than or equal to the number of parameters of main(), calls main() using them as arguments, and pushes its return value to the stack
+push n // Pushes n to stack
+push 2 // Pushes 2 to stack
+sub // Pops two values off the stack, subtracts the first from the second, and pushes the result to the stack
+call main // Pops a number of values off the stack less than or equal to the number of parameters of main(), and calls main() using them as arguments, and pushes its return value to the stack
+add // Pops two values off the stack, adds the first to the second, and pushes the result to the stack
+return // Pushes the return value to the stack and exits the function body
+end_else // Ends the else statement
+
+end_function // Ends the function definition
+
+assert_type_statement // Introduces an assert-type statement
+push i // Pushes i to stack
+assert_type integer // Pops one value off the stack, checks that it exists, does not evaluate to null, and matches the specified type, pushes true if so, pushes false if not
+branch_if_false // Pops one value off the stack and skips to the end of the code block if false
+push i // Pushes i to stack
+call main // Pops a number of values off the stack less than or equal to the number of parameters of main(), and calls main() using them as arguments, and pushes its return value to the stack
+print // Pops the entire stack and prints it in a human-readable form
+end_assert_type // Ends the assert-type statement
+
+---
+
+function main n
+
+if_statement
+push n
+push 0
+eq
+branch_if_false
+
+push 0
+return
+end_if
+
+else_statement
+if_statement
+push n
+push 1
+eq
+branch_if_false
+
+push 1
+return
+end_if
+end_else
+
+else_statement
+
+push n
+push 1
+sub
+call main
+push n
+push 2
+sub
+call main
+add
+return
+end_else
+end_function
+
+assert_type_statement
+push i
+assert_type integer
+branch_if_false
+
+push i
+call main
+call print
+end_assert_type

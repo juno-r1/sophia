@@ -1,0 +1,17 @@
+list found_primes: [2]
+
+type prime extends integer:
+
+	constraint:
+		prime > 1
+
+	for i in found_primes: // Possible because of the fundamental theorem of arithmetic
+		if i > (prime ^ 0.5) + 1: // Possible because of symmetry of factors
+			break
+		constraint:
+			prime % i != 0
+
+for i in range(0, 1000):
+	assert prime i:
+		print(i)
+		found_primes: found_primes | [i]

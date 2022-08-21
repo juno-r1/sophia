@@ -1,0 +1,13 @@
+integer x: 1
+
+integer main(n):
+
+	if n = 0:
+		return 0
+	else if n = 1:
+		return 1
+	else:
+		return main(n - 1) + main(n - 2)
+
+for i in range(10):
+	print(main(i))

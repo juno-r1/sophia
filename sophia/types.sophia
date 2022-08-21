@@ -1,0 +1,79 @@
+type null:
+
+	pass
+
+type stack extends sequence:
+
+	push(self x, null y):
+
+		x: x | [y]
+
+	pop(self x):
+		
+		assert x[0]:
+			value: x[-1]
+			assert x[-2]:
+				x: x[0:-2]
+			else:
+				x: [x[0]]
+		else:
+			value: null
+
+		return value
+
+// This syntax creates a data type.
+// A data type defines a data object's properties and the functions that can be applied to it.
+// The keyword 'extends' indicates inheritance of another type.
+// The keyword 'self' indicates an object being declared with the current type.
+// For example, given a typed declaration 'int x: 1', 'self' is equivalent to 'x' and refers to '1'.
+// The keyword 'self' can be aliased when used as a function parameter: see 'self x' above.
+
+// This type definition is an implementation of the 'stack' abstract data type.
+// It inherits from the 'sequence' type, which is the common class of any grouping of data in Sophia.
+// It defines a function push() that takes a stack and any object, and redefines the stack as the union of itself and the object.
+// It defines a function pop() that stores the stack's last value, redefines the stack as the stack minus its last value, and then returns the stored value.
+
+// This paradigm differs from OOP as such:
+// A class defines an object, which contains data, and the functions that can be applied to the object's data.
+// A data type defines the properties of a type of data, and the functions that can be applied to that type of data.
+// A class defines how the program can interact with a data container, whereas a data type defines how the program can interact with the data itself.
+// A record in Sophia is essentially equivalent to an OOP object.
+
+type queue extends sequence:
+
+	enqueue(self x, null y):
+
+		x: x | [y]
+
+	dequeue(self x):
+		
+		assert x[0]:
+			value: x[0]
+			assert x[1]:
+				x: x[1:]
+			else:
+				x: []
+		else:
+			x: null
+
+		return value
+
+type alpha extends str:
+
+	for char in self:
+		constraint: self in alphabet
+
+// This type definition implements a string containing only alphabetic characters.
+// The keyword 'constraint' is used to indicate a constraint on the form of the data being defined.
+// It takes a conditional expression.
+// If the expression evaluates to true, the input data is accepted.
+// If the expression evaluates to false, the definition fails and a type error is raised.
+// The name 'alphabet' references a list containing every alphabetic character.
+
+type employee extends record:
+	
+	constraint: 'status' in self
+	constraint: self['status'] = 'employee'
+
+// This type definition asserts that a record has a key 'status' and that the value in 'status' is 'employee'.
+// This is a distinctly OOP-like type definition.
