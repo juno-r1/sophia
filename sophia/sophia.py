@@ -551,26 +551,18 @@ class left_bracket(node): # Adds left-bracket behaviours to a node
                 i = tuple([i])
             if isinstance(i[0], str):
                 if i[0] not in name:
-                    raise KeyError('Key not in record: ' + i[0]) # Can't be KeyError because the try-except clause eats those
+                    raise KeyError('Key not in record: ' + i[0])
             else:
                 if i[0] < -1 * len(name) or i[0] >= len(name): # If out of bounds:
                     raise IndexError('Index out of bounds')
                 if len(i) > 1:
                     if i[1] < -1 * len(name) or i[1] >= len(name): # If out of bounds:
                         raise IndexError('Index out of bounds')
-            if len(i) > 1:
-                if len(i) == 2:
-                    if i[1] == -1: # Python uses exclusive index; Sophia uses inclusive index
-                        name = name[i[0]:]
-                    else:
-                        name = name[i[0]:i[1] + 1]
-                elif len(i) == 3:
-                    if i[1] == -1:
-                        name = name[i[0]::i[2]]
-                    else:
-                        name = name[i[0]:i[1] + 1:i[2]]
-                else:
-                    raise SyntaxError('Too many indices in slice')
+            if len(i) > 1: # List slice
+                i = list(i)
+                i[1] = i[1] + 1 # Correction for inclusive range
+                i = [n for n in range(*i)] # Expand slice index
+                name = [name[n] for n in i] # Constructs slice
             else:
                 name = name[i[0]]
         return name # Return the accessed value
@@ -578,10 +570,15 @@ class left_bracket(node): # Adds left-bracket behaviours to a node
     def sequence(self): # Constructs a sequence
 
         items = self.nodes[0].evaluate()
-        if not isinstance(items, tuple):
-            items = [items]
-        else:
+        if isinstance(items, tuple) and isinstance(items[0], int): # If slice:
             items = list(items)
+            items[1] = items[1] + 1 # Correction for inclusive range
+            items = [i for i in range(*items)] # Expand slice
+        else:
+            if not isinstance(items, tuple):
+                items = [items]
+            else:
+                items = list(items)
         if isinstance(items[0], tuple): # If items is a record
             return {item[0]: item[1] for item in items}
         else: # If items is a list
@@ -774,17 +771,19 @@ class assert_statement(node):
 
     def execute(self):
         
+        main.branch = False
         try:
-            binding = main.find(self.nodes[0].value)
+            try:
+                binding = main.find(self.nodes[0].value)
+            except NameError: # Catches unbound names
+                return None
             assert_type = self.nodes[0].type
             if assert_type == 'untyped' and binding.value is None: # Handles behaviour of untyped assertion
-                main.branch = False
                 return None
             else:
                 main.cast(binding.value, assert_type)
         except TypeError:
             main.namespace.pop() # Cleans up from cast()
-            main.branch = False
             return None
         main.bind(binding.name, binding.value, assert_type)
         for item in self.nodes[1:]:

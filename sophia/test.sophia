@@ -18,11 +18,5 @@ integer increment (integer n):
 	print(n)
 	return increment(n + 1)
 
-a: 1
-b: null
-assert integer a:
-	print(a)
-assert b:
-	print(b)
-else:
-	print('Whoops!')
+a: [1:10:2]
+print(a[2:4:1])
