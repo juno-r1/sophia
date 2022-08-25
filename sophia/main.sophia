@@ -11,7 +11,8 @@ type prime extends integer:
 		constraint:
 			prime % i != 0
 
-for i in range(0, 1000):
+for i in range(1, 1000, 2): // Skips even numbers
 	assert prime i:
-		print(i)
 		found_primes: found_primes | [i]
+
+print(found_primes)

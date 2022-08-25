@@ -18,9 +18,5 @@ integer increment (integer n):
 	print(n)
 	return increment(n + 1)
 
-for i in range(0, 11):
-	if i % 2 = 0:
-		print(fib(i))
-	else:
-		continue
-	print('!')
+integer a ():
+	return 1

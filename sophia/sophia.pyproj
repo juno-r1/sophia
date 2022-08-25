@@ -25,26 +25,21 @@
   <ItemGroup>
     <Compile Include="core.py" />
     <Compile Include="hemera.py" />
-    <Compile Include="archive\sophia_0,0.py" />
-    <Compile Include="runtime.py">
-      <SubType>Code</SubType>
-    </Compile>
+    <Compile Include="archive\0,0\sophia.py" />
     <Compile Include="backup.py" />
     <Compile Include="sophia.py" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="examples.sophia" />
-    <Content Include="expressions.sophia" />
     <Content Include="main.sophia" />
-    <Content Include="statements.sophia" />
+    <Content Include="reference.pdf" />
     <Content Include="test.sophia" />
-    <Content Include="types.sophia" />
   </ItemGroup>
   <ItemGroup>
     <InterpreterReference Include="Global|PythonCore|3.9" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="archive\" />
+    <Folder Include="archive\0,0\" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

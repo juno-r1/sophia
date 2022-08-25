@@ -478,7 +478,7 @@ class left_bracket(node): # Adds left-bracket behaviours to a node
         elif self.value == '{': # Meta-statement
             return self.meta()
 
-    def call(self): # Handles function calls
+    def call(self): # Handles function calls; revealed to me in a dream by hbomberguy
         
         tail = True
         overwrite = False
