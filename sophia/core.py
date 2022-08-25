@@ -23,7 +23,14 @@ def init_types(): # Yeah, there's some name mangling going on here
         if value is True or value is False:
             return value
         else:
-            raise TypeError('Could not cast to boolean')
+            raise TypeError('Could not cast to bool')
+
+    def _null(value):
+
+        if value is None:
+            return value
+        else:
+            raise TypeError('Could not cast to null')
 
     def _string(value):
 
@@ -86,7 +93,7 @@ def init_operators():
     
     def unary_add(x):
 
-        return x
+        return +x
 
     def unary_sub(x):
 
