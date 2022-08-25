@@ -18,5 +18,11 @@ integer increment (integer n):
 	print(n)
 	return increment(n + 1)
 
-integer a ():
-	return 1
+a: 1
+b: null
+assert integer a:
+	print(a)
+assert b:
+	print(b)
+else:
+	print('Whoops!')

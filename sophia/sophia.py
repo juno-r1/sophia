@@ -300,7 +300,6 @@ class literal(node): # Adds literal behaviours to a node
                 else:
                     return main.find(self.value).value # Retrieve data from reference
 
-
 class keyword(node): # Adds keyword behaviours to a node
 
     def __init__(self, value):
@@ -626,7 +625,6 @@ class type_statement(node):
             self.supertype = tokens[3].value # Supertype
         else:
             self.supertype = None
-        self.subtypes = []
         self.namespace = []
 
     def execute(self):
@@ -772,38 +770,29 @@ class assert_statement(node):
 
     def __init__(self, tokens):
 
-        if tokens[1].type == 'untyped':
-            super().__init__(None, tokens[1]) # Assert
-            self.typed = False
-        else:
-            super().__init__(None, tokens[1]) # Assert type
-            self.typed = True
+        super().__init__(None, tokens[1])
 
     def execute(self):
-
-        if self.typed:
-            try:
-                binding = main.find(self.nodes[0].value)
-                value = binding.value
-                binding_type = binding.type
-                assert_type = self.nodes[0].type
-                value = main.cast(value, assert_type)
-            except TypeError:
-                main.namespace.pop() # Cleans up from cast()
+        
+        try:
+            binding = main.find(self.nodes[0].value)
+            assert_type = self.nodes[0].type
+            if assert_type == 'untyped' and binding.value is None: # Handles behaviour of untyped assertion
                 main.branch = False
                 return None
-            for space in main.namespace[::-1]: # Searches module in reverse order
-                for item in space:
-                    if item.name == self.nodes[0].value: # If the name is in the module:
-                        item.type = assert_type # Change the type of the binding
-                        for item in self.nodes[1:]:
-                            return_value = item.execute()
-                        else:
-                            main.branch = True
-                            item.type = binding_type
-                            return return_value
+            else:
+                main.cast(binding.value, assert_type)
+        except TypeError:
+            main.namespace.pop() # Cleans up from cast()
+            main.branch = False
+            return None
+        main.bind(binding.name, binding.value, assert_type)
+        for item in self.nodes[1:]:
+            return_value = item.execute()
         else:
-            pass
+            main.branch = True
+            main.bind(binding.name, binding.value, binding.type)
+            return return_value
     
 class constraint_statement(node):
 
