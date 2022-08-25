@@ -4,9 +4,9 @@ type prime extends integer:
 
 	constraint:
 		prime > 1
-
+	float root: (prime ^ 0.5) + 1
 	for i in found_primes: // Possible because of the fundamental theorem of arithmetic
-		if i > (prime ^ 0.5) + 1: // Possible because of symmetry of factors
+		if i > root: // Possible because of symmetry of factors
 			break
 		constraint:
 			prime % i != 0

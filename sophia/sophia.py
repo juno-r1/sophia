@@ -413,7 +413,7 @@ class infix_r(node): # Adds right-binding infix behaviours to a node
                 left = left.nodes[1]
             else:
                 right.append(left.evaluate())
-                return right
+                return tuple(right)
         elif self.value == '.': # Sorts out the dot operator
             name = self.nodes[0].value
             left = main.find(name) # Gets binding for name
@@ -496,10 +496,7 @@ class left_bracket(node): # Adds left-bracket behaviours to a node
             else:
                 args = self.nodes[1].evaluate() # Gets the given arguments
                 if not isinstance(args, tuple): # Type correction
-                    if isinstance(args, list): # Very tiresome type correction, at that
-                        args = tuple(args)
-                    else:
-                        args = tuple([args])
+                    args = tuple([args]) # Very tiresome type correction, at that
             if isinstance(body, function_definition): # If user-defined:
                 type_value = body.nodes[0].type # Gets the function type
                 params = body.nodes[1].execute() # Gets the function parameters
@@ -582,8 +579,10 @@ class left_bracket(node): # Adds left-bracket behaviours to a node
     def sequence(self): # Constructs a sequence
 
         items = self.nodes[0].evaluate()
-        if not isinstance(items, list):
+        if not isinstance(items, tuple):
             items = [items]
+        else:
+            items = list(items)
         if isinstance(items[0], tuple): # If items is a record
             return {item[0]: item[1] for item in items}
         else: # If items is a list

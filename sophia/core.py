@@ -61,9 +61,9 @@ def init_functions():
 
         return input(value)
 
-    def _print(value):
+    def _print(*value):
 
-        return print(value)
+        return print(*value)
 
     def _error(value):
         
