@@ -549,7 +549,7 @@ class left_bracket(node): # Adds left-bracket behaviours to a node
                     raise KeyError('Key not in record: ' + i)
             elif isinstance(i, slice):
                 try:
-                    if i.nodes[1] < -1 * len(name) or i.nodes[1] >= len(name): # If out of bounds:
+                    if i.nodes[1] < -1 * len(name) or i.nodes[1] > len(name): # If out of bounds:
                         raise IndexError('Index out of bounds')
                 except TypeError:
                     raise IndexError('Cannot slice element')
@@ -557,7 +557,7 @@ class left_bracket(node): # Adds left-bracket behaviours to a node
                 if i < -1 * len(name) or i >= len(name): # If out of bounds:
                     raise IndexError('Index out of bounds')
             if isinstance(i, slice):
-                name = [name[n] for n in i.value] # Constructs slice using expansion of indices
+                name = [name[n] for n in i.value] # Constructs slice using range
             else:
                 name = name[i] # Python can handle this bit
         return name # Return the accessed value
@@ -566,7 +566,7 @@ class left_bracket(node): # Adds left-bracket behaviours to a node
 
         items = self.nodes[0].evaluate()
         if isinstance(items, slice): # If slice:
-            return items.value # References slice expansion
+            return items.evaluate() # Gives slice expansion
         else:
             if not isinstance(items, tuple):
                 items = [items]
@@ -605,7 +605,15 @@ class slice(node): # Initialised during execution
             slice_list[1] = slice_list[1] + 1
         else:
             slice_list[1] = slice_list[1] - 1
-        super().__init__([i for i in range(*slice_list)], *slice_list) # Stores slice and iterator
+        super().__init__(range(*slice_list), *slice_list) # Stores slice and iterator
+
+    def evaluate(self): # Returns expansion of slice
+
+        return [i for i in self.value]
+
+    def __iter__(self): # Overrides __iter__() method
+
+        return iter(self.value) # Enables iteration over range without expanding slice
 
 class eol(node): # Creates an end-of-line node
 

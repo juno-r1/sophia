@@ -69,10 +69,6 @@ def init_functions():
         
         raise Exception(value)
 
-    def _range(*args):
-
-        return range(*args) # Currently exclusive of args[1]
-
     def _floor(value):
 
         if value >= 0:
