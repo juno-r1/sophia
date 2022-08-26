@@ -400,7 +400,7 @@ class infix_r(node): # Adds right-binding infix behaviours to a node
             else:
                 right.append(left.evaluate())
                 if isinstance(right[0], str):
-                    return tuple(right)
+                    return {right[0]: right[1]}
                 else:
                     return slice(right)
         elif self.value == ',': # Sorts out comma-separated parameters by returning them as a tuple
@@ -572,8 +572,8 @@ class left_bracket(node): # Adds left-bracket behaviours to a node
                 items = [items]
             else:
                 items = list(items)
-        if isinstance(items[0], tuple): # If items is a record
-            return {item[0]: item[1] for item in items}
+        if isinstance(items[0], dict): # If items is a record
+            return {list(item.keys())[0]: list(item.values())[0] for item in items} # Stupid way to merge a list of dictionaries
         else: # If items is a list
             if items and items != [None]: # Handles empty lists
                 return items
@@ -595,10 +595,6 @@ class right_bracket(node): # Adds right-bracket behaviours to a node
         super().__init__(value)
         self.lbp = lbp
 
-    def led(self, lex, left): # If this function is called, something has gone wrong
-
-        raise SyntaxError("You should not be seeing this")
-
 class slice(node): # Initialised during execution
 
     def __init__(self, slice_list):
@@ -609,7 +605,7 @@ class slice(node): # Initialised during execution
             slice_list[1] = slice_list[1] + 1
         else:
             slice_list[1] = slice_list[1] - 1
-        super().__init__([i for i in range(*slice_list)], *slice_list) # Stores slice and expansion of slice
+        super().__init__([i for i in range(*slice_list)], *slice_list) # Stores slice and iterator
 
 class eol(node): # Creates an end-of-line node
 
@@ -754,11 +750,11 @@ class for_statement(node):
 
         index = self.nodes[0]
         sequence = iter(self.nodes[1].execute())
-        main.bind(index.value, None, 'untyped')
+        main.bind(index.value, None, index.type)
         return_value = None
         try:
             while True: # Loop until the iterator is exhausted
-                main.bind(index.value, next(sequence), 'untyped') # Binds the next value of the sequence to the loop index
+                main.bind(index.value, next(sequence), index.type) # Binds the next value of the sequence to the loop index
                 try:
                     for item in self.nodes[2:]:
                         return_value = item.execute()
@@ -986,5 +982,5 @@ def recurse_split(line): # Takes a line from the stripped input and splits it in
     else:
         return [line]
 
-main = runtime('test.sophia')
+main = runtime('main.sophia')
 main.run()
