@@ -394,12 +394,8 @@ class infix_r(node): # Adds right-binding infix behaviours to a node
         if self.value == ':': # Sorts out list slices and key-item pairs by returning them as a list
             left = self
             right = []
-            while left.nodes:
-                try:
-                    x = int(left.nodes[0].value)
-                    right.append(x)
-                except ValueError:
-                    right.append(left.nodes[0].value)
+            while left.nodes and left.value == ':':
+                right.append(left.nodes[0].evaluate())
                 left = left.nodes[1]
             else:
                 right.append(left.evaluate())
@@ -572,7 +568,12 @@ class left_bracket(node): # Adds left-bracket behaviours to a node
         items = self.nodes[0].evaluate()
         if isinstance(items, tuple) and isinstance(items[0], int): # If slice:
             items = list(items)
-            items[1] = items[1] + 1 # Correction for inclusive range
+            if len(items) == 2: # Normalises list slice
+                items.append(1)
+            if items[1] >= 0: # Correction for inclusive range
+                items[1] = items[1] + 1
+            else:
+                items[1] = items[1] - 1
             items = [i for i in range(*items)] # Expand slice
         else:
             if not isinstance(items, tuple):
@@ -981,5 +982,5 @@ def recurse_split(line): # Takes a line from the stripped input and splits it in
     else:
         return [line]
 
-main = runtime('main.sophia')
+main = runtime('test.sophia')
 main.run()
