@@ -982,5 +982,5 @@ def recurse_split(line): # Takes a line from the stripped input and splits it in
     else:
         return [line]
 
-main = runtime('test.sophia')
+main = runtime('main.sophia')
 main.run()
