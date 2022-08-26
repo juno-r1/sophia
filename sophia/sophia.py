@@ -399,7 +399,10 @@ class infix_r(node): # Adds right-binding infix behaviours to a node
                 left = left.nodes[1]
             else:
                 right.append(left.evaluate())
-                return tuple(right)
+                if isinstance(right[0], str):
+                    return tuple(right)
+                else:
+                    return slice(right)
         elif self.value == ',': # Sorts out comma-separated parameters by returning them as a tuple
             left = self
             right = []
@@ -540,41 +543,30 @@ class left_bracket(node): # Adds left-bracket behaviours to a node
             
         name = self.nodes[0].evaluate()
         subscript = self.nodes[1].evaluate()
-        if not isinstance(subscript, list):
-            subscript = [subscript]
         for i in subscript: # Iteratively accesses the sequence
-            if not isinstance(i, tuple):
-                i = tuple([i])
-            if isinstance(i[0], str):
-                if i[0] not in name:
-                    raise KeyError('Key not in record: ' + i[0])
-            else:
-                if i[0] < -1 * len(name) or i[0] >= len(name): # If out of bounds:
-                    raise IndexError('Index out of bounds')
-                if len(i) > 1:
-                    if i[1] < -1 * len(name) or i[1] >= len(name): # If out of bounds:
+            if isinstance(i, str):
+                if i not in name:
+                    raise KeyError('Key not in record: ' + i)
+            elif isinstance(i, slice):
+                try:
+                    if i.nodes[1] < -1 * len(name) or i.nodes[1] >= len(name): # If out of bounds:
                         raise IndexError('Index out of bounds')
-            if len(i) > 1: # List slice
-                i = list(i)
-                i[1] = i[1] + 1 # Correction for inclusive range
-                i = [n for n in range(*i)] # Expand slice index
-                name = [name[n] for n in i] # Constructs slice
+                except TypeError:
+                    raise IndexError('Cannot slice element')
             else:
-                name = name[i[0]]
+                if i < -1 * len(name) or i >= len(name): # If out of bounds:
+                    raise IndexError('Index out of bounds')
+            if isinstance(i, slice):
+                name = [name[n] for n in i.value] # Constructs slice using expansion of indices
+            else:
+                name = name[i] # Python can handle this bit
         return name # Return the accessed value
 
     def sequence(self): # Constructs a sequence
 
         items = self.nodes[0].evaluate()
-        if isinstance(items, tuple) and isinstance(items[0], int): # If slice:
-            items = list(items)
-            if len(items) == 2: # Normalises list slice
-                items.append(1)
-            if items[1] >= 0: # Correction for inclusive range
-                items[1] = items[1] + 1
-            else:
-                items[1] = items[1] - 1
-            items = [i for i in range(*items)] # Expand slice
+        if isinstance(items, slice): # If slice:
+            return items.value # References slice expansion
         else:
             if not isinstance(items, tuple):
                 items = [items]
@@ -606,6 +598,18 @@ class right_bracket(node): # Adds right-bracket behaviours to a node
     def led(self, lex, left): # If this function is called, something has gone wrong
 
         raise SyntaxError("You should not be seeing this")
+
+class slice(node): # Initialised during execution
+
+    def __init__(self, slice_list):
+
+        if len(slice_list) == 2: # Normalises list slice
+            slice_list.append(1)
+        if slice_list[1] >= 0: # Correction for inclusive range
+            slice_list[1] = slice_list[1] + 1
+        else:
+            slice_list[1] = slice_list[1] - 1
+        super().__init__([i for i in range(*slice_list)], *slice_list) # Stores slice and expansion of slice
 
 class eol(node): # Creates an end-of-line node
 
@@ -982,5 +986,5 @@ def recurse_split(line): # Takes a line from the stripped input and splits it in
     else:
         return [line]
 
-main = runtime('main.sophia')
+main = runtime('test.sophia')
 main.run()
