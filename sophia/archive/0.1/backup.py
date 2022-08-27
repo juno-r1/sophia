@@ -105,7 +105,7 @@ class runtime(node): # Runtime object contains runtime information and is the to
 
         for line in lines: # Tokenises each item in lines
             scope = line.count('\t') # Gets scope level from number of tabs
-            if line[-1] == '' or line[scope:] == []:
+            if line[-1] == '': # Currently bugged to not work when a line contains only tabs
                 continue # Skips empty lines
             if not balanced(line):
                 raise SyntaxError('Unmatched parentheses')
@@ -300,6 +300,7 @@ class literal(node): # Adds literal behaviours to a node
                 else:
                     return main.find(self.value).value # Retrieve data from reference
 
+
 class keyword(node): # Adds keyword behaviours to a node
 
     def __init__(self, value):
@@ -394,15 +395,16 @@ class infix_r(node): # Adds right-binding infix behaviours to a node
         if self.value == ':': # Sorts out list slices and key-item pairs by returning them as a list
             left = self
             right = []
-            while left.nodes and left.value == ':':
-                right.append(left.nodes[0].evaluate())
+            while left.nodes:
+                try:
+                    x = int(left.nodes[0].value)
+                    right.append(x)
+                except ValueError:
+                    right.append(left.nodes[0].value)
                 left = left.nodes[1]
             else:
                 right.append(left.evaluate())
-                if isinstance(right[0], str):
-                    return {right[0]: right[1]}
-                else:
-                    return slice(right)
+                return tuple(right)
         elif self.value == ',': # Sorts out comma-separated parameters by returning them as a tuple
             left = self
             right = []
@@ -411,7 +413,7 @@ class infix_r(node): # Adds right-binding infix behaviours to a node
                 left = left.nodes[1]
             else:
                 right.append(left.evaluate())
-                return tuple(right)
+                return right
         elif self.value == '.': # Sorts out the dot operator
             name = self.nodes[0].value
             left = main.find(name) # Gets binding for name
@@ -476,7 +478,7 @@ class left_bracket(node): # Adds left-bracket behaviours to a node
         elif self.value == '{': # Meta-statement
             return self.meta()
 
-    def call(self): # Handles function calls; revealed to me in a dream by hbomberguy
+    def call(self): # Handles function calls
         
         tail = True
         overwrite = False
@@ -494,7 +496,10 @@ class left_bracket(node): # Adds left-bracket behaviours to a node
             else:
                 args = self.nodes[1].evaluate() # Gets the given arguments
                 if not isinstance(args, tuple): # Type correction
-                    args = tuple([args]) # Very tiresome type correction, at that
+                    if isinstance(args, list): # Very tiresome type correction, at that
+                        args = tuple(args)
+                    else:
+                        args = tuple([args])
             if isinstance(body, function_definition): # If user-defined:
                 type_value = body.nodes[0].type # Gets the function type
                 params = body.nodes[1].execute() # Gets the function parameters
@@ -543,37 +548,44 @@ class left_bracket(node): # Adds left-bracket behaviours to a node
             
         name = self.nodes[0].evaluate()
         subscript = self.nodes[1].evaluate()
+        if not isinstance(subscript, list):
+            subscript = [subscript]
         for i in subscript: # Iteratively accesses the sequence
-            if isinstance(i, str):
-                if i not in name:
-                    raise KeyError('Key not in record: ' + i)
-            elif isinstance(i, slice):
-                try:
-                    if i.nodes[1] < -1 * len(name) or i.nodes[1] > len(name): # If out of bounds:
-                        raise IndexError('Index out of bounds')
-                except TypeError:
-                    raise IndexError('Cannot slice element')
+            if not isinstance(i, tuple):
+                i = tuple([i])
+            if isinstance(i[0], str):
+                if i[0] not in name:
+                    raise KeyError('Key not in record: ' + i[0]) # Can't be KeyError because the try-except clause eats those
             else:
-                if i < -1 * len(name) or i >= len(name): # If out of bounds:
+                if i[0] < -1 * len(name) or i[0] >= len(name): # If out of bounds:
                     raise IndexError('Index out of bounds')
-            if isinstance(i, slice):
-                name = [name[n] for n in i.value] # Constructs slice using range
+                if len(i) > 1:
+                    if i[1] < -1 * len(name) or i[1] >= len(name): # If out of bounds:
+                        raise IndexError('Index out of bounds')
+            if len(i) > 1:
+                if len(i) == 2:
+                    if i[1] == -1: # Python uses exclusive index; Sophia uses inclusive index
+                        name = name[i[0]:]
+                    else:
+                        name = name[i[0]:i[1] + 1]
+                elif len(i) == 3:
+                    if i[1] == -1:
+                        name = name[i[0]::i[2]]
+                    else:
+                        name = name[i[0]:i[1] + 1:i[2]]
+                else:
+                    raise SyntaxError('Too many indices in slice')
             else:
-                name = name[i] # Python can handle this bit
+                name = name[i[0]]
         return name # Return the accessed value
 
     def sequence(self): # Constructs a sequence
 
         items = self.nodes[0].evaluate()
-        if isinstance(items, slice): # If slice:
-            return items.evaluate() # Gives slice expansion
-        else:
-            if not isinstance(items, tuple):
-                items = [items]
-            else:
-                items = list(items)
-        if isinstance(items[0], dict): # If items is a record
-            return {list(item.keys())[0]: list(item.values())[0] for item in items} # Stupid way to merge a list of dictionaries
+        if not isinstance(items, list):
+            items = [items]
+        if isinstance(items[0], tuple): # If items is a record
+            return {item[0]: item[1] for item in items}
         else: # If items is a list
             if items and items != [None]: # Handles empty lists
                 return items
@@ -595,25 +607,9 @@ class right_bracket(node): # Adds right-bracket behaviours to a node
         super().__init__(value)
         self.lbp = lbp
 
-class slice(node): # Initialised during execution
+    def led(self, lex, left): # If this function is called, something has gone wrong
 
-    def __init__(self, slice_list):
-
-        if len(slice_list) == 2: # Normalises list slice
-            slice_list.append(1)
-        if slice_list[1] >= 0: # Correction for inclusive range
-            slice_list[1] = slice_list[1] + 1
-        else:
-            slice_list[1] = slice_list[1] - 1
-        super().__init__(range(*slice_list), *slice_list) # Stores slice and iterator
-
-    def evaluate(self): # Returns expansion of slice
-
-        return [i for i in self.value]
-
-    def __iter__(self): # Overrides __iter__() method
-
-        return iter(self.value) # Enables iteration over range without expanding slice
+        raise SyntaxError("You should not be seeing this")
 
 class eol(node): # Creates an end-of-line node
 
@@ -631,6 +627,7 @@ class type_statement(node):
             self.supertype = tokens[3].value # Supertype
         else:
             self.supertype = None
+        self.subtypes = []
         self.namespace = []
 
     def execute(self):
@@ -758,11 +755,11 @@ class for_statement(node):
 
         index = self.nodes[0]
         sequence = iter(self.nodes[1].execute())
-        main.bind(index.value, None, index.type)
+        main.bind(index.value, None, 'untyped')
         return_value = None
         try:
             while True: # Loop until the iterator is exhausted
-                main.bind(index.value, next(sequence), index.type) # Binds the next value of the sequence to the loop index
+                main.bind(index.value, next(sequence), 'untyped') # Binds the next value of the sequence to the loop index
                 try:
                     for item in self.nodes[2:]:
                         return_value = item.execute()
@@ -776,31 +773,38 @@ class assert_statement(node):
 
     def __init__(self, tokens):
 
-        super().__init__(None, tokens[1])
+        if tokens[1].type == 'untyped':
+            super().__init__(None, tokens[1]) # Assert
+            self.typed = False
+        else:
+            super().__init__(None, tokens[1]) # Assert type
+            self.typed = True
 
     def execute(self):
-        
-        main.branch = False
-        try:
+
+        if self.typed:
             try:
                 binding = main.find(self.nodes[0].value)
-            except NameError: # Catches unbound names
+                value = binding.value
+                binding_type = binding.type
+                assert_type = self.nodes[0].type
+                value = main.cast(value, assert_type)
+            except TypeError:
+                main.namespace.pop() # Cleans up from cast()
+                main.branch = False
                 return None
-            assert_type = self.nodes[0].type
-            if assert_type == 'untyped' and binding.value is None: # Handles behaviour of untyped assertion
-                return None
-            else:
-                main.cast(binding.value, assert_type)
-        except TypeError:
-            main.namespace.pop() # Cleans up from cast()
-            return None
-        main.bind(binding.name, binding.value, assert_type)
-        for item in self.nodes[1:]:
-            return_value = item.execute()
+            for space in main.namespace[::-1]: # Searches module in reverse order
+                for item in space:
+                    if item.name == self.nodes[0].value: # If the name is in the module:
+                        item.type = assert_type # Change the type of the binding
+                        for item in self.nodes[1:]:
+                            return_value = item.execute()
+                        else:
+                            main.branch = True
+                            item.type = binding_type
+                            return return_value
         else:
-            main.branch = True
-            main.bind(binding.name, binding.value, binding.type)
-            return return_value
+            pass
     
 class constraint_statement(node):
 
@@ -990,5 +994,5 @@ def recurse_split(line): # Takes a line from the stripped input and splits it in
     else:
         return [line]
 
-main = runtime('test.sophia')
+main = runtime('main.sophia')
 main.run()

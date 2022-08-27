@@ -1,0 +1,18 @@
+list found_primes: [2]
+
+type prime extends integer:
+
+	constraint:
+		prime > 1
+	float root: (prime ^ 0.5) + 1
+	for i in found_primes: // Possible because of the fundamental theorem of arithmetic
+		if i > root: // Possible because of symmetry of factors
+			break
+		constraint:
+			prime % i != 0
+
+for i in 1:10000:2: // Skips even numbers
+	assert prime i:
+		found_primes: found_primes | [i]
+
+print(found_primes)

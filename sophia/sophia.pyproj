@@ -23,6 +23,10 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="archive\0.1\backup.py" />
+    <Compile Include="archive\0.1\core.py" />
+    <Compile Include="archive\0.1\hemera.py" />
+    <Compile Include="archive\0.1\sophia.py" />
     <Compile Include="core.py" />
     <Compile Include="hemera.py" />
     <Compile Include="archive\0,0\sophia.py" />
@@ -30,6 +34,9 @@
     <Compile Include="sophia.py" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="archive\0.1\main.sophia" />
+    <Content Include="archive\0.1\reference.pdf" />
+    <Content Include="archive\0.1\test.sophia" />
     <Content Include="main.sophia" />
     <Content Include="reference.pdf" />
     <Content Include="test.sophia" />
@@ -40,6 +47,7 @@
   <ItemGroup>
     <Folder Include="archive\" />
     <Folder Include="archive\0,0\" />
+    <Folder Include="archive\0.1\" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in
