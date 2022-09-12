@@ -23,7 +23,6 @@ class node: # Base node object
 
         self.value = value
         self.nodes = [n for n in nodes] # Since nodes is a tuple
-        self.module = None
 
 class Continue(Exception): # Handles the continue keyword
 

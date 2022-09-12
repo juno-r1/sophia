@@ -23,6 +23,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="aletheia.py" />
     <Compile Include="archive\0.1\backup.py" />
     <Compile Include="archive\0.1\core.py" />
     <Compile Include="archive\0.1\hemera.py" />
@@ -32,6 +33,7 @@
     <Compile Include="archive\0,0\sophia.py" />
     <Compile Include="backup.py" />
     <Compile Include="sophia.py" />
+    <Compile Include="kadmos.py" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="archive\0.1\main.sophia" />
