@@ -212,3 +212,5 @@ def init_operators():
             return False
 
     return locals()
+
+operators = init_operators()

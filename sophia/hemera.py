@@ -12,6 +12,18 @@ def debug_tree(tree, level = 0): # Takes a parse tree
 		level += 1
 		print(('  ' * level), tree.value)
 
+def debug_runtime(runtime): # Takes a runtime object
+
+	name = type(runtime.value).__name__
+	value = runtime.value.value
+	if name == 'runtime':
+		value = runtime.name
+	elif isinstance(value, list):
+		value = [item.type + ' ' + item.value for item in value]
+	elif type(value).__name__ == 'literal':
+		value = value.value
+	print(name, value, runtime.value.path)
+
 def debug_namespace(module): # Takes a list formatted like a module
 
 	print('===')

@@ -1,16 +1,15 @@
-a (integer n):
-
-	print(n)
-	return a(n + 1)
-
-b (integer n):
-
-	print(n)
-	return c(n + 1)
-
-c (integer n):
+integer a (integer n):
 
 	print(n)
 	return b(n + 1)
 
-x: a(1)
+integer b (integer n):
+
+	return n * 2
+
+integer c (integer n):
+
+	print(n)
+	return c(n + 1)
+
+x: c(1)

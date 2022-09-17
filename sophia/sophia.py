@@ -48,9 +48,8 @@ class runtime(coroutine): # Runtime object contains runtime information and is t
 		self.value = self
 		self.namespace = [[definition(*item) for item in core.init_types()] + [definition(*item) for item in core.init_functions()]] # Initialises main with built-in types and functions
 		self.builtins = len(self.namespace[0]) - 1
-		self.op_record = core.init_operators()
 		self.address = None
-		self.tail = False
+		self.routine = self # Currently active coroutine
 
 	def execute(self): # Runs the module
 
@@ -60,7 +59,7 @@ class runtime(coroutine): # Runtime object contains runtime information and is t
 		print('===')
 		value = None # Value register
 		while self.value: # Execution loop
-			#print(self.value, self.value.value, self.value.path)
+			#hemera.debug_runtime(self)
 			if self.address: # If destination specified by node:
 				#print('Call!')
 				if isinstance(self.value, function_definition) and self.value.path == len(self.value.nodes):
@@ -71,6 +70,8 @@ class runtime(coroutine): # Runtime object contains runtime information and is t
 				self.address = None # Remove address from main
 				if isinstance(self.value, coroutine):
 					self.value.path = 0
+				elif isinstance(self.value, left_bracket): # Corrects path when destination is a function call
+					self.value.path = 2
 				value = self.value.instance[-1].send(value)
 			elif self.value.nodes and self.value.path < len(self.value.nodes): # Walk down
 				self.value.nodes[self.value.path].head = self.value # Sets child head to self
@@ -353,7 +354,7 @@ class prefix(node): # Adds prefix behaviours to a node
 
 		op = 'unary_' + kadmos.operator_dict[self.value] # Gets the name of the operator
 		x = yield
-		yield main.op_record[op](x)
+		yield core.operators[op](x)
 
 class infix(node): # Adds infix behaviours to a node
 
@@ -373,7 +374,7 @@ class infix(node): # Adds infix behaviours to a node
 		op = kadmos.operator_dict[self.value] # Gets the name of the operator
 		x = yield
 		y = yield
-		yield main.op_record[op](x, y) # Uses the operator named in op
+		yield core.operators[op](x, y) # Uses the operator named in op
 
 class infix_r(node): # Adds right-binding infix behaviours to a node
 
@@ -431,7 +432,7 @@ class infix_r(node): # Adds right-binding infix behaviours to a node
 			op = main.operator_dict[self.value] # Gets the name of the operator
 			x = self.nodes[0].evaluate()
 			y = self.nodes[1].evaluate()
-			return main.op_record[op](x, y) # Uses the operator named in op
+			return core.operators[op](x, y) # Uses the operator named in op
 
 class left_bracket(node): # Adds left-bracket behaviours to a node
 
@@ -469,8 +470,16 @@ class left_bracket(node): # Adds left-bracket behaviours to a node
 				if not isinstance(args, tuple): # Type correction
 					args = tuple([args]) # Very tiresome type correction, at that
 				if isinstance(body, function_definition): # If user-defined:
+					#if isinstance(self.head.head, return_statement): # Tail call optimisation
+					#	print(body.exit, main.routine.exit)
+					#	body.exit = main.routine.exit
+					#	main.namespace.pop() # Destroy namespace
+					#	main.routine.instance.pop() # Destroy spare instance
+					routine = main.routine # Save calling environment
+					main.routine = body
 					main.address = body
 					value = yield args # Function yields back into call to store return value
+					main.routine = routine # Reset calling environment
 					yield value
 				else: # If built-in:
 					try:
@@ -603,10 +612,7 @@ class function_definition(coroutine):
 		while True: # Execution loop
 			args = yield return_value
 			params = self.value[1:] # Gets the function parameters
-			if main.tail:
-				main.namespace[-1] = [] # Overwrite the local namespace
-			else:
-				main.namespace.append([]) # Add the namespace to main
+			main.namespace.append([]) # Add the namespace to main
 			self.instance.append(self.execute()) # Initialise new instance for recursion support
 			self.instance[-1].send(None) # Create function definition in new namespace
 			main.namespace[-1] = main.namespace[-1] + [definition(param.value, None, param.type, True) for param in params] # Constructs a new copy of the namespace each time the function is called
@@ -623,12 +629,11 @@ class function_definition(coroutine):
 					return_value = main.cast(status.args[0], type_value)
 					break
 			else: # Default behaviour for no return or yield
-				main.tail = False
 				main.address = self.exit
+				main.namespace.pop()
 				self.entry = self
 				self.exit = None
 				self.active = False
-				main.namespace.pop()
 				return_value = main.cast(None, type_value)
 
 class assignment(node):
@@ -820,26 +825,16 @@ class return_statement(node):
 	def execute(self):
 		
 		if self.nodes:
-			value = self.nodes[0].nodes[0] # Get head node
-			#if value.value == '(' and len(value.nodes) > 1: # If function call:
-			#	main.tail = True
-			#	return_value = value # Facilitates tail call optimisation
-			#else:
-			#	main.tail = False
-			return_value = yield
+			return_value = yield # If main.tail is true, control never returns back here
 		else:
 			return_value = None
-		head = self
-		while not isinstance(head, coroutine): # Traverses up tree until it finds a coroutine
-			head = head.head
-		else:
-			main.address = head.exit
-			main.namespace.pop()
-			head.entry = self
-			head.exit = None
-			return_value = head.instance[-2].throw(Return(return_value)) # Throws Return with return value and no address for the function to deal with
-			head.instance.pop() # Destroy instance after return
-			yield return_value
+		main.address = main.routine.exit # Set address to exit
+		main.routine.entry = main.routine # Reset entry and exit
+		main.routine.exit = None
+		main.namespace.pop() # Destroy namespace
+		main.routine.instance.pop() # Destroy spare instance
+		return_value = main.routine.instance[-1].throw(Return(return_value)) # Throws Return with return value
+		yield return_value
 
 class yield_statement(node):
 
