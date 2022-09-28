@@ -24,8 +24,8 @@ class node: # Base node object
 		self.value = value
 		self.head = None
 		self.nodes = [i for i in nodes]
-		self.instance = None
-		self.path = None
+		self.instance = [] # Unfortunately, a stack
+		self.path = 0 # Controls which node the runtime traverses to
 
 class coroutine(node): # Base coroutine object
 
@@ -48,9 +48,8 @@ class runtime(coroutine): # Runtime object contains runtime information and is t
 		self.value = self
 		self.namespace = [[definition(*item) for item in core.init_types()] + [definition(*item) for item in core.init_functions()]] # Initialises main with built-in types and functions
 		self.builtins = len(self.namespace[0]) - 1
-		self.op_record = core.init_operators()
 		self.address = None
-		self.tail = False
+		self.routine = self # Currently active coroutine
 
 	def execute(self): # Runs the module
 
@@ -58,44 +57,44 @@ class runtime(coroutine): # Runtime object contains runtime information and is t
 		tree = self.parse() # Here's tree
 		hemera.debug_tree(tree) # Uncomment for parse tree debug information
 		print('===')
-		path = [0] # Branch counter stack
 		value = None # Value register
 		while self.value: # Execution loop
+			#hemera.debug_runtime(self)
 			if self.address: # If destination specified by node:
-				self.value.path = [i for i in path] # Update stored path
+				#print('Call!')
+				if isinstance(self.value, function_definition) and self.value.path == len(self.value.nodes):
+					self.value.instance.pop()
+				self.value.path = 0
 				self.address.exit = self.value # Store source address in destination node
 				self.value = self.address # Move to addressed node
 				self.address = None # Remove address from main
-				path = [i for i in self.value.path] # Update path; the program is guaranteed to jump to a node that already has a path
-				if isinstance(self.value, coroutine) and path[-1] == len(self.value.nodes): # Wraps around path index
-					path[-1] = 0
-				if not self.value.instance: # Not possible to yield to an uninitialised coroutine; main.find() prevents that
-					self.value.instance = self.value.execute() # Initialises generator
-				value = self.value.instance.send(value)
-			elif self.value.nodes and path[-1] < len(self.value.nodes): # Walk down
-				self.value.nodes[path[-1]].head = self.value # Sets child head to self
-				self.value = self.value.nodes[path[-1]] # Set value to child node
-				path[-1] = path[-1] + 1 # Increment counter
 				if isinstance(self.value, coroutine):
-					path.append(len(self.value.nodes)) # Adds new counter to stack, skipping all nodes
-				else:
-					path.append(0) # Adds new counter to stack
-				self.value.path = [i for i in path] # Stupid way to construct a new representation of the path to store in the node
-				self.value.instance = self.value.execute() # Initialises generator
-				value = self.value.instance.send(value)
+					self.value.path = 0
+				elif isinstance(self.value, left_bracket): # Corrects path when destination is a function call
+					self.value.path = 2
+				value = self.value.instance[-1].send(value)
+			elif self.value.nodes and self.value.path < len(self.value.nodes): # Walk down
+				self.value.nodes[self.value.path].head = self.value # Sets child head to self
+				self.value = self.value.nodes[self.value.path] # Set value to child node
+				if isinstance(self.value, coroutine):
+					self.value.path = len(self.value.nodes) # Adds new counter to stack, skipping all nodes
+				self.value.instance.append(self.value.execute()) # Initialises generator
+				value = self.value.instance[-1].send(value)
 			else: # Walk up
-				while path[-1] == len(self.value.nodes) and not self.address: # While last node of branch:
+				while self.value.path == len(self.value.nodes) and not self.address: # While last node of branch:
 					if not isinstance(self.value, coroutine):
-						self.value.instance = None # Dereferences generator
+						self.value.instance.pop() # Removes generator
+					self.value.path = 0
 					self.value = self.value.head # Walk upward
-					path.pop()
+					self.value.path = self.value.path + 1 # Increment path counter
 					if self.value is self: # Check if finished
-						if path[-1] == len(self.nodes):
+						if self.value.path == len(self.nodes):
 							self.value = None
 						break
-					value = self.value.instance.send(value)
-			#if self.value:
-			#	print(self.value, self.value.path)
+					if isinstance(self.value, coroutine):
+						value = self.value.instance[-2].send(value)
+					else:
+						value = self.value.instance[-1].send(value)
 		else:
 			self.active = False
 			for item in self.namespace[0][self.builtins::-1]: # Unbinds built-ins in reverse order to not cause problems with the loop
@@ -355,7 +354,7 @@ class prefix(node): # Adds prefix behaviours to a node
 
 		op = 'unary_' + kadmos.operator_dict[self.value] # Gets the name of the operator
 		x = yield
-		yield main.op_record[op](x)
+		yield core.operators[op](x)
 
 class infix(node): # Adds infix behaviours to a node
 
@@ -375,7 +374,7 @@ class infix(node): # Adds infix behaviours to a node
 		op = kadmos.operator_dict[self.value] # Gets the name of the operator
 		x = yield
 		y = yield
-		yield main.op_record[op](x, y) # Uses the operator named in op
+		yield core.operators[op](x, y) # Uses the operator named in op
 
 class infix_r(node): # Adds right-binding infix behaviours to a node
 
@@ -433,7 +432,7 @@ class infix_r(node): # Adds right-binding infix behaviours to a node
 			op = main.operator_dict[self.value] # Gets the name of the operator
 			x = self.nodes[0].evaluate()
 			y = self.nodes[1].evaluate()
-			return main.op_record[op](x, y) # Uses the operator named in op
+			return core.operators[op](x, y) # Uses the operator named in op
 
 class left_bracket(node): # Adds left-bracket behaviours to a node
 
@@ -471,8 +470,16 @@ class left_bracket(node): # Adds left-bracket behaviours to a node
 				if not isinstance(args, tuple): # Type correction
 					args = tuple([args]) # Very tiresome type correction, at that
 				if isinstance(body, function_definition): # If user-defined:
+					#if isinstance(self.head.head, return_statement): # Tail call optimisation
+					#	print(body.exit, main.routine.exit)
+					#	body.exit = main.routine.exit
+					#	main.namespace.pop() # Destroy namespace
+					#	main.routine.instance.pop() # Destroy spare instance
+					routine = main.routine # Save calling environment
+					main.routine = body
 					main.address = body
 					value = yield args # Function yields back into call to store return value
+					main.routine = routine # Reset calling environment
 					yield value
 				else: # If built-in:
 					try:
@@ -602,20 +609,19 @@ class function_definition(coroutine):
 		type_value = self.value[0].type # Gets the function type
 		return_value = None
 		main.bind(name, self, type_value)
-		self.active = True
 		while True: # Execution loop
 			args = yield return_value
 			params = self.value[1:] # Gets the function parameters
-			space = [definition(name, self, type_value, True)] + [definition(param.value, None, param.type, True) for param in params] # Constructs a new copy of the namespace each time the function is called
-			if main.tail:
-				main.namespace[-1] = space # Overwrite the local namespace
-			else:
-				main.namespace.append(space) # Add the namespace to main
-			if (not params and not args) or (params and args and len(params) == len(args)):
+			main.namespace.append([]) # Add the namespace to main
+			self.instance.append(self.execute()) # Initialise new instance for recursion support
+			self.instance[-1].send(None) # Create function definition in new namespace
+			main.namespace[-1] = main.namespace[-1] + [definition(param.value, None, param.type, True) for param in params] # Constructs a new copy of the namespace each time the function is called
+			if len(params) == len(args):
 				for i, item in enumerate(main.namespace[-1][1:]): # Update parameters with arguments
 					item.value = main.cast(args[i], item.type) # Checks arguments for type
 			else:
 				raise SyntaxError('Expected {0} arguments; received {1}'.format(len(params), len(args)))
+			self.active = True
 			for item in self.nodes:
 				try:
 					yield
@@ -623,11 +629,11 @@ class function_definition(coroutine):
 					return_value = main.cast(status.args[0], type_value)
 					break
 			else: # Default behaviour for no return or yield
-				main.tail = False
 				main.address = self.exit
+				main.namespace.pop()
 				self.entry = self
 				self.exit = None
-				main.namespace.pop()
+				self.active = False
 				return_value = main.cast(None, type_value)
 
 class assignment(node):
@@ -819,26 +825,16 @@ class return_statement(node):
 	def execute(self):
 		
 		if self.nodes:
-			value = self.nodes[0].nodes[0] # Get head node
-			if value.value == '(' and len(value.nodes) > 1: # If function call:
-				main.tail = True
-				return_value = value # Facilitates tail call optimisation
-			else:
-				main.tail = False
-				return_value = yield
+			return_value = yield # If main.tail is true, control never returns back here
 		else:
 			return_value = None
-		head = self
-		while not isinstance(head, coroutine): # Traverses up tree until it finds a coroutine
-			head = head.head
-		else:
-			main.tail = False
-			main.address = head.exit
-			head.entry = self
-			head.exit = None
-			main.namespace.pop()
-			return_value = head.instance.throw(Return(return_value)) # Throws Return with return value and no address for the function to deal with
-			yield return_value
+		main.address = main.routine.exit # Set address to exit
+		main.routine.entry = main.routine # Reset entry and exit
+		main.routine.exit = None
+		main.namespace.pop() # Destroy namespace
+		main.routine.instance.pop() # Destroy spare instance
+		return_value = main.routine.instance[-1].throw(Return(return_value)) # Throws Return with return value
+		yield return_value
 
 class yield_statement(node):
 

@@ -470,16 +470,16 @@ class left_bracket(node): # Adds left-bracket behaviours to a node
 				if not isinstance(args, tuple): # Type correction
 					args = tuple([args]) # Very tiresome type correction, at that
 				if isinstance(body, function_definition): # If user-defined:
-					#if isinstance(self.head.head, return_statement): # Tail call optimisation
-					#	print(body.exit, main.routine.exit)
-					#	body.exit = main.routine.exit
-					#	main.namespace.pop() # Destroy namespace
-					#	main.routine.instance.pop() # Destroy spare instance
+					if isinstance(self.head.head, return_statement): # Tail call optimisation
+						main.namespace.pop() # Destroy namespace
+						main.routine.instance.pop(-2) # Destroy used instance
 					routine = main.routine # Save calling environment
 					main.routine = body
 					main.address = body
 					value = yield args # Function yields back into call to store return value
 					main.routine = routine # Reset calling environment
+					if isinstance(self.head.head, return_statement): # Tail call optimisation
+						main.address = main.routine.exit
 					yield value
 				else: # If built-in:
 					try:
@@ -825,7 +825,7 @@ class return_statement(node):
 	def execute(self):
 		
 		if self.nodes:
-			return_value = yield # If main.tail is true, control never returns back here
+			return_value = yield # If tail call, control never returns back here
 		else:
 			return_value = None
 		main.address = main.routine.exit # Set address to exit
