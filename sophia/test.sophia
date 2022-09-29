@@ -12,4 +12,4 @@ integer c (integer n):
 	print(n)
 	return c(n + 1)
 
-x: c(1)
+x: a(1)

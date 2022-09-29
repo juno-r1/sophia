@@ -254,7 +254,7 @@ class runtime(coroutine): # Runtime object contains runtime information and is t
 		stack = []
 		while isinstance(type_node, type_statement): # Get all supertypes for type
 			stack.append(type_node)
-			type_node = main.find(type_node.supertype).value
+			type_node = self.find(type_node.supertype).value
 		else:
 			stack.append(type_node) # Guaranteed to be a built_in
 		while stack: # Check type down the entire tree
@@ -471,6 +471,14 @@ class left_bracket(node): # Adds left-bracket behaviours to a node
 					args = tuple([args]) # Very tiresome type correction, at that
 				if isinstance(body, function_definition): # If user-defined:
 					if isinstance(self.head.head, return_statement): # Tail call optimisation
+						type_node = main.find(main.routine.value[0].type) # Check that tail call type is a subtype of the enclosing routine type
+						while isinstance(type_node.value, type_statement): # Get all supertypes for type
+							if body.value[0].type == type_node.name:
+								break
+							type_node = main.find(type_node.value.supertype)
+						else:
+							if body.value[0].type != type_node.name:
+								raise TypeError('Could not cast to ' + main.routine.value[0].type)
 						main.namespace.pop() # Destroy namespace
 						main.routine.instance.pop(-2) # Destroy used instance
 					routine = main.routine # Save calling environment
