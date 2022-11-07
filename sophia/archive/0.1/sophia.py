@@ -143,7 +143,7 @@ class runtime(node): # Runtime object contains runtime information and is the to
                         else:
                             tokens[-1].append(literal(token))
                         setattr(tokens[-1][-1], 'type', type_value) # Sets type
-
+                        
         parsed_lines = []
 
         for line in tokens:

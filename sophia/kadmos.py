@@ -1,74 +1,80 @@
-symbols = ['\t', '\n', # Symbols are space-unseparated
-                ':', ',', '.', '!',
-                '(', '[', '{',
-                ')', ']', '}'] # Characters that need to be interpreted as distinct tokens
-
-operator_list = ['+', '-', '*', '/', '^', '%', '~', '&&', '||', '^^', '&', '|', # Standard operators
-                        '<=', '>=', '!=', '<', '>', '=', 'in', 'not', 'and', 'or', 'xor'] # Logic operators
-operator_names = ['add', 'sub', 'mul', 'div', 'exp', 'mod', 'bit_not', 'bit_and', 'bit_or', 'bit_xor', 'intersection', 'union',
-                        'lt_eq', 'gt_eq', 'not_eq', 'lt', 'gt', 'eq', 'in_op', 'not_op', 'and_op', 'or_op', 'xor_op']
-operator_dict = dict(zip(operator_list, operator_names)) # Dictionary with operator names as keys and operator symbols as values
-
 structure_tokens = ['if', 'else', 'while', 'for', 'assert', 'type', 'constraint', 'return', 'yield', 'import']
-keyword_tokens = ['is', 'extends', 'pass', 'continue', 'break']
-
+keyword_tokens = ['is', 'in', 'extends', 'pass', 'continue', 'break']
+characters = '.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz' # Sorted by position in UTF-8
+parens = '()[]{}'
+comment = '//'
+sub_types = {'int': 'integer',
+			 'bool': 'boolean',
+			 'str': 'string'}
 binding_power = [['(', ')', '[', ']', '{', '}'], # The left-binding power of a binary operator is expressed by its position in this list
-                        [','],
-                        [':'],
-                        ['or'],
-                        ['and'],
-                        ['=', '!='],
-                        ['<', '>', '<=', '>='],
-                        ['&', '|'],
-                        ['+', '-'],
-                        ['*', '/', '%'],
-                        ['^'],
-                        ['.']]
+				 [','],
+				 [':'],
+				 ['<-'],
+				 ['->'],
+				 ['or', '||'],
+				 ['and', '&&'],
+				 ['xor', '^^'],
+				 ['=', '!=', 'in'],
+				 ['<', '>', '<=', '>='],
+				 ['&', '|'],
+				 ['+', '-'],
+				 ['*', '/', '%'],
+				 ['^']]
+
+def line_split(line): # Takes a line from the file data and splits it into tokens
+	
+	tokens = []
+
+	while line:
+		shift = False # Push flag
+		symbol = ''
+		while not shift: # Constructs token
+			symbol, line = symbol + line[0], line[1:]
+			if symbol == comment: # Comments
+				return tokens # Comment ends line
+			elif symbol[-1] == ' ':
+				symbol = symbol[:-1]
+				if symbol:
+					shift = True
+				else:
+					break
+			elif symbol in ['\t', '\n', ':', ','] or symbol in parens:
+				shift = True
+			elif symbol in ["'", '"']: # Strings
+				try:
+					end = line.index(symbol) + 1 # Everything before this index is inside a string
+					symbol, line = symbol + line[0:end], line[end:]
+					shift = True
+				except ValueError:
+					raise SyntaxError('Unmatched quotes')
+			elif not line or (symbol[-1] in characters) != (line[0] in characters): # XOR for last and next character being part of an operator
+				shift = True
+		else:
+			tokens.append(symbol)
+	
+	return tokens
 
 def balanced(tokens): # Takes a string and checks if its parentheses are balanced
+	
+	opening = parens[0::2] # Gets all opening parentheses from string
+	closing = parens[1::2] # Gets all closing parentheses from string
+	stack = [] # Guess
 
-    iparens = iter('(){}[]') # Iterable list of parentheses
-    parens = dict(zip(iparens, iparens)) # Dictionary of parentheses: key is opening parenthesis, value is closing parenthesis
-    closing = parens.values() # Gets all closing parentheses from dictionary
-    stack = [] # Guess
+	for token in tokens:
+		if token in opening: # If character is an opening parenthesis:
+			stack.append(token) # Add to stack
+		elif token in closing: # If character is a closing parenthesis:
+			if not stack or token != closing[opening.index(stack.pop())]: # If the stack is empty or c doesn't match the item popped off the stack:
+				return False # Parentheses are unbalanced
+		
+	return not stack # Interprets stack as a boolean, where an empty stack is falsy
 
-    for token in tokens:
-        char = parens.get(token, None)
-        if char: # If character is an opening parenthesis:
-            stack.append(char) # Add to stack
-        elif token in closing: # If character is a closing parenthesis:
-            if not stack or token != stack.pop(): # If the stack is empty or c doesn't match the item popped off the stack:
-                return False # Parentheses are unbalanced
-        
-    return not stack # Interprets stack as a boolean, where an empty stack is falsy
+	# https://stackoverflow.com/questions/6701853/parentheses-pairing-issue
 
-    # https://stackoverflow.com/questions/6701853/parentheses-pairing-issue
+def find_bp(symbol):
 
-def recurse_split(line): # Takes a line from the stripped input and splits it into tokens
+	for i, level in enumerate(binding_power):
+		if symbol in level:
+			return i + 1
 
-    for i, char in enumerate(line):
-        if char in symbols or char in operator_list: # If symbol found, split the token into everything before it, itself, and everything after it
-            if i < len(line) - 1 and line[i + 1] in ['=', '&', '|', '^']: # Clumsy hack to make composite operators work
-                output = [line[0:i], char + line[i + 1]] + recurse_split(line[i + 2:])
-            elif i > 0 and i < len(line) - 1:
-                try: # Check for decimal point
-                    x = int(line[i - 1])
-                    y = int(line[i + 1])
-                    z = float(line[i - 1:i + 2]) # Naïve check for decimal point
-                    output = [line[i - 1:i + 2]] + recurse_split(line[i + 2:])
-                except ValueError:
-                    output = [line[0:i], char] + recurse_split(line[i + 1:])
-            else:
-                output = [line[0:i], char] + recurse_split(line[i + 1:])
-        elif char in ["'", '"']:
-            j = line[i + 1:].index(char) + 1 # Finds matching quote
-            output = [line[0:i], line[i:j + 1]] + recurse_split(line[j + 1:])
-        elif char == ' ':
-            output = [line[0:i]] + recurse_split(line[i + 1:])
-        else:
-            continue # Avoids referencing output when it doesn't exist
-        while '' in output:
-            output.remove('') # Strip empty strings
-        return output
-    else:
-        return [line]
+	return len(binding_power) + 1 # Default binding power

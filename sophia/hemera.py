@@ -1,16 +1,22 @@
 def debug_tree(tree, level = 0): # Takes a parse tree
 
+	n = repr(getattr(tree, 'n', 0)).zfill(4) # Unique id of node, if enabled
 	if tree.nodes: # True for non-terminals, false for terminals
 		level += 1 # This actually works, because parameters are just local variables, for some reason
 		if tree.value:
-			print(('  ' * level), tree.value)
+			if isinstance(tree.value, str):
+				print(n, '\t', ('  ' * level), tree.value)
+			elif isinstance(tree.value, list):
+				print(n, '\t', ('  ' * level), [x.value for x in tree.value])
+			else:
+				print(n, '\t', ('  ' * level), tree.value.value)
 		else:
-			print(('  ' * level), type(tree).__name__)
+			print(n, '\t', ('  ' * level), type(tree).__name__)
 		for item in tree.nodes:
 			debug_tree(item, level)
 	else:
 		level += 1
-		print(('  ' * level), tree.value)
+		print(n, '\t', ('  ' * level), tree.value)
 
 def debug_runtime(runtime): # Takes a runtime object
 
@@ -22,23 +28,24 @@ def debug_runtime(runtime): # Takes a runtime object
 		value = [item.type + ' ' + item.value for item in value]
 	elif type(value).__name__ == 'literal':
 		value = value.value
-	print(name, value, runtime.value.path)
+	print(repr(getattr(runtime.value, 'n', 0)).zfill(4), name, value, runtime.routines[-1].path[-1])
 
-def debug_namespace(module): # Takes a list formatted like a module
+def debug_memory(runtime): # Takes a runtime object
 
 	print('===')
-	for i, scope in enumerate(module.namespace):
-		debug_scope(scope)
-		if i != len(module.namespace) - 1:
-			print('---')
-	print('===')
+	for routine in runtime.routines:
+		debug_module(routine)
+		print('===')
 
-def debug_scope(scope): # Takes a list of bindings
+def debug_module(routine): # Takes a routine object
 
-	for binding in scope:
-		if binding.type == 'module':
-			print(binding.name, binding.type, [item.name for item in binding.value.namespace[0]])
-		elif binding.type == 'type' and hasattr(binding.value, 'namespace'):
-			print(binding.name, binding.type, [item.name for item in binding.value.namespace])
+	for i, binding in enumerate(routine.namespace):
+		name = type(binding.value).__name__
+		if name == 'runtime':
+			print(binding.name, 'module', [item.name for item in binding.value.namespace[0]])
+		elif name == 'type_statement' and hasattr(binding.value, 'namespace'):
+			print(binding.name, 'type', [item.name for item in binding.value.namespace])
 		else:
-			print(binding.name, binding.type, binding.value)
+			print(binding.name, binding.type, repr(binding.value))
+		if i != len(routine.namespace) - 1:
+			print('---')

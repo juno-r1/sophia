@@ -1,0 +1,63 @@
+integer f (integer n):
+
+	integer a: n
+	integer b: 0
+	while a < 10:
+		a: a + b
+		b: yield a
+	else:
+		return a
+
+x <- f(1)			// Creates a binding for the coroutine f with initial argument n = 1 and runs until yield or return
+y: x				// y = 1
+y: 2 -> x			// y = 3
+y: 7 -> x			// y = 10; invocation of return statement overwrites coroutine binding with the return value
+y: 1 -> x			// Error: no coroutine x
+
+x <- io.out			// Redirects the output stream to x
+print('test')		// Sends 'test' to the output stream, which redirects to x
+y: x				// y = 'test'
+
+with x <- io.in:	// Redirects the input stream to x inside the block
+	x -> io.out		// Sends the input stream to the output stream
+
+with x <- io.error:	// Redirects the error stream to x inside the block
+	a: 1 / 0		// Cause an error on purpose
+	assert x:		// Assert that an error has been sent to x:
+		x -> io.out	// Send the error to the output stream
+
+x <- sample.txt		// Binds a file to x
+y: x				// Assigns the display value of x - the known contents of the file - to y
+'abc' -> x			// Appends the string 'abc' to file, throwing an error if not possible
+
+x <- f(1)
+io.in -> x -> io.out// Pipelines the input stream to x and x to the output stream
+
+// The behaviour of the null value has been changed so that any operation or function that returns it immediately throws an error unless in the head of an assert statement
+
+int f (int n):
+
+	return null
+
+f(1) // Throws an error immediately
+
+assert f(1):
+	print('!')
+else:
+	print('?') // Prints '?'
+
+int f (int n):
+
+	while true:
+		if n = 1:
+			n: yield null
+		else:
+			n: yield n
+
+assert x <- f(1): // Binds f(1) to x so it can be used elsewhere and catches the null return in the assert statement
+	print(x)
+else:
+	print('?') // Prints '?'
+
+print(2 -> x) // Prints 2
+print(1 -> x) // Error: null return

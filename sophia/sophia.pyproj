@@ -28,10 +28,11 @@
     <Compile Include="archive\0.1\core.py" />
     <Compile Include="archive\0.1\hemera.py" />
     <Compile Include="archive\0.1\sophia.py" />
-    <Compile Include="core.py" />
+    <Compile Include="arche.py" />
     <Compile Include="hemera.py" />
     <Compile Include="archive\0,0\sophia.py" />
     <Compile Include="backup.py" />
+    <Compile Include="kleio.py" />
     <Compile Include="sophia.py" />
     <Compile Include="kadmos.py" />
   </ItemGroup>
@@ -40,7 +41,7 @@
     <Content Include="archive\0.1\reference.pdf" />
     <Content Include="archive\0.1\test.sophia" />
     <Content Include="main.sophia" />
-    <Content Include="reference.pdf" />
+    <Content Include="plan.txt" />
     <Content Include="test.sophia" />
   </ItemGroup>
   <ItemGroup>

@@ -1,6 +1,6 @@
 list found_primes: [2]
 
-type prime extends integer:
+type prime extends int:
 
 	constraint:
 		prime > 1
