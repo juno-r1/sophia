@@ -10,8 +10,14 @@ int a (int n):
 
 int b (int n):
 
-	for i in 0:n:
+	int i: n
+	while true:
+		if i > 3:
+			break
 		print(i)
+		i: i + 1
+	else:
+		print('Whoops!')
 	return n
 
 int c (int n):
@@ -34,6 +40,5 @@ int fib (int n):
 		i: i + 1
 	return a
 
-int x: a(0)
-int y: a(1)
-int z: a(2)
+int x: b(1)
+int y: b(5)

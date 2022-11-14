@@ -148,7 +148,10 @@ class runtime(coroutine): # Runtime object contains runtime information and is t
 				if isinstance(self.value, coroutine) and (path < 0 or path >= len(self.value.nodes)):
 					self.routines.pop()
 				self.value, self.address = self.address, None # Move to addressed node
-				value = self.routines[-1].instances[-1].send(value)
+				if isinstance(value, Exception):
+					value = self.routines[-1].instances[-1].throw(value)
+				else:
+					value = self.routines[-1].instances[-1].send(value)
 			elif self.value.nodes and 0 <= path < len(self.value.nodes): # Walk down
 				self.value.nodes[path].head = self.value # Sets child head to self
 				self.value = self.value.nodes[path] # Set value to child node
@@ -287,7 +290,7 @@ class function_definition(coroutine):
 		return_value = None
 		while True: # Execution loop
 			yield return_value
-			for i in self.nodes:
+			for item in self.nodes:
 				try:
 					yield
 				except (arche.Return, arche.Yield) as status: # Return and yield statements pass back here
@@ -361,7 +364,7 @@ class while_statement(node):
 					continue
 			else:
 				yield main.branch(len(self.nodes)) # Skip nodes
-		except StopIteration: # Break
+		except arche.Break: # Break
 			yield main.branch() # Branch
 
 class for_statement(node):
@@ -389,7 +392,7 @@ class for_statement(node):
 		except (StopIteration, arche.Break) as status: # Break
 			if isinstance(status, StopIteration):
 				main.branch(len(self.nodes)) # Skip nodes
-			else:
+			elif isinstance(status, arche.Break):
 				main.branch() # Branch
 			main.unbind(index.value) # Unbinds the index
 			yield
@@ -575,12 +578,21 @@ class keyword(identifier): # Adds keyword behaviours to a node
 
 	def execute(self):
 
-		if self.value == 'continue':
-			raise arche.Continue
-		elif self.value == 'break':
-			raise StopIteration
-		elif self.value is None: # Represents zero-argument function call
+		if self.value is None: # Represents zero-argument function call
 			yield ()
+		else:
+			loop = self # Traverse up to loop
+			while not isinstance(loop, (while_statement, for_statement)):
+				loop = loop.head
+				main.routines[-1].path.pop()
+				main.routines[-1].instances.pop()
+			else:
+				main.address = loop
+				if self.value == 'continue':
+					yield arche.Continue
+				elif self.value == 'break':
+					main.branch()
+					yield arche.Break
 
 class operator(node): # Generic operator node
 
