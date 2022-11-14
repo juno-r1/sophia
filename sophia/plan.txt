@@ -61,3 +61,12 @@ else:
 
 print(2 -> x) // Prints 2
 print(1 -> x) // Error: null return
+
+else statement
+else has two behaviours:
+	no branch
+		execute and branch all elses (true, normal loop)
+	branch
+		branch and execute next statement (false, break)
+neither behaviour requires previous context
+else statements after loops do the opposite of what they do in python - they activate when the loop exits without completing

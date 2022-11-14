@@ -82,8 +82,7 @@ class node: # Base node object
 
 		for line in tokens: # Tokenises whole lines
 			if line[0].value in kadmos.structure_tokens:
-				statement_id = line[0].value + '_statement'
-				token = eval(statement_id + '(line)') # Cheeky little hack that makes a node for whatever structure keyword is specified
+				token = globals()[line[0].value + '_statement'](line) # Cheeky little hack that makes a node for whatever structure keyword is specified
 			elif line[0].value in kadmos.keyword_tokens:
 				token = line[0] # Keywords will get special handling later
 			elif line[-1].value == ':':
@@ -114,6 +113,7 @@ class node: # Base node object
 			last = line
 		else:
 			hemera.debug_tree(self) # Uncomment for parse tree debug information
+			print('===')
 			return self
 
 class coroutine(node): # Base coroutine object
@@ -140,41 +140,50 @@ class runtime(coroutine): # Runtime object contains runtime information and is t
 	def execute(self): # Runs the module
 		
 		value = None # Value register
-		print('===')
 		while self.value: # Execution loop
 			path = self.routines[-1].path[-1]
 			#hemera.debug_runtime(self)
 			if self.address: # If destination specified by node:
 				#print('jump')
-				if isinstance(self.value, function_definition) and path == len(self.value.nodes):
+				if isinstance(self.value, coroutine) and (path < 0 or path >= len(self.value.nodes)):
 					self.routines.pop()
 				self.value, self.address = self.address, None # Move to addressed node
 				value = self.routines[-1].instances[-1].send(value)
-			elif self.value.nodes and path < len(self.value.nodes): # Walk down
+			elif self.value.nodes and 0 <= path < len(self.value.nodes): # Walk down
 				self.value.nodes[path].head = self.value # Sets child head to self
 				self.value = self.value.nodes[path] # Set value to child node
 				self.routines[-1].path.append(0)
 				if isinstance(self.value, coroutine):
-					self.routines[-1].path[-1] = len(self.value.nodes) # Adds new counter to stack, skipping all nodes
+					self.branch() # Adds new counter to stack, skipping all nodes
 				self.routines[-1].instances.append(self.value.execute()) # Initialises generator
 				value = self.routines[-1].instances[-1].send(value)
 			else: # Walk up
-				while self.routines[-1].path[-1] == len(self.value.nodes) and not self.address: # While last node of branch:
+				while (path < 0 or path >= len(self.value.nodes)) and not self.address: # While last node of branch:
+					path = self.routines[-1].path[-2]
 					if not isinstance(self.value, coroutine):
 						self.routines[-1].instances.pop() # Removes generator
-					self.routines[-1].path.pop()
 					self.value = self.value.head # Walk upward
-					self.routines[-1].path[-1] = self.routines[-1].path[-1] + 1 # Increment path counter
+					path = path + 1
+					if self.routines[-1].path.pop() != -1: # Skip else statements if not branch
+						while path < len(self.value.nodes) and isinstance(self.value.nodes[path], else_statement):
+							path = path + 1
+					self.branch(path) # Increment path counter
 					if self.value is self: # Check if finished
-						if self.routines[-1].path[-1] == len(self.nodes):
+						if path == len(self.nodes):
 							self.value = None
-						break
+						break # Can't send to self
 					value = self.routines[-1].instances[-1].send(value)
+					path = self.routines[-1].path[-1]
+					#hemera.debug_runtime(self)
 		else:
 			for item in self.routines[0].namespace[len(self.builtins) - 1::-1]: # Unbinds built-ins in reverse order to not cause problems with the loop
 				self.unbind(item.name)
 			hemera.debug_memory(self)
 			yield self # Returns runtime object to facilitate imports
+
+	def branch(self, path = -1):
+
+		self.routines[-1].path[-1] = path # Skip nodes
 
 	def bind(self, name, value, type_value = 'untyped', reserved = False): # Creates or updates a name binding in main
 
@@ -321,10 +330,10 @@ class if_statement(node):
 
 		condition = yield
 		if condition is True:
-			for item in self.nodes[1:]:
+			for i in self.nodes[1:]:
 				yield
 		elif condition is False:
-			main.routines[-1].path[-1] = len(self.nodes) # Skip nodes
+			main.branch()
 		else: # Over-specify on purpose to implement Sophia's specific requirement for a boolean
 			raise ValueError('Condition must evaluate to boolean')
 		yield
@@ -337,46 +346,69 @@ class while_statement(node):
 
 	def execute(self):
 
-		condition = self.nodes[0].execute()
+		condition = yield
 		if condition is not True and condition is not False: # Over-specify on purpose to implement Sophia's specific requirement for a boolean
 			raise ValueError('Condition must evaluate to boolean')
-		return_value = None
 		try:
 			while condition:
 				try:
-					for item in self.nodes[1:]:
-						return_value = item.execute()
-					condition = self.nodes[0].execute()
+					for i in self.nodes[1:]:
+						yield
+					main.branch(0) # Repeat nodes
+					condition = yield
 				except arche.Continue: # Continue
+					main.branch(0) # Repeat nodes
 					continue
 			else:
-				return return_value
+				yield main.branch(len(self.nodes)) # Skip nodes
 		except StopIteration: # Break
-			return return_value
+			yield main.branch() # Branch
 
 class for_statement(node):
 
 	def __init__(self, tokens):
 
-		super().__init__(None, tokens[1], expression(tokens[3:-1]))
+		super().__init__(tokens[1], expression(tokens[3:-1]))
 
 	def execute(self):
 
-		index = self.nodes[0]
-		sequence = iter(self.nodes[1].execute())
+		index = self.value
+		sequence = yield
+		sequence = iter(sequence)
 		main.bind(index.value, None, index.type)
-		return_value = None
 		try:
 			while True: # Loop until the iterator is exhausted
 				main.bind(index.value, next(sequence), index.type) # Binds the next value of the sequence to the loop index
 				try:
-					for item in self.nodes[2:]:
-						return_value = item.execute()
+					for item in self.nodes[1:]:
+						yield
+					main.branch(1) # Repeat nodes
 				except arche.Continue: # Continue
+					main.branch(1) # Repeat nodes
 					continue
-		except StopIteration: # Break
+		except (StopIteration, arche.Break) as status: # Break
+			if isinstance(status, StopIteration):
+				main.branch(len(self.nodes)) # Skip nodes
+			else:
+				main.branch() # Branch
 			main.unbind(index.value) # Unbinds the index
-			return return_value
+			yield
+
+class else_statement(node):
+
+	def __init__(self, tokens):
+
+		super().__init__(None)
+		if len(tokens) > 2: # Non-final else
+			head = globals()[tokens[1].value + '_statement'](tokens[1:]) # Tokenise head statement
+			self.value, self.nodes, self.execute = head.value, head.nodes, head.execute # Else statement pretends to be its head statement
+			del head # So no head?
+
+	def execute(self): # Final else statement; gets overridden for non-final
+		
+		for item in self.nodes:
+			yield
+		yield # Needs extra yield to traverse back up
 
 class assert_statement(node):
 
@@ -422,33 +454,6 @@ class constraint_statement(node):
 				raise ValueError('Constraint must evaluate to boolean')
 			if value is False:
 				raise TypeError('Constraint failed')
-
-class else_statement(node):
-
-	def __init__(self, tokens):
-
-		if len(tokens) > 2:
-			statement_id = tokens[1].value + '_statement'
-			super().__init__(None, eval(statement_id + '(tokens[1:])')) # Else statement
-			self.final = False
-		else:
-			super().__init__(None) # Final else
-			self.final = True
-
-	def execute(self): # Else statement
-		
-		if not main.branch:
-			if self.final:
-				for item in self.nodes:
-					return_value = item.execute()
-				return return_value
-			else:
-				inner = self.nodes[0]
-				inner.nodes.extend(self.nodes[1:]) # Reassign nodes to inner statement
-				return_value = inner.execute()
-				return return_value
-		if self.final:
-			main.branch = False
 
 class return_statement(node):
 

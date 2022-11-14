@@ -8,6 +8,7 @@ class coroutine: # Created by function calls and coroutine binding
 		self.namespace = [arg for arg in args]
 		self.instances = []
 		self.path = [0]
+		self.branch = False
 
 class definition: # Created by assignment
 

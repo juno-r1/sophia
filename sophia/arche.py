@@ -9,11 +9,6 @@ def init_types(): # Yeah, there's some name mangling going on here
 
 		return value
 
-	def _null(value):
-
-		if value is None:
-			return value
-
 	def _integer(value):
 
 		if (not isinstance(value, bool)) and (isinstance(value, int) or isinstance(value, float) and int(value) == value):
@@ -44,7 +39,7 @@ def init_types(): # Yeah, there's some name mangling going on here
 		if isinstance(value, dict):
 			return value
 
-	return [(name[1:], value, name[1:], True) for name, value in locals().items()]
+	return [(name[1:], value, 'type', True) for name, value in locals().items()]
 
 def init_functions():
 
