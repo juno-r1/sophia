@@ -147,12 +147,10 @@ class runtime(coroutine): # Runtime object contains runtime information and is t
 				if value.args[0] == 'return':
 					value = self.routines[-1].instances[0].send(value) # Guaranteed to send to the function instance
 				else:
-					while not isinstance(self.value, (while_statement, for_statement)):
+					while not isinstance(self.value, (while_statement, for_statement)): # Traverses up to closest enclosing loop - bootstrap assumes that interpreter is well-written and one exists
 						self.value = self.value.head
 						self.routines[-1].instances.pop()
 						self.routines[-1].path.pop()
-						if not self.routines[-1].instances:
-							raise SyntaxError('No enclosing loop')
 					if value.args[0] == 'continue':
 						value = self.routines[-1].instances[-1].send(value)
 					elif value.args[0] == 'break':
@@ -419,9 +417,17 @@ class assert_statement(node):
 
 	def __init__(self, tokens):
 
-		super().__init__(None, tokens[1])
+		super().__init__(tokens[1:-1:2])
 
 	def execute(self):
+
+		# Validate existence and type of resource
+		if assertion is not None:
+			while main.routines[-1].path[-1] < len(self.nodes):
+				yield
+		else:
+			main.branch()
+		yield
 		
 		main.branch = False
 		try:

@@ -56,4 +56,4 @@ int fib (int n):
 		i: i + 1
 	return a
 
-int x: d(10)
+int x: fib(10)
