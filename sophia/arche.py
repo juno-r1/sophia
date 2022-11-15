@@ -1,7 +1,4 @@
-class Return(Exception): pass # Handles return
-class Yield(Exception): pass # Handles yield
-class Continue(Exception): pass # Handles continue
-class Break(Exception): pass # Handles break
+class Control(Exception): pass # Chaos... control!
 
 def init_types(): # Yeah, there's some name mangling going on here
 

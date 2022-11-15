@@ -143,15 +143,27 @@ class runtime(coroutine): # Runtime object contains runtime information and is t
 		while self.value: # Execution loop
 			path = self.routines[-1].path[-1]
 			#hemera.debug_runtime(self)
-			if self.address: # If destination specified by node:
+			if isinstance(value, arche.Control): # Handles control flow: continue, break, return, yield
+				if value.args[0] == 'return':
+					value = self.routines[-1].instances[0].send(value) # Guaranteed to send to the function instance
+				else:
+					while not isinstance(self.value, (while_statement, for_statement)):
+						self.value = self.value.head
+						self.routines[-1].instances.pop()
+						self.routines[-1].path.pop()
+						if not self.routines[-1].instances:
+							raise SyntaxError('No enclosing loop')
+					if value.args[0] == 'continue':
+						value = self.routines[-1].instances[-1].send(value)
+					elif value.args[0] == 'break':
+						main.branch()
+					value = None
+			elif self.address: # If destination specified by node:
 				#print('jump')
 				if isinstance(self.value, coroutine) and (path < 0 or path >= len(self.value.nodes)):
 					self.routines.pop()
 				self.value, self.address = self.address, None # Move to addressed node
-				if isinstance(value, Exception):
-					value = self.routines[-1].instances[-1].throw(value)
-				else:
-					value = self.routines[-1].instances[-1].send(value)
+				value = self.routines[-1].instances[-1].send(value)
 			elif self.value.nodes and 0 <= path < len(self.value.nodes): # Walk down
 				self.value.nodes[path].head = self.value # Sets child head to self
 				self.value = self.value.nodes[path] # Set value to child node
@@ -176,6 +188,8 @@ class runtime(coroutine): # Runtime object contains runtime information and is t
 							self.value = None
 						break # Can't send to self
 					value = self.routines[-1].instances[-1].send(value)
+					if isinstance(value, arche.Control):
+						break
 					path = self.routines[-1].path[-1]
 					#hemera.debug_runtime(self)
 		else:
@@ -290,12 +304,11 @@ class function_definition(coroutine):
 		return_value = None
 		while True: # Execution loop
 			yield return_value
-			for item in self.nodes:
-				try:
-					yield
-				except (arche.Return, arche.Yield) as status: # Return and yield statements pass back here
+			while main.routines[-1].path[-1] < len(self.nodes): # Allows more fine-grained control flow than using a for loop
+				status = yield
+				if isinstance(status, arche.Control): # Return and yield statements pass back here
 					main.address = main.routines.pop().exit
-					return_value = main.cast(status.args[0], self.value[0].type)
+					return_value = main.cast(status.args[1], self.value[0].type)
 					break
 			else: # Default behaviour for no return or yield
 				main.address = main.routines.pop().exit
@@ -333,7 +346,7 @@ class if_statement(node):
 
 		condition = yield
 		if condition is True:
-			for i in self.nodes[1:]:
+			while main.routines[-1].path[-1] < len(self.nodes):
 				yield
 		elif condition is False:
 			main.branch()
@@ -352,20 +365,15 @@ class while_statement(node):
 		condition = yield
 		if condition is not True and condition is not False: # Over-specify on purpose to implement Sophia's specific requirement for a boolean
 			raise ValueError('Condition must evaluate to boolean')
-		try:
-			while condition:
-				try:
-					for i in self.nodes[1:]:
-						yield
-					main.branch(0) # Repeat nodes
-					condition = yield
-				except arche.Continue: # Continue
-					main.branch(0) # Repeat nodes
-					continue
-			else:
-				yield main.branch(len(self.nodes)) # Skip nodes
-		except arche.Break: # Break
-			yield main.branch() # Branch
+		while condition:
+			while main.routines[-1].path[-1] < len(self.nodes):
+				status = yield
+				if isinstance(status, arche.Control):
+					break
+			main.branch(0) # Repeat nodes
+			condition = yield
+		else:
+			yield main.branch(len(self.nodes)) # Skip nodes
 
 class for_statement(node):
 
@@ -382,20 +390,14 @@ class for_statement(node):
 		try:
 			while True: # Loop until the iterator is exhausted
 				main.bind(index.value, next(sequence), index.type) # Binds the next value of the sequence to the loop index
-				try:
-					for item in self.nodes[1:]:
-						yield
-					main.branch(1) # Repeat nodes
-				except arche.Continue: # Continue
-					main.branch(1) # Repeat nodes
-					continue
-		except (StopIteration, arche.Break) as status: # Break
-			if isinstance(status, StopIteration):
-				main.branch(len(self.nodes)) # Skip nodes
-			elif isinstance(status, arche.Break):
-				main.branch() # Branch
+				while main.routines[-1].path[-1] < len(self.nodes):
+					status = yield
+					if isinstance(status, arche.Control):
+						break
+				main.branch(1) # Repeat nodes
+		except StopIteration: # Break
 			main.unbind(index.value) # Unbinds the index
-			yield
+			yield main.branch(len(self.nodes)) # Skip nodes
 
 class else_statement(node):
 
@@ -461,20 +463,19 @@ class constraint_statement(node):
 class return_statement(node):
 
 	def __init__(self, tokens):
-
-		value = tokens[1:]
-		if value:
-			super().__init__(None, expression(value))
+		
+		if len(tokens) > 1:
+			super().__init__(None, expression(tokens[1:]))
 		else:
 			super().__init__(None)
 
 	def execute(self):
 		
 		if self.nodes:
-			return_value = yield # If tail call, control never returns back here
+			return_value = yield # If tail call, control never returns back here 
 		else:
 			return_value = None
-		yield main.routines[-1].instances[0].throw(arche.Return(return_value)) # Throws Return with return value
+		yield arche.Control('return', return_value) # Throws Return with return value
 
 class yield_statement(node):
 
@@ -581,18 +582,7 @@ class keyword(identifier): # Adds keyword behaviours to a node
 		if self.value is None: # Represents zero-argument function call
 			yield ()
 		else:
-			loop = self # Traverse up to loop
-			while not isinstance(loop, (while_statement, for_statement)):
-				loop = loop.head
-				main.routines[-1].path.pop()
-				main.routines[-1].instances.pop()
-			else:
-				main.address = loop
-				if self.value == 'continue':
-					yield arche.Continue
-				elif self.value == 'break':
-					main.branch()
-					yield arche.Break
+			yield arche.Control(self.value) # Control object handling continue and break
 
 class operator(node): # Generic operator node
 

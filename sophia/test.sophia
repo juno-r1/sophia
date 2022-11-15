@@ -10,23 +10,39 @@ int a (int n):
 
 int b (int n):
 
-	int i: n
-	while true:
-		if i > 3:
-			break
-		print(i)
-		i: i + 1
-	else:
-		print('Whoops!')
-	return n
-
-int c (int n):
-
 	if n >= 10:
 		print(n)
 		return n
 	print(n)
-	return c(n + 1)
+	return b(n + 1)
+
+int c (int n):
+
+	int i: n
+	while true:
+		if i < 5:
+			print(i)
+			i: i + 1
+			continue
+			print('!')
+		else:
+			break
+	else:
+		print('Whoops!')
+	return n
+
+int d (int n):
+
+	for i in 0:n:
+		if i < 5:
+			print(i)
+			continue
+			print('!')
+		else:
+			break
+	else:
+		print('Whoops!')
+	return n
 
 int fib (int n):
 
@@ -40,5 +56,4 @@ int fib (int n):
 		i: i + 1
 	return a
 
-int x: b(1)
-int y: b(5)
+int x: d(10)
