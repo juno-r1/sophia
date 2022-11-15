@@ -56,4 +56,9 @@ int fib (int n):
 		i: i + 1
 	return a
 
-int x: fib(10)
+int x: 1
+str y: 'a'
+assert z:
+	print('z')
+else:
+	print('no z')

@@ -347,7 +347,7 @@ class if_statement(node):
 			while main.routines[-1].path[-1] < len(self.nodes):
 				yield
 		elif condition is False:
-			main.branch()
+			yield main.branch()
 		else: # Over-specify on purpose to implement Sophia's specific requirement for a boolean
 			raise ValueError('Condition must evaluate to boolean')
 		yield
@@ -363,6 +363,8 @@ class while_statement(node):
 		condition = yield
 		if condition is not True and condition is not False: # Over-specify on purpose to implement Sophia's specific requirement for a boolean
 			raise ValueError('Condition must evaluate to boolean')
+		elif condition is False:
+			yield main.branch()
 		while condition:
 			while main.routines[-1].path[-1] < len(self.nodes):
 				status = yield
@@ -421,35 +423,18 @@ class assert_statement(node):
 
 	def execute(self):
 
-		# Validate existence and type of resource
-		if assertion is not None:
+		types = [] # Stores current types of asserted names
+		for value in self.value: # Iterate over all specified references
+			try:
+				binding = main.find(value.value)
+				types.append(binding.type)
+				main.cast(binding.value, value.type)
+			except (NameError, TypeError): # Catches unbound names
+				yield main.branch()
+		else:
 			while main.routines[-1].path[-1] < len(self.nodes):
 				yield
-		else:
-			main.branch()
 		yield
-		
-		main.branch = False
-		try:
-			try:
-				binding = main.find(self.nodes[0].value)
-			except NameError: # Catches unbound names
-				return None
-			assert_type = self.nodes[0].type
-			if assert_type == 'untyped' and binding.value is None: # Handles behaviour of untyped assertion
-				return None
-			else:
-				main.cast(binding.value, assert_type)
-		except TypeError:
-			main.namespace.pop() # Cleans up from cast()
-			return None
-		main.bind(binding.name, binding.value, assert_type)
-		for item in self.nodes[1:]:
-			return_value = item.execute()
-		else:
-			main.branch = True
-			main.bind(binding.name, binding.value, binding.type)
-			return return_value
 	
 class constraint_statement(node):
 
