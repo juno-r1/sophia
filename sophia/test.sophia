@@ -1,48 +1,11 @@
-int a (int n):
+type random:
 
-	if n = 0:
-		print('X')
-	else if n = 1:
-		print('?')
-	else:
-		print('!')
-	return n
+	null // Implements pass statement
 
-int b (int n):
+type even extends int:
 
-	if n >= 10:
-		print(n)
-		return n
-	print(n)
-	return b(n + 1)
-
-int c (int n):
-
-	int i: n
-	while true:
-		if i < 5:
-			print(i)
-			i: i + 1
-			continue
-			print('!')
-		else:
-			break
-	else:
-		print('Whoops!')
-	return n
-
-int d (int n):
-
-	for i in 0:n:
-		if i < 5:
-			print(i)
-			continue
-			print('!')
-		else:
-			break
-	else:
-		print('Whoops!')
-	return n
+	constraint:
+		even % 2 = 0
 
 int fib (int n):
 
@@ -57,8 +20,7 @@ int fib (int n):
 	return a
 
 int x: 1
-str y: 'a'
-assert z:
-	print('z')
+assert even x:
+	print('!')
 else:
-	print('no z')
+	print('?')

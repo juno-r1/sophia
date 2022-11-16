@@ -144,7 +144,10 @@ class runtime(coroutine): # Runtime object contains runtime information and is t
 			path = self.routines[-1].path[-1]
 			#hemera.debug_runtime(self)
 			if isinstance(value, arche.Control): # Handles control flow: continue, break, return, yield
-				if value.args[0] == 'return':
+				if value.args[0] == 'cast':
+					self.value, self.address = self.address, None
+					yield value.args[1]
+				elif value.args[0] == 'return':
 					value = self.routines[-1].instances[0].send(value) # Guaranteed to send to the function instance
 				else:
 					while not isinstance(self.value, (while_statement, for_statement)): # Traverses up to closest enclosing loop - bootstrap assumes that interpreter is well-written and one exists
@@ -157,7 +160,6 @@ class runtime(coroutine): # Runtime object contains runtime information and is t
 						main.branch()
 					value = None
 			elif self.address: # If destination specified by node:
-				#print('jump')
 				if isinstance(self.value, coroutine) and (path < 0 or path >= len(self.value.nodes)):
 					self.routines.pop()
 				self.value, self.address = self.address, None # Move to addressed node
@@ -259,16 +261,18 @@ class runtime(coroutine): # Runtime object contains runtime information and is t
 		while stack: # Check type down the entire tree
 			type_node = stack.pop()
 			if isinstance(type_node, type_statement): # If user-defined:
-				self.namespace.append([kleio.definition(type_value, value, type_value, reserved = True)]) # Bind special variable in a new scope
-				for item in type_node.nodes[1:]: # Executing the node is the same as checking the value's type
-					item.execute()
-				else:
-					return_value = value
-					self.namespace.pop() # Destroy scope
+				type_node.exit = main.value # Store source address in destination node
+				address, main.address = main.address, type_node # Set address to function node
+				main.call(type_node) # Creates a coroutine binding in main
+				self.routines[-1].namespace[0].value = value # Manually bind cast value to type binding
+				self.routines[-1].namespace[0].type = type_value
+				instance = main.execute() # Creates new instance of runtime loop
+				return_value = instance.send(None) # Oh god, oh fuck, et cetera
+				main.address = address # Restores address if one was set when cast() was called
 			else: # If built-in:
 				return_value = type_node(value) # Corrects type for built-ins
-				if return_value is None:
-					raise TypeError('Failed cast to ' + type_value + ': ' + repr(value))
+			if return_value is None:
+				raise TypeError('Failed cast to ' + type_value + ': ' + repr(value))
 		else:
 			return return_value # Return indicates success; cast() raises an exception on failure
 
@@ -276,19 +280,30 @@ class type_statement(coroutine):
 
 	def __init__(self, tokens):
 		
-		super().__init__(tokens[1]) # Type
+		super().__init__([tokens[1]]) # Type
 		if len(tokens) > 3: # Naive check for subtyping
-			self.supertype = tokens[3].value # Supertype
+			self.supertype = tokens[3].value
+			if self.supertype in kadmos.sub_types: # Corrects shortened type names
+				self.supertype = kadmos.sub_types[self.supertype]
 		else:
-			self.supertype = None
+			self.supertype = 'untyped'
 
 	def execute(self):
 
-		name = self.value.value
-		for item in self.nodes: # Bind type operations to type node
-			if isinstance(item, function_definition):
-				self.namespace.append(kleio.definition(item.value[0].value, item, item.value[0].type, reserved = True))
-		main.bind(name, self, 'type') # Creates an empty binding to manage scope
+		main.bind(self.value[0].value, self, self.value[0].value, reserved = True)
+		return_value = None
+		while True: # Execution loop
+			return_value = yield return_value
+			while main.routines[-1].path[-1] < len(self.nodes): # Allows more fine-grained control flow than using a for loop
+				status = yield
+				if isinstance(status, arche.Control): # Failed constraints pass back here
+					return_value = None
+					main.address = main.routines.pop().exit
+					break
+			else: # Default behaviour for no return or yield
+				return_value = main.find(self.value[0].value).value
+				main.address = main.routines.pop().exit
+			return_value = arche.Control('cast', return_value)
 
 class function_definition(coroutine):
 
@@ -305,12 +320,12 @@ class function_definition(coroutine):
 			while main.routines[-1].path[-1] < len(self.nodes): # Allows more fine-grained control flow than using a for loop
 				status = yield
 				if isinstance(status, arche.Control): # Return and yield statements pass back here
-					main.address = main.routines.pop().exit
 					return_value = main.cast(status.args[1], self.value[0].type)
+					main.address = main.routines.pop().exit
 					break
 			else: # Default behaviour for no return or yield
-				main.address = main.routines.pop().exit
 				return_value = main.cast(None, self.value[0].type)
+				main.address = main.routines.pop().exit
 
 class assignment(node):
 
@@ -444,12 +459,13 @@ class constraint_statement(node):
 
 	def execute(self):
 
-		for constraint in self.nodes:
-			value = constraint.execute()
-			if value is not True and value is not False:
+		while main.routines[-1].path[-1] < len(self.nodes):
+			constraint = yield
+			if constraint is not True and constraint is not False:
 				raise ValueError('Constraint must evaluate to boolean')
-			if value is False:
-				raise TypeError('Constraint failed')
+			if constraint is False:
+				yield arche.Control('return', None) # Functionally identical
+		yield
 
 class return_statement(node):
 
@@ -463,35 +479,27 @@ class return_statement(node):
 	def execute(self):
 		
 		if self.nodes:
-			return_value = yield # If tail call, control never returns back here 
+			value = yield # If tail call, control never returns back here 
 		else:
-			return_value = None
-		yield arche.Control('return', return_value) # Throws Return with return value
+			value = None
+		yield arche.Control('return', value) # Sends return control with return value
 
 class yield_statement(node):
 
 	def __init__(self, tokens):
 
-		if 'to' in [token.value for token in tokens]:
-			address = tokens[-1]
-			value = tokens[1:-2]
+		if len(tokens) > 1:
+			super().__init__(None, expression(tokens[1:]))
 		else:
-			address = None
-			value = tokens[1:]
-		if value:
-			super().__init__(address, expression(value))
-		else:
-			super().__init__(address)
+			super().__init__(None)
 
 	def execute(self):
 			
-		head_node = self.nodes[0].nodes[0] # Get head node
-		if head_node.value == '(' and len(head_node.nodes) > 1: # If function call:
-			setattr(head_node, 'tail', True)
-			main.return_value = head_node # Facilitates tail call optimisation
+		if self.nodes:
+			value = yield
 		else:
-			setattr(head_node, 'tail', False)
-			main.return_value = self.nodes[0].execute()
+			value = None
+		yield arche.Control('send', value, None) # Sends send control with send value and no address
 
 class import_statement(node):
 
@@ -840,4 +848,5 @@ class lex_construct: # Lex object to get around not being able to peek the next 
 		return left, next_token # Preserves state of next_token for higher-level calls
 
 main = runtime('test.sophia') # Initialises runtime object
-main.instance = main.execute().send(None) # Initialises runtime generator
+main.instance = main.execute() # Initialises runtime generator
+main.instance.send(None)

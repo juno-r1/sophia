@@ -1,5 +1,5 @@
-structure_tokens = ['if', 'else', 'while', 'for', 'assert', 'type', 'constraint', 'return', 'yield', 'import']
-keyword_tokens = ['is', 'in', 'extends', 'pass', 'continue', 'break']
+structure_tokens = ['if', 'else', 'while', 'for', 'assert', 'type', 'constraint', 'return', 'yield', 'link', 'import']
+keyword_tokens = ['is', 'in', 'extends', 'continue', 'break']
 characters = '.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz' # Sorted by position in UTF-8
 parens = '()[]{}'
 comment = '//'
