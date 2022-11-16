@@ -19,8 +19,8 @@ int fib (int n):
 		i: i + 1
 	return a
 
-int x: 1
-assert even x:
+int x: {'1 + 2'}
+assert float x:
 	print('!')
 else:
 	print('?')

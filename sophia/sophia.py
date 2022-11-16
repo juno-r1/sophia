@@ -30,7 +30,7 @@ class node: # Base node object
 
 	def parse(self, data): # Recursively descends into madness and creates a tree of nodes with self as head
 
-		lines, tokens, scopes = [kadmos.line_split(line) for line in data if line], [], [] # Splits lines into symbols and filters empty lines
+		lines, tokens, scopes = [kadmos.line_split(line) for line in data.splitlines() if line], [], [] # Splits lines into symbols and filters empty lines
 
 		for line in lines: # Tokenises each item in lines
 			scope = line.count('\t') # Gets scope level from number of tabs
@@ -89,8 +89,6 @@ class node: # Base node object
 				token = function_definition(line)
 			elif len(line) > 1 and line[1].value == ':':
 				token = assignment(line)
-			elif len(line) > 1 and line[1].value == 'is':
-				token = alias(line)
 			else: # Only necessary because of function calls with side effects
 				token = expression(line)
 			parsed.append(token)
@@ -130,7 +128,7 @@ class runtime(coroutine): # Runtime object contains runtime information and is t
 
 		super().__init__(self) # Sets initial node to self
 		with open(file_name, 'r') as f: # Binds file data to runtime object
-			self.file_data = f.read().splitlines()
+			self.file_data = f.read() # node.parse() takes a string containing newlines
 		self.parse(self.file_data) # Here's tree
 		self.name = file_name.split('.')[0]
 		self.address = None
@@ -264,10 +262,8 @@ class runtime(coroutine): # Runtime object contains runtime information and is t
 				type_node.exit = main.value # Store source address in destination node
 				address, main.address = main.address, type_node # Set address to function node
 				main.call(type_node) # Creates a coroutine binding in main
-				self.routines[-1].namespace[0].value = value # Manually bind cast value to type binding
-				self.routines[-1].namespace[0].type = type_value
-				instance = main.execute() # Creates new instance of runtime loop
-				return_value = instance.send(None) # Oh god, oh fuck, et cetera
+				self.routines[-1].namespace[0].value, self.routines[-1].namespace[0].type = value, type_value # Manually bind cast value to type binding
+				return_value = main.execute().send(None) # Creates new instance of runtime loop: oh god, oh fuck, et cetera
 				main.address = address # Restores address if one was set when cast() was called
 			else: # If built-in:
 				return_value = type_node(value) # Corrects type for built-ins
@@ -338,16 +334,6 @@ class assignment(node):
 		value = yield # Yields to main
 		main.bind(self.value.value, main.cast(value, self.value.type), self.value.type)
 		yield # Yields to go up
-
-class alias(node):
-
-	def __init__(self, tokens):
-
-		super().__init__([tokens[0], tokens[2]])
-
-	def execute(self):
-			
-		pass
 
 class if_statement(node):
 
@@ -426,7 +412,7 @@ class else_statement(node):
 
 	def execute(self): # Final else statement; gets overridden for non-final
 		
-		for item in self.nodes:
+		while main.routines[-1].path[-1] < len(self.nodes):
 			yield
 		yield # Needs extra yield to traverse back up
 
@@ -767,11 +753,13 @@ class meta_statement(left_bracket):
 
 	def execute(self):
 		
-		main.parse(self) # Run-time parser stage
-		for item in self.nodes[1:]:
-			return_value = item.execute() # Run-time execution stage
-		self.nodes = [self.nodes[0]] # Erase tree
-		return return_value
+		if len(self.nodes) > 1:
+			raise SyntaxError('Meta-statement forms invalid expression')
+		data = yield # Evaluate string
+		self.parse(data) # Run-time parser stage
+		value = yield # Yield into evaluated statement or expression
+		self.nodes = [self.nodes[0]]
+		yield value # Yield value, if it has one
 
 class right_bracket(operator): # Adds right-bracket behaviours to a node
 
@@ -848,5 +836,4 @@ class lex_construct: # Lex object to get around not being able to peek the next 
 		return left, next_token # Preserves state of next_token for higher-level calls
 
 main = runtime('test.sophia') # Initialises runtime object
-main.instance = main.execute() # Initialises runtime generator
-main.instance.send(None)
+main.instance = main.execute().send(None) # Initialises runtime generator
