@@ -20,11 +20,16 @@ int increment (int n):
 	int i: n
 	while true:
 		i: i + 1
-		yield i
+		if i > 10:
+			yield null
+		else:
+			yield i
 
-int c (int n):
-
-	print(n)
-	return c(n + 1)
-
-c(1)
+int x <- increment(0)
+print(x)
+while true:
+	assert null -> x:
+		print(x)
+	else:
+		print('!')
+		break

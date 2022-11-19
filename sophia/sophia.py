@@ -319,10 +319,10 @@ class function_definition(coroutine):
 		return_value = None
 		while True: # Execution loop
 			yield return_value
-			while main.routines[-1].path[-1] < len(self.nodes): # Allows more fine-grained control flow than using a for loop
-				status = yield
+			while main.routines[-1].path[-1] <= len(self.nodes): # Allows more fine-grained control flow than using a for loop
+				status = yield return_value
 				if isinstance(status, arche.Control): # Return and yield statements pass back here
-					return_value = main.cast(status.args[1], self.value[0].type)
+					return_value = status.args[1] # Check for output type in function call, not in function
 					if status.args[0] == 'return':
 						main.address = main.routines.pop().exit
 						break
@@ -330,7 +330,6 @@ class function_definition(coroutine):
 						return_value = main.routines.pop() # Returns the active coroutine frame
 						return_value.value = status.args[1] # Stores display value
 						main.address = return_value.exit
-						break
 			else: # Default behaviour for no return or yield
 				return_value = main.cast(None, self.value[0].type)
 				main.address = main.routines.pop().exit
@@ -500,6 +499,7 @@ class yield_statement(node):
 			value = yield
 		else:
 			value = None
+		main.routines[-1].entry = self
 		value = yield arche.Control('send', value, None) # Sends send control with send value and no address and awaits value
 		yield value
 
@@ -564,7 +564,7 @@ class literal(identifier): # Adds literal behaviours to a node
 				try:
 					value = main.find(self.value).value
 					if isinstance(value, kleio.coroutine) and not isinstance(self.head, bind):
-						value = value.value # Evaluates to display value unless bound
+						value = value.value # Evaluates to display value unless bound or invoked in a send
 					value = main.cast(value, self.type) # Returns value referenced by name
 				except (NameError, TypeError) as status:
 					if isinstance(self.head, assert_statement) and main.routines[-1].path[-1] < self.head.length: # Allows assert statements to reference unbound names without error
@@ -676,10 +676,10 @@ class bind(operator): # Defines the bind operator
 		else:
 			data = value
 		try:
-			data = main.cast(data, self.value.type)
+			data = main.cast(data, self.value.type) # Checks data type of bind
 		except TypeError as status:
 			if isinstance(self.head, assert_statement) and main.routines[-1].path[-1] <= self.head.length:
-				yield None
+				yield
 			else:
 				raise status
 		main.bind(self.value.value, value, self.value.type)
@@ -694,7 +694,27 @@ class send(operator): # Defines the send operator
 
 	def execute(self):
 
-		value = yield # This basically needs to behave like a function call except for a bound coroutine
+		arg = yield # Sending only ever takes 1 argument
+		routine = main.find(self.value.value).value # This basically needs to behave like a function call except for a bound coroutine
+		if not isinstance(routine, kleio.coroutine):
+			raise TypeError('Invalid send address')
+		routine.exit = self
+		main.address = routine.entry
+		main.routines[-1].entry = self
+		main.routines.append(routine) # Append frame
+		value = yield arg # Send argument to entry point of routine
+		if isinstance(value, kleio.coroutine):
+			data = value.value
+		else:
+			data = value
+		try:
+			data = main.cast(data, self.value.type) # Checks data type of routine output
+		except TypeError as status:
+			if isinstance(self.head, assert_statement) and main.routines[-1].path[-1] <= self.head.length:
+				yield
+			else:
+				raise status
+		yield data
 
 class left_bracket(operator): # Adds left-bracket behaviours to a node
 
@@ -714,32 +734,47 @@ class function_call(left_bracket):
 
 	def execute(self):
 
-		body = yield
+		routine = yield
 		args = yield
 		if not isinstance(args, tuple): # Type correction
 			args = tuple([args]) # Very tiresome type correction, at that
-		if isinstance(body, function_definition): # If user-defined:
+		if isinstance(routine, function_definition): # If user-defined:
 			if isinstance(self.head, return_statement): # Tail call
-				body.exit = main.routines[-1].exit # Exits directly out of scope
-				body.tail = True
+				routine.exit = main.routines[-1].exit # Exits directly out of scope
+				routine.tail = True
 			else:
-				body.exit = self # Store source address in destination node
-				body.tail = False
-			main.address = body # Set address to function node
-			main.call(body, *args) # Creates a coroutine binding in main
+				routine.exit = self # Store source address in destination node
+				routine.tail = False
+			main.address = routine # Set address to function node
+			main.call(routine, *args) # Creates a coroutine binding in main
 			value = yield # Function yields back into call to store return value
-			if isinstance(value, kleio.coroutine) and not isinstance(self.head, bind): # Handles yield and send into a normal environment
-				yield value.value
-			else: # Normal return or yield and send into bind operator
-				yield value
-		else: # If built-in:
-			if hasattr(body, '__call__'): # No great way to check if a Python function is, in fact, a function
-				if args: # Python doesn't like unpacking empty tuples
-					yield body(*args) # Since body is a Python function in this case
+			try:
+				if isinstance(value, kleio.coroutine):
+					if isinstance(self.head, bind):
+						data = value
+						data.value = main.cast(data.value, routine.value[0].type) # Checks data type of routine output
+					else:
+						data = value.value
+						data = main.cast(data, routine.value[0].type) # Checks data type of routine output
 				else:
-					yield body()
+					data = value
+					data = main.cast(data, routine.value[0].type) # Checks data type of routine output
+			except TypeError as status:
+				if isinstance(self.head, assert_statement) and main.routines[-1].path[-1] <= self.head.length:
+					yield
+				elif self.head.head and isinstance(self.head, bind) and isinstance(self.head.head, assert_statement) and main.routines[-1].path[-2] <= self.head.head.length:
+					yield
+				else:
+					raise status
+			yield data
+		else: # If built-in:
+			if hasattr(routine, '__call__'): # No great way to check if a Python function is, in fact, a function
+				if args: # Python doesn't like unpacking empty tuples
+					yield routine(*args) # Since routine is a Python function in this case
+				else:
+					yield routine()
 			else:
-				raise TypeError(body.__name__ + ' is not a function')
+				raise TypeError(routine.__name__ + ' is not a function')
 
 class parenthesis(left_bracket):
 
