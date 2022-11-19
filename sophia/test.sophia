@@ -1,17 +1,5 @@
 type even extends int:
 
-	int fib (even):
-
-		int a: 0
-		int b: 1
-		int i: 0
-		while i < even:
-			c: b
-			b: a + b
-			a: c
-			i: i + 1
-		return a
-
 	constraint:
 		even % 2 = 0
 
@@ -34,8 +22,7 @@ int increment (int n):
 		i: i + 1
 		yield i
 
-int x <- 1
-assert int x:
-	print('!')
+assert int x <- increment(1):
+	print(x)
 else:
 	print('?')

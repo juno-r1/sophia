@@ -173,7 +173,7 @@ class runtime(coroutine): # Runtime object contains runtime information and is t
 				if isinstance(self.value, coroutine):
 					self.branch() # Adds new counter to stack, skipping all nodes
 				self.routines[-1].instances.append(self.value.execute()) # Initialises generator
-				value = self.routines[-1].instances[-1].send(value)
+				value = self.routines[-1].instances[-1].send(None) # Somehow, it's never necessary to yield a value down the tree
 			else: # Walk up
 				while (path < 0 or path >= len(self.value.nodes)) and not self.address: # While last node of branch:
 					path = self.routines[-1].path[-2]
@@ -562,14 +562,16 @@ class literal(identifier): # Adds literal behaviours to a node
 				value = None
 			else: # If reference:
 				try:
-					value = main.cast(main.find(self.value).value, self.type) # Returns value referenced by name
+					value = main.find(self.value).value
+					if isinstance(value, kleio.coroutine) and not isinstance(self.head, bind):
+						value = value.value # Evaluates to display value unless bound
+					value = main.cast(value, self.type) # Returns value referenced by name
 				except (NameError, TypeError) as status:
 					if isinstance(self.head, assert_statement) and main.routines[-1].path[-1] < self.head.length: # Allows assert statements to reference unbound names without error
 						value = None
 					else:
 						raise status
-				if isinstance(value, kleio.coroutine):
-					value = value.value # Evaluates to display value
+
 		yield value # Send value to main
 
 class keyword(identifier): # Adds keyword behaviours to a node
@@ -670,13 +672,18 @@ class bind(operator): # Defines the bind operator
 
 		value = yield
 		if isinstance(value, kleio.coroutine):
-			value.value = main.cast(value.value, self.value.type)
-			main.bind(self.value.value, value, self.value.type)
-			yield value.value
+			data = value.value
 		else:
-			value = main.cast(value, self.value.type)
-			main.bind(self.value.value, value, self.value.type)
-			yield value
+			data = value
+		try:
+			data = main.cast(data, self.value.type)
+		except TypeError as status:
+			if isinstance(self.head, assert_statement) and main.routines[-1].path[-1] <= self.head.length:
+				yield None
+			else:
+				raise status
+		main.bind(self.value.value, value, self.value.type)
+		yield data
 
 class send(operator): # Defines the send operator
 
