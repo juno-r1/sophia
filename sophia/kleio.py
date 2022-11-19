@@ -3,6 +3,7 @@ class coroutine: # Created by function calls and coroutine binding
 	def __init__(self, name, entry = None, exit = None, *args):
 		
 		self.name = name
+		self.value = None
 		self.entry = entry
 		self.exit = exit
 		self.namespace = [arg for arg in args]

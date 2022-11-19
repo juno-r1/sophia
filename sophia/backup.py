@@ -15,10 +15,10 @@ class node: # Base node object
 	def __init__(self, value, *nodes): # Do not store state in nodes
 
 		self.n, node.n = node.n, node.n + 1
-		self.value = value
+		self.value = value # For operands that shouldn't be evaluated or that should be handled differently
 		self.scope = 0
 		self.head = None
-		self.nodes = [i for i in nodes]
+		self.nodes = [i for i in nodes] # For operands that should be evaluated
 
 	def routine(self): # Gets node's routine
 
@@ -30,7 +30,7 @@ class node: # Base node object
 
 	def parse(self, data): # Recursively descends into madness and creates a tree of nodes with self as head
 
-		lines, tokens, scopes = [kadmos.line_split(line) for line in data if line], [], [] # Splits lines into symbols and filters empty lines
+		lines, tokens, scopes = [kadmos.line_split(line) for line in data.splitlines() if line], [], [] # Splits lines into symbols and filters empty lines
 
 		for line in lines: # Tokenises each item in lines
 			scope = line.count('\t') # Gets scope level from number of tabs
@@ -70,8 +70,12 @@ class node: # Base node object
 							tokens[-1].append(keyword(None)) # Zero-argument function call
 						token = right_bracket(symbol)
 					elif tokens[-1] and isinstance(tokens[-1][-1], (literal, right_bracket)): # If the preceding token is a literal (if the current token is an infix):
-						if symbol in ['^', '.', ',', ':']:
+						if symbol in ['^', ',', ':']:
 							token = infix_r(symbol)
+						elif symbol == '<-':
+							token = bind(symbol)
+						elif symbol == '->':
+							token = send(symbol)
 						else:
 							token = infix(symbol)
 					else:
@@ -82,16 +86,13 @@ class node: # Base node object
 
 		for line in tokens: # Tokenises whole lines
 			if line[0].value in kadmos.structure_tokens:
-				statement_id = line[0].value + '_statement'
-				token = eval(statement_id + '(line)') # Cheeky little hack that makes a node for whatever structure keyword is specified
+				token = globals()[line[0].value + '_statement'](line) # Cheeky little hack that makes a node for whatever structure keyword is specified
 			elif line[0].value in kadmos.keyword_tokens:
 				token = line[0] # Keywords will get special handling later
 			elif line[-1].value == ':':
 				token = function_definition(line)
 			elif len(line) > 1 and line[1].value == ':':
 				token = assignment(line)
-			elif len(line) > 1 and line[1].value == 'is':
-				token = binding(line)
 			else: # Only necessary because of function calls with side effects
 				token = expression(line)
 			parsed.append(token)
@@ -114,6 +115,7 @@ class node: # Base node object
 			last = line
 		else:
 			hemera.debug_tree(self) # Uncomment for parse tree debug information
+			print('===')
 			return self
 
 class coroutine(node): # Base coroutine object
@@ -122,6 +124,7 @@ class coroutine(node): # Base coroutine object
 
 		super().__init__(value, *tokens)
 		self.exit = None # Tracks most recent caller of coroutine
+		self.tail = False # Tracks call type
 
 class runtime(coroutine): # Runtime object contains runtime information and is the top level of the syntax tree
 
@@ -129,7 +132,7 @@ class runtime(coroutine): # Runtime object contains runtime information and is t
 
 		super().__init__(self) # Sets initial node to self
 		with open(file_name, 'r') as f: # Binds file data to runtime object
-			self.file_data = f.read().splitlines()
+			self.file_data = f.read() # node.parse() takes a string containing newlines
 		self.parse(self.file_data) # Here's tree
 		self.name = file_name.split('.')[0]
 		self.address = None
@@ -139,41 +142,67 @@ class runtime(coroutine): # Runtime object contains runtime information and is t
 	def execute(self): # Runs the module
 		
 		value = None # Value register
-		print('===')
 		while self.value: # Execution loop
 			path = self.routines[-1].path[-1]
 			hemera.debug_runtime(self)
-			if self.address: # If destination specified by node:
-				print('jump')
-				if isinstance(self.value, function_definition) and path == len(self.value.nodes):
+			if isinstance(value, arche.Control): # Handles control flow: continue, break, return, yield
+				if value.args[0] == 'cast':
+					self.value, self.address = self.address, None
+					yield value.args[1]
+				elif value.args[0] in ['return', 'send']:
+					value = self.routines[-1].instances[0].send(value) # Guaranteed to send to the coroutine instance
+				else:
+					while not isinstance(self.value, (while_statement, for_statement)): # Traverses up to closest enclosing loop - bootstrap assumes that interpreter is well-written and one exists
+						self.value = self.value.head
+						self.routines[-1].instances.pop()
+						self.routines[-1].path.pop()
+					if value.args[0] == 'continue':
+						value = self.routines[-1].instances[-1].send(value)
+					elif value.args[0] == 'break':
+						main.branch()
+					value = None
+			elif self.address: # If destination specified by node:
+				if isinstance(self.value, coroutine) and (path < 0 or path >= len(self.value.nodes)):
 					self.routines.pop()
 				self.value, self.address = self.address, None # Move to addressed node
 				value = self.routines[-1].instances[-1].send(value)
-			elif self.value.nodes and path < len(self.value.nodes): # Walk down
+			elif self.value.nodes and 0 <= path < len(self.value.nodes): # Walk down
 				self.value.nodes[path].head = self.value # Sets child head to self
 				self.value = self.value.nodes[path] # Set value to child node
 				self.routines[-1].path.append(0)
 				if isinstance(self.value, coroutine):
-					self.routines[-1].path[-1] = len(self.value.nodes) # Adds new counter to stack, skipping all nodes
+					self.branch() # Adds new counter to stack, skipping all nodes
 				self.routines[-1].instances.append(self.value.execute()) # Initialises generator
 				value = self.routines[-1].instances[-1].send(value)
 			else: # Walk up
-				while self.routines[-1].path[-1] == len(self.value.nodes) and not self.address: # While last node of branch:
+				while (path < 0 or path >= len(self.value.nodes)) and not self.address: # While last node of branch:
+					path = self.routines[-1].path[-2]
 					if not isinstance(self.value, coroutine):
 						self.routines[-1].instances.pop() # Removes generator
-					self.routines[-1].path.pop()
 					self.value = self.value.head # Walk upward
-					self.routines[-1].path[-1] = self.routines[-1].path[-1] + 1 # Increment path counter
+					path = path + 1
+					if self.routines[-1].path.pop() != -1: # Skip else statements if not branch
+						while path < len(self.value.nodes) and isinstance(self.value.nodes[path], else_statement):
+							path = path + 1
+					self.branch(path) # Increment path counter
 					if self.value is self: # Check if finished
-						if self.routines[-1].path[-1] == len(self.nodes):
+						if path == len(self.nodes):
 							self.value = None
-						break
+						break # Can't send to self
 					value = self.routines[-1].instances[-1].send(value)
+					if isinstance(value, arche.Control):
+						break
+					path = self.routines[-1].path[-1]
+					hemera.debug_runtime(self)
 		else:
 			for item in self.routines[0].namespace[len(self.builtins) - 1::-1]: # Unbinds built-ins in reverse order to not cause problems with the loop
 				self.unbind(item.name)
 			hemera.debug_memory(self)
 			yield self # Returns runtime object to facilitate imports
+
+	def branch(self, path = -1):
+
+		self.routines[-1].path[-1] = path # Skip nodes
 
 	def bind(self, name, value, type_value = 'untyped', reserved = False): # Creates or updates a name binding in main
 
@@ -214,14 +243,17 @@ class runtime(coroutine): # Runtime object contains runtime information and is t
 		params = routine.value[1:] # Gets coroutine name, return type, and parameters
 		if len(params) != len(args):
 			raise SyntaxError('Expected {0} arguments; received {1}'.format(len(params), len(args)))
-		self.routines.append(kleio.coroutine(routine.value[0].value, routine, routine.exit))
+		if routine.tail:
+			self.routines[-1] = kleio.coroutine(routine.value[0].value, routine, routine.exit) # Overwrite current frame
+		else:
+			self.routines.append(kleio.coroutine(routine.value[0].value, routine, routine.exit)) # Append new frame
 		self.routines[-1].instances.append(routine.execute()) # Initialise routine instance and bind routine to namespace
 		self.routines[-1].instances[-1].send(None) # Hatred
 		self.routines[-1].namespace.extend([kleio.definition(param.value, main.cast(args[i], param.type), param.type, True) for i, param in enumerate(params)]) # Bind parameters to namespace
 
 	def cast(self, value, type_value): # Checks type of value and returns boolean
 				
-		type_node = self.find(type_value).value
+		type_node = getattr(self.find(type_value).value, 'entry', self.find(type_value).value)
 		stack = []
 		while isinstance(type_node, type_statement): # Get all supertypes for type
 			stack.append(type_node)
@@ -231,16 +263,16 @@ class runtime(coroutine): # Runtime object contains runtime information and is t
 		while stack: # Check type down the entire tree
 			type_node = stack.pop()
 			if isinstance(type_node, type_statement): # If user-defined:
-				self.namespace.append([kleio.definition(type_value, value, type_value, reserved = True)]) # Bind special variable in a new scope
-				for item in type_node.nodes[1:]: # Executing the node is the same as checking the value's type
-					item.execute()
-				else:
-					return_value = value
-					self.namespace.pop() # Destroy scope
+				type_node.exit = main.value # Store source address in destination node
+				address, main.address = main.address, type_node # Set address to function node
+				main.call(type_node) # Creates a coroutine binding in main
+				self.routines[-1].namespace[0].value, self.routines[-1].namespace[0].type = value, type_value # Manually bind cast value to type binding
+				return_value = main.execute().send(None) # Creates new instance of runtime loop: oh god, oh fuck, et cetera
+				main.address = address # Restores address if one was set when cast() was called
 			else: # If built-in:
 				return_value = type_node(value) # Corrects type for built-ins
-				if return_value is None:
-					raise TypeError('Failed cast to ' + type_value + ': ' + repr(value))
+			if return_value is None:
+				raise TypeError('Failed cast to ' + type_value + ': ' + repr(value))
 		else:
 			return return_value # Return indicates success; cast() raises an exception on failure
 
@@ -248,19 +280,32 @@ class type_statement(coroutine):
 
 	def __init__(self, tokens):
 		
-		super().__init__(tokens[1]) # Type
+		super().__init__([tokens[1]]) # Type
 		if len(tokens) > 3: # Naive check for subtyping
-			self.supertype = tokens[3].value # Supertype
+			self.supertype = tokens[3].value
+			if self.supertype in kadmos.sub_types: # Corrects shortened type names
+				self.supertype = kadmos.sub_types[self.supertype]
 		else:
-			self.supertype = None
+			self.supertype = 'untyped'
 
 	def execute(self):
 
-		name = self.value.value
-		for item in self.nodes: # Bind type operations to type node
-			if isinstance(item, function_definition):
-				self.namespace.append(kleio.definition(item.value[0].value, item, item.value[0].type, reserved = True))
-		main.bind(name, self, 'type') # Creates an empty binding to manage scope
+		ops = [kleio.definition(item.value[0].value, item, item.value[0].type, reserved = True) for item in self.nodes if isinstance(item, function_definition)] # Initialises type operations
+		routine = kleio.coroutine(self.value[0].value, self, None, *ops) # Creates type binding with type operations
+		main.bind(self.value[0].value, routine, self.value[0].value, reserved = True) # Binds coroutine information with type operations to namespace
+		return_value = None
+		while True: # Execution loop
+			return_value = yield return_value
+			while main.routines[-1].path[-1] < len(self.nodes): # Allows more fine-grained control flow than using a for loop
+				status = yield
+				if isinstance(status, arche.Control): # Failed constraints pass back here
+					return_value = None
+					main.address = main.routines.pop().exit
+					break
+			else: # Default behaviour for no return or yield
+				return_value = main.find(self.value[0].value).value
+				main.address = main.routines.pop().exit
+			return_value = arche.Control('cast', return_value)
 
 class function_definition(coroutine):
 
@@ -274,16 +319,21 @@ class function_definition(coroutine):
 		return_value = None
 		while True: # Execution loop
 			yield return_value
-			for i in self.nodes:
-				try:
-					yield
-				except (arche.Return, arche.Yield) as status: # Return and yield statements pass back here
-					main.address = main.routines.pop().exit
-					return_value = main.cast(status.args[0], self.value[0].type)
-					break
+			while main.routines[-1].path[-1] < len(self.nodes): # Allows more fine-grained control flow than using a for loop
+				status = yield
+				if isinstance(status, arche.Control): # Return and yield statements pass back here
+					return_value = main.cast(status.args[1], self.value[0].type)
+					if status.args[0] == 'return':
+						main.address = main.routines.pop().exit
+						break
+					elif status.args[0] == 'send':
+						return_value = main.routines.pop() # Returns the active coroutine frame
+						return_value.value = status.args[1] # Stores display value
+						main.address = return_value.exit
+						break
 			else: # Default behaviour for no return or yield
-				main.address = main.routines.pop().exit
 				return_value = main.cast(None, self.value[0].type)
+				main.address = main.routines.pop().exit
 
 class assignment(node):
 
@@ -292,22 +342,9 @@ class assignment(node):
 		super().__init__(tokens[0], expression(tokens[2:])) # Typed assignments are always handed by typed_statement(), so this is fine
 
 	def execute(self):
-
-		name = self.value.value
+		
 		value = yield # Yields to main
-		value = main.cast(value, self.value.type)
-		main.bind(name, value, self.value.type)
-		yield # Yields to go up
-
-class binding(node):
-
-	def __init__(self, tokens):
-
-		super().__init__([tokens[0], tokens[2]])
-
-	def execute(self):
-			
-		pass
+		yield main.bind(self.value.value, main.cast(value, self.value.type), self.value.type) # Yields to go up
 
 class if_statement(node):
 
@@ -319,10 +356,10 @@ class if_statement(node):
 
 		condition = yield
 		if condition is True:
-			for item in self.nodes[1:]:
+			while main.routines[-1].path[-1] < len(self.nodes):
 				yield
 		elif condition is False:
-			main.routines[-1].path[-1] = len(self.nodes) # Skip nodes
+			yield main.branch()
 		else: # Over-specify on purpose to implement Sophia's specific requirement for a boolean
 			raise ValueError('Condition must evaluate to boolean')
 		yield
@@ -335,76 +372,104 @@ class while_statement(node):
 
 	def execute(self):
 
-		condition = self.nodes[0].execute()
+		condition = yield
 		if condition is not True and condition is not False: # Over-specify on purpose to implement Sophia's specific requirement for a boolean
 			raise ValueError('Condition must evaluate to boolean')
-		return_value = None
-		try:
-			while condition:
-				try:
-					for item in self.nodes[1:]:
-						return_value = item.execute()
-					condition = self.nodes[0].execute()
-				except arche.Continue: # Continue
-					continue
-			else:
-				return return_value
-		except StopIteration: # Break
-			return return_value
+		elif condition is False:
+			yield main.branch()
+		while condition:
+			while main.routines[-1].path[-1] < len(self.nodes):
+				status = yield
+				if isinstance(status, arche.Control):
+					break
+			main.branch(0) # Repeat nodes
+			condition = yield
+		else:
+			yield main.branch(len(self.nodes)) # Skip nodes
 
 class for_statement(node):
 
 	def __init__(self, tokens):
 
-		super().__init__(None, tokens[1], expression(tokens[3:-1]))
+		super().__init__(tokens[1], expression(tokens[3:-1]))
 
 	def execute(self):
 
-		index = self.nodes[0]
-		sequence = iter(self.nodes[1].execute())
+		index = self.value
+		sequence = yield
+		sequence = iter(sequence)
 		main.bind(index.value, None, index.type)
-		return_value = None
 		try:
 			while True: # Loop until the iterator is exhausted
 				main.bind(index.value, next(sequence), index.type) # Binds the next value of the sequence to the loop index
-				try:
-					for item in self.nodes[2:]:
-						return_value = item.execute()
-				except arche.Continue: # Continue
-					continue
+				while main.routines[-1].path[-1] < len(self.nodes):
+					status = yield
+					if isinstance(status, arche.Control):
+						break
+				main.branch(1) # Repeat nodes
 		except StopIteration: # Break
 			main.unbind(index.value) # Unbinds the index
-			return return_value
+			yield main.branch(len(self.nodes)) # Skip nodes
+
+class else_statement(node):
+
+	def __init__(self, tokens):
+
+		super().__init__(None)
+		if len(tokens) > 2: # Non-final else
+			head = globals()[tokens[1].value + '_statement'](tokens[1:]) # Tokenise head statement
+			self.value, self.nodes, self.execute = head.value, head.nodes, head.execute # Else statement pretends to be its head statement
+			del head # So no head?
+
+	def execute(self): # Final else statement; gets overridden for non-final
+		
+		while main.routines[-1].path[-1] < len(self.nodes):
+			yield
+		yield # Needs extra yield to traverse back up
 
 class assert_statement(node):
 
 	def __init__(self, tokens):
 
-		super().__init__(None, tokens[1])
+		names, expressions, sequence = [], [], []
+		for token in tokens[1:-1]:
+			if token.value == ',':
+				if len(sequence) == 1:
+					names.append(sequence[0])
+				else:
+					expressions.append(expression(sequence))
+				sequence = []
+			else:
+				sequence.append(token)
+		else:
+			if len(sequence) == 1:
+				names.append(sequence[0])
+			else:
+				expressions.append(expression(sequence))
+
+		super().__init__(names, *expressions)
+		self.length = len(expressions)
 
 	def execute(self):
-		
-		main.branch = False
-		try:
+
+		types = [] # Stores current types of asserted names
+		for item in self.value: # Iterate over all specified references
 			try:
-				binding = main.find(self.nodes[0].value)
-			except NameError: # Catches unbound names
-				return None
-			assert_type = self.nodes[0].type
-			if assert_type == 'untyped' and binding.value is None: # Handles behaviour of untyped assertion
-				return None
-			else:
-				main.cast(binding.value, assert_type)
-		except TypeError:
-			main.namespace.pop() # Cleans up from cast()
-			return None
-		main.bind(binding.name, binding.value, assert_type)
-		for item in self.nodes[1:]:
-			return_value = item.execute()
-		else:
-			main.branch = True
-			main.bind(binding.name, binding.value, binding.type)
-			return return_value
+				binding = main.find(item.value)
+				types.append(binding.type)
+				if isinstance(binding.value, kleio.coroutine):
+					main.cast(binding.value.value, item.type)
+				else:
+					main.cast(binding.value, item.type)
+			except (NameError, TypeError): # Catches unbound names
+				yield main.branch()
+		for item in self.nodes[0:self.length]: # Evaluates all header nodes
+			evaluand = yield
+			if evaluand is None: # Catchs null evaluands
+				yield main.branch()
+		while main.routines[-1].path[-1] < len(self.nodes):
+			yield
+		yield
 	
 class constraint_statement(node):
 
@@ -414,82 +479,58 @@ class constraint_statement(node):
 
 	def execute(self):
 
-		for constraint in self.nodes:
-			value = constraint.execute()
-			if value is not True and value is not False:
+		while main.routines[-1].path[-1] < len(self.nodes):
+			constraint = yield
+			if constraint is not True and constraint is not False:
 				raise ValueError('Constraint must evaluate to boolean')
-			if value is False:
-				raise TypeError('Constraint failed')
-
-class else_statement(node):
-
-	def __init__(self, tokens):
-
-		if len(tokens) > 2:
-			statement_id = tokens[1].value + '_statement'
-			super().__init__(None, eval(statement_id + '(tokens[1:])')) # Else statement
-			self.final = False
-		else:
-			super().__init__(None) # Final else
-			self.final = True
-
-	def execute(self): # Else statement
-		
-		if not main.branch:
-			if self.final:
-				for item in self.nodes:
-					return_value = item.execute()
-				return return_value
-			else:
-				inner = self.nodes[0]
-				inner.nodes.extend(self.nodes[1:]) # Reassign nodes to inner statement
-				return_value = inner.execute()
-				return return_value
-		if self.final:
-			main.branch = False
+			if constraint is False:
+				yield arche.Control('return', None) # Functionally identical
+		yield
 
 class return_statement(node):
 
 	def __init__(self, tokens):
-
-		value = tokens[1:]
-		if value:
-			super().__init__(None, expression(value))
+		
+		if len(tokens) > 1:
+			super().__init__(None, expression(tokens[1:]))
 		else:
 			super().__init__(None)
 
 	def execute(self):
 		
 		if self.nodes:
-			return_value = yield # If tail call, control never returns back here
+			value = yield # If tail call, control never returns back here 
 		else:
-			return_value = None
-		yield main.routines[-1].instances[0].throw(arche.Return(return_value)) # Throws Return with return value
+			value = None
+		yield arche.Control('return', value) # Sends return control with return value
 
 class yield_statement(node):
 
 	def __init__(self, tokens):
 
-		if 'to' in [token.value for token in tokens]:
-			address = tokens[-1]
-			value = tokens[1:-2]
+		if len(tokens) > 1:
+			super().__init__(None, expression(tokens[1:]))
 		else:
-			address = None
-			value = tokens[1:]
-		if value:
-			super().__init__(address, expression(value))
-		else:
-			super().__init__(address)
+			super().__init__(None)
 
 	def execute(self):
 			
-		head_node = self.nodes[0].nodes[0] # Get head node
-		if head_node.value == '(' and len(head_node.nodes) > 1: # If function call:
-			setattr(head_node, 'tail', True)
-			main.return_value = head_node # Facilitates tail call optimisation
+		if self.nodes:
+			value = yield
 		else:
-			setattr(head_node, 'tail', False)
-			main.return_value = self.nodes[0].execute()
+			value = None
+		value = yield arche.Control('send', value, None) # Sends send control with send value and no address and awaits value
+		yield value
+
+class link_statement(node):
+
+	def __init__(self, tokens):
+
+		super().__init__(None, *tokens[1::2]) # Allows multiple links
+
+	def execute(self):
+
+		pass # I don't know how to implement this yet
 
 class import_statement(node):
 
@@ -558,6 +599,8 @@ class literal(identifier): # Adds literal behaviours to a node
 				value = None
 			else: # If reference:
 				value = main.find(self.value).value # Returns value referenced by name
+				if isinstance(value, kleio.coroutine):
+					value = value.value # Evaluates to display value
 		yield value # Send value to main
 
 class keyword(identifier): # Adds keyword behaviours to a node
@@ -568,12 +611,10 @@ class keyword(identifier): # Adds keyword behaviours to a node
 
 	def execute(self):
 
-		if self.value == 'continue':
-			raise arche.Continue
-		elif self.value == 'break':
-			raise StopIteration
-		elif self.value is None: # Represents zero-argument function call
+		if self.value is None: # Represents zero-argument function call
 			yield ()
+		else:
+			yield arche.Control(self.value) # Control object handling continue and break
 
 class operator(node): # Generic operator node
 
@@ -609,7 +650,7 @@ class infix(operator): # Adds infix behaviours to a node
 		op = main.find(self.value) # Gets the operator definition
 		x = yield
 		y = yield
-		yield op.value[1](x, y) # Implements binary operator
+		yield op.value[1](x, y) # Implements left-binding binary operator
 
 class infix_r(operator): # Adds right-binding infix behaviours to a node
 
@@ -650,7 +691,37 @@ class infix_r(operator): # Adds right-binding infix behaviours to a node
 			op = main.find(self.value) # Gets the operator definition
 			x = yield
 			y = yield
-			yield op.value[1](x, y) # Implements binary operator
+			yield op.value[1](x, y) # Implements right-binding binary operator
+
+class bind(operator): # Defines the bind operator
+
+	def led(self, lex, left): # Parses like a binary operator but stores the left operand like assignment
+
+		n, next_token = lex.recursive_parse(self.lbp)
+		self.value, self.nodes = left, [n]
+		return self, next_token
+
+	def execute(self):
+
+		value = yield
+		if isinstance(value, kleio.coroutine):
+			value.value = main.cast(value.value, self.value.type)
+		else:
+			value = main.cast(value, self.value.type)		
+		yield main.bind(self.value.value, value, self.value.type)
+
+class send(operator): # Defines the send operator
+
+	def led(self, lex, left): # Parses like a binary operator but stores the right operand like assignment
+
+		n, next_token = lex.recursive_parse(self.lbp)
+		self.nodes, self.value = [left], n
+		return self, next_token
+
+	def execute(self):
+
+		value = yield
+		# This basically needs to behave like a function call except for a bound coroutine
 
 class left_bracket(operator): # Adds left-bracket behaviours to a node
 
@@ -677,11 +748,19 @@ class function_call(left_bracket):
 		if not isinstance(args, tuple): # Type correction
 			args = tuple([args]) # Very tiresome type correction, at that
 		if isinstance(body, function_definition): # If user-defined:
-			body.exit = self # Store source address in destination node
+			if isinstance(self.head.head, return_statement): # Tail call
+				body.exit = main.routines[-1].exit # Exits directly out of scope
+				body.tail = True
+			else:
+				body.exit = self # Store source address in destination node
+				body.tail = False
 			main.address = body # Set address to function node
 			main.call(body, *args) # Creates a coroutine binding in main
 			value = yield # Function yields back into call to store return value
-			yield value
+			if isinstance(value, kleio.coroutine) and not isinstance(self.head, bind): # Handles yield and send into a normal environment
+				yield value.value
+			else: # Normal return or yield and send into bind operator
+				yield value
 		else: # If built-in:
 			if hasattr(body, '__call__'): # No great way to check if a Python function is, in fact, a function
 				if args: # Python doesn't like unpacking empty tuples
@@ -754,11 +833,13 @@ class meta_statement(left_bracket):
 
 	def execute(self):
 		
-		main.parse(self) # Run-time parser stage
-		for item in self.nodes[1:]:
-			return_value = item.execute() # Run-time execution stage
-		self.nodes = [self.nodes[0]] # Erase tree
-		return return_value
+		if len(self.nodes) > 1:
+			raise SyntaxError('Meta-statement forms invalid expression')
+		data = yield # Evaluate string
+		self.parse(data) # Run-time parser stage
+		value = yield # Yield into evaluated statement or expression
+		self.nodes = [self.nodes[0]]
+		yield value # Yield value, if it has one
 
 class right_bracket(operator): # Adds right-bracket behaviours to a node
 

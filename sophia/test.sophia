@@ -1,26 +1,41 @@
-type random:
-
-	null // Implements pass statement
-
 type even extends int:
+
+	int fib (even):
+
+		int a: 0
+		int b: 1
+		int i: 0
+		while i < even:
+			c: b
+			b: a + b
+			a: c
+			i: i + 1
+		return a
 
 	constraint:
 		even % 2 = 0
 
-int fib (int n):
+int fib (even):
 
 	int a: 0
 	int b: 1
 	int i: 0
-	while i < n:
+	while i < even:
 		c: b
 		b: a + b
 		a: c
 		i: i + 1
 	return a
 
-int x: {'1 + 2'}
-assert float x:
+int increment (int n):
+
+	int i: n
+	while true:
+		i: i + 1
+		yield i
+
+int x <- 1
+assert int x:
 	print('!')
 else:
 	print('?')

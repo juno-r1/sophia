@@ -70,3 +70,19 @@ else has two behaviours:
 		branch and execute next statement (false, break)
 neither behaviour requires previous context
 else statements after loops do the opposite of what they do in python - they activate when the loop exits without completing
+
+int increment (int n):
+
+	int i: n
+	while true:
+		i: i + 1
+		yield i
+
+int x: increment(1) // x = 2; coroutine is lost
+
+int x <- increment(1) // x = 2; coroutine is bound to x
+y: x // y = 2
+y: null -> x // y = 3
+y: null -> x // y = 4
+y: null -> x // y = 5
+

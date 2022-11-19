@@ -15,10 +15,10 @@ class node: # Base node object
 	def __init__(self, value, *nodes): # Do not store state in nodes
 
 		self.n, node.n = node.n, node.n + 1
-		self.value = value
+		self.value = value # For operands that shouldn't be evaluated or that should be handled differently
 		self.scope = 0
 		self.head = None
-		self.nodes = [i for i in nodes]
+		self.nodes = [i for i in nodes] # For operands that should be evaluated
 
 	def routine(self): # Gets node's routine
 
@@ -70,8 +70,12 @@ class node: # Base node object
 							tokens[-1].append(keyword(None)) # Zero-argument function call
 						token = right_bracket(symbol)
 					elif tokens[-1] and isinstance(tokens[-1][-1], (literal, right_bracket)): # If the preceding token is a literal (if the current token is an infix):
-						if symbol in ['^', '.', ',', ':']:
+						if symbol in ['^', ',', ':']:
 							token = infix_r(symbol)
+						elif symbol == '<-':
+							token = bind(symbol)
+						elif symbol == '->':
+							token = send(symbol)
 						else:
 							token = infix(symbol)
 					else:
@@ -89,8 +93,8 @@ class node: # Base node object
 				token = function_definition(line)
 			elif len(line) > 1 and line[1].value == ':':
 				token = assignment(line)
-			else: # Only necessary because of function calls with side effects
-				token = expression(line)
+			else: # Tokenises expressions
+				token = lexer(line).parse()
 			parsed.append(token)
 
 		head, last = self, self # Head token and last line
@@ -140,13 +144,13 @@ class runtime(coroutine): # Runtime object contains runtime information and is t
 		value = None # Value register
 		while self.value: # Execution loop
 			path = self.routines[-1].path[-1]
-			#hemera.debug_runtime(self)
+			hemera.debug_runtime(self)
 			if isinstance(value, arche.Control): # Handles control flow: continue, break, return, yield
 				if value.args[0] == 'cast':
 					self.value, self.address = self.address, None
 					yield value.args[1]
-				elif value.args[0] == 'return':
-					value = self.routines[-1].instances[0].send(value) # Guaranteed to send to the function instance
+				elif value.args[0] in ['return', 'send']:
+					value = self.routines[-1].instances[0].send(value) # Guaranteed to send to the coroutine instance
 				else:
 					while not isinstance(self.value, (while_statement, for_statement)): # Traverses up to closest enclosing loop - bootstrap assumes that interpreter is well-written and one exists
 						self.value = self.value.head
@@ -189,7 +193,7 @@ class runtime(coroutine): # Runtime object contains runtime information and is t
 					if isinstance(value, arche.Control):
 						break
 					path = self.routines[-1].path[-1]
-					#hemera.debug_runtime(self)
+					hemera.debug_runtime(self)
 		else:
 			for item in self.routines[0].namespace[len(self.builtins) - 1::-1]: # Unbinds built-ins in reverse order to not cause problems with the loop
 				self.unbind(item.name)
@@ -249,7 +253,7 @@ class runtime(coroutine): # Runtime object contains runtime information and is t
 
 	def cast(self, value, type_value): # Checks type of value and returns boolean
 				
-		type_node = self.find(type_value).value
+		type_node = getattr(self.find(type_value).value, 'entry', self.find(type_value).value)
 		stack = []
 		while isinstance(type_node, type_statement): # Get all supertypes for type
 			stack.append(type_node)
@@ -286,7 +290,9 @@ class type_statement(coroutine):
 
 	def execute(self):
 
-		main.bind(self.value[0].value, self, self.value[0].value, reserved = True)
+		ops = [kleio.definition(item.value[0].value, item, item.value[0].type, reserved = True) for item in self.nodes if isinstance(item, function_definition)] # Initialises type operations
+		routine = kleio.coroutine(self.value[0].value, self, None, *ops) # Creates type binding with type operations
+		main.bind(self.value[0].value, routine, self.value[0].value, reserved = True) # Binds coroutine information with type operations to namespace
 		return_value = None
 		while True: # Execution loop
 			return_value = yield return_value
@@ -317,8 +323,14 @@ class function_definition(coroutine):
 				status = yield
 				if isinstance(status, arche.Control): # Return and yield statements pass back here
 					return_value = main.cast(status.args[1], self.value[0].type)
-					main.address = main.routines.pop().exit
-					break
+					if status.args[0] == 'return':
+						main.address = main.routines.pop().exit
+						break
+					elif status.args[0] == 'send':
+						return_value = main.routines.pop() # Returns the active coroutine frame
+						return_value.value = status.args[1] # Stores display value
+						main.address = return_value.exit
+						break
 			else: # Default behaviour for no return or yield
 				return_value = main.cast(None, self.value[0].type)
 				main.address = main.routines.pop().exit
@@ -327,19 +339,18 @@ class assignment(node):
 
 	def __init__(self, tokens):
 
-		super().__init__(tokens[0], expression(tokens[2:])) # Typed assignments are always handed by typed_statement(), so this is fine
+		super().__init__(tokens[0], lexer(tokens[2:]).parse())
 
 	def execute(self):
 		
 		value = yield # Yields to main
-		main.bind(self.value.value, main.cast(value, self.value.type), self.value.type)
-		yield # Yields to go up
+		yield main.bind(self.value.value, main.cast(value, self.value.type), self.value.type) # Yields to go up
 
 class if_statement(node):
 
 	def __init__(self, tokens):
 
-		super().__init__(None, expression(tokens[1:-1]))
+		super().__init__(None, lexer(tokens[1:-1]).parse())
 
 	def execute(self):
 
@@ -357,7 +368,7 @@ class while_statement(node):
 
 	def __init__(self, tokens):
 
-		super().__init__(None, expression(tokens[1:-1]))
+		super().__init__(None, lexer(tokens[1:-1]).parse())
 
 	def execute(self):
 
@@ -380,7 +391,7 @@ class for_statement(node):
 
 	def __init__(self, tokens):
 
-		super().__init__(tokens[1], expression(tokens[3:-1]))
+		super().__init__(tokens[1], lexer(tokens[3:-1]).parse())
 
 	def execute(self):
 
@@ -420,22 +431,26 @@ class assert_statement(node):
 
 	def __init__(self, tokens):
 
-		super().__init__(tokens[1:-1:2])
+		nodes, sequence = [], []
+		for token in tokens[1:-1]: # Collects all expressions in head statement
+			if token.value == ',':
+				nodes.append(lexer(sequence).parse())
+				sequence = []
+			else:
+				sequence.append(token)
+		else:
+			nodes.append(lexer(sequence).parse())
+			super().__init__(None, *nodes)
+			self.length = len(nodes)
 
 	def execute(self):
-
-		types = [] # Stores current types of asserted names
-		for value in self.value: # Iterate over all specified references
-			try:
-				binding = main.find(value.value)
-				types.append(binding.type)
-				main.cast(binding.value, value.type)
-			except (NameError, TypeError): # Catches unbound names
+		
+		while main.routines[-1].path[-1] < self.length: # Evaluates all head statement nodes
+			value = yield
+			if value is None: # Catches null expressions
 				yield main.branch()
-		else:
-			while main.routines[-1].path[-1] < len(self.nodes):
-				yield
-		yield
+		while main.routines[-1].path[-1] <= len(self.nodes):
+			yield
 	
 class constraint_statement(node):
 
@@ -458,7 +473,7 @@ class return_statement(node):
 	def __init__(self, tokens):
 		
 		if len(tokens) > 1:
-			super().__init__(None, expression(tokens[1:]))
+			super().__init__(None, lexer(tokens[1:]).parse())
 		else:
 			super().__init__(None)
 
@@ -475,7 +490,7 @@ class yield_statement(node):
 	def __init__(self, tokens):
 
 		if len(tokens) > 1:
-			super().__init__(None, expression(tokens[1:]))
+			super().__init__(None, lexer(tokens[1:]).parse())
 		else:
 			super().__init__(None)
 
@@ -485,7 +500,18 @@ class yield_statement(node):
 			value = yield
 		else:
 			value = None
-		yield arche.Control('send', value, None) # Sends send control with send value and no address
+		value = yield arche.Control('send', value, None) # Sends send control with send value and no address and awaits value
+		yield value
+
+class link_statement(node):
+
+	def __init__(self, tokens):
+
+		super().__init__(None, *tokens[1::2]) # Allows multiple links
+
+	def execute(self):
+
+		pass # I don't know how to implement this yet
 
 class import_statement(node):
 
@@ -500,24 +526,6 @@ class import_statement(node):
 			main.module.run(do_import = True)
 			main.bind(item.value, main.module, 'module')
 			main.module = None
-
-class expression(node):
-
-	def __init__(self, tokens):
-		
-		lex = lex_construct(tokens)
-		tree, end = lex.recursive_parse(0)
-		super().__init__(None, tree)
-
-	def execute(self):
-
-		x = yield # Yield to go down
-		yield x # Yield to go up
-		
-	# https://eli.thegreenplace.net/2010/01/02/top-down-operator-precedence-parsing
-	# https://abarker.github.io/typped/pratt_parsing_intro.html
-	# https://web.archive.org/web/20150228044653/http://effbot.org/zone/simple-top-down-parsing.htm
-	# https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
 
 class identifier(node): # Generic identifier class
 
@@ -553,7 +561,15 @@ class literal(identifier): # Adds literal behaviours to a node
 			elif self.value == 'null':
 				value = None
 			else: # If reference:
-				value = main.find(self.value).value # Returns value referenced by name
+				try:
+					value = main.cast(main.find(self.value).value, self.type) # Returns value referenced by name
+				except (NameError, TypeError) as status:
+					if isinstance(self.head, assert_statement) and main.routines[-1].path[-1] < self.head.length: # Allows assert statements to reference unbound names without error
+						value = None
+					else:
+						raise status
+				if isinstance(value, kleio.coroutine):
+					value = value.value # Evaluates to display value
 		yield value # Send value to main
 
 class keyword(identifier): # Adds keyword behaviours to a node
@@ -580,9 +596,8 @@ class prefix(operator): # Adds prefix behaviours to a node
 
 	def nud(self, lex):
 
-		n, next_token = lex.recursive_parse(self.lbp)
-		self.nodes = [n]
-		return self, next_token
+		self.nodes = [lex.parse(self.lbp)]
+		return self
 
 	def execute(self): # Unary operators
 
@@ -593,25 +608,23 @@ class prefix(operator): # Adds prefix behaviours to a node
 class infix(operator): # Adds infix behaviours to a node
 
 	def led(self, lex, left):
-
-		n, next_token = lex.recursive_parse(self.lbp)
-		self.nodes = [left, n]
-		return self, next_token
+		
+		self.nodes = [left, lex.parse(self.lbp)]
+		return self
 
 	def execute(self):
 		
 		op = main.find(self.value) # Gets the operator definition
 		x = yield
 		y = yield
-		yield op.value[1](x, y) # Implements binary operator
+		yield op.value[1](x, y) # Implements left-binding binary operator
 
 class infix_r(operator): # Adds right-binding infix behaviours to a node
 
 	def led(self, lex, left):
-
-		n, next_token = lex.recursive_parse(self.lbp - 1)
-		self.nodes = [left, n]
-		return self, next_token
+		
+		self.nodes = [left, lex.parse(self.lbp - 1)]
+		return self
 
 	def execute(self):
 
@@ -644,23 +657,51 @@ class infix_r(operator): # Adds right-binding infix behaviours to a node
 			op = main.find(self.value) # Gets the operator definition
 			x = yield
 			y = yield
-			yield op.value[1](x, y) # Implements binary operator
+			yield op.value[1](x, y) # Implements right-binding binary operator
+
+class bind(operator): # Defines the bind operator
+
+	def led(self, lex, left): # Parses like a binary operator but stores the left operand like assignment
+		
+		self.value, self.nodes = left, [lex.parse(self.lbp)]
+		return self
+
+	def execute(self):
+
+		value = yield
+		if isinstance(value, kleio.coroutine):
+			value.value = main.cast(value.value, self.value.type)
+			main.bind(self.value.value, value, self.value.type)
+			yield value.value
+		else:
+			value = main.cast(value, self.value.type)
+			main.bind(self.value.value, value, self.value.type)
+			yield value
+
+class send(operator): # Defines the send operator
+
+	def led(self, lex, left): # Parses like a binary operator but stores the right operand like assignment
+		
+		self.nodes, self.value = [left], lex.parse(self.lbp)
+		return self
+
+	def execute(self):
+
+		value = yield # This basically needs to behave like a function call except for a bound coroutine
 
 class left_bracket(operator): # Adds left-bracket behaviours to a node
 
 	def nud(self, lex): # For normal parentheses
-
-		n, next_token = lex.recursive_parse(self.lbp)
-		self.nodes = [n]
+		
+		self.nodes = [lex.parse(self.lbp)]
 		lex.use()
-		return self, lex.peek # The bracketed sub-expression as a whole is essentially a literal
+		return self # The bracketed sub-expression as a whole is essentially a literal
 
 	def led(self, lex, left): # For function calls
-
-		n, next_token = lex.recursive_parse(self.lbp)
-		self.nodes = [left, n]
+		
+		self.nodes = [left, lex.parse(self.lbp)]
 		lex.use()
-		return self, lex.peek # The bracketed sub-expression as a whole is essentially a literal
+		return self # The bracketed sub-expression as a whole is essentially a literal
 
 class function_call(left_bracket):
 
@@ -680,7 +721,10 @@ class function_call(left_bracket):
 			main.address = body # Set address to function node
 			main.call(body, *args) # Creates a coroutine binding in main
 			value = yield # Function yields back into call to store return value
-			yield value
+			if isinstance(value, kleio.coroutine) and not isinstance(self.head, bind): # Handles yield and send into a normal environment
+				yield value.value
+			else: # Normal return or yield and send into bind operator
+				yield value
 		else: # If built-in:
 			if hasattr(body, '__call__'): # No great way to check if a Python function is, in fact, a function
 				if args: # Python doesn't like unpacking empty tuples
@@ -800,7 +844,7 @@ class record_element(node): # Initialised during record construction
 
 		super().__init__(value)
 
-class lex_construct: # Lex object to get around not being able to peek the next value of an iterator
+class lexer: # Lex object to get around not being able to peek the next value of an iterator
 
 	def __init__(self, tokens):
 
@@ -816,24 +860,24 @@ class lex_construct: # Lex object to get around not being able to peek the next 
 		except StopIteration:
 			self.peek = eol()
 
-	def recursive_parse(self, lbp): # Pratt parser for expressions - takes a lex construct and the left-binding power
+	def parse(self, lbp = 0): # Pratt parser for expressions - takes a lex construct and the left-binding power
 
 		self.use()
 		if isinstance(self.peek, eol): # Detects end of expression
-			return self.token, self.peek # End-of-line token
-		
-		try: # NUD has variable number of return values
-			left, next_token = self.token.nud(self) # Executes null denotation of current token
-		except TypeError: # Is this a lazy substitute for an if-clause? Yes, but it works
-			left, next_token = self.token.nud(self), None
-
+			return self.token # End-of-line token
+		left = self.token.nud(self) # Executes null denotation of current token
 		while lbp < self.peek.lbp:
 			self.use()
-			left, next_token = self.token.led(self, left) # Executes left denotation of current token
-			if isinstance(next_token, eol): # Detects end of expression
-				return left, next_token # End-of-line token
+			left = self.token.led(self, left) # Executes left denotation of current token
+			if isinstance(self.peek, eol): # Detects end of expression
+				return left # Returns expression tree
+		else:
+			return left # Preserves state of next_token for higher-level calls
 
-		return left, next_token # Preserves state of next_token for higher-level calls
+	# https://eli.thegreenplace.net/2010/01/02/top-down-operator-precedence-parsing
+	# https://abarker.github.io/typped/pratt_parsing_intro.html
+	# https://web.archive.org/web/20150228044653/http://effbot.org/zone/simple-top-down-parsing.htm
+	# https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
 
 main = runtime('test.sophia') # Initialises runtime object
 main.instance = main.execute().send(None) # Initialises runtime generator
