@@ -22,7 +22,9 @@ int increment (int n):
 		i: i + 1
 		yield i
 
-assert int x <- increment(1):
-	print(x)
-else:
-	print('?')
+int c (int n):
+
+	print(n)
+	return c(n + 1)
+
+c(1)

@@ -144,7 +144,7 @@ class runtime(coroutine): # Runtime object contains runtime information and is t
 		value = None # Value register
 		while self.value: # Execution loop
 			path = self.routines[-1].path[-1]
-			hemera.debug_runtime(self)
+			#hemera.debug_runtime(self)
 			if isinstance(value, arche.Control): # Handles control flow: continue, break, return, yield
 				if value.args[0] == 'cast':
 					self.value, self.address = self.address, None
@@ -193,7 +193,7 @@ class runtime(coroutine): # Runtime object contains runtime information and is t
 					if isinstance(value, arche.Control):
 						break
 					path = self.routines[-1].path[-1]
-					hemera.debug_runtime(self)
+					#hemera.debug_runtime(self)
 		else:
 			for item in self.routines[0].namespace[len(self.builtins) - 1::-1]: # Unbinds built-ins in reverse order to not cause problems with the loop
 				self.unbind(item.name)
@@ -719,7 +719,7 @@ class function_call(left_bracket):
 		if not isinstance(args, tuple): # Type correction
 			args = tuple([args]) # Very tiresome type correction, at that
 		if isinstance(body, function_definition): # If user-defined:
-			if isinstance(self.head.head, return_statement): # Tail call
+			if isinstance(self.head, return_statement): # Tail call
 				body.exit = main.routines[-1].exit # Exits directly out of scope
 				body.tail = True
 			else:
