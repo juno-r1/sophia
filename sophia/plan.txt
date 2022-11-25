@@ -85,3 +85,49 @@ y: x // y = 2
 y: null -> x // y = 3
 y: null -> x // y = 4
 y: null -> x // y = 5
+
+untyped type definition:
+- all data except null
+- basic type operations that can be performed safely on any data
+
+null's status as an error type is enforced by the type system, not by specific mechanisms in the interpreter
+null *can* be used, but it has no valid type operations and is not part of the type system
+routines return null to indicate error status; handling null returns is the responsibility of the user
+
+return
+yield control to main
+send control to routine
+pop routine
+set address to routine exit
+yield return value
+
+yield
+set routine entry to self
+yield control to main
+send control to routine
+pop routine
+store routine in namespace
+set address to routine exit
+yield return value
+
+send
+set current routine entry to self (no need to set exit of destination)
+yield control to main
+send control to routine
+get destination routine from namespace
+switch current routine with destination routine
+transfer routine exit over to destination routine binding
+store current routine in namespace
+set address to destination routine entry
+yield return value
+
+something's wrong with the way instances are stored in the global routine right now
+
+return
+terminate routine and return to calling environment
+
+yield
+suspend routine and return to calling environment
+
+send
+switch routine to any bound coroutine in the current namespace (return and yield return to initial send)

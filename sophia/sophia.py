@@ -8,192 +8,72 @@
 
 import arche, hemera, kadmos, kleio
 
-class node: # Base node object
+class runtime: # Base runtime object
 
-	n = 0 # Accumulator for unique index; used for debug info
+	def __init__(self, start): # God objects? What is she objecting to?
 
-	def __init__(self, value, *nodes): # Do not store state in nodes
-
-		self.n, node.n = node.n, node.n + 1
-		self.value = value # For operands that shouldn't be evaluated or that should be handled differently
-		self.scope = 0
-		self.head = None
-		self.nodes = [i for i in nodes] # For operands that should be evaluated
-
-	def routine(self): # Gets node's routine
-
-		routine = self
-		while not isinstance(routine, coroutine):
-			routine = routine.head
-		else:
-			return routine
-
-	def parse(self, data): # Recursively descends into madness and creates a tree of nodes with self as head
-
-		lines, tokens, scopes = [kadmos.line_split(line) for line in data.splitlines() if line], [], [] # Splits lines into symbols and filters empty lines
-
-		for line in lines: # Tokenises each item in lines
-			scope = line.count('\t') # Gets scope level from number of tabs
-			if not line[scope:]:
-				continue # Skips empty lines
-			if not kadmos.balanced(line):
-				raise SyntaxError('Unmatched parentheses')
-			tokens.append([])
-			scopes.append(scope)
-			for n, symbol in enumerate(line[scope:]): # Skips tabs
-				if (symbol[0] in kadmos.characters or symbol[0] in ["'", '"']) and (symbol not in ['not', 'or', 'and', 'xor']): # Quick test for literal
-					if symbol in kadmos.structure_tokens or symbol in kadmos.keyword_tokens:
-						token = keyword(symbol)
-					else:
-						token = literal(symbol)
-						if len(tokens[-1]) > 0 and isinstance(tokens[-1][-1], literal): # Checks for type
-							token_type = tokens[-1].pop().value # Gets type of identifier 
-							if token_type in kadmos.sub_types: # Corrects shortened type names
-								token_type = kadmos.sub_types[token_type]
-							token.type = token_type # Sets type of identifier
-				else:
-					if symbol in kadmos.parens[0::2]:
-						if symbol == '(':
-							if isinstance(tokens[-1][-1], literal):
-								token = function_call(symbol)
-							else:
-								token = parenthesis(symbol)
-						elif symbol == '[':
-							if isinstance(tokens[-1][-1], literal):
-								token = sequence_index(symbol)
-							else:
-								token = sequence_literal(symbol)
-						elif symbol == '{':
-							token = meta_statement(symbol)
-					elif symbol in kadmos.parens[1::2]:
-						if isinstance(tokens[-1][-1], left_bracket):
-							tokens[-1].append(keyword(None)) # Zero-argument function call
-						token = right_bracket(symbol)
-					elif tokens[-1] and isinstance(tokens[-1][-1], (literal, right_bracket)): # If the preceding token is a literal (if the current token is an infix):
-						if symbol in ['^', ',', ':']:
-							token = infix_r(symbol)
-						elif symbol == '<-':
-							token = bind(symbol)
-						elif symbol == '->':
-							token = send(symbol)
-						else:
-							token = infix(symbol)
-					else:
-						token = prefix(symbol) # NEGATION TAKES PRECEDENCE OVER EXPONENTIATION - All unary operators have the highest possible left-binding power
-				tokens[-1].append(token)
-				
-		parsed = []
-
-		for line in tokens: # Tokenises whole lines
-			if line[0].value in kadmos.structure_tokens:
-				token = globals()[line[0].value + '_statement'](line) # Cheeky little hack that makes a node for whatever structure keyword is specified
-			elif line[0].value in kadmos.keyword_tokens:
-				token = line[0] # Keywords will get special handling later
-			elif line[-1].value == ':':
-				token = function_definition(line)
-			elif len(line) > 1 and line[1].value == ':':
-				token = assignment(line)
-			else: # Tokenises expressions
-				token = lexer(line).parse()
-			parsed.append(token)
-
-		head, last = self, self # Head token and last line
-
-		for i, line in enumerate(parsed): # Groups lines based on scope
-			line.scope = scopes[i] + 1 # Add 1 since main has scope 0
-			if line.scope > head.scope + 1: # If entering scope
-				head = last # Last line becomes the head node
-			elif line.scope < head.scope + 1: # If exiting scope
-				if line.scope > 1: # If statement is in local scope:
-					for n in parsed[i::-1]: # Find the last line containing the current line in its direct scope, searching backwards from the current line
-						if n.scope == line.scope - 1: # If such a line is found:
-							head = n # Make it the head node
-							break
-				else: # If statement is in global scope:
-					head = self # Resets head to main node
-			head.nodes.append(line) # Link nodes
-			last = line
-		else:
-			hemera.debug_tree(self) # Uncomment for parse tree debug information
-			print('===')
-			return self
-
-class coroutine(node): # Base coroutine object
-
-	def __init__(self, value, *tokens):
-
-		super().__init__(value, *tokens)
-		self.exit = None # Tracks most recent caller of coroutine
-		self.tail = False # Tracks call type
-
-class runtime(coroutine): # Runtime object contains runtime information and is the top level of the syntax tree
-
-	def __init__(self, file_name): # God objects? What is she objecting to?
-
-		super().__init__(self) # Sets initial node to self
-		with open(file_name, 'r') as f: # Binds file data to runtime object
-			self.file_data = f.read() # node.parse() takes a string containing newlines
-		self.parse(self.file_data) # Here's tree
-		self.name = file_name.split('.')[0]
-		self.address = None
-		self.builtins = [kleio.definition(*item) for item in arche.init_types() + arche.init_functions() + arche.init_operators()] # Initialises built-ins
-		self.routines = [kleio.coroutine(self.name, self, None, *self.builtins)] # Creates runtime binding
+		self.modules = [module(start)] # Initialises start module
+		self.builtins = (kleio.definition(*item) for item in arche.init_types() + arche.init_functions() + arche.init_operators()) # Initialises built-ins
+		self.routines = [kleio.coroutine(self.modules[0].name, self, None, *self.builtins)] # Creates runtime binding
+		self.node = self.modules[0] # Current node; starts with initial module
+		self.value = None # Current value
+		self.address = None # Address register
 
 	def execute(self): # Runs the module
 		
-		value = None # Value register
-		while self.value: # Execution loop
+		self.routines[-1].instances.append(main.modules[0].execute()) # Starts runtime loop at initial module
+		self.routines[-1].instances[-1].send(None)
+		while self.node: # Runtime loop
 			path = self.routines[-1].path[-1]
-			#hemera.debug_runtime(self)
-			if isinstance(value, arche.Control): # Handles control flow: continue, break, return, yield
-				if value.args[0] == 'cast':
-					self.value, self.address = self.address, None
-					yield value.args[1]
-				elif value.args[0] in ['return', 'send']:
-					value = self.routines[-1].instances[0].send(value) # Guaranteed to send to the coroutine instance
+			if isinstance(self.value, kleio.control): # Handles control flow: continue, break, return, yield
+				if self.value.name == 'cast':
+					self.node, self.address = self.address, None
+					yield self.value.value
+				elif self.value.name in ('return', 'send'):
+					self.value = self.routines[-1].instances[0].send(self.value) # Guaranteed to send to the coroutine instance
 				else:
-					while not isinstance(self.value, (while_statement, for_statement)): # Traverses up to closest enclosing loop - bootstrap assumes that interpreter is well-written and one exists
-						self.value = self.value.head
+					while not isinstance(self.node, (while_statement, for_statement)): # Traverses up to closest enclosing loop - bootstrap assumes that interpreter is well-written and one exists
+						self.node = self.node.head
 						self.routines[-1].instances.pop()
 						self.routines[-1].path.pop()
-					if value.args[0] == 'continue':
-						value = self.routines[-1].instances[-1].send(value)
-					elif value.args[0] == 'break':
+					if self.value.name == 'continue':
+						self.value = self.routines[-1].instances[-1].send(self.value)
+					elif self.value.name == 'break':
 						main.branch()
-					value = None
+					self.value = None
 			elif self.address: # If destination specified by node:
-				if isinstance(self.value, coroutine) and (path < 0 or path >= len(self.value.nodes)):
+				if isinstance(self.node, coroutine) and (path < 0 or path >= len(self.node.nodes)):
 					self.routines.pop()
-				self.value, self.address = self.address, None # Move to addressed node
-				value = self.routines[-1].instances[-1].send(value)
-			elif self.value.nodes and 0 <= path < len(self.value.nodes): # Walk down
-				self.value.nodes[path].head = self.value # Sets child head to self
-				self.value = self.value.nodes[path] # Set value to child node
+				self.node, self.address = self.address, None # Move to addressed node
+				self.value = self.routines[-1].instances[-1].send(self.value)
+			elif self.node.nodes and 0 <= path < len(self.node.nodes): # Walk down
+				self.node.nodes[path].head = self.node # Sets child head to self
+				self.node = self.node.nodes[path] # Set value to child node
 				self.routines[-1].path.append(0)
-				if isinstance(self.value, coroutine):
+				if isinstance(self.node, coroutine):
 					self.branch() # Adds new counter to stack, skipping all nodes
-				self.routines[-1].instances.append(self.value.execute()) # Initialises generator
-				value = self.routines[-1].instances[-1].send(None) # Somehow, it's never necessary to yield a value down the tree
+				self.routines[-1].instances.append(self.node.execute()) # Initialises generator
+				self.value = self.routines[-1].instances[-1].send(None) # Somehow, it's never necessary to yield a value down the tree
 			else: # Walk up
-				while (path < 0 or path >= len(self.value.nodes)) and not self.address: # While last node of branch:
+				while (path < 0 or path >= len(self.node.nodes)) and not self.address: # While last node of branch:
 					path = self.routines[-1].path[-2]
-					if not isinstance(self.value, coroutine):
-						self.routines[-1].instances.pop() # Removes generator
-					self.value = self.value.head # Walk upward
+					self.routines[-1].instances.pop() # Removes generator
+					self.node = self.node.head # Walk upward
 					path = path + 1
 					if self.routines[-1].path.pop() != -1: # Skip else statements if not branch
-						while path < len(self.value.nodes) and isinstance(self.value.nodes[path], else_statement):
+						while path < len(self.node.nodes) and isinstance(self.node.nodes[path], else_statement):
 							path = path + 1
 					self.branch(path) # Increment path counter
-					if self.value is self: # Check if finished
+					if self.node is self: # Check if finished
 						if path == len(self.nodes):
-							self.value = None
+							self.node = None
 						break # Can't send to self
-					value = self.routines[-1].instances[-1].send(value)
-					if isinstance(value, arche.Control):
+					self.value = self.routines[-1].instances[-1].send(self.value)
+					if isinstance(self.value, kleio.control):
 						break
 					path = self.routines[-1].path[-1]
-					#hemera.debug_runtime(self)
+					hemera.debug_runtime(self)
+			hemera.debug_runtime(self)
 		else:
 			for item in self.routines[0].namespace[len(self.builtins) - 1::-1]: # Unbinds built-ins in reverse order to not cause problems with the loop
 				self.unbind(item.name)
@@ -249,7 +129,7 @@ class runtime(coroutine): # Runtime object contains runtime information and is t
 			self.routines.append(kleio.coroutine(routine.value[0].value, routine, routine.exit)) # Append new frame
 		self.routines[-1].instances.append(routine.execute()) # Initialise routine instance and bind routine to namespace
 		self.routines[-1].instances[-1].send(None) # Hatred
-		self.routines[-1].namespace.extend([kleio.definition(param.value, main.cast(args[i], param.type), param.type, True) for i, param in enumerate(params)]) # Bind parameters to namespace
+		self.routines[-1].namespace.extend((kleio.definition(param.value, main.cast(args[i], param.type), param.type, True) for i, param in enumerate(params))) # Bind parameters to namespace
 
 	def cast(self, value, type_value): # Checks type of value and returns boolean
 				
@@ -276,6 +156,141 @@ class runtime(coroutine): # Runtime object contains runtime information and is t
 		else:
 			return return_value # Return indicates success; cast() raises an exception on failure
 
+class node: # Base node object
+
+	n = 0 # Accumulator for unique index; used for debug info
+
+	def __init__(self, value, *nodes): # Do not store state in nodes
+
+		self.n, node.n = node.n, node.n + 1
+		self.value = value # For operands that shouldn't be evaluated or that should be handled differently
+		self.scope = 0
+		self.head = None
+		self.nodes = [i for i in nodes] # For operands that should be evaluated
+
+	def routine(self): # Gets node's routine
+
+		routine = self
+		while not isinstance(routine, coroutine):
+			routine = routine.head
+		else:
+			return routine
+
+	def parse(self, data): # Recursively descends into madness and creates a tree of nodes with self as head
+
+		lines, tokens, scopes = [kadmos.line_split(line) for line in data.splitlines() if line], [], [] # Splits lines into symbols and filters empty lines
+
+		for line in lines: # Tokenises each item in lines
+			scope = line.count('\t') # Gets scope level from number of tabs
+			if not line[scope:]:
+				continue # Skips empty lines
+			if not kadmos.balanced(line):
+				raise SyntaxError('Unmatched parentheses')
+			tokens.append([])
+			scopes.append(scope)
+			for n, symbol in enumerate(line[scope:]): # Skips tabs
+				if (symbol[0] in kadmos.characters or symbol[0] in ("'", '"')) and (symbol not in ('not', 'or', 'and', 'xor')): # Quick test for literal
+					if symbol in kadmos.structure_tokens or symbol in kadmos.keyword_tokens:
+						token = keyword(symbol)
+					else:
+						token = literal(symbol)
+						if len(tokens[-1]) > 0 and isinstance(tokens[-1][-1], literal): # Checks for type
+							token_type = tokens[-1].pop().value # Gets type of identifier 
+							if token_type in kadmos.sub_types: # Corrects shortened type names
+								token_type = kadmos.sub_types[token_type]
+							token.type = token_type # Sets type of identifier
+				else:
+					if symbol in kadmos.parens[0::2]:
+						if symbol == '(':
+							if isinstance(tokens[-1][-1], literal):
+								token = function_call(symbol)
+							else:
+								token = parenthesis(symbol)
+						elif symbol == '[':
+							if isinstance(tokens[-1][-1], literal):
+								token = sequence_index(symbol)
+							else:
+								token = sequence_literal(symbol)
+						elif symbol == '{':
+							token = meta_statement(symbol)
+					elif symbol in kadmos.parens[1::2]:
+						if isinstance(tokens[-1][-1], left_bracket):
+							tokens[-1].append(keyword(None)) # Zero-argument function call
+						token = right_bracket(symbol)
+					elif tokens[-1] and isinstance(tokens[-1][-1], (literal, right_bracket)): # If the preceding token is a literal (if the current token is an infix):
+						if symbol in ('^', ',', ':'):
+							token = infix_r(symbol)
+						elif symbol == '<-':
+							token = bind(symbol)
+						elif symbol == '->':
+							token = send(symbol)
+						else:
+							token = infix(symbol)
+					else:
+						token = prefix(symbol) # NEGATION TAKES PRECEDENCE OVER EXPONENTIATION - All unary operators have the highest possible left-binding power
+				tokens[-1].append(token)
+				
+		parsed = []
+
+		for line in tokens: # Tokenises whole lines
+			if line[0].value in kadmos.structure_tokens:
+				token = globals()[line[0].value + '_statement'](line) # Cheeky little hack that makes a node for whatever structure keyword is specified
+			elif line[0].value in kadmos.keyword_tokens:
+				token = line[0] # Keywords will get special handling later
+			elif line[-1].value == ':':
+				token = function_definition(line)
+			elif len(line) > 1 and line[1].value == ':':
+				token = assignment(line)
+			else: # Tokenises expressions
+				token = lexer(line).parse() # Passes control to a lexer object that returns an expression tree when parse() is called
+			parsed.append(token)
+
+		head, last = self, self # Head token and last line
+
+		for i, line in enumerate(parsed): # Groups lines based on scope
+			line.scope = scopes[i] + 1 # Add 1 since main has scope 0
+			if line.scope > head.scope + 1: # If entering scope
+				head = last # Last line becomes the head node
+			elif line.scope < head.scope + 1: # If exiting scope
+				if line.scope > 1: # If statement is in local scope:
+					for n in parsed[i::-1]: # Find the last line containing the current line in its direct scope, searching backwards from the current line
+						if n.scope == line.scope - 1: # If such a line is found:
+							head = n # Make it the head node
+							break
+				else: # If statement is in global scope:
+					head = self # Resets head to main node
+			head.nodes.append(line) # Link nodes
+			last = line
+		else:
+			hemera.debug_tree(self) # Uncomment for parse tree debug information
+			print('===')
+			return self
+
+class coroutine(node): # Base coroutine object
+
+	def __init__(self, value, *tokens):
+
+		super().__init__(value, *tokens)
+		self.exit = None # Tracks most recent caller of coroutine
+		self.tail = False # Tracks call type
+
+class module(coroutine): # Module object is always the top level of a syntax tree
+
+	def __init__(self, file_name):
+
+		super().__init__(self) # Sets initial node to self
+		with open(file_name, 'r') as f: # Binds file data to runtime object
+			self.file_data = f.read() # node.parse() takes a string containing newlines
+		self.parse(self.file_data) # Here's tree
+		self.name = file_name.split('.')[0]
+
+	def execute(self):
+		
+		while main.routines[-1].path[-1] <= len(self.nodes): # Allows more fine-grained control flow than using a for loop
+			yield
+		else:
+			main.address = main.routines.pop().exit
+
 class type_statement(coroutine):
 
 	def __init__(self, tokens):
@@ -290,7 +305,7 @@ class type_statement(coroutine):
 
 	def execute(self):
 
-		ops = [kleio.definition(item.value[0].value, item, item.value[0].type, reserved = True) for item in self.nodes if isinstance(item, function_definition)] # Initialises type operations
+		ops = (kleio.definition(item.value[0].value, item, item.value[0].type, reserved = True) for item in self.nodes if isinstance(item, function_definition)) # Initialises type operations
 		routine = kleio.coroutine(self.value[0].value, self, None, *ops) # Creates type binding with type operations
 		main.bind(self.value[0].value, routine, self.value[0].value, reserved = True) # Binds coroutine information with type operations to namespace
 		return_value = None
@@ -298,14 +313,14 @@ class type_statement(coroutine):
 			return_value = yield return_value
 			while main.routines[-1].path[-1] < len(self.nodes): # Allows more fine-grained control flow than using a for loop
 				status = yield
-				if isinstance(status, arche.Control): # Failed constraints pass back here
+				if isinstance(status, kleio.control): # Failed constraints pass back here
 					return_value = None
 					main.address = main.routines.pop().exit
 					break
 			else: # Default behaviour for no return or yield
 				return_value = main.find(self.value[0].value).value
 				main.address = main.routines.pop().exit
-			return_value = arche.Control('cast', return_value)
+			return_value = kleio.control('cast', return_value)
 
 class function_definition(coroutine):
 
@@ -321,15 +336,27 @@ class function_definition(coroutine):
 			yield return_value
 			while main.routines[-1].path[-1] <= len(self.nodes): # Allows more fine-grained control flow than using a for loop
 				status = yield return_value
-				if isinstance(status, arche.Control): # Return and yield statements pass back here
-					return_value = status.args[1] # Check for output type in function call, not in function
-					if status.args[0] == 'return':
+				if isinstance(status, kleio.control): # Return and yield statements pass back here
+					return_value = status.value # Check for output type in function call, not in function
+					if status.name == 'return':
 						main.address = main.routines.pop().exit
 						break
-					elif status.args[0] == 'send':
+					if status.name == 'send':
 						return_value = main.routines.pop() # Returns the active coroutine frame
-						return_value.value = status.args[1] # Stores display value
-						main.address = return_value.exit
+						return_value.value = status.value # Stores display value
+						if isinstance(main.find(return_value.name).value, kleio.coroutine): # Checks if coroutine is bound
+							main.bind(return_value.name, return_value) # Updates namespace binding
+						if status.address: # Handles address
+							if status.address == main.routines[-1].name:
+								raise ValueError('Attempted send to active routine')
+							routine = main.find(status.address).value # This basically needs to behave like a function call except for a bound coroutine
+							if not isinstance(routine, kleio.coroutine):
+								raise TypeError('Invalid send address')
+							routine.exit = return_value.exit # Transfers over routine exit
+							main.address = routine.entry
+							main.routines.append(routine)
+						else:
+							main.address = return_value.exit
 			else: # Default behaviour for no return or yield
 				return_value = main.cast(None, self.value[0].type)
 				main.address = main.routines.pop().exit
@@ -355,13 +382,12 @@ class if_statement(node):
 
 		condition = yield
 		if condition is True:
-			while main.routines[-1].path[-1] < len(self.nodes):
+			while main.routines[-1].path[-1] <= len(self.nodes):
 				yield
 		elif condition is False:
 			yield main.branch()
 		else: # Over-specify on purpose to implement Sophia's specific requirement for a boolean
 			raise ValueError('Condition must evaluate to boolean')
-		yield
 
 class while_statement(node):
 
@@ -379,7 +405,7 @@ class while_statement(node):
 		while condition:
 			while main.routines[-1].path[-1] < len(self.nodes):
 				status = yield
-				if isinstance(status, arche.Control):
+				if isinstance(status, kleio.control):
 					break
 			main.branch(0) # Repeat nodes
 			condition = yield
@@ -403,7 +429,7 @@ class for_statement(node):
 				main.bind(index.value, next(sequence), index.type) # Binds the next value of the sequence to the loop index
 				while main.routines[-1].path[-1] < len(self.nodes):
 					status = yield
-					if isinstance(status, arche.Control):
+					if isinstance(status, kleio.control):
 						break
 				main.branch(1) # Repeat nodes
 		except StopIteration: # Break
@@ -422,9 +448,8 @@ class else_statement(node):
 
 	def execute(self): # Final else statement; gets overridden for non-final
 		
-		while main.routines[-1].path[-1] < len(self.nodes):
+		while main.routines[-1].path[-1] <= len(self.nodes):
 			yield
-		yield # Needs extra yield to traverse back up
 
 class assert_statement(node):
 
@@ -464,7 +489,7 @@ class constraint_statement(node):
 			if constraint is not True and constraint is not False:
 				raise ValueError('Constraint must evaluate to boolean')
 			if constraint is False:
-				yield arche.Control('return', None) # Functionally identical
+				yield kleio.control('return', None) # Functionally identical
 		yield
 
 class return_statement(node):
@@ -482,7 +507,7 @@ class return_statement(node):
 			value = yield # If tail call, control never returns back here 
 		else:
 			value = None
-		yield arche.Control('return', value) # Sends return control with return value
+		yield kleio.control('return', value) # Sends return control with return value
 
 class yield_statement(node):
 
@@ -500,7 +525,7 @@ class yield_statement(node):
 		else:
 			value = None
 		main.routines[-1].entry = self
-		value = yield arche.Control('send', value, None) # Sends send control with send value and no address and awaits value
+		value = yield kleio.control('send', value) # Sends send control with send value and no address and awaits value
 		yield value
 
 class link_statement(node):
@@ -547,30 +572,25 @@ class literal(identifier): # Adds literal behaviours to a node
 
 	def execute(self): # Terminal nodes
 		
-		try:
+		if self.value[0] in '.0123456789': # Terrible way to check for a number without using a try/except block
 			value = float(self.value) # Attempt to cast to float
 			if value % 1 == 0:
 				value = int(value) # Attempt to cast to int
-		except ValueError:
-			if self.value[0] in ['"', "'"]:
-				value = self.value[1:-1] # Interpret as string
-			elif self.value == 'true':
-				value = True
-			elif self.value == 'false':
-				value = False
-			elif self.value == 'null':
-				value = None
-			else: # If reference:
-				try:
-					value = main.find(self.value).value
-					if isinstance(value, kleio.coroutine) and not isinstance(self.head, bind):
-						value = value.value # Evaluates to display value unless bound or invoked in a send
-					value = main.cast(value, self.type) # Returns value referenced by name
-				except (NameError, TypeError) as status:
-					if isinstance(self.head, assert_statement) and main.routines[-1].path[-1] < self.head.length: # Allows assert statements to reference unbound names without error
-						value = None
-					else:
-						raise status
+		elif self.value[0] in ('"', "'"):
+			value = self.value[1:-1] # Interpret as string
+		elif self.value in kadmos.sub_values:
+			value = kadmos.sub_values[self.value] # Interpret booleans and null
+		else: # If reference:
+			try:
+				value = main.find(self.value).value
+				if isinstance(value, kleio.coroutine) and not isinstance(self.head, bind):
+					value = value.value # Evaluates to display value unless bound or invoked in a send
+				value = main.cast(value, self.type) # Returns value referenced by name
+			except (NameError, TypeError) as status:
+				if isinstance(self.head, assert_statement) and main.routines[-1].path[-1] < self.head.length: # Allows assert statements to reference unbound names without error
+					value = None
+				else:
+					raise status
 
 		yield value # Send value to main
 
@@ -585,7 +605,7 @@ class keyword(identifier): # Adds keyword behaviours to a node
 		if self.value is None: # Represents zero-argument function call
 			yield ()
 		else:
-			yield arche.Control(self.value) # Control object handling continue and break
+			yield kleio.control(self.value) # Control object handling continue and break
 
 class operator(node): # Generic operator node
 
@@ -672,6 +692,7 @@ class bind(operator): # Defines the bind operator
 
 		value = yield
 		if isinstance(value, kleio.coroutine):
+			value.name = self.value.value # Stores binding name in coroutine
 			data = value.value
 		else:
 			data = value
@@ -682,6 +703,7 @@ class bind(operator): # Defines the bind operator
 				yield
 			else:
 				raise status
+		print(self.value.value)
 		main.bind(self.value.value, value, self.value.type)
 		yield data
 
@@ -695,14 +717,8 @@ class send(operator): # Defines the send operator
 	def execute(self):
 
 		arg = yield # Sending only ever takes 1 argument
-		routine = main.find(self.value.value).value # This basically needs to behave like a function call except for a bound coroutine
-		if not isinstance(routine, kleio.coroutine):
-			raise TypeError('Invalid send address')
-		routine.exit = self
-		main.address = routine.entry
 		main.routines[-1].entry = self
-		main.routines.append(routine) # Append frame
-		value = yield arg # Send argument to entry point of routine
+		value = yield kleio.control('send', arg, self.value.value) # Send argument to entry point of routine
 		if isinstance(value, kleio.coroutine):
 			data = value.value
 		else:
@@ -890,7 +906,7 @@ class lexer: # Lex object to get around not being able to peek the next value of
 
 	def __init__(self, tokens):
 
-		self.lexes = [iter(tokens), iter(tokens)]
+		self.lexes = (iter(tokens), iter(tokens))
 		self.token = None
 		self.peek = next(self.lexes[1])
 
@@ -922,4 +938,4 @@ class lexer: # Lex object to get around not being able to peek the next value of
 	# https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
 
 main = runtime('test.sophia') # Initialises runtime object
-main.instance = main.execute().send(None) # Initialises runtime generator
+main.execute().send(None) # Executes runtime object

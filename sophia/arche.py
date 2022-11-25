@@ -1,5 +1,3 @@
-class Control(Exception): pass # Chaos... control!
-
 def init_types(): # Yeah, there's some name mangling going on here
 
 	def _untyped(value):

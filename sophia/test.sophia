@@ -15,21 +15,26 @@ int fib (even):
 		i: i + 1
 	return a
 
-int increment (int n):
+int a (int n):
 
+	yield n
+	int i: n
+	while i < 3:
+		print(i)
+		i: i + 1 -> y
+	else:
+		return i
+
+int b (int n):
+
+	yield n
 	int i: n
 	while true:
-		i: i + 1
-		if i > 10:
-			yield null
-		else:
-			yield i
+		print(i)
+		i: i + 1 -> x
 
-int x <- increment(0)
+int x <- a(1)
+int y <- b(3)
+null -> x
 print(x)
-while true:
-	assert null -> x:
-		print(x)
-	else:
-		print('!')
-		break
+print(y)

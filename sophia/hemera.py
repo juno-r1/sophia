@@ -1,34 +1,36 @@
 def debug_tree(tree, level = 0): # Takes a parse tree
 
 	n = repr(getattr(tree, 'n', 0)).zfill(4) # Unique id of node, if enabled
+	if type(tree).__bases__[-1].__name__ in ('operator', 'identifier') and type(tree).__name__ not in ('bind', 'send'):
+		line = n + '\t' + ('  ' * level)
+	else:
+		line = n + '\t' + ('  ' * level) + type(tree).__name__ + ' '
 	if tree.nodes: # True for non-terminals, false for terminals
 		level += 1 # This actually works, because parameters are just local variables, for some reason
 		if tree.value:
 			if isinstance(tree.value, str):
-				print(n, '\t', ('  ' * level), tree.value)
+				line = line + tree.value
 			elif isinstance(tree.value, list):
-				print(n, '\t', ('  ' * level), [x.value for x in tree.value])
+				line = line + repr([x.value for x in tree.value])
 			else:
-				print(n, '\t', ('  ' * level), tree.value.value)
-		else:
-			print(n, '\t', ('  ' * level), type(tree).__name__)
+				line = line + repr(tree.value.value)
+		print(line)
 		for item in tree.nodes:
 			debug_tree(item, level)
 	else:
-		level += 1
-		print(n, '\t', ('  ' * level), tree.value)
+		print(line + tree.value)
 
 def debug_runtime(runtime): # Takes a runtime object
 
-	name = type(runtime.value).__name__
-	value = runtime.value.value
+	name = type(runtime.node).__name__
+	value = runtime.node.value
 	if name == 'runtime':
 		value = runtime.name
 	elif isinstance(value, list):
 		value = [item.type + ' ' + item.value for item in value]
 	elif type(value).__name__ == 'literal':
 		value = value.value
-	print(repr(getattr(runtime.value, 'n', 0)).zfill(4), name, value, runtime.routines[-1].path[-1])
+	print(repr(getattr(runtime.node, 'n', 0)).zfill(4), name, value, runtime.routines[-1].path[-1])
 
 def debug_memory(runtime): # Takes a runtime object
 

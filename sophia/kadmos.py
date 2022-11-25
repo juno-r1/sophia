@@ -1,25 +1,28 @@
-structure_tokens = ['if', 'else', 'while', 'for', 'assert', 'type', 'constraint', 'return', 'yield', 'link', 'import']
-keyword_tokens = ['is', 'in', 'extends', 'continue', 'break']
+structure_tokens = ('if', 'else', 'while', 'for', 'assert', 'type', 'constraint', 'return', 'yield', 'link', 'import')
+keyword_tokens = ('is', 'in', 'extends', 'continue', 'break')
 characters = '.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz' # Sorted by position in UTF-8
 parens = '()[]{}'
 comment = '//'
-sub_types = {'int': 'integer',
+sub_types = {'int': 'integer', # Lookup table for type names
 			 'bool': 'boolean',
 			 'str': 'string'}
-binding_power = [['(', ')', '[', ']', '{', '}'], # The left-binding power of a binary operator is expressed by its position in this list
-				 [','],
-				 [':'],
-				 ['<-'],
-				 ['->'],
-				 ['or', '||'],
-				 ['and', '&&'],
-				 ['xor', '^^'],
-				 ['=', '!=', 'in'],
-				 ['<', '>', '<=', '>='],
-				 ['&', '|'],
-				 ['+', '-'],
-				 ['*', '/', '%'],
-				 ['^']]
+sub_values = {'true': True, # Lookup table for special values
+			  'false': False,
+			  'null': None}
+binding_power = (('(', ')', '[', ']', '{', '}'), # The left-binding power of a binary operator is expressed by its position in this tuple
+				 (',',),
+				 (':',),
+				 ('<-',),
+				 ('->',),
+				 ('or', '||',),
+				 ('and', '&&',),
+				 ('xor', '^^'),
+				 ('=', '!=', 'in'),
+				 ('<', '>', '<=', '>='),
+				 ('&', '|'),
+				 ('+', '-'),
+				 ('*', '/', '%'),
+				 ('^',))
 
 def line_split(line): # Takes a line from the file data and splits it into tokens
 	
@@ -38,9 +41,9 @@ def line_split(line): # Takes a line from the file data and splits it into token
 					shift = True
 				else:
 					break
-			elif symbol in ['\t', '\n', ':', ','] or symbol in parens:
+			elif symbol in ('\t', '\n', ':', ',') or symbol in parens:
 				shift = True
-			elif symbol in ["'", '"']: # Strings
+			elif symbol in ("'", '"'): # Strings
 				try:
 					end = line.index(symbol) + 1 # Everything before this index is inside a string
 					symbol, line = symbol + line[0:end], line[end:]

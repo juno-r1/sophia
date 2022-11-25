@@ -18,3 +18,11 @@ class definition: # Created by assignment
 		self.value = value
 		self.type = type_value
 		self.reserved = reserved
+
+class control: # Chaos... control!
+
+	def __init__(self, name, value = None, address = None):
+
+		self.name = name
+		self.value = value
+		self.address = address
