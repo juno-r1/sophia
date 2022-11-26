@@ -3,18 +3,6 @@ type even extends int:
 	constraint:
 		even % 2 = 0
 
-int fib (even):
-
-	int a: 0
-	int b: 1
-	int i: 0
-	while i < even:
-		c: b
-		b: a + b
-		a: c
-		i: i + 1
-	return a
-
 int a (int n):
 
 	yield n
@@ -33,8 +21,10 @@ int b (int n):
 		print(i)
 		i: i + 1 -> x
 
-int x <- a(1)
-int y <- b(3)
-null -> x
+int c (int n):
+
+	print(n)
+	yield n
+
+int x <- c(1)
 print(x)
-print(y)

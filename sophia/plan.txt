@@ -131,3 +131,19 @@ suspend routine and return to calling environment
 
 send
 switch routine to any bound coroutine in the current namespace (return and yield return to initial send)
+creates new namespace for first send and replaces current namespace for every subsequent send until the next return or yield
+
+the dot operator (not actually an operator) gives you access to the namespace of another coroutine, but not to edit it
+
+int template (int n):
+
+	int i: n + 1
+	while true:
+		yield true
+
+
+x <- template(1)
+z: x.n // z = 2
+
+this namespace access enables the creation of coroutines that act as complex mutable data structures
+this can emulate oop, if you really want that

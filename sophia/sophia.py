@@ -13,17 +13,16 @@ class runtime: # Base runtime object
 	def __init__(self, start): # God objects? What is she objecting to?
 
 		self.modules = [module(start)] # Initialises start module
-		self.builtins = (kleio.definition(*item) for item in arche.init_types() + arche.init_functions() + arche.init_operators()) # Initialises built-ins
+		self.builtins = [kleio.definition(*item) for item in arche.init_types() + arche.init_functions() + arche.init_operators()] # Initialises built-ins
 		self.routines = [kleio.coroutine(self.modules[0].name, self, None, *self.builtins)] # Creates runtime binding
-		self.node = self.modules[0] # Current node; starts with initial module
+		self.node = self.modules[0] # Current node; sets initial module as entry point
 		self.value = None # Current value
 		self.address = None # Address register
 
 	def execute(self): # Runs the module
 		
-		self.routines[-1].instances.append(main.modules[0].execute()) # Starts runtime loop at initial module
-		self.routines[-1].instances[-1].send(None)
 		while self.node: # Runtime loop
+			hemera.debug_runtime(self)
 			path = self.routines[-1].path[-1]
 			if isinstance(self.value, kleio.control): # Handles control flow: continue, break, return, yield
 				if self.value.name == 'cast':
@@ -64,8 +63,8 @@ class runtime: # Base runtime object
 						while path < len(self.node.nodes) and isinstance(self.node.nodes[path], else_statement):
 							path = path + 1
 					self.branch(path) # Increment path counter
-					if self.node is self: # Check if finished
-						if path == len(self.nodes):
+					if isinstance(self.node, module): # Check if finished
+						if path == len(self.node.nodes):
 							self.node = None
 						break # Can't send to self
 					self.value = self.routines[-1].instances[-1].send(self.value)
@@ -73,7 +72,6 @@ class runtime: # Base runtime object
 						break
 					path = self.routines[-1].path[-1]
 					hemera.debug_runtime(self)
-			hemera.debug_runtime(self)
 		else:
 			for item in self.routines[0].namespace[len(self.builtins) - 1::-1]: # Unbinds built-ins in reverse order to not cause problems with the loop
 				self.unbind(item.name)
@@ -938,4 +936,6 @@ class lexer: # Lex object to get around not being able to peek the next value of
 	# https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
 
 main = runtime('test.sophia') # Initialises runtime object
+main.routines[-1].instances.append(main.modules[0].execute()) # Starts runtime loop at initial module
+main.routines[-1].instances[-1].send(None)
 main.execute().send(None) # Executes runtime object

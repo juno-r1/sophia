@@ -24,8 +24,8 @@ def debug_runtime(runtime): # Takes a runtime object
 
 	name = type(runtime.node).__name__
 	value = runtime.node.value
-	if name == 'runtime':
-		value = runtime.name
+	if name == 'module':
+		value = runtime.node.name
 	elif isinstance(value, list):
 		value = [item.type + ' ' + item.value for item in value]
 	elif type(value).__name__ == 'literal':
