@@ -13,8 +13,8 @@ class runtime: # Base runtime object
 	def __init__(self, start): # God objects? What is she objecting to?
 
 		self.modules = [module(start)] # Initialises start module
-		self.builtins = [kleio.definition(*item) for item in arche.init_types() + arche.init_functions() + arche.init_operators()] # Initialises built-ins
-		self.routines = [kleio.coroutine(self.modules[0].name, self, None, *self.builtins)] # Creates runtime binding
+		self.builtins = tuple(kleio.definition(*item) for item in arche.init_types() + arche.init_functions() + arche.init_operators()) # Initialises built-ins
+		self.routines = [kleio.coroutine(self.modules[0].name, self, None)] # Creates runtime binding
 		self.node = self.modules[0] # Current node; sets initial module as entry point
 		self.value = None # Current value
 		self.address = None # Address register
@@ -73,8 +73,6 @@ class runtime: # Base runtime object
 					path = self.routines[-1].path[-1]
 					hemera.debug_runtime(self)
 		else:
-			for item in self.routines[0].namespace[len(self.builtins) - 1::-1]: # Unbinds built-ins in reverse order to not cause problems with the loop
-				self.unbind(item.name)
 			hemera.debug_memory(self)
 			yield self # Returns runtime object to facilitate imports
 
@@ -109,12 +107,14 @@ class runtime: # Base runtime object
 
 	def find(self, name): # Retrieves a name binding from a module
 		
+		for item in self.builtins: # Searches built-ins first; built-ins are independent of namespaces
+			if item.name == name: # If the name is a built-in:
+				return item # Return the binding
 		for routine in self.routines[::-1]: # Searches module in reverse order
 			for item in routine.namespace:
-				if item.name == name: # If the name is in the module:
+				if item.name == name: # If the name is bound in the runtime:
 					return item # Return the binding
-		else:
-			raise NameError('Undefined name: ' + name)
+		raise NameError('Undefined name: ' + name)
 
 	def call(self, routine, *args): # Creates a coroutine binding in main
 		
@@ -131,7 +131,8 @@ class runtime: # Base runtime object
 
 	def cast(self, value, type_value): # Checks type of value and returns boolean
 				
-		type_node = getattr(self.find(type_value).value, 'entry', self.find(type_value).value)
+		binding = self.find(type_value).value
+		type_node = getattr(binding, 'entry', binding)
 		stack = []
 		while isinstance(type_node, type_statement): # Get all supertypes for type
 			stack.append(type_node)
