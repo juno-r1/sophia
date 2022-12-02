@@ -1,0 +1,30 @@
+type even extends int:
+
+	constraint:
+		even % 2 = 0
+
+int a (int n):
+
+	yield n
+	int i: n
+	while i < 3:
+		print(i)
+		i: i + 1 -> y
+	else:
+		return i
+
+int b (int n):
+
+	yield n
+	int i: n
+	while true:
+		print(i)
+		i: i + 1 -> x
+
+int c (int n):
+
+	print(n)
+	yield n
+
+int x <- c(1)
+print(x)
