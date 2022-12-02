@@ -37,7 +37,7 @@
     <Compile Include="archive\0.2_pre\kleio.py" />
     <Compile Include="archive\0.2_pre\sophia.py" />
     <Compile Include="hemera.py" />
-    <Compile Include="archive\0,0\sophia.py" />
+    <Compile Include="archive\0.0\sophia.py" />
     <Compile Include="backup.py" />
     <Compile Include="kleio.py" />
     <Compile Include="sophia.py" />
@@ -59,7 +59,7 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="archive\" />
-    <Folder Include="archive\0,0\" />
+    <Folder Include="archive\0.0\" />
     <Folder Include="archive\0.1\" />
     <Folder Include="archive\0.2_pre\" />
   </ItemGroup>
