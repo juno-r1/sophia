@@ -1,3 +1,5 @@
+from fractions import Fraction as real
+
 def types(): # Yeah, there's some name mangling going on here
 
 	def _untyped(value):
@@ -6,13 +8,18 @@ def types(): # Yeah, there's some name mangling going on here
 
 	def _integer(value):
 
-		if (not isinstance(value, bool)) and (isinstance(value, int) or isinstance(value, float) and int(value) == value):
+		if (not isinstance(value, bool)) and (isinstance(value, int) or isinstance(value, (float, real)) and int(value) == value):
 			return int(value)
 
 	def _float(value):
 
-		if (not isinstance(value, bool)) and (isinstance(value, float) or isinstance(value, int) and float(value) == value):
+		if (not isinstance(value, bool)) and (isinstance(value, float) or isinstance(value, (int, real)) and float(value) == value):
 			return float(value)
+
+	def _real(value):
+
+		if (not isinstance(value, bool)) and (isinstance(value, real) or isinstance(value, (int, float)) and real(str(value)) == value):
+			return real(str(value)) # String conversion necessary because Python is extremely weird about precision
 
 	def _boolean(value):
 		

@@ -216,3 +216,10 @@ x <- actor() // Binds a coroutine to x and *then* begins execution in a new proc
 // Prints "1"
 
 a routine emitting null, whether from returning or sending, signals the termination of the routine
+
+---
+
+no call stack required; instead, store supervisor in binding and children in namespace
+no need to manage namespacing basically ever since the namespaces that a routine can access are intrinsically tied to it
+one process per routine?
+multiprocessing, process object for each routine?

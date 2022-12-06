@@ -14,6 +14,7 @@ binding_power = (('(', ')', '[', ']', '{', '}'), # The left-binding power of a b
 				 (':',),
 				 ('<-',),
 				 ('->',),
+				 ('in',),
 				 ('or', '||',),
 				 ('and', '&&',),
 				 ('xor', '^^'),
@@ -74,7 +75,7 @@ def balanced(tokens): # Takes a string and checks if its parentheses are balance
 
 	# https://stackoverflow.com/questions/6701853/parentheses-pairing-issue
 
-def find_bp(symbol):
+def bp(symbol):
 
 	for i, level in enumerate(binding_power):
 		if symbol in level:

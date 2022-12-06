@@ -42,6 +42,7 @@
     <Compile Include="kleio.py" />
     <Compile Include="sophia.py" />
     <Compile Include="kadmos.py" />
+    <Compile Include="test.py" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="archive\0.1\main.sophia" />

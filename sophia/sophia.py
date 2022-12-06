@@ -7,185 +7,100 @@
 # 20/08/2022: Type system implemented (0.1)
 
 import arche, hemera, kadmos, kleio
+import multiprocessing as mp, multiprocessing.dummy as mpd, multiprocessing.managers as mpm
 
-class runtime: # Base runtime object
+class process(mp.Process): # Created by function calls and type checking
 
-	def __init__(self, start): # God objects? What is she objecting to?
-
-		self.modules = [module(start)] # Initialises start module
-		self.builtins = tuple(kleio.definition(*item) for item in arche.types() + arche.functions() + arche.operators()) # Forbidden tuple comprehension [NOT CLICKBAIT]
-		self.routines = [kleio.coroutine(self.modules[0].name, self, None)] # Creates runtime binding
-		self.node = self.modules[0] # Current node; sets initial module as entry point
+	def __init__(self, routine, *args): # God objects? What is she objecting to?
+		
+		super().__init__(name = routine.name, args = ()) # self.value is the message queue for coroutines
+		self.namespace = [arg for arg in args]
+		self.instances = []
+		self.path = [0]
+		self.node = routine # Current node; sets initial module as entry point
 		self.value = None # Current value
-		self.address = None # Address register
 
-	def execute(self): # Runs the module
+	def run(self): # Overrides the method defined by mp.Process
 		
 		while self.node: # Runtime loop
-			hemera.debug_runtime(self)
-			path = self.routines[-1].path[-1]
-			if self.address: # If destination specified by node:
-				if isinstance(self.node, coroutine) and (path < 0 or path >= len(self.node.nodes)):
-					self.routines.pop()
-				self.node, self.address = self.address, None # Move to addressed node
-				self.value = self.routines[-1].instances[-1].send(self.value)
-			elif self.node.nodes and 0 <= path < len(self.node.nodes): # Walk down
-				self.node.nodes[path].head = self.node # Sets child head to self
-				self.node = self.node.nodes[path] # Set value to child node
-				self.routines[-1].path.append(0)
+			if self.node.nodes and 0 <= self.path[-1] < len(self.node.nodes): # Walk down
+				self.node.nodes[self.path[-1]].head = self.node # Sets child head to self
+				self.node = self.node.nodes[self.path[-1]] # Set value to child node
+				self.path.append(0)
 				if isinstance(self.node, coroutine):
 					self.branch() # Adds new counter to stack, skipping all nodes
-				self.routines[-1].instances.append(self.node.execute()) # Initialises generator
-				self.value = self.routines[-1].instances[-1].send(None) # Somehow, it's never necessary to yield a value down the tree
+				self.instances.append(self.node.execute()) # Initialises generator
+				self.value = self.instances[-1].send(None) # Somehow, it's never necessary to yield a value down the tree
 			else: # Walk up
-				while (path < 0 or path >= len(self.node.nodes)) and not self.address: # While last node of branch:
-					path = self.routines[-1].path[-2]
-					self.routines[-1].instances.pop() # Removes generator
+				while self.path[-1] < 0 or self.path[-1] >= len(self.node.nodes): # While last node of branch:
+					self.instances.pop() # Removes generator
 					self.node = self.node.head # Walk upward
-					path = path + 1
-					if self.routines[-1].path.pop() != -1: # Skip else statements if not branch
-						while path < len(self.node.nodes) and isinstance(self.node.nodes[path], else_statement):
-							path = path + 1
-					self.branch(path) # Increment path counter
-					if isinstance(self.node, module): # Check if finished
-						if path == len(self.node.nodes):
+					self.path[-2] = self.path[-2] + 1
+					if self.path.pop() != -1: # Skip else statements if not branch
+						while self.path[-1] < len(self.node.nodes) and isinstance(self.node.nodes[self.path[-1]], else_statement):
+							self.path[-1] = self.path[-1] + 1
+					if isinstance(self.node, coroutine): # Check if finished
+						if self.path[-1] == len(self.node.nodes):
 							self.node = None
 						break # Can't send to self
-					self.value = self.routines[-1].instances[-1].send(self.value)
-					path = self.routines[-1].path[-1]
-					hemera.debug_runtime(self)
-		else:
-			hemera.debug_memory(self)
-			yield self # Returns runtime object to facilitate imports
+					self.value = self.instances[-1].send(self.value)
+					hemera.debug_process(self)
+		hemera.debug_process(self)
 
 	def branch(self, path = -1):
 
-		self.routines[-1].path[-1] = path # Skip nodes
+		self.path[-1] = path # Skip nodes
 
-	def bind(self, name, value, type_value = 'untyped', reserved = False): # Creates or updates a name binding in main
-
-		for item in self.routines[-1].namespace: # Finds and updates a name binding
-			if item.name == name:
-				if item.reserved: # If the name is bound, or is a loop index:
-					raise NameError('Binding to reserved name: ' + name)
-				else:
-					item.value = value
-					if type_value != 'untyped':
-						item.type = type_value
-				break
-		else: # Creates a new name binding
-			self.routines[-1].namespace.append(kleio.definition(name, value, type_value, reserved))
-
-	def unbind(self, name): # Destroys a name binding in main
-
-		for i, item in enumerate(self.routines[-1].namespace): # Finds and destroys a name binding
-			if item.name == name:
-				index = i
-				break
-		else:
-			raise NameError('Undefined name: ' + name)
-
-		del self.routines[-1].namespace[index] # Destroy the binding outside of the loop to prevent issues with the loop
-
-	def find(self, name): # Retrieves a name binding from a module
-		
-		for item in self.builtins: # Searches built-ins first; built-ins are independent of namespaces
-			if item.name == name: # If the name is a built-in:
-				return item # Return the binding
-		for routine in self.routines[::-1]: # Searches module in reverse order
-			for item in routine.namespace:
-				if item.name == name: # If the name is bound in the runtime:
-					return item # Return the binding
-		raise NameError('Undefined name: ' + name)
-
-	def update(self, name, value): # Updates an existing name binding in main, ignoring binding rules
-
-		for routine in self.routines[::-1]: # Searches module in reverse order
-			for item in routine.namespace:
-				if item.name == name: # If the name is bound in the runtime:
-					item.value = value # Update binding
-
-	def call(self, routine, *args): # Creates a coroutine binding in main
-		
-		params = routine.value[1:] # Gets coroutine name, return type, and parameters
-		if len(params) != len(args):
-			raise SyntaxError('Expected {0} arguments; received {1}'.format(len(params), len(args)))
-		if routine.tail:
-			self.routines[-1] = kleio.coroutine(routine.value[0].value, routine, routine.exit, routine.value[0].type) # Overwrite current frame
-		else:
-			self.routines.append(kleio.coroutine(routine.value[0].value, routine, routine.exit, routine.value[0].type)) # Append new frame
-		self.routines[-1].instances.append(routine.execute()) # Initialise routine instance and bind routine to namespace
-		self.routines[-1].instances[-1].send(None) # Hatred
-		self.routines[-1].namespace.extend((kleio.definition(param.value, main.cast(args[i], param.type), param.type, True) for i, param in enumerate(params))) # Bind parameters to namespace
-
-	def cast(self, value, type_value): # Checks type of value and returns boolean
-				
-		binding = self.find(type_value).value
-		type_node = getattr(binding, 'entry', binding)
-		stack = []
-		while isinstance(type_node, type_statement): # Get all supertypes for type
-			stack.append(type_node)
-			type_node = self.find(type_node.supertype).value
-		else:
-			stack.append(type_node) # Guaranteed to be a built_in
-		while stack: # Check type down the entire tree
-			type_node = stack.pop()
-			if isinstance(type_node, type_statement): # If user-defined:
-				type_node.exit = main.value # Store source address in destination node
-				address, main.address = main.address, type_node # Set address to function node
-				main.call(type_node) # Creates a coroutine binding in main
-				self.routines[-1].namespace[0].value, self.routines[-1].namespace[0].type = value, type_value # Manually bind cast value to type binding
-				return_value = main.execute().send(None) # Creates new instance of runtime loop: oh god, oh fuck, et cetera
-				main.address = address # Restores address if one was set when cast() was called
-			else: # If built-in:
-				return_value = type_node(value) # Corrects type for built-ins
-			if return_value is None:
-				raise TypeError('Failed cast to ' + type_value + ': ' + repr(value))
-		else:
-			return return_value # Return indicates success; cast() raises an exception on failure
-
-	def control(self, name): # Handles continue and break
+	def control(self, name): # Chaos... control!
 
 		loop = self.node
 		while not isinstance(loop, (while_statement, for_statement)): # Traverses up to closest enclosing loop - bootstrap assumes that interpreter is well-written and one exists
 			loop = loop.head
-			self.routines[-1].instances.pop()
-			self.routines[-1].path.pop()
+			self.instances.pop()
+			self.path.pop()
 		if name == 'continue':
-			self.address = loop # Forces runtime to navigate to loop even with path value
+			self.node = loop.nodes[-1] # I mean, it's not pretty, but it should work
 			self.branch(len(self.node.nodes))
 		elif name == 'break':
 			self.node = loop
 			self.branch()
 
-	def terminate(self, value): # Handles return
+	def bind(self, name, value, type_name = 'untyped', reserved = False): # Creates or updates a name binding in main
 
-		routine = self.routines.pop()
-		self.address = routine.exit
-		return self.cast(value, routine.type)
+		for item in self.namespace: # Finds and updates a name binding
+			if item.name == name:
+				if item.reserved: # If the name is bound, or is a loop index:
+					raise NameError('Bind to reserved name: ' + name)
+				else:
+					item.value = value
+					if type_name != 'untyped':
+						item.type = type_name
+				break
+		else: # Creates a new name binding
+			self.namespace.append(kleio.definition(name, value, type_name, reserved))
 
-	def suspend(self, value): # Handles yield
+	def unbind(self, name): # Destroys a name binding in main
 
-		routine = self.routines.pop() # Returns the active coroutine frame
-		routine.value = value # Stores display value
-		self.update(routine.name, routine) # Updates namespace binding
-		self.address = routine.exit
-		return self.cast(value, routine.type)
+		for i, item in enumerate(self.namespace): # Finds and destroys a name binding
+			if item.name == name:
+				index = i
+				break
+		else:
+			raise NameError('Undefined name: ' + name)
+		del self.namespace[index] # Destroy the binding outside of the loop to prevent issues with the loop
 
-	def switch(self, value, address): # Handles send
-
-		routine = self.routines.pop() # Returns the active coroutine frame
-		routine.value = value # Stores display value
-		self.update(routine.name, routine) # Updates namespace binding
-		if address == routine.name:
-			raise ValueError('Attempted send to active routine')
-		destination = self.find(address)
-		if not isinstance(destination, kleio.coroutine):
-			raise TypeError('Invalid send address')
-		destination.exit = routine.exit # Transfers over exit
-		self.routines.append(destination)
-		self.address = destination.entry
-		return self.cast(value, routine.type) # Send must send a value with the routine's output type
+	def find(self, name): # Retrieves a binding in the routine's available namespace
+		
+		for item in main.builtins: # Searches built-ins first; built-ins are independent of namespaces
+			if item.name == name: # If the name is a built-in:
+				return item # Return the binding
+		routine = self
+		while routine:
+			for item in routine.namespace:
+				if item.name == name: # If the name is bound in the runtime:
+					return item # Return the binding
+			routine = routine.head
+		raise NameError('Undefined name: ' + name)
 
 class node: # Base node object
 
@@ -302,8 +217,6 @@ class coroutine(node): # Base coroutine object
 	def __init__(self, value, *tokens):
 
 		super().__init__(value, *tokens)
-		self.exit = None # Tracks most recent caller of coroutine
-		self.tail = False # Tracks call type
 
 class module(coroutine): # Module object is always the top level of a syntax tree
 
@@ -313,20 +226,20 @@ class module(coroutine): # Module object is always the top level of a syntax tre
 		with open(file_name, 'r') as f: # Binds file data to runtime object
 			self.file_data = f.read() # node.parse() takes a string containing newlines
 		self.parse(self.file_data) # Here's tree
-		self.name = file_name.split('.')[0]
+		self.value = [file_name.split('.')[0]]
+		self.name, self.type = self.value[0], 'untyped'
 
 	def execute(self):
 		
-		while main.routines[-1].path[-1] <= len(self.nodes): # Allows more fine-grained control flow than using a for loop
+		while main.routine().path[-1] <= len(self.nodes): # Allows more fine-grained control flow than using a for loop
 			yield
-		else:
-			main.address = main.routines.pop().exit
 
 class type_statement(coroutine):
 
 	def __init__(self, tokens):
 		
 		super().__init__([tokens[1]]) # Type
+		self.name, self.type = tokens[1].value, tokens[1].value
 		if len(tokens) > 3: # Naive check for subtyping
 			self.supertype = tokens[3].value
 			if self.supertype in kadmos.sub_types: # Corrects shortened type names
@@ -358,6 +271,7 @@ class function_definition(coroutine):
 	def __init__(self, tokens):
 
 		super().__init__(tokens[0:-1:2]) # Sets name and a list of parameters as self.value
+		self.name, self.type = tokens[0].value, tokens[0].type
 
 	def execute(self):
 		
@@ -365,7 +279,7 @@ class function_definition(coroutine):
 		return_value = None
 		while True: # Execution loop
 			yield return_value
-			while main.routines[-1].path[-1] <= len(self.nodes): # Allows more fine-grained control flow than using a for loop
+			while main.routine().path[-1] <= len(self.nodes): # Allows more fine-grained control flow than using a for loop
 				yield return_value
 			else: # Default behaviour for no return or yield
 				return_value = main.cast(None, self.value[0].type)
@@ -380,7 +294,7 @@ class assignment(node):
 	def execute(self):
 		
 		value = yield # Yields to main
-		yield main.bind(self.value.value, main.cast(value, self.value.type), self.value.type) # Yields to go up
+		yield main.routine().bind(self.value.value, main.cast(value, self.value.type), self.value.type) # Yields to go up
 
 class if_statement(node):
 
@@ -604,7 +518,7 @@ class operator(node): # Generic operator node
 	def __init__(self, value):
 
 		super().__init__(value)
-		self.lbp = kadmos.find_bp(value) # Gets binding power of symbol
+		self.lbp = kadmos.bp(value) # Gets binding power of symbol
 
 class prefix(operator): # Adds prefix behaviours to a node
 
@@ -928,7 +842,76 @@ class lexer: # Lex object to get around not being able to peek the next value of
 	# https://web.archive.org/web/20150228044653/http://effbot.org/zone/simple-top-down-parsing.htm
 	# https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
 
-main = runtime('test.sophia') # Initialises runtime object
-main.routines[-1].instances.append(main.modules[0].execute()) # Starts runtime loop at initial module
-main.routines[-1].instances[-1].send(None)
-main.execute().send(None) # Executes runtime object
+class methods: # Proxy class for manager
+	
+	def __init__(self):
+
+		self.builtins = tuple(kleio.definition(*item) for item in arche.types() + arche.functions() + arche.operators()) # Forbidden tuple comprehension [NOT CLICKBAIT]
+		self.modules = [module('test.sophia')] # Stores start module for initialisation by call()
+		self.processes = dict() # Map of routines with their pids as unique identifiers
+
+	def routine(self): # Gets current routine
+
+		return self.processes[mp.current_process().pid]
+
+	def call(self, node, *args): # Creates a coroutine binding in main
+		
+		params = node.value[1:] # Gets coroutine name, return type, and parameters
+		if len(params) != len(args):
+			raise SyntaxError('Expected {0} arguments; received {1}'.format(len(params), len(args)))
+		args = (kleio.definition(param.value, self.cast(args[i], param.type), param.type, True) for i, param in enumerate(params))
+		#if routine.tail:
+		#	self.routines[-1] = kleio.coroutine(routine, self.routine(), *args) # Overwrite current frame
+		#else:
+		routine = process(node, *args) # Create new routine
+		routine.start() # Start process for routine
+		self.processes[routine.pid] = routine # Binds routine to main with unique identifier
+
+	def cast(self, value, type_name): # Checks type of value and returns boolean
+				
+		binding = self.routine().find(type_name).value
+		type_node = getattr(binding, 'entry', binding)
+		stack = []
+		while isinstance(type_node, type_statement): # Get all supertypes for type
+			stack.append(type_node)
+			type_node = self.find(type_node.supertype).value
+		else:
+			stack.append(type_node) # Guaranteed to be a built_in
+		while stack: # Check type down the entire tree
+			type_node = stack.pop()
+			if isinstance(type_node, type_statement): # If user-defined:
+				type_node.exit = main.value # Store source address in destination node
+				address, main.address = main.address, type_node # Set address to function node
+				main.call(type_node) # Creates a coroutine binding in main
+				self.routines[-1].namespace[0].value, self.routines[-1].namespace[0].type = value, type_name # Manually bind cast value to type binding
+				return_value = main.execute().send(None) # Creates new instance of runtime loop: oh god, oh fuck, et cetera
+				main.address = address # Restores address if one was set when cast() was called
+			else: # If built-in:
+				return_value = type_node(value) # Corrects type for built-ins
+			if return_value is None:
+				raise TypeError('Failed cast to ' + type_name + ': ' + repr(value))
+		else:
+			return return_value # Return indicates success; cast() raises an exception on failure
+
+	def terminate(value): # Handles return
+
+		pass
+
+	def suspend(value): # Handles yield
+
+		pass
+
+	def switch(value, address): # Handles send
+
+		pass
+
+class manager(mpm.SyncManager): pass
+manager.register('methods', methods) # Hatred
+
+if __name__ == '__main__': # Hatred
+
+	with manager() as head: # The stupidest __init__() you've ever seen in your life
+
+		main = head.methods() # Proxy object
+		main.call(main.modules[0]) # Call initial routine
+		mpd.active_children()[0].join() # Don't end manager until initial module is finished

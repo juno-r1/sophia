@@ -20,7 +20,7 @@ def debug_tree(tree, level = 0): # Takes a parse tree
 	else:
 		print(line + tree.value)
 
-def debug_runtime(runtime): # Takes a runtime object
+def debug_process(runtime): # Takes a runtime object
 
 	name = type(runtime.node).__name__
 	value = runtime.node.value
