@@ -1,3 +1,5 @@
+from multiprocessing import current_process, parent_process
+
 def debug_tree(tree, level = 0): # Takes a parse tree
 
 	n = repr(getattr(tree, 'n', 0)).zfill(4) # Unique id of node, if enabled
@@ -20,34 +22,29 @@ def debug_tree(tree, level = 0): # Takes a parse tree
 	else:
 		print(line + tree.value)
 
-def debug_process(runtime): # Takes a runtime object
+def debug_process(process): # Takes a process object
 
-	name = type(runtime.node).__name__
-	value = runtime.node.value
+	name = type(process.node).__name__
+	value = process.node.value
 	if name == 'module':
-		value = runtime.node.name
+		value = process.node.name
 	elif isinstance(value, list):
-		value = [item.type + ' ' + item.value for item in value]
+		value = [item.type + ' ' + item.value for item in value[1:]]
 	elif type(value).__name__ == 'literal':
 		value = value.value
-	print(repr(getattr(runtime.node, 'n', 0)).zfill(4), name, value, runtime.routines[-1].path[-1])
+	print(repr(getattr(process.node, 'n', 0)).zfill(4), current_process().name, name, value, process.path[-1], flush = True)
 
-def debug_memory(runtime): # Takes a runtime object
+def debug_memory(process): # Takes a process object
 
 	print('===')
-	for routine in runtime.routines:
-		debug_module(routine)
+	while type(process).__name__ == 'process':
+		debug_namespace(process)
 		print('===')
+		process = parent_process()
 
-def debug_module(routine): # Takes a routine object
-
-	for i, binding in enumerate(routine.namespace):
-		name = type(binding.value).__name__
-		if name == 'runtime':
-			print(binding.name, 'module', [item.name for item in binding.value.namespace[0]])
-		elif name == 'type_statement' and hasattr(binding.value, 'namespace'):
-			print(binding.name, 'type', [item.name for item in binding.value.namespace])
-		else:
-			print(binding.name, binding.type, repr(binding.value))
-		if i != len(routine.namespace) - 1:
+def debug_namespace(process): # Takes a process object
+	
+	for i, binding in enumerate(process.namespace):
+		print(binding) # Uses __str__ method of definition
+		if i != len(process.namespace) - 1:
 			print('---')

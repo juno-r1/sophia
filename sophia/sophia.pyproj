@@ -13,6 +13,7 @@
     <RootNamespace>sophia</RootNamespace>
     <InterpreterId>Global|PythonCore|3.9</InterpreterId>
     <IsWindowsApplication>False</IsWindowsApplication>
+    <TestFramework>unittest</TestFramework>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>

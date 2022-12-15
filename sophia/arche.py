@@ -1,5 +1,24 @@
 from fractions import Fraction as real
 
+class definition: # Created by assignment
+
+	def __init__(self, name, value, type_name, reserved = False):
+
+		self.name = name
+		self.value = value
+		self.type = type_name
+		self.reserved = reserved
+
+	def __str__(self): # Overrides print() representation
+
+		name = type(self.value).__name__
+		if name == 'process':
+			return ' '.join((self.name, self.type, self.value.name, str([item.value for item in self.value.namespace])))
+		elif name == 'function_definition':
+			return ' '.join((self.name, self.type, str([item.type + ' ' + item.value for item in self.value.value[1:]])))
+		else:
+			return ' '.join((self.name, self.type, repr(self.value)))
+
 def types(): # Yeah, there's some name mangling going on here
 
 	def _untyped(value):
@@ -51,7 +70,7 @@ def functions():
 
 	def _print(*value):
 
-		return print(*value)
+		return print(*value, flush = True)
 
 	def _error(value):
 		
@@ -132,3 +151,5 @@ def operators():
 		   lambda x, y: x is not y)
 
 	return [(value[0], (value[1], value[2]), 'operator', True) for value in locals().values()]
+
+builtins = tuple(definition(*item) for item in types() + functions() + operators()) # Forbidden tuple comprehension [NOT CLICKBAIT]
