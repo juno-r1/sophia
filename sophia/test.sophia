@@ -1,7 +1,13 @@
-int a (int n):
+int a ():
 
-	return *x
+	y <- b(1)
+	2 -> y
+	print(*z)
 
-x <- a(1)
-2 -> x
-print(x)
+int b (int n):
+	
+	y: *x + n
+	y -> x
+	return y
+
+x <- a()

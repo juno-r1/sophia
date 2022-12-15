@@ -72,9 +72,9 @@ class process(mp.Process): # Created by function calls and type checking
 			self.instances.pop()
 			self.path.pop()
 		if name == 'continue':
-			self.node = loop # I mean, it's not pretty, but it should work
+			self.node = loop
 			self.branch(len(self.node.nodes))
-			self.instances[-1].send(None) # Sends into loop
+			self.instances[-1].send(None) # I mean, it's not pretty, but it works
 		elif name == 'break':
 			self.node = loop
 			self.branch()
@@ -204,8 +204,6 @@ class node: # Base node object
 						elif symbol == '{':
 							token = meta_statement(symbol)
 					elif symbol in kadmos.parens[1::2]:
-						if isinstance(tokens[-1][-1], left_bracket):
-							tokens[-1].append(keyword(None)) # Zero-argument function call
 						token = right_bracket(symbol)
 					elif tokens[-1] and isinstance(tokens[-1][-1], (literal, right_bracket)): # If the preceding token is a literal (if the current token is an infix):
 						if symbol in ('^', ',', ':'):
@@ -318,7 +316,7 @@ class function_definition(coroutine):
 
 	def __init__(self, tokens):
 
-		super().__init__(tokens[0:-1:2]) # Sets name and a list of parameters as self.value
+		super().__init__([token for token in tokens[0:-1:2] if token.value != ')']) # Sets name and a list of parameters as self.value
 		self.name, self.type = tokens[0].value, tokens[0].type
 
 	def execute(self):
@@ -535,10 +533,7 @@ class keyword(identifier): # Adds keyword behaviours to a node
 
 	def execute(self):
 
-		if self.value is None: # Represents zero-argument function call
-			yield ()
-		else:
-			yield routine().control(self.value) # Control object handling continue and break
+		yield routine().control(self.value) # Control object handling continue and break
 
 class operator(node): # Generic operator node
 
@@ -661,13 +656,19 @@ class left_bracket(operator): # Adds left-bracket behaviours to a node
 
 	def nud(self, lex): # For normal parentheses
 		
-		self.nodes = [lex.parse(self.lbp)]
+		if isinstance(lex.peek, right_bracket): # Empty brackets
+			self.nodes = []
+		else:
+			self.nodes = [lex.parse(self.lbp)]
 		lex.use()
 		return self # The bracketed sub-expression as a whole is essentially a literal
 
 	def led(self, lex, left): # For function calls
 		
-		self.nodes = [left, lex.parse(self.lbp)]
+		if isinstance(lex.peek, right_bracket): # Empty brackets
+			self.nodes = [left]
+		else:
+			self.nodes = [left, lex.parse(self.lbp)]
 		lex.use()
 		return self # The bracketed sub-expression as a whole is essentially a literal
 
@@ -676,7 +677,10 @@ class function_call(left_bracket):
 	def execute(self):
 
 		function = yield
-		args = yield
+		if len(self.nodes) > 1:
+			args = yield
+		else:
+			args = ()
 		if not isinstance(args, tuple): # Type correction
 			args = tuple([args]) # Very tiresome type correction, at that
 		if isinstance(function, function_definition): # If user-defined:
