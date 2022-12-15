@@ -25,6 +25,7 @@ class process(mp.Process): # Created by function calls and type checking
 		self.value = None # Current value
 		self.queue = mp.Queue() # Queue to receive messages
 		self.end = mp.Queue(1) # Queue to send return value
+		self.bound = False
 
 	def run(self): # Overrides the method defined by mp.Process
 		
@@ -56,6 +57,7 @@ class process(mp.Process): # Created by function calls and type checking
 						break
 					hemera.debug_process(self)
 		else:
+			self.bound = False # Frees process to be resolved to its return value
 			hemera.debug_memory(self)
 
 	def branch(self, path = -1):
@@ -112,9 +114,8 @@ class process(mp.Process): # Created by function calls and type checking
 		while isinstance(routine, process):
 			for item in routine.namespace:
 				if item.name == name: # If the name is bound in the runtime:
-					if isinstance(item.value, process): # If the name is bound to an unfinished process:
+					if isinstance(item.value, process) and not item.value.bound: # If the name is associated with an unbound routine:
 						item.value = self.cast(item.value.end.get(), item.type) # Block for return value and check type
-						print('Resolved', name, flush = True)
 					return item # Return the binding
 			routine = mp.parent_process() # Process objects come with very handy relational methods
 		raise NameError('Undefined name: ' + name)
@@ -216,7 +217,10 @@ class node: # Base node object
 						else:
 							token = infix(symbol)
 					else:
-						token = prefix(symbol) # NEGATION TAKES PRECEDENCE OVER EXPONENTIATION - All unary operators have the highest possible left-binding power
+						if symbol == '*':
+							token = receive(symbol)
+						else:
+							token = prefix(symbol) # NEGATION TAKES PRECEDENCE OVER EXPONENTIATION - All unary operators have the highest possible left-binding power
 				tokens[-1].append(token)
 				
 		parsed = []
@@ -510,6 +514,8 @@ class literal(identifier): # Adds literal behaviours to a node
 			value = self.value[1:-1] # Interpret as string
 		elif self.value in kadmos.sub_values:
 			value = kadmos.sub_values[self.value] # Interpret booleans and null
+		elif isinstance(self.head, receive): # Yields node to receive operator
+			value = self
 		else: # If reference:
 			try:
 				value = routine().find(self.value).value
@@ -553,6 +559,15 @@ class prefix(operator): # Adds prefix behaviours to a node
 		op = routine().find(self.value) # Gets the operator definition
 		x = yield
 		yield op.value[0](x) # Implements unary operator
+
+class receive(prefix): # Defines the receive operator
+
+	def execute(self):
+
+		binding = yield
+		value = routine().queue.get()
+		routine().bind(binding.value, value, binding.type)
+		yield value
 
 class infix(operator): # Adds infix behaviours to a node
 
@@ -617,21 +632,12 @@ class bind(operator): # Defines the bind operator
 
 	def execute(self):
 
-		value = yield
+		value = yield # Yields to main
 		if isinstance(value, process):
-			value.name = self.value.value # Stores binding name in coroutine
-			data = value.value
+			value.bound = True
 		else:
-			data = value
-		try:
-			data = main.cast(data, self.value.type) # Checks data type of bind
-		except TypeError as status:
-			if isinstance(self.head, assert_statement) and main.routines[-1].path[-1] <= self.head.length:
-				yield
-			else:
-				raise status
-		main.bind(self.value.value, value, self.value.type)
-		yield data
+			raise SyntaxError('Invalid bind')
+		yield routine().bind(self.value.value, value, self.value.type) # Yields to go up
 
 class send(operator): # Defines the send operator
 
@@ -642,21 +648,14 @@ class send(operator): # Defines the send operator
 
 	def execute(self):
 
-		arg = yield # Sending only ever takes 1 argument
-		main.routines[-1].entry = self
-		value = yield main.switch(arg, self.value.value) # Send argument to entry point of routine
-		if isinstance(value, process):
-			data = value.value
-		else:
-			data = value
-		try:
-			data = main.cast(data, self.value.type) # Checks data type of routine output
-		except TypeError as status:
-			if isinstance(self.head, assert_statement) and main.routines[-1].path[-1] <= self.head.length:
-				yield
-			else:
-				raise status
-		yield data
+		value = yield # Sending only ever takes 1 argument
+		value = routine().cast(value, self.routine().type)
+		address = routine().find(self.value.value).value
+		if not isinstance(address, process):
+			raise SyntaxError('Invalid send')
+		if address is routine():
+			raise SyntaxError('Source and destination are the same')
+		yield address.queue.put(value) # Sends value to destination queue
 
 class left_bracket(operator): # Adds left-bracket behaviours to a node
 
