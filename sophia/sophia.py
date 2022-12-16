@@ -6,29 +6,31 @@
 # 16/08/2022: Basic feature set re-implemented (0.1)
 # 20/08/2022: Type system implemented (0.1)
 
-import arche, hemera, kadmos
+import arche, hemera, kadmos, kleio
 import multiprocessing as mp
 from multiprocessing import current_process as routine
 
 class process(mp.Process): # Created by function calls and type checking
 
-	def __init__(self, routine, *args): # God objects? What is she objecting to?
+	def __init__(self, namespace, routine, *args): # God objects? What is she objecting to?
 		
-		super().__init__(name = routine.name, args = ()) # self.value is the message queue for coroutines
-		params = routine.value[1:] # Gets coroutine name, return type, and parameters
-		if len(params) != len(args):
-			raise SyntaxError('Expected {0} arguments, received {1}'.format(len(params), len(args)))
-		self.namespace = [arche.definition(param.value, self.cast(args[i], param.type), param.type, True) for i, param in enumerate(params)]
+		super().__init__(name = routine.name, target = self.execute, args = args)
+		self.namespace = namespace # Reference to shared namespace hierarchy
 		self.instances = []
 		self.path = [0]
 		self.node = routine # Current node; sets initial module as entry point
 		self.value = None # Current value
 		self.queue = mp.Queue() # Queue to receive messages
 		self.end = mp.Queue(1) # Queue to send return value
-		self.bound = False
+		self.bound = False # Determines whether process can be resolved
 
-	def run(self): # Overrides the method defined by mp.Process
-		
+	def execute(self, *args): # Target of run()
+
+		params = self.node.value[1:] # Gets coroutine name, return type, and parameters
+		if len(params) != len(args):
+			raise SyntaxError('Expected {0} arguments, received {1}'.format(len(params), len(args)))
+		definitions = [arche.definition(param.value, self.cast(args[i], param.type), param.type, True) for i, param in enumerate(params)]
+		self.namespace[self.pid] = kleio.namespace(*definitions) # Updates namespace hierarchy
 		while self.node: # Runtime loop
 			hemera.debug_process(self)
 			if self.node.nodes and 0 <= self.path[-1] < len(self.node.nodes): # Walk down
@@ -57,8 +59,11 @@ class process(mp.Process): # Created by function calls and type checking
 						break
 					hemera.debug_process(self)
 		else:
+			for child in mp.active_children(): # Makes sure all child processes are terminated before terminating
+				child.join()
 			self.bound = False # Frees process to be resolved to its return value
 			hemera.debug_memory(self)
+			del self.namespace[self.pid] # Clear namespace
 
 	def branch(self, path = -1):
 
@@ -80,44 +85,36 @@ class process(mp.Process): # Created by function calls and type checking
 			self.branch()
 
 	def bind(self, name, value, type_name = 'untyped', reserved = False, definition = False): # Creates or updates a name binding in main
-
+		
 		if not definition and not isinstance(value, process):
 			value = self.cast(value, type_name)
-		for item in self.namespace: # Finds and updates a name binding
-			if item.name == name:
-				if item.reserved: # If the name is bound, or is a loop index:
-					raise NameError('Bind to reserved name: ' + name)
-				else:
-					item.value = value
-					if type_name != 'untyped':
-						item.type = type_name
-				break
-		else: # Creates a new name binding
-			self.namespace.append(arche.definition(name, value, type_name, reserved))
+		namespace = self.namespace[self.pid] # Retrieve namespace
+		namespace.write(arche.definition(name, value, type_name, reserved))
+		self.namespace[self.pid] = namespace # Force update shared dict
+		print(self.namespace[self.pid])
 
 	def unbind(self, name): # Destroys a name binding in main
 
-		for i, item in enumerate(self.namespace): # Finds and destroys a name binding
+		for i, item in enumerate(self.namespace[self.pid]): # Finds and destroys a name binding
 			if item.name == name:
 				index = i
 				break
 		else:
 			raise NameError('Undefined name: ' + name)
-		del self.namespace[index] # Destroy the binding outside of the loop to prevent issues with the loop
+		del self.namespace[self.pid][index] # Destroy the binding outside of the loop to prevent issues with the loop
 
 	def find(self, name): # Retrieves a binding in the routine's available namespace
 		
 		for item in arche.builtins: # Searches built-ins first; built-ins are independent of namespaces
 			if item.name == name: # If the name is a built-in:
 				return item # Return the binding
-		routine = self
-		while isinstance(routine, process):
-			for item in routine.namespace:
-				if item.name == name: # If the name is bound in the runtime:
-					if isinstance(item.value, process) and not item.value.bound: # If the name is associated with an unbound routine:
-						item.value = self.cast(item.value.end.get(), item.type) # Block for return value and check type
-					return item # Return the binding
-			routine = mp.parent_process() # Process objects come with very handy relational methods
+		pid = self.pid
+		while pid in self.namespace:
+			value = self.namespace[pid].read(name)
+			if value:
+				return value
+			else:
+				pid = self.namespace[pid].parent
 		raise NameError('Undefined name: ' + name)
 
 	def cast(self, value, type_name): # Checks type of value and returns boolean
@@ -179,7 +176,7 @@ class node: # Base node object
 			tokens.append([])
 			scopes.append(scope)
 			for n, symbol in enumerate(line[scope:]): # Skips tabs
-				if (symbol[0] in kadmos.characters or symbol[0] in ("'", '"')) and (symbol not in ('not', 'or', 'and', 'xor')): # Quick test for literal
+				if (symbol[0] in kadmos.characters or symbol[0] in ("'", '"')) and (symbol not in kadmos.keyword_operators): # Quick test for literal
 					if symbol in kadmos.structure_tokens or symbol in kadmos.keyword_tokens:
 						token = keyword(symbol)
 					else:
@@ -559,9 +556,9 @@ class receive(prefix): # Defines the receive operator
 
 	def execute(self):
 
-		binding = yield
+		node = yield
 		value = routine().queue.get()
-		routine().bind(binding.value, value, binding.type)
+		routine().bind(node.value, value, node.type)
 		yield value
 
 class infix(operator): # Adds infix behaviours to a node
@@ -684,12 +681,12 @@ class function_call(left_bracket):
 		if not isinstance(args, tuple): # Type correction
 			args = tuple([args]) # Very tiresome type correction, at that
 		if isinstance(function, function_definition): # If user-defined:
-			routine = process(function, *args) # Create new routine
-			routine.start() # Start process for routine
+			child = process(routine().namespace, function, *args) # Create new routine
+			child.start() # Start process for routine
 			if isinstance(self.head, (assignment, bind, send)):
-				yield routine # Yields process object as a promise
+				yield child # Yields process object as a promise
 			else:
-				yield routine.end.get() # Blocks until function returns
+				yield child.end.get() # Blocks until function returns
 		else: # If built-in:
 			if hasattr(function, '__call__'): # No great way to check if a Python function is, in fact, a function
 				if args: # Python doesn't like unpacking empty tuples
@@ -848,6 +845,7 @@ if __name__ == '__main__': # Hatred
 
 	with mp.Manager() as runtime: # The stupidest global state you've ever seen in your life
 		
-		main = process(module('test.sophia')) # Spawn initial process
+		namespace = runtime.dict() # Unfortunate namespace hierarchy, but at least processes never write to the same memory
+		main = process(namespace, module('test.sophia')) # Spawn initial process
 		main.start() # Start initial process
 		main.join() # Prevent exit until initial process ends

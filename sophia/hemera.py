@@ -35,16 +35,12 @@ def debug_process(process): # Takes a process object
 	print(repr(getattr(process.node, 'n', 0)).zfill(4), current_process().name, name, value, process.path[-1], flush = True)
 
 def debug_memory(process): # Takes a process object
-
-	print('===')
-	while type(process).__name__ == 'process':
-		debug_namespace(process)
-		print('===')
-		process = parent_process()
+	
+	print(process.namespace[process.pid], flush = True)
 
 def debug_namespace(process): # Takes a process object
 	
-	for i, binding in enumerate(process.namespace):
+	for i, binding in enumerate(process.namespace[process.pid]):
 		print(binding) # Uses __str__ method of definition
 		if i != len(process.namespace) - 1:
 			print('---')

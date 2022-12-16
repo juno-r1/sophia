@@ -13,11 +13,12 @@ class definition: # Created by assignment
 
 		name = type(self.value).__name__
 		if name == 'process':
-			return ' '.join((self.name, self.type, self.value.name, str([item.value for item in self.value.namespace])))
+			binding = (self.name, self.type, self.value.name, str([item.value for item in self.value.namespace]))
 		elif name == 'function_definition':
-			return ' '.join((self.name, self.type, str([item.type + ' ' + item.value for item in self.value.value[1:]])))
+			binding = (self.name, self.type, str([item.type + ' ' + item.value for item in self.value.value[1:]]))
 		else:
-			return ' '.join((self.name, self.type, repr(self.value)))
+			binding = (self.name, self.type, repr(self.value))
+		return ' '.join(binding)
 
 def types(): # Yeah, there's some name mangling going on here
 

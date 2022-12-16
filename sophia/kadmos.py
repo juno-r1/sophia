@@ -1,15 +1,16 @@
-structure_tokens = ('if', 'else', 'while', 'for', 'assert', 'type', 'constraint', 'return', 'yield', 'link', 'import')
-keyword_tokens = ('is', 'in', 'extends', 'continue', 'break')
 characters = '.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz' # Sorted by position in UTF-8
 parens = '()[]{}'
 comment = '//'
+structure_tokens = ('if', 'else', 'while', 'for', 'assert', 'type', 'constraint', 'return', 'yield', 'link', 'import')
+keyword_tokens = ('is', 'extends', 'continue', 'break')
+keyword_operators = ('not', 'or', 'and', 'xor', 'in')
 sub_types = {'int': 'integer', # Lookup table for type names
 			 'bool': 'boolean',
 			 'str': 'string'}
 sub_values = {'true': True, # Lookup table for special values
 			  'false': False,
 			  'null': None}
-binding_power = (('(', ')', '[', ']', '{', '}'), # The left-binding power of a binary operator is expressed by its position in this tuple
+binding_power = (('(', ')', '[', ']', '{', '}'), # The left-binding power of a binary operator is expressed by its position in this tuple of tuples
 				 (',',),
 				 (':',),
 				 ('<-',),
