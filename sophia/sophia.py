@@ -16,20 +16,20 @@ class process(mp.Process): # Created by function calls and type checking
 		
 		super().__init__(name = routine.name, target = self.execute, args = args)
 		self.namespace = namespace # Reference to shared namespace hierarchy
+		self.bound = False # Determines whether process can be resolved
+		self.queue = mp.Queue() # Queue to receive messages
+		self.end = mp.Queue(1) # Queue to send return value
 		self.instances = []
 		self.path = [0]
 		self.node = routine # Current node; sets initial module as entry point
 		self.value = None # Current value
-		self.queue = mp.Queue() # Queue to receive messages
-		self.end = mp.Queue(1) # Queue to send return value
-		self.bound = False # Determines whether process can be resolved
 
 	def execute(self, *args): # Target of run()
 
 		params = self.node.value[1:] # Gets coroutine name, return type, and parameters
 		if len(params) != len(args):
 			raise SyntaxError('Expected {0} arguments, received {1}'.format(len(params), len(args)))
-		definitions = [arche.definition(param.value, self.cast(args[i], param.type), param.type, True) for i, param in enumerate(params)]
+		definitions = (arche.definition(param.value, self.cast(args[i], param.type), param.type, True) for i, param in enumerate(params))
 		self.namespace[self.pid] = kleio.namespace(*definitions) # Updates namespace hierarchy
 		while self.node: # Runtime loop
 			hemera.debug_process(self)
@@ -84,24 +84,28 @@ class process(mp.Process): # Created by function calls and type checking
 			self.node = loop
 			self.branch()
 
+	def update(self, value, pid, delete = False): # Only way to update namespace
+
+		self.namespace[0].acquire() # Acquires namespace lock
+		namespace = self.namespace[pid] # Retrieve routine namespace
+		if delete:
+			namespace.delete(value) # Delete binding from namespace
+		else:
+			namespace.write(value) # Mutate namespace
+		self.namespace[pid] = namespace # Force update shared dict
+		self.namespace[0].release() # Releases namespace lock
+
 	def bind(self, name, value, type_name = 'untyped', reserved = False, definition = False): # Creates or updates a name binding in main
 		
 		if not definition and not isinstance(value, process):
 			value = self.cast(value, type_name)
-		namespace = self.namespace[self.pid] # Retrieve namespace
-		namespace.write(arche.definition(name, value, type_name, reserved))
+		self.update(arche.definition(name, value, type_name, reserved), self.pid)
+
+	def unbind(self, name): # Destroys a name binding in the current namespace
+		
+		namespace = self.namespace[self.pid] # Retrieve routine namespace
+		self.update(name, self.pid, delete = True)
 		self.namespace[self.pid] = namespace # Force update shared dict
-		print(self.namespace[self.pid])
-
-	def unbind(self, name): # Destroys a name binding in main
-
-		for i, item in enumerate(self.namespace[self.pid]): # Finds and destroys a name binding
-			if item.name == name:
-				index = i
-				break
-		else:
-			raise NameError('Undefined name: ' + name)
-		del self.namespace[self.pid][index] # Destroy the binding outside of the loop to prevent issues with the loop
 
 	def find(self, name): # Retrieves a binding in the routine's available namespace
 		
@@ -112,6 +116,9 @@ class process(mp.Process): # Created by function calls and type checking
 		while pid in self.namespace:
 			value = self.namespace[pid].read(name)
 			if value:
+				if isinstance(value.value, process) and not value.value.bound: # If the name is associated with an unbound routine:
+					value.value = routine().cast(value.value.end.get(), value.type) # Block for return value and check type
+					self.update(value, pid) # Encapsulation? Yeah, I know her
 				return value
 			else:
 				pid = self.namespace[pid].parent
@@ -845,7 +852,7 @@ if __name__ == '__main__': # Hatred
 
 	with mp.Manager() as runtime: # The stupidest global state you've ever seen in your life
 		
-		namespace = runtime.dict() # Unfortunate namespace hierarchy, but at least processes never write to the same memory
+		namespace = runtime.dict({0: runtime.Lock()}) # Unfortunate namespace hierarchy, but at least processes never write to the same memory
 		main = process(namespace, module('test.sophia')) # Spawn initial process
 		main.start() # Start initial process
 		main.join() # Prevent exit until initial process ends
