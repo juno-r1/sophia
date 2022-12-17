@@ -1,4 +1,4 @@
-from multiprocessing import Process, current_process, parent_process
+from multiprocessing import current_process, parent_process
 
 class namespace: # Base namespace object
 
@@ -47,7 +47,7 @@ class proxy: # Proxy object pretending to be a process
 		self.pid = process.pid
 		self.messages = None # Pipe to send messages
 		self.end = None # Pipe for return value
-		self.bound = False # Determines whether process can be resolved
+		self.bound = False # Determines whether process is bound
 
 	def send(self, value): # Proxy method to send to process
 

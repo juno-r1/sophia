@@ -17,7 +17,7 @@ class process(mp.Process): # Created by function calls and type checking
 		self.namespace = namespace # Reference to shared namespace hierarchy
 		self.proxy = kleio.proxy(self)
 		self.messages, self.proxy.messages = mp.Pipe() # Pipe to receive messages
-		self.end, self.proxy.end = mp.Pipe() # Queue to send return value
+		self.end, self.proxy.end = mp.Pipe() # Pipe to send return value
 		self.instances = []
 		self.path = [0]
 		self.node = routine # Current node; sets initial module as entry point
@@ -60,7 +60,6 @@ class process(mp.Process): # Created by function calls and type checking
 		else:
 			for child in mp.active_children(): # Makes sure all child processes are terminated before terminating
 				child.join()
-			self.bound = False # Frees process to be resolved to its return value
 			hemera.debug_namespace(self)
 			del self.namespace[self.pid] # Clear namespace
 
@@ -85,12 +84,12 @@ class process(mp.Process): # Created by function calls and type checking
 
 	def update(self, value, pid, delete = False): # Only way to update namespace
 
-		self.namespace[0].acquire() # Acquires namespace lock
 		namespace = self.namespace[pid] # Retrieve routine namespace
 		if delete:
 			namespace.delete(value) # Delete binding from namespace
 		else:
 			namespace.write(value) # Mutate namespace
+		self.namespace[0].acquire() # Acquires namespace lock
 		self.namespace[pid] = namespace # Update shared dict; nested objects don't sync unless you make them
 		self.namespace[0].release() # Releases namespace lock
 
@@ -113,7 +112,7 @@ class process(mp.Process): # Created by function calls and type checking
 		while pid in self.namespace:
 			definition = self.namespace[pid].read(name)
 			if definition:
-				if isinstance(definition.value, kleio.proxy) and not definition.value.bound: # If the name is associated with an unbound routine:
+				if isinstance(definition.value, kleio.proxy) and (not definition.value.bound or definition.value.end.poll()): # If the name is associated with an unbound or finished routine:
 					definition.value = mp.current_process().cast(definition.value.get(), definition.type) # Block for return value and check type
 					self.update(definition, pid) # Is it breaking encapsulation if the target routine is finished when this happens?
 				return definition
@@ -633,7 +632,8 @@ class bind(operator): # Defines the bind operator
 			value.bound = True
 		else:
 			raise SyntaxError('Invalid bind')
-		yield mp.current_process().bind(self.value.value, value, self.value.type) # Yields to go up
+		mp.current_process().bind(self.value.value, value, self.value.type) # Yields to go up
+		yield value
 
 class send(operator): # Defines the send operator
 
@@ -645,13 +645,14 @@ class send(operator): # Defines the send operator
 	def execute(self):
 
 		value = yield # Sending only ever takes 1 argument
-		value = mp.current_process().cast(value, self.routine().type)
+		value = mp.current_process().cast(value, self.routine().type) # Enforce output type for send value
 		address = mp.current_process().find(self.value.value).value
 		if not isinstance(address, kleio.proxy):
 			raise SyntaxError('Invalid send')
 		if address.name == mp.current_process().name:
 			raise SyntaxError('Source and destination are the same')
-		yield address.send(value) # Sends value to destination queue
+		address.send(value) # Sends value to destination queue
+		yield address
 
 class left_bracket(operator): # Adds left-bracket behaviours to a node
 
@@ -690,7 +691,7 @@ class function_call(left_bracket):
 			if isinstance(self.head, (assignment, bind, send)):
 				yield child.proxy # Yields proxy object as a promise
 			else:
-				yield child.end.get() # Blocks until function returns
+				yield child.proxy.get() # Blocks until function returns
 		else: # If built-in:
 			if hasattr(function, '__call__'): # No great way to check if a Python function is, in fact, a function
 				if args: # Python doesn't like unpacking empty tuples
