@@ -8,31 +8,30 @@
 
 import arche, hemera, kadmos, kleio
 import multiprocessing as mp
-from multiprocessing import current_process as routine
 
 class process(mp.Process): # Created by function calls and type checking
 
 	def __init__(self, namespace, routine, *args): # God objects? What is she objecting to?
 		
-		super().__init__(name = routine.name, target = self.execute, args = args)
+		super().__init__(name = mp.current_process().name + '.' + routine.name, target = self.execute, args = args)
 		self.namespace = namespace # Reference to shared namespace hierarchy
-		self.bound = False # Determines whether process can be resolved
-		self.queue = mp.Queue() # Queue to receive messages
-		self.end = mp.Queue(1) # Queue to send return value
+		self.proxy = kleio.proxy(self)
+		self.messages, self.proxy.messages = mp.Pipe() # Pipe to receive messages
+		self.end, self.proxy.end = mp.Pipe() # Queue to send return value
 		self.instances = []
 		self.path = [0]
 		self.node = routine # Current node; sets initial module as entry point
 		self.value = None # Current value
 
 	def execute(self, *args): # Target of run()
-
+		
 		params = self.node.value[1:] # Gets coroutine name, return type, and parameters
 		if len(params) != len(args):
 			raise SyntaxError('Expected {0} arguments, received {1}'.format(len(params), len(args)))
 		definitions = (arche.definition(param.value, self.cast(args[i], param.type), param.type, True) for i, param in enumerate(params))
 		self.namespace[self.pid] = kleio.namespace(*definitions) # Updates namespace hierarchy
 		while self.node: # Runtime loop
-			hemera.debug_process(self)
+			#hemera.debug_process(self)
 			if self.node.nodes and 0 <= self.path[-1] < len(self.node.nodes): # Walk down
 				self.node.nodes[self.path[-1]].head = self.node # Sets child head to self
 				self.node = self.node.nodes[self.path[-1]] # Set value to child node
@@ -57,12 +56,12 @@ class process(mp.Process): # Created by function calls and type checking
 					if isinstance(self.node, return_statement) and self.path[-1] == len(self.node.nodes): # Check if finished
 						self.node = None
 						break
-					hemera.debug_process(self)
+					#hemera.debug_process(self)
 		else:
 			for child in mp.active_children(): # Makes sure all child processes are terminated before terminating
 				child.join()
 			self.bound = False # Frees process to be resolved to its return value
-			hemera.debug_memory(self)
+			hemera.debug_namespace(self)
 			del self.namespace[self.pid] # Clear namespace
 
 	def branch(self, path = -1):
@@ -92,20 +91,18 @@ class process(mp.Process): # Created by function calls and type checking
 			namespace.delete(value) # Delete binding from namespace
 		else:
 			namespace.write(value) # Mutate namespace
-		self.namespace[pid] = namespace # Force update shared dict
+		self.namespace[pid] = namespace # Update shared dict; nested objects don't sync unless you make them
 		self.namespace[0].release() # Releases namespace lock
 
 	def bind(self, name, value, type_name = 'untyped', reserved = False, definition = False): # Creates or updates a name binding in main
 		
-		if not definition and not isinstance(value, process):
+		if not definition and not isinstance(value, kleio.proxy):
 			value = self.cast(value, type_name)
 		self.update(arche.definition(name, value, type_name, reserved), self.pid)
 
 	def unbind(self, name): # Destroys a name binding in the current namespace
 		
-		namespace = self.namespace[self.pid] # Retrieve routine namespace
 		self.update(name, self.pid, delete = True)
-		self.namespace[self.pid] = namespace # Force update shared dict
 
 	def find(self, name): # Retrieves a binding in the routine's available namespace
 		
@@ -114,12 +111,12 @@ class process(mp.Process): # Created by function calls and type checking
 				return item # Return the binding
 		pid = self.pid
 		while pid in self.namespace:
-			value = self.namespace[pid].read(name)
-			if value:
-				if isinstance(value.value, process) and not value.value.bound: # If the name is associated with an unbound routine:
-					value.value = routine().cast(value.value.end.get(), value.type) # Block for return value and check type
-					self.update(value, pid) # Encapsulation? Yeah, I know her
-				return value
+			definition = self.namespace[pid].read(name)
+			if definition:
+				if isinstance(definition.value, kleio.proxy) and not definition.value.bound: # If the name is associated with an unbound routine:
+					definition.value = mp.current_process().cast(definition.value.get(), definition.type) # Block for return value and check type
+					self.update(definition, pid) # Is it breaking encapsulation if the target routine is finished when this happens?
+				return definition
 			else:
 				pid = self.namespace[pid].parent
 		raise NameError('Undefined name: ' + name)
@@ -237,7 +234,7 @@ class node: # Base node object
 			elif len(line) > 1 and line[1].value == ':':
 				token = assignment(line)
 			else: # Tokenises expressions
-				token = lexer(line).parse() # Passes control to a lexer object that returns an expression tree when parse() is called
+				token = kadmos.lexer(line).parse() # Passes control to a lexer object that returns an expression tree when parse() is called
 			parsed.append(token)
 
 		head, last = self, self # Head token and last line
@@ -280,7 +277,7 @@ class module(coroutine): # Module object is always the top level of a syntax tre
 
 	def execute(self):
 		
-		while routine().path[-1] <= len(self.nodes): # Allows more fine-grained control flow than using a for loop
+		while mp.current_process().path[-1] <= len(self.nodes): # Allows more fine-grained control flow than using a for loop
 			yield
 
 class type_statement(coroutine):
@@ -325,41 +322,41 @@ class function_definition(coroutine):
 
 	def execute(self):
 		
-		routine().bind(self.value[0].value, self, self.value[0].type, definition = True) # Ignores type checking
+		mp.current_process().bind(self.value[0].value, self, self.value[0].type, definition = True) # Ignores type checking
 		return_value = None
 		while True: # Execution loop
 			yield return_value
-			while routine().path[-1] <= len(self.nodes): # Allows more fine-grained control flow than using a for loop
+			while mp.current_process().path[-1] <= len(self.nodes): # Allows more fine-grained control flow than using a for loop
 				yield return_value
 			else: # Default behaviour for no return or yield
 				return_value = None
-				routine().end.put(return_value) # Sends value to return queue
+				mp.current_process().end.put(return_value) # Sends value to return queue
 
 class assignment(node):
 
 	def __init__(self, tokens):
 
-		super().__init__(tokens[0], lexer(tokens[2:]).parse())
+		super().__init__(tokens[0], kadmos.lexer(tokens[2:]).parse())
 
 	def execute(self):
 		
 		value = yield # Yields to main
-		yield routine().bind(self.value.value, value, self.value.type) # Yields to go up
+		yield mp.current_process().bind(self.value.value, value, self.value.type) # Yields to go up
 
 class if_statement(node):
 
 	def __init__(self, tokens):
 
-		super().__init__(None, lexer(tokens[1:-1]).parse())
+		super().__init__(None, kadmos.lexer(tokens[1:-1]).parse())
 
 	def execute(self):
 
 		condition = yield
 		if condition is True:
-			while routine().path[-1] <= len(self.nodes):
+			while mp.current_process().path[-1] <= len(self.nodes):
 				yield
 		elif condition is False:
-			yield routine().branch()
+			yield mp.current_process().branch()
 		else: # Over-specify on purpose to implement Sophia's specific requirement for a boolean
 			raise ValueError('Condition must evaluate to boolean')
 
@@ -367,7 +364,7 @@ class while_statement(node):
 
 	def __init__(self, tokens):
 
-		super().__init__(None, lexer(tokens[1:-1]).parse())
+		super().__init__(None, kadmos.lexer(tokens[1:-1]).parse())
 
 	def execute(self):
 
@@ -375,20 +372,20 @@ class while_statement(node):
 		if condition is not True and condition is not False: # Over-specify on purpose to implement Sophia's specific requirement for a boolean
 			raise ValueError('Condition must evaluate to boolean')
 		elif condition is False:
-			yield routine().branch()
+			yield mp.current_process().branch()
 		while condition:
-			while routine().path[-1] < len(self.nodes): # Continue breaks this condition early
+			while mp.current_process().path[-1] < len(self.nodes): # Continue breaks this condition early
 				yield
-			routine().branch(0) # Repeat nodes
+			mp.current_process().branch(0) # Repeat nodes
 			condition = yield
 		else:
-			yield routine().branch(len(self.nodes)) # Skip nodes
+			yield mp.current_process().branch(len(self.nodes)) # Skip nodes
 
 class for_statement(node):
 
 	def __init__(self, tokens):
 
-		super().__init__(tokens[1], lexer(tokens[3:-1]).parse())
+		super().__init__(tokens[1], kadmos.lexer(tokens[3:-1]).parse())
 
 	def execute(self):
 
@@ -397,13 +394,13 @@ class for_statement(node):
 		sequence = iter(sequence)
 		try:
 			while True: # Loop until the iterator is exhausted
-				routine().bind(index.value, next(sequence), index.type) # Binds the next value of the sequence to the loop index
-				while routine().path[-1] < len(self.nodes): # Continue breaks this condition early
+				mp.current_process().bind(index.value, next(sequence), index.type) # Binds the next value of the sequence to the loop index
+				while mp.current_process().path[-1] < len(self.nodes): # Continue breaks this condition early
 					yield
-				routine().branch(1) # Repeat nodes
+				mp.current_process().branch(1) # Repeat nodes
 		except StopIteration: # Break
-			routine().unbind(index.value) # Unbinds the index
-			yield routine().branch(len(self.nodes)) # Skip nodes
+			mp.current_process().unbind(index.value) # Unbinds the index
+			yield mp.current_process().branch(len(self.nodes)) # Skip nodes
 
 class else_statement(node):
 
@@ -417,7 +414,7 @@ class else_statement(node):
 
 	def execute(self): # Final else statement; gets overridden for non-final
 		
-		while routine().path[-1] <= len(self.nodes):
+		while mp.current_process().path[-1] <= len(self.nodes):
 			yield
 
 class assert_statement(node):
@@ -427,22 +424,22 @@ class assert_statement(node):
 		nodes, sequence = [], []
 		for token in tokens[1:-1]: # Collects all expressions in head statement
 			if token.value == ',':
-				nodes.append(lexer(sequence).parse())
+				nodes.append(kadmos.lexer(sequence).parse())
 				sequence = []
 			else:
 				sequence.append(token)
 		else:
-			nodes.append(lexer(sequence).parse())
+			nodes.append(kadmos.lexer(sequence).parse())
 			super().__init__(None, *nodes)
 			self.length = len(nodes)
 
 	def execute(self):
 		
-		while routine().path[-1] < self.length: # Evaluates all head statement nodes
+		while mp.current_process().path[-1] < self.length: # Evaluates all head statement nodes
 			value = yield
 			if value is None: # Catches null expressions
-				yield routine().branch()
-		while routine().path[-1] <= len(self.nodes):
+				yield mp.current_process().branch()
+		while mp.current_process().path[-1] <= len(self.nodes):
 			yield
 	
 class constraint_statement(node):
@@ -466,7 +463,7 @@ class return_statement(node):
 	def __init__(self, tokens):
 		
 		if len(tokens) > 1:
-			super().__init__(None, lexer(tokens[1:]).parse())
+			super().__init__(None, kadmos.lexer(tokens[1:]).parse())
 		else:
 			super().__init__(None)
 
@@ -476,7 +473,7 @@ class return_statement(node):
 			value = yield
 		else:
 			value = None
-		yield routine().end.put(value) # Sends value to return queue
+		yield mp.current_process().end.send(value) # Sends value to return queue
 
 class link_statement(node):
 
@@ -520,9 +517,9 @@ class literal(identifier): # Adds literal behaviours to a node
 			value = self
 		else: # If reference:
 			try:
-				value = routine().find(self.value).value
+				value = mp.current_process().find(self.value).value
 			except (NameError, TypeError) as status:
-				if isinstance(self.head, assert_statement) and routine().path[-1] < self.head.length: # Allows assert statements to reference unbound names without error
+				if isinstance(self.head, assert_statement) and mp.current_process().path[-1] < self.head.length: # Allows assert statements to reference unbound names without error
 					value = None
 				else:
 					raise status
@@ -537,7 +534,7 @@ class keyword(identifier): # Adds keyword behaviours to a node
 
 	def execute(self):
 
-		yield routine().control(self.value) # Control object handling continue and break
+		yield mp.current_process().control(self.value) # Control object handling continue and break
 
 class operator(node): # Generic operator node
 
@@ -555,7 +552,7 @@ class prefix(operator): # Adds prefix behaviours to a node
 
 	def execute(self): # Unary operators
 
-		op = routine().find(self.value) # Gets the operator definition
+		op = mp.current_process().find(self.value) # Gets the operator definition
 		x = yield
 		yield op.value[0](x) # Implements unary operator
 
@@ -564,8 +561,8 @@ class receive(prefix): # Defines the receive operator
 	def execute(self):
 
 		node = yield
-		value = routine().queue.get()
-		routine().bind(node.value, value, node.type)
+		value = mp.current_process().messages.recv()
+		mp.current_process().bind(node.value, value, node.type)
 		yield value
 
 class infix(operator): # Adds infix behaviours to a node
@@ -577,7 +574,7 @@ class infix(operator): # Adds infix behaviours to a node
 
 	def execute(self):
 		
-		op = routine().find(self.value) # Gets the operator definition
+		op = mp.current_process().find(self.value) # Gets the operator definition
 		x = yield
 		y = yield
 		yield op.value[1](x, y) # Implements left-binding binary operator
@@ -602,9 +599,9 @@ class infix_r(operator): # Adds right-binding infix behaviours to a node
 				yield value
 			else:
 				if isinstance(value[0], str):
-					yield record_element(value)
+					yield arche.record_element(value)
 				else:
-					yield slice(value)
+					yield arche.slice(value)
 		elif self.value == ',': # Sorts out comma-separated parameters by returning them as a tuple
 			x = yield
 			y = yield
@@ -617,7 +614,7 @@ class infix_r(operator): # Adds right-binding infix behaviours to a node
 			else:
 				yield tuple(value)
 		else: # Binary operators
-			op = routine().find(self.value) # Gets the operator definition
+			op = mp.current_process().find(self.value) # Gets the operator definition
 			x = yield
 			y = yield
 			yield op.value[1](x, y) # Implements right-binding binary operator
@@ -632,11 +629,11 @@ class bind(operator): # Defines the bind operator
 	def execute(self):
 
 		value = yield # Yields to main
-		if isinstance(value, process):
+		if isinstance(value, kleio.proxy):
 			value.bound = True
 		else:
 			raise SyntaxError('Invalid bind')
-		yield routine().bind(self.value.value, value, self.value.type) # Yields to go up
+		yield mp.current_process().bind(self.value.value, value, self.value.type) # Yields to go up
 
 class send(operator): # Defines the send operator
 
@@ -648,13 +645,13 @@ class send(operator): # Defines the send operator
 	def execute(self):
 
 		value = yield # Sending only ever takes 1 argument
-		value = routine().cast(value, self.routine().type)
-		address = routine().find(self.value.value).value
-		if not isinstance(address, process):
+		value = mp.current_process().cast(value, self.routine().type)
+		address = mp.current_process().find(self.value.value).value
+		if not isinstance(address, kleio.proxy):
 			raise SyntaxError('Invalid send')
-		if address is routine():
+		if address.name == mp.current_process().name:
 			raise SyntaxError('Source and destination are the same')
-		yield address.queue.put(value) # Sends value to destination queue
+		yield address.send(value) # Sends value to destination queue
 
 class left_bracket(operator): # Adds left-bracket behaviours to a node
 
@@ -688,10 +685,10 @@ class function_call(left_bracket):
 		if not isinstance(args, tuple): # Type correction
 			args = tuple([args]) # Very tiresome type correction, at that
 		if isinstance(function, function_definition): # If user-defined:
-			child = process(routine().namespace, function, *args) # Create new routine
+			child = process(mp.current_process().namespace, function, *args) # Create new routine
 			child.start() # Start process for routine
 			if isinstance(self.head, (assignment, bind, send)):
-				yield child # Yields process object as a promise
+				yield child.proxy # Yields proxy object as a promise
 			else:
 				yield child.end.get() # Blocks until function returns
 		else: # If built-in:
@@ -722,7 +719,7 @@ class sequence_index(left_bracket):
 			if isinstance(i, str):
 				if i not in value:
 					raise KeyError('Key not in record: ' + i)
-			elif isinstance(i, slice):
+			elif isinstance(i, arche.slice):
 				try:
 					if i.nodes[1] < -1 * len(value) or i.nodes[1] > len(value): # If out of bounds:
 						raise IndexError('Index out of bounds')
@@ -731,7 +728,7 @@ class sequence_index(left_bracket):
 			else:
 				if i < -1 * len(value) or i >= len(value): # If out of bounds:
 					raise IndexError('Index out of bounds')
-			if isinstance(i, slice):
+			if isinstance(i, arche.slice):
 				if isinstance(value, str):
 					value = ''.join(value) # Constructs slice of string using range
 				elif isinstance(value, dict):
@@ -747,14 +744,14 @@ class sequence_literal(left_bracket):
 	def execute(self):
 		
 		items = yield
-		if isinstance(items, slice): # If slice:
+		if isinstance(items, arche.slice): # If slice:
 			yield items.execute() # Gives slice expansion
 		else:
 			if not isinstance(items, tuple):
 				items = [items]
 			else:
 				items = list(items)
-		if isinstance(items[0], record_element): # If items is a key-item pair in a record
+		if isinstance(items[0], arche.record_element): # If items is a key-item pair in a record
 			yield {item.value[0]: item.value[1] for item in items} # Stupid way to merge a list of dictionaries
 		else: # If items is a list
 			if items and items != [None]: # Handles empty lists
@@ -780,78 +777,11 @@ class right_bracket(operator): # Adds right-bracket behaviours to a node
 
 		super().__init__(value)
 
-class slice(node): # Initialised during execution
-
-	def __init__(self, slice_list):
-
-		if len(slice_list) == 2: # Normalises list slice
-			slice_list.append(1)
-		if slice_list[1] >= 0: # Correction for inclusive range
-			slice_list[1] = slice_list[1] + 1
-		else:
-			slice_list[1] = slice_list[1] - 1
-		super().__init__(range(*slice_list), *slice_list) # Stores slice and iterator
-
-	def __iter__(self): # Overrides __iter__() method
-
-		return iter(self.value) # Enables iteration over range without expanding slice
-
-	def execute(self): # Returns expansion of slice
-
-		return [i for i in self.value]
-
-class record_element(node): # Initialised during record construction
-
-	def __init__(self, value):
-
-		super().__init__(value)
-
-class eol(node): # Creates an end-of-line node
-
-	def __init__(self):
-
-		super().__init__(None)
-		self.lbp = -1
-
-class lexer: # Lex object to get around not being able to peek the next value of an iterator
-
-	def __init__(self, tokens):
-
-		self.lexes = (iter(tokens), iter(tokens))
-		self.token = None
-		self.peek = next(self.lexes[1])
-
-	def use(self): # Gets the next tokens
-
-		self.token = next(self.lexes[0])
-		try:
-			self.peek = next(self.lexes[1])
-		except StopIteration:
-			self.peek = eol()
-
-	def parse(self, lbp = 0): # Pratt parser for expressions - takes a lex construct and the left-binding power
-
-		self.use()
-		if isinstance(self.peek, eol): # Detects end of expression
-			return self.token # End-of-line token
-		left = self.token.nud(self) # Executes null denotation of current token
-		while lbp < self.peek.lbp:
-			self.use()
-			left = self.token.led(self, left) # Executes left denotation of current token
-			if isinstance(self.peek, eol): # Detects end of expression
-				return left # Returns expression tree
-		else:
-			return left # Preserves state of next_token for higher-level calls
-
-	# https://eli.thegreenplace.net/2010/01/02/top-down-operator-precedence-parsing
-	# https://abarker.github.io/typped/pratt_parsing_intro.html
-	# https://web.archive.org/web/20150228044653/http://effbot.org/zone/simple-top-down-parsing.htm
-	# https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
-
 if __name__ == '__main__': # Hatred
 
 	with mp.Manager() as runtime: # The stupidest global state you've ever seen in your life
 		
+		mp.current_process().name = 'runtime'
 		namespace = runtime.dict({0: runtime.Lock()}) # Unfortunate namespace hierarchy, but at least processes never write to the same memory
 		main = process(namespace, module('test.sophia')) # Spawn initial process
 		main.start() # Start initial process

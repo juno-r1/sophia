@@ -26,6 +26,47 @@ binding_power = (('(', ')', '[', ']', '{', '}'), # The left-binding power of a b
 				 ('*', '/', '%'),
 				 ('^',))
 
+class lexer: # Lex object to get around not being able to peek the next value of an iterator
+
+	def __init__(self, tokens):
+
+		self.lexes = (iter(tokens), iter(tokens))
+		self.token = None
+		self.peek = next(self.lexes[1])
+
+	def use(self): # Gets the next tokens
+
+		self.token = next(self.lexes[0])
+		try:
+			self.peek = next(self.lexes[1])
+		except StopIteration:
+			self.peek = eol()
+
+	def parse(self, lbp = 0): # Pratt parser for expressions - takes a lex construct and the left-binding power
+
+		self.use()
+		if isinstance(self.peek, eol): # Detects end of expression
+			return self.token # End-of-line token
+		left = self.token.nud(self) # Executes null denotation of current token
+		while lbp < self.peek.lbp:
+			self.use()
+			left = self.token.led(self, left) # Executes left denotation of current token
+			if isinstance(self.peek, eol): # Detects end of expression
+				return left # Returns expression tree
+		else:
+			return left # Preserves state of next_token for higher-level calls
+
+	# https://eli.thegreenplace.net/2010/01/02/top-down-operator-precedence-parsing
+	# https://abarker.github.io/typped/pratt_parsing_intro.html
+	# https://web.archive.org/web/20150228044653/http://effbot.org/zone/simple-top-down-parsing.htm
+	# https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
+
+class eol: # Creates a sentinel object
+
+	def __init__(self):
+		
+		self.lbp = -1
+
 def line_split(line): # Takes a line from the file data and splits it into tokens
 	
 	tokens = []

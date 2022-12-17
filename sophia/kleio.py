@@ -1,4 +1,4 @@
-from multiprocessing import Process, Lock, current_process, parent_process
+from multiprocessing import Process, current_process, parent_process
 
 class namespace: # Base namespace object
 
@@ -10,7 +10,7 @@ class namespace: # Base namespace object
 
 	def __str__(self):
 
-		return '===\n' + '\n---\n'.join((str(item) for item in self._space)) + '\n==='
+		return '===\n' + '\n---\n'.join((str(item) for item in [self.name] + list(self._space.values()))) + '\n==='
 
 	def read(self, name):
 
@@ -38,3 +38,21 @@ class namespace: # Base namespace object
 			del self._space[name] # Delete binding if it exists in the namespace
 		except KeyError:
 			raise NameError('Undefined name: ' + name)
+
+class proxy: # Proxy object pretending to be a process
+
+	def __init__(self, process):
+		
+		self.name = process.name
+		self.pid = process.pid
+		self.messages = None # Pipe to send messages
+		self.end = None # Pipe for return value
+		self.bound = False # Determines whether process can be resolved
+
+	def send(self, value): # Proxy method to send to process
+
+		return self.messages.send(value)
+
+	def get(self): # Proxy method to get return value from process
+
+		return self.end.recv()

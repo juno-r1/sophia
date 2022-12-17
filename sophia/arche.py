@@ -20,6 +20,32 @@ class definition: # Created by assignment
 			binding = (self.name, self.type, repr(self.value))
 		return ' '.join(binding)
 
+class slice: # Initialised during execution
+
+	def __init__(self, slice_list):
+
+		if len(slice_list) == 2: # Normalises list slice
+			slice_list.append(1)
+		if slice_list[1] >= 0: # Correction for inclusive range
+			slice_list[1] = slice_list[1] + 1
+		else:
+			slice_list[1] = slice_list[1] - 1
+		self.value, self.nodes = range(*slice_list), slice_list # Stores slice and iterator
+
+	def __iter__(self): # Overrides __iter__() method
+
+		return iter(self.value) # Enables iteration over range without expanding slice
+
+	def execute(self): # Returns expansion of slice
+
+		return [i for i in self.value]
+
+class record_element: # Initialised during record construction
+
+	def __init__(self, value):
+
+		self.value = value
+
 def types(): # Yeah, there's some name mangling going on here
 
 	def _untyped(value):

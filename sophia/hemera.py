@@ -36,11 +36,8 @@ def debug_process(process): # Takes a process object
 
 def debug_memory(process): # Takes a process object
 	
-	print(process.namespace[process.pid], flush = True)
+	pass
 
 def debug_namespace(process): # Takes a process object
 	
-	for i, binding in enumerate(process.namespace[process.pid]):
-		print(binding) # Uses __str__ method of definition
-		if i != len(process.namespace) - 1:
-			print('---')
+	print(process.namespace[process.pid], flush = True)
