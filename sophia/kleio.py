@@ -8,7 +8,7 @@ class namespace: # Base namespace object
 		self.parent = parent_process().pid # PID of parent process
 		self._space = {arg.name: arg for arg in args} # Dict of definitions for faster access
 
-	def __str__(self):
+	def __repr__(self):
 
 		return '===\n' + '\n---\n'.join((str(item) for item in [self.name] + list(self._space.values()))) + '\n==='
 

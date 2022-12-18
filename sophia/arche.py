@@ -97,7 +97,7 @@ def functions():
 
 	def _print(*value):
 
-		return print(*value, flush = True)
+		return print(*value)
 
 	def _error(value):
 		

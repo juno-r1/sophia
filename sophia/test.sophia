@@ -1,21 +1,5 @@
-int a ():
+int a (int n):
 
-	while *n < 20:
-		n: n + 1
-		print(n)
-		n -> y
-		if n >= 20:
-			break
-	return n
+	print(n + 2)
 
-int b ():
-	
-	while *n < 20:
-		n: n + 2
-		print(n)
-		n -> x
-	return n
-
-x <- a()
-y <- b()
-1 -> x
+a(1)

@@ -223,3 +223,17 @@ no call stack required; instead, store supervisor in binding and children in nam
 no need to manage namespacing basically ever since the namespaces that a routine can access are intrinsically tied to it
 one process per routine?
 multiprocessing, process object for each routine?
+
+---
+
+type definition starts a routine for a type
+type routine is always running asynchronously
+type casting sends a message to the routine and awaits a response
+routine can only process one message at a time
+
+the code defined in the type definition runs when a message is sent to the routine. it sends the message back to its source if successful (runs all the way through without error), and performs the protocol for a failed constraint if not
+
+type routine must not return
+type routine can only be sent messages by type casting
+type routine can only receive messages by type casting
+type routine cannot be bound
