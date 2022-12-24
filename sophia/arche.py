@@ -1,93 +1,20 @@
-from fractions import Fraction as real
-
-class definition: # Created by assignment
-
-	def __init__(self, name, value, type_name, reserved = False):
-
-		self.name = name
-		self.value = value
-		self.type = type_name
-		self.reserved = reserved
-
-	def __str__(self): # Overrides print() representation
-
-		name = type(self.value).__name__
-		if name == 'process':
-			binding = (self.name, self.type, self.value.name, str([item.value for item in self.value.namespace]))
-		elif name == 'function_definition':
-			binding = (self.name, self.type, str([item.type + ' ' + item.value for item in self.value.value[1:]]))
-		else:
-			binding = (self.name, self.type, repr(self.value))
-		return ' '.join(binding)
-
 class slice: # Initialised during execution
 
 	def __init__(self, slice_list):
-
-		if len(slice_list) == 2: # Normalises list slice
-			slice_list.append(1)
+		
 		if slice_list[1] >= 0: # Correction for inclusive range
 			slice_list[1] = slice_list[1] + 1
 		else:
 			slice_list[1] = slice_list[1] - 1
 		self.value, self.nodes = range(*slice_list), slice_list # Stores slice and iterator
 
-	def __iter__(self): # Overrides __iter__() method
+	def __iter__(self): # Enables loop syntax
 
 		return iter(self.value) # Enables iteration over range without expanding slice
 
 	def execute(self): # Returns expansion of slice
 
 		return [i for i in self.value]
-
-class record_element: # Initialised during record construction
-
-	def __init__(self, value):
-
-		self.value = value
-
-def types(): # Yeah, there's some name mangling going on here
-
-	def _untyped(value):
-
-		return value
-
-	def _integer(value):
-
-		if (not isinstance(value, bool)) and (isinstance(value, int) or isinstance(value, (float, real)) and int(value) == value):
-			return int(value)
-
-	def _float(value):
-
-		if (not isinstance(value, bool)) and (isinstance(value, float) or isinstance(value, (int, real)) and float(value) == value):
-			return float(value)
-
-	def _real(value):
-
-		if (not isinstance(value, bool)) and (isinstance(value, real) or isinstance(value, (int, float)) and real(str(value)) == value):
-			return real(str(value)) # String conversion necessary because Python is extremely weird about precision
-
-	def _boolean(value):
-		
-		if value is True or value is False:
-			return value
-
-	def _string(value):
-
-		if isinstance(value, str):
-			return value
-
-	def _list(value):
-
-		if isinstance(value, list):
-			return value
-
-	def _record(value):
-
-		if isinstance(value, dict):
-			return value
-
-	return [(name[1:], value, 'type', True) for name, value in locals().items()]
 
 def functions():
 
@@ -179,4 +106,4 @@ def operators():
 
 	return [(value[0], (value[1], value[2]), 'operator', True) for value in locals().values()]
 
-builtins = tuple(definition(*item) for item in types() + functions() + operators()) # Forbidden tuple comprehension [NOT CLICKBAIT]
+#builtins = tuple(definition(*item) for item in types() + functions() + operators()) # Forbidden tuple comprehension [NOT CLICKBAIT]

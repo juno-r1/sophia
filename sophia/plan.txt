@@ -230,10 +230,10 @@ type definition starts a routine for a type
 type routine is always running asynchronously
 type casting sends a message to the routine and awaits a response
 routine can only process one message at a time
+manually sending to a type routine is equivalent to a type check
+for example, x -> int is equivalent to python int(x)
 
 the code defined in the type definition runs when a message is sent to the routine. it sends the message back to its source if successful (runs all the way through without error), and performs the protocol for a failed constraint if not
 
 type routine must not return
-type routine can only be sent messages by type casting
-type routine can only receive messages by type casting
 type routine cannot be bound
