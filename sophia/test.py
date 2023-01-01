@@ -1,38 +1,44 @@
-class meta(type):
+import arche
 
-	def __instancecheck__(self, instance):
-	
-		return self.__name__ in [cls.__name__ for cls in type(instance).__mro__]
+class sophia_untyped: # Abstract base class
 
-	def new(cls, value):
+	types = object
+
+	def __new__(cls, value): # Using __new__ for casting
+
+		if isinstance(value, sophia_untyped):
+			value = value.value
+		if issubclass(type(value), cls.types):
+			return object.__new__(cls)
+
+	def __init__(self, value):
+
+		self.value = value
+
+class sophia_string(sophia_untyped):
+
+	types = str
+
+class sophia_integer(sophia_untyped): # Integer type
+
+	types = int
+
+	def __new__(cls, value):
 		
-		cls_dict = {name: attr for name, attr in list(cls.__dict__.items()) if name != '__new__'}
-		if len(type(value).__mro__) > 2:
-			value = type(value).__mro__[-2](value)
-		if len(cls.__mro__) > 2:
-			value = meta.new(cls.__mro__[1], value)
-		return meta(cls.__name__, type(value).__mro__, cls_dict)(value)
+		if isinstance(value, sophia_untyped):
+			value = value.value
+		print(cls.__mro__)
+		if issubclass(type(value), cls.__mro__[0].types) and int(value) == value:
+			return object.__new__(cls)
 
-abstract = meta('abstract', (), {'__new__': meta.new})
+	def __init__(self, value):
 
-class boolean(abstract): # Boolean type
+		if isinstance(value, (bool, float)) and int(value) == value:
+			value = int(value)
+		self.value = value
 
-	def __new__(cls, value): # Hatred
+def a():
 
-		if value is True or value is False or isinstance(value, cls):
-			return super().__new__(cls, value)
-		
-	def __bool__(self): # Spoofs being a true boolean
-		
-		return self != 0
+	pass
 
-	def __str__(self):
-		
-		return str(bool(self)).lower()
-
-a = boolean(True)
-b = boolean(False)
-c = boolean(a)
-print(a, type(a).__mro__)
-print(b, type(b).__mro__)
-print(c, type(c).__mro__)
+print(arche.__dict__)

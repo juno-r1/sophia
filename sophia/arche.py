@@ -16,94 +16,229 @@ class slice: # Initialised during execution
 
 		return [i for i in self.value]
 
-def functions():
+class operator: # Base operator object
 
-	def _input(value):
+	def __init__(self, symbol, unary, binary, *types):
 
-		return input(value)
+		self.symbol = symbol # Operator symbol
+		self.unary = unary # Unary function
+		self.binary = binary # Binary function
+		self.types = types # Tuple of return type and input types
 
-	def _print(*value):
+def u_add(x):
 
-		return print(*value)
+	return x
 
-	def _error(value):
+def b_add(x, y):
+
+	return x + y
+
+def u_sub(x):
+
+	return -x
+
+def b_sub(x, y):
+
+	return x - y
+
+def b_mul(x, y):
+
+	return x * y
+
+def b_div(x, y):
+
+	if y != 0: # Null return on division-by-zero
+		return x / y
+
+def b_exp(x, y):
+
+	return x ** y
+
+def b_mod(x, y):
+
+	if y != 0: # Null return on modulo-by-zero
+		return x % y
+
+def b_eql(x, y):
+
+	return x == y
+
+def b_neq(x, y):
+
+	return x != y
+
+def b_ltn(x, y):
+
+	return x < y
+
+def b_gtn(x, y):
+
+	return x > y
+
+def b_leq(x, y):
+
+	return x <= y
+
+def b_geq(x, y):
+
+	return x >= y
+
+def b_sbs(x, y):
+
+	return x in y
+
+def u_lnt(x):
+
+	return not x
+
+def b_lnd(x, y):
+
+	return x and y
+
+def b_lor(x, y):
+
+	return x or y
+
+def b_lxr(x, y):
+
+	return x != y
+
+def b_ins(x, y):
+
+	if type(x) is type(y): # Only works on operands of the same type
+		return [i for i in x if i in y] # Order of list dependent on order of operators
+
+def b_uni(x, y):
+
+	if type(x) is type(y):
+		if isinstance(x, dict):
+			return x | y
+		else:
+			return x + y
+
+op_add = operator('+',							# Symbol
+				  u_add,						# Unary operator
+				  b_add,						# Binary operator
+				  'number', 'number', 'number')	# Return type and input types
+
+op_sub = operator('-',
+				  u_sub,
+				  b_sub,
+				  'number', 'number', 'number')
+
+op_mul = operator('*',
+				  None,
+				  b_mul,
+				  'number', 'number', 'number')
+
+op_div = operator('/',
+				  None,
+				  b_div,
+				  'number', 'number', 'number')
+
+op_exp = operator('^',
+				  None,
+				  b_exp,
+				  'number', 'number', 'number')
+
+op_mod = operator('%',
+				  None,
+				  b_mod,
+				  'number', 'number', 'number')
+
+op_eql = operator('=',
+				  None,
+				  b_eql,
+				  'boolean', 'untyped', 'untyped')
+
+op_neq = operator('!=',
+				  None,
+				  b_neq,
+				  'boolean', 'untyped', 'untyped')
+
+op_ltn = operator('<',
+				  None,
+				  b_ltn,
+				  'boolean', 'number', 'number')
+
+op_gtn = operator('>',
+				  None,
+				  b_gtn,
+				  'boolean', 'number', 'number')
+
+op_leq = operator('<=',
+				  None,
+				  b_leq,
+				  'boolean', 'number', 'number')
+
+op_geq = operator('>=',
+				  None,
+				  b_geq,
+				  'boolean', 'number', 'number')
+
+op_sbs = operator('in',
+				  None,
+				  b_sbs,
+				  'boolean', 'untyped', 'sequence')
+
+op_lnt = operator('not',
+				  u_lnt,
+				  None,
+				  'boolean', 'boolean', 'boolean')
+
+op_lnd = operator('and',
+				  None,
+				  b_lnd,
+				  'boolean', 'boolean', 'boolean')
+
+op_lor = operator('or',
+				  None,
+				  b_lor,
+				  'boolean', 'boolean', 'boolean')
+
+op_lxr = operator('xor',
+				  None,
+				  b_lxr,
+				  'boolean', 'boolean', 'boolean')
+
+op_ins = operator('&',
+				  None,
+				  b_ins,
+				  'sequence', 'sequence', 'sequence')
+
+op_uni = operator('|',
+				  None,
+				  b_uni,
+				  'sequence', 'sequence', 'sequence')
+
+op_bnt = operator('~', # Byte operators currently unimplemented
+				  None,
+				  None,
+				  'untyped', 'untyped', 'untyped')
+
+op_bnd = operator('&&',
+				  None,
+				  None,
+				  'untyped', 'untyped', 'untyped')
+
+op_bor = operator('||',
+				  None,
+				  None,
+				  'untyped', 'untyped', 'untyped')
+
+op_bxr = operator('^^',
+				  None,
+				  None,
+				  'untyped', 'untyped', 'untyped')
+
+def sophia_input(value):
+
+	return input(value)
+
+def sophia_print(*value):
+
+	return print(*value)
+
+def sophia_error(value):
 		
-		raise Exception(value)
-		
-	return [(name[1:], value, 'untyped', True) for name, value in locals().items()]
-
-def operators():
-	
-	add = ('+',                 # Symbol
-		   lambda x: x,			# Unary operator
-		   lambda x, y: x + y)  # Binary operator
-	sub = ('-',
-		   lambda x: -x,
-		   lambda x, y: x - y)
-	mul = ('*',
-		   None,
-		   lambda x, y: x * y)
-	div = ('/',
-		   None,
-		   lambda x, y: x / y if y != 0 else None) # Null return on division-by-zero
-	exp = ('^',
-		   None,
-		   lambda x, y: x ** y)
-	mod = ('%',
-		   None,
-		   lambda x, y: x % y if y != 0 else None) # Null return on modulo-by-zero
-	ins = ('&',
-		   None,
-		   lambda x, y: type(x)([i for i in x if i in y])) # Order of list dependent on order of operators
-	uni = ('|',
-		   None,
-		   lambda x, y: x + y)
-	bnt = ('~',
-		   lambda x: ~x,
-		   None)
-	bnd = ('&&',
-		   None,
-		   lambda x, y: x & y)
-	bor = ('||',
-		   None,
-		   lambda x, y: x | y)
-	bxr = ('^^',
-		   None,
-		   lambda x, y: x ^ y)
-	eql = ('=',
-		   None,
-		   lambda x, y: x == y)
-	ltn = ('<',
-		   None,
-		   lambda x, y: x < y)
-	gtn = ('>',
-		   None,
-		   lambda x, y: x > y)
-	neq = ('!=',
-		   None,
-		   lambda x, y: x != y)
-	leq = ('<=',
-		   None,
-		   lambda x, y: x <= y)
-	geq = ('>=',
-		   None,
-		   lambda x, y: x >= y)
-	sbs = ('in',
-		   None,
-		   lambda x, y: x in y)
-	lnt = ('not',
-		   lambda x: not x,
-		   None)
-	lnd = ('and',
-		   None,
-		   lambda x, y: x and y)
-	lor = ('or',
-		   None,
-		   lambda x, y: x or y)
-	lxr = ('xor',
-		   None,
-		   lambda x, y: x is not y)
-
-	return [(value[0], (value[1], value[2]), 'operator', True) for value in locals().values()]
-
-#builtins = tuple(definition(*item) for item in types() + functions() + operators()) # Forbidden tuple comprehension [NOT CLICKBAIT]
+	raise Exception(value)

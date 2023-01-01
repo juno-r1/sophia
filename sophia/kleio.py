@@ -5,8 +5,11 @@ class namespace: # Base namespace object
 	def __init__(self, params, args):
 
 		self.name = current_process().name
-		self.parent = parent_process().pid # PID of parent process
-		self.__space = {param.value: arg for param, arg in zip(params, args)} # Dict of values for faster access
+		if parent_process():
+			self.parent = parent_process().pid # PID of parent process
+		else:
+			self.parent = 1 # Points to builtins
+		self.__space = dict(zip(params, args)) # Dict of values for faster access
 
 	def __repr__(self):
 
@@ -21,10 +24,10 @@ class namespace: # Base namespace object
 
 	def write(self, name, value):
 		
-		if name in current_process().reserved: # If the name is bound, or is a loop index:
-			raise NameError('Bind to reserved name: ' + name)
-		else:
-			self.__space[name] = value # Update or create new binding
+		#if name in current_process().reserved: # If the name is bound, or is a loop index:
+		#	raise NameError('Bind to reserved name: ' + name)
+		#else:
+		self.__space[name] = value # Update or create new binding
 
 	def delete(self, name):
 

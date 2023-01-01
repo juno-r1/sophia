@@ -16,25 +16,16 @@ class process(mp.Process): # Created by function calls and type checking
 		
 		super().__init__(name = mp.current_process().name + '.' + routine.name, target = self.execute, args = args)
 		self.type = routine.type
-		self.namespace = namespace # Reference to shared namespace hierarchy
-		self.proxy = sophia_process(self)
-		self.messages, self.proxy.messages = mp.Pipe() # Pipe to receive messages
-		self.end, self.proxy.end = mp.Pipe() # Pipe to send return value
 		self.instances = []
 		self.path = [0]
 		self.node = routine # Current node; sets initial module as entry point
 		self.value = None # Current value
+		self.namespace = namespace # Reference to shared namespace hierarchy
+		self.proxy = sophia_process(self)
+		self.messages, self.proxy.messages = mp.Pipe() # Pipe to receive messages
+		self.end, self.proxy.end = mp.Pipe() # Pipe to send return value
 
 	def __repr__(self):
-		
-		if isinstance(self.node, module):
-			value = self.node.name
-		elif isinstance(self.node.value, list):
-			value = str([item.type + ' ' + item.value for item in self.node.value[1:]])
-		elif isinstance(self.node.value, literal):
-			value = str(self.node.value.value)
-		else:
-			value = str(self.node.value)
 
 		return ' '.join((str(getattr(self.node, 'n', 0)).zfill(4), mp.current_process().name, str(self.path[-1]), repr(self.node)))
 
@@ -44,6 +35,7 @@ class process(mp.Process): # Created by function calls and type checking
 		if len(params) != len(args):
 			raise SyntaxError('Expected {0} arguments, received {1}'.format(len(params), len(args)))
 		args = [self.cast(arg, params[i].type) for i, arg in enumerate(args)] # Check type of args against params
+		params = [item.value for item in params] # Get names of params
 		self.namespace[self.pid] = kleio.namespace(params, args) # Updates namespace hierarchy
 		self.instances.append(self.node.execute()) # Start routine
 		while self.node: # Runtime loop
@@ -109,8 +101,9 @@ class process(mp.Process): # Created by function calls and type checking
 
 	def find(self, name): # Retrieves a binding in the routine's available namespace
 		
-		if name in arche.builtins: # Searches built-ins first; built-ins are independent of namespaces
-			return arche.builtins[name]
+		value = self.namespace[1].read(name) # Searches built-ins first; built-ins are independent of namespaces
+		if value:
+			return value
 		pid = self.pid
 		while pid in self.namespace:
 			self.namespace[0].acquire()
@@ -127,6 +120,8 @@ class process(mp.Process): # Created by function calls and type checking
 
 	def cast(self, value, type_name): # Checks type of value and returns boolean
 				
+		if not type_name: # For literals of unspecified type
+			return value
 		type_routine = self.find(type_name)
 		while type_routine:
 			value = type_routine(value) # Invokes type check
@@ -253,7 +248,6 @@ class node: # Base node object
 			last = line
 		else:
 			hemera.debug_tree(self) # Uncomment for parse tree debug information
-			print('===')
 			return self
 
 class coroutine(node): # Base coroutine object
@@ -304,7 +298,7 @@ class type_statement(coroutine):
 
 	def execute(self):
 
-		routine = process(mp.current_process().namespace, self, *args) # Create new routine
+		routine = process(mp.current_process().namespace, self) # Create new routine
 		routine.start() # Start process for routine
 		if isinstance(self.head, (assignment, bind, send)):
 			yield routine.proxy # Yields proxy object as a promise
@@ -529,9 +523,9 @@ class identifier(node): # Generic identifier class
 
 		if value[0] in '.0123456789': # Terrible way to check for a number without using a try/except block
 			if '.' in value:
-				value = sophia_real(value) # Cast to real by default
+				value = sophia_real(real(str(value))) # Cast to real by default
 			else:
-				value = sophia_integer(value) # Cast to int
+				value = sophia_integer(int(value)) # Cast to int
 		elif value[0] in ('"', "'"):
 			value = sophia_string(value[1:-1]) # Interpret as string
 		elif value in kadmos.sub_values:
@@ -597,7 +591,7 @@ class prefix(operator): # Adds prefix behaviours to a node
 
 		op = mp.current_process().find(self.value) # Gets the operator definition
 		x = yield
-		yield op.value[0](x) # Implements unary operator
+		yield op(x) # Implements unary operator
 
 class receive(prefix): # Defines the receive operator
 
@@ -620,7 +614,7 @@ class infix(operator): # Adds infix behaviours to a node
 		op = mp.current_process().find(self.value) # Gets the operator definition
 		x = yield
 		y = yield
-		yield op.value[1](x, y) # Implements left-binding binary operator
+		yield op(x, y) # Implements left-binding binary operator
 
 class infix_r(operator): # Adds right-binding infix behaviours to a node
 
@@ -657,7 +651,7 @@ class infix_r(operator): # Adds right-binding infix behaviours to a node
 			op = mp.current_process().find(self.value) # Gets the operator definition
 			x = yield
 			y = yield
-			yield op.value[1](x, y) # Implements right-binding binary operator
+			yield op(x, y) # Implements right-binding binary operator
 
 class bind(operator): # Defines the bind operator
 
@@ -737,9 +731,9 @@ class function_call(left_bracket):
 		if isinstance(function, sophia_function):
 			value = function(*args) # Behaves like a Python function
 			if isinstance(value, sophia_process) and not isinstance(self.head, (assignment, bind, send)):
-				return value.get() # Blocks until function returns
+				yield value.get() # Blocks until function returns
 			else:
-				return value
+				yield value
 		else:
 			raise TypeError(function.__name__ + ' is not a function')
 
@@ -819,40 +813,64 @@ class right_bracket(operator): # Adds right-bracket behaviours to a node
 
 # Type definitions
 
-class meta(type): # Metaclass of Sophia types
+class sophia_untyped: # Non-abstract base class
 
-	def __instancecheck__(self, instance): # Fixes isinstance() for Sophia types
-	
-		return self.__name__ in [cls.__name__ for cls in type(instance).__mro__] # Checks by name instead of by ID
+	types = object # Type or tuple of types that the class instance's value can be
 
-	def new(cls, value): # Creates new objects with the specified type, inheriting from any built-in type, or casts Sophia types to the specified type
-		
-		if isinstance(value, process):
-			return meta(cls.__name__, (object,), {})()
-		else:
-			modules = [cls.__module__ for cls in type(value).__mro__[::-1]]
-			if '__main__' in modules: # Get lowest built-in type of value
-				builtin = type(value).__mro__[::-1][modules.index('__main__') - 1]
-			else:
-				builtin = type(value).__mro__[::-1][-1]
-			value = builtin(value) 
-			if len(cls.__mro__) > 2: # Allows inheritance for Sophia types
-				value = meta.new(cls.__mro__[1], value) # Recursively defines type
-			cls_dict = {name: attr for name, attr in list(cls.__dict__.items()) if name != '__new__'} # Allows subtype methods
-			return meta(cls.__name__, type(value).__mro__, cls_dict)(value) # Returns an instance of a class defined by meta inheriting from the built-in type of the specified value
+	def __new__(cls, value): # Using __new__ for casting; this allows a separate __init__ and returns null for failed casts
 
-sophia_untyped = meta('abstract', (), {'__new__': meta.new}) # Non-abstract base type
+		if isinstance(value, sophia_untyped) and cls is not sophia_process: # Normalises Sophia values
+			value = value.value
+		if isinstance(value, cls.types):
+			return object.__new__(cls)
+
+	def __init__(self, value): # Default __init__()
+
+		if isinstance(value, sophia_untyped): # Normalises Sophia values
+			value = value.value
+		self.value = value
+
+	def __getnewargs__(self): # Handles unpickling; return value is passed to __new__()
+
+		return (self.value,)
+
+	def __repr__(self):
+
+		return repr(self.value)
+
+class sophia_routine(sophia_untyped): # Abstract routine type
+
+	types = coroutine # Currently user-defined only
+
+	def __new__(cls, value): # Using __new__ for casting; this allows a separate __init__ and returns null for failed casts
+
+		if isinstance(value, sophia_untyped) and cls is not sophia_process: # Normalises Sophia values
+			value = value.value
+		if isinstance(value, cls.types):
+			return object.__new__(cls)
 
 class sophia_process(sophia_untyped): # Proxy object pretending to be a process
 
-	def __init__(self, process):
+	def __new__(cls, value): # Special __new__ for internal type
 		
-		self.name = process.name
-		self.type = process.type
-		self.pid = process.pid
-		self.messages = None # Pipe to send messages
-		self.end = None # Pipe for return value
-		self.bound = False # Determines whether process is bound
+		if isinstance(value, (cls, process, dict)): # Because of __getnewargs__()
+			return object.__new__(cls)
+
+	def __init__(self, value):
+		
+		if isinstance(value, dict):
+			self.__dict__.update(value)
+		else:
+			self.name = value.name
+			self.type = value.type
+			self.pid = value.pid
+			self.messages = None # Pipe to send messages
+			self.end = None # Pipe for return value
+			self.bound = False # Determines whether process is bound
+
+	def __getnewargs__(self): # Handles unpickling; return value is passed to __new__()
+
+		return (self.__dict__.copy(),)
 
 	def send(self, value): # Proxy method to send to process
 
@@ -862,89 +880,102 @@ class sophia_process(sophia_untyped): # Proxy object pretending to be a process
 
 		return self.end.recv()
 
-class sophia_routine(sophia_untyped): # Abstract routine type
-
-	def __init__(self, routine):
-
-		self.routine = routine
-
-class sophia_module(sophia_routine): pass # Module type
-
 class sophia_type(sophia_routine): # Type type
+
+	types = (type_statement, type)
 
 	def __call__(self, value): # Enables function calls on value
 
-		if isinstance(self.routine, type_statement):
+		if isinstance(self.value, type_statement):
 			pass
 		else:
-			return self.routine(value)
+			return self.value(value) # Return instance of type
 
 	def supertype(self): # Gets supertype
 
-		if isinstance(self.routine, type_statement):
-			return mp.current_process().find(self.routine.supertype)
+		if isinstance(self.value, type_statement):
+			return mp.current_process().find(self.value.supertype)
 
 class sophia_operator(sophia_routine): # Operator type
 
-	def __call__(self, *args): # Enables function calls on value
+	types = (operator_statement, arche.operator)
 
-		pass
+	def __call__(self, *args): # Enables function calls on value
+		
+		x = mp.current_process().cast(args[0], self.value.types[1])
+		if len(args) == 2:
+			y = mp.current_process().cast(args[1], self.value.types[2])
+		if isinstance(self.value, operator_statement): # User-defined operator
+			pass
+		else: # Built-in operator
+			if len(args) == 2:
+				value = self.value.binary(x.value, y.value)
+			else:
+				value = self.value.unary(x.value)
+		return mp.current_process().cast(value, self.value.types[0])
 
 class sophia_function(sophia_routine): # Function type
 
+	types = (function_statement, sophia_untyped.__init__.__class__) # Hatred
+
 	def __call__(self, *args): # Enables function calls on value
 
-		if isinstance(self.routine, function_statement): # If user-defined:
-			routine = process(mp.current_process().namespace, self.routine, *args) # Create new routine
+		if isinstance(self.value, function_statement): # If user-defined:
+			routine = process(mp.current_process().namespace, self.value, *args) # Create new routine
 			routine.start() # Start process for routine
 			return routine.proxy # Yields proxy object as a promise
 		else: # If built-in:
 			if args: # Python doesn't like unpacking empty tuples
-				return self.routine(*args) # Since function is a Python function in this case
+				return self.value(*args) # Since value is a Python function in this case
 			else:
-				return self.routine()
+				return self.value()
 
-class sophia_value(sophia_untyped): pass # Abstract value type
+class sophia_value(sophia_untyped): # Abstract singular value type
+
+	types = (bool, int, float, real)
 
 class sophia_boolean(sophia_value): # Boolean type
 
-	def __new__(cls, value): # Hatred
-
-		if value is True or value is False or isinstance(value, cls):
-			return super().__new__(cls, value)
-		
-	def __bool__(self): # Spoofs being a true boolean
-		
-		return self != 0
+	types = bool
 
 	def __str__(self):
 
-		return str(bool(self)).lower()
+		return str(self.value).lower()
 
-class sophia_number(sophia_value): pass # Abstract number type
+class sophia_number(sophia_value): # Abstract number type
+
+	types = (int, float, real)
+
+	def __new__(cls, value): # Number types have specific conversion requirements
+		
+		if isinstance(value, sophia_untyped):
+			value = value.value
+		if isinstance(value, cls.types) and type(value)(value) == value:
+			return object.__new__(cls)
+
+	def __init__(self, value):
+
+		if isinstance(value, sophia_untyped):
+			value = value.value
+		if isinstance(value, __class__.types) and type(value)(value) == value:
+			value = type(value)(value)
+		self.value = value
 
 class sophia_integer(sophia_number): # Integer type
-
-	def __new__(cls, value):
-
-		if (not isinstance(value, bool)) and (isinstance(value, int) or isinstance(value, (float, real)) and int(value) == value):
-			return int.__new__(cls, value)
+	
+	types = int
 
 class sophia_float(sophia_number): # Float type
 
-	def __new__(cls, value):
-
-		if (not isinstance(value, bool)) and (isinstance(value, float) or isinstance(value, (int, real)) and float(value) == value):
-			return float.__new__(cls, value)
+	types = float
 
 class sophia_real(sophia_number): # Real type
 
-	def __new__(cls, value):
-
-		if (not isinstance(value, bool)) and (isinstance(value, real) or isinstance(value, (int, float)) and real(str(value)) == value):
-			return real.__new__(cls, str(value)) # String conversion necessary because Python is extremely weird about precision
+	types = real
 
 class sophia_sequence(sophia_untyped): # Abstract sequence type
+
+	types = (str, tuple, dict)
 
 	def length(self):
 
@@ -952,31 +983,41 @@ class sophia_sequence(sophia_untyped): # Abstract sequence type
 
 class sophia_string(sophia_sequence): # String type
 
-	def __new__(cls, value):
-
-		if isinstance(value, str):
-			return str.__new__(cls, value)
+	types = str
 
 class sophia_list(sophia_sequence): # List type
+
+	types = tuple
 
 	def __new__(cls, value):
 
 		if isinstance(value, list):
-			return tuple.__new__(cls, value)
+			value = tuple(value)
+		if isinstance(value, cls.types):
+			return object.__new__(cls)
+
+	def __init__(self, value):
+
+		if isinstance(value, sophia_untyped):
+			value = value.value
+		if isinstance(value, list):
+			value = tuple(value)
+		self.value = value
 
 class sophia_record(sophia_sequence): # Record type
 
-	def __new__(cls, value):
-
-		if isinstance(value, dict):
-			return dict.__new__(cls, value)
+	types = dict
 
 if __name__ == '__main__': # Hatred
 
 	with mp.Manager() as runtime: # The stupidest global state you've ever seen in your life
 		
 		mp.current_process().name = 'runtime'
+		types = {k.split('_')[1]: sophia_type(v) for k, v in globals().items() if k.split('_')[0] == 'sophia'}
+		operators = {v.symbol: sophia_operator(v) for k, v in arche.__dict__.items() if k.split('_')[0] == 'op'}
+		functions = {k.split('_')[1]: sophia_function(v) for k, v in arche.__dict__.items() if k.split('_')[0] == 'sophia'}
 		namespace = runtime.dict({0: runtime.Lock()}) # Unfortunate namespace hierarchy, but at least processes never write to the same memory
+		namespace[1] = kleio.namespace((types | operators | functions).keys(), (types | operators | functions).values()) # Built-ins
 		main = process(namespace, module('test.sophia')) # Spawn initial process
 		main.start() # Start initial process
 		main.join() # Prevent exit until initial process ends

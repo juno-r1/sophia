@@ -5,6 +5,8 @@ def debug_tree(node, level = 0): # Takes a parse tree
 		level += 1 # This actually works, because parameters are just local variables, for some reason
 		for item in node.nodes:
 			debug_tree(item, level)
+	if level == 1:
+		print('===')
 
 def debug_process(process): # Takes a process object
 
