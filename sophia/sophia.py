@@ -21,6 +21,7 @@ class process(mp.Process): # Created by function calls and type checking
 		self.node = routine # Current node; sets initial module as entry point
 		self.value = None # Current value
 		self.namespace = namespace # Reference to shared namespace hierarchy
+		self.reserved = [] # List of reserved names in the current namespace
 		self.proxy = sophia_process(self)
 		self.messages, self.proxy.messages = mp.Pipe() # Pipe to receive messages
 		self.end, self.proxy.end = mp.Pipe() # Pipe to send return value
@@ -36,6 +37,7 @@ class process(mp.Process): # Created by function calls and type checking
 			raise SyntaxError('Expected {0} arguments, received {1}'.format(len(params), len(args)))
 		args = [self.cast(arg, params[i].type) for i, arg in enumerate(args)] # Check type of args against params
 		params = [item.value for item in params] # Get names of params
+		self.reserved = params
 		self.namespace[self.pid] = kleio.namespace(params, args) # Updates namespace hierarchy
 		self.instances.append(self.node.execute()) # Start routine
 		while self.node: # Runtime loop
@@ -85,6 +87,8 @@ class process(mp.Process): # Created by function calls and type checking
 
 	def bind(self, name, value): # Creates or updates a name binding in main
 		
+		if self.namespace[1].read(name) or name in self.reserved: # Quicker and easier to do it here
+			raise NameError('Bind to reserved name: ' + name)
 		namespace = self.namespace[self.pid] # Retrieve routine namespace
 		namespace.write(name, value) # Mutate namespace
 		self.namespace[0].acquire() # Acquires namespace lock
@@ -548,7 +552,7 @@ class literal(identifier): # Adds literal behaviours to a node
 
 	def execute(self): # Terminal nodes
 	
-		if isinstance(self.value, sophia_value):
+		if isinstance(self.value, sophia_untyped):
 			value = self.value
 		elif isinstance(self.head, receive): # Yields node to receive operator
 			value = self
@@ -599,7 +603,8 @@ class receive(prefix): # Defines the receive operator
 
 		node = yield
 		value = mp.current_process().messages.recv()
-		mp.current_process().bind(node.value, value, node.type)
+		value = mp.current_process().cast(value, node.type)
+		mp.current_process().bind(node.value, value)
 		yield value
 
 class infix(operator): # Adds infix behaviours to a node
@@ -667,11 +672,10 @@ class bind(operator): # Defines the bind operator
 	def execute(self):
 
 		value = yield # Yields to main
-		if isinstance(value, kleio.proxy):
-			value.bound = True
-		else:
+		if not isinstance(value, sophia_process):
 			raise SyntaxError('Invalid bind')
-		mp.current_process().bind(self.value.value, value, self.value.type) # Yields to go up
+		value.bound = True
+		mp.current_process().bind(self.value.value, value) # Yields to go up
 		yield value
 
 class send(operator): # Defines the send operator
@@ -689,8 +693,8 @@ class send(operator): # Defines the send operator
 
 		value = yield # Sending only ever takes 1 argument
 		value = mp.current_process().cast(value, self.routine().type) # Enforce output type for send value
-		address = mp.current_process().find(self.value.value).value
-		if not isinstance(address, kleio.proxy):
+		address = mp.current_process().find(self.value.value)
+		if not isinstance(address, sophia_process):
 			raise SyntaxError('Invalid send')
 		if address.name == mp.current_process().name:
 			raise SyntaxError('Send source and destination are the same')
@@ -871,6 +875,10 @@ class sophia_process(sophia_untyped): # Proxy object pretending to be a process
 	def __getnewargs__(self): # Handles unpickling; return value is passed to __new__()
 
 		return (self.__dict__.copy(),)
+
+	def __repr__(self):
+
+		return 'process ' + self.name
 
 	def send(self, value): # Proxy method to send to process
 
