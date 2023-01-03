@@ -37,8 +37,5 @@ class sophia_integer(sophia_untyped): # Integer type
 			value = int(value)
 		self.value = value
 
-def a():
-
-	pass
-
-print(arche.__dict__)
+a = 'a'
+print(a.split('.'))

@@ -1,7 +1,6 @@
-int a: 1
-int b: 2
+int ++ (int x):
 
-assert int a, str b:
-	print('!!!')
-else:
-	print('?')
+	return x + 1
+
+x: 1
+print(++x)

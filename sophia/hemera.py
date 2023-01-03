@@ -20,3 +20,7 @@ def debug_memory(memory): # Takes the namespace hierarchy
 def debug_namespace(process): # Takes a process object
 	
 	print(repr(process.namespace[process.pid]))
+
+def debug_error(name, status): # Prints error information
+
+	print('===', name, status, '===', sep = '\n')
