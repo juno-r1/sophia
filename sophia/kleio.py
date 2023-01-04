@@ -13,7 +13,7 @@ class namespace: # Base namespace object
 
 	def __repr__(self):
 
-		return '===\n' + self.name + '\n---\n' + '\n---\n'.join((name + ' ' + type(value).__name__.split('_')[1] + ' ' + repr(value) for name, value in self.space.items())) + '\n==='
+		return '===\n' + self.name + '\n---\n' + '\n---\n'.join((name + ' ' + type(value).__name__ + ' ' + repr(value) for name, value in self.space.items())) + '\n==='
 
 	def read(self, name):
 

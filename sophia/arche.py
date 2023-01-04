@@ -1,3 +1,5 @@
+from multiprocessing import current_process
+
 class slice: # Initialised during execution
 
 	def __init__(self, slice_list):
@@ -15,6 +17,18 @@ class slice: # Initialised during execution
 	def execute(self): # Returns expansion of slice
 
 		return [i for i in self.value]
+
+class proxy: # Base proxy object
+
+	def __init__(self, value):
+		
+		self.name = value.name
+		self.type = value.type
+		self.supertype = value.supertype
+		self.pid = value.pid
+		self.messages = None # Pipe to send messages
+		self.end = None # Pipe for return value
+		self.bound = False # Determines whether process is bound
 
 class operator: # Base operator object
 
@@ -231,14 +245,14 @@ op_bxr = operator('^^',
 				  None,
 				  'untyped', 'untyped', 'untyped')
 
-def sophia_input(value):
+def f_input(value):
 
 	return input(value)
 
-def sophia_print(*value):
+def f_print(*value):
 
 	return print(*value)
 
-def sophia_error(value):
+def f_error(value):
 		
-	raise Exception(value)
+	return current_process().error(value)

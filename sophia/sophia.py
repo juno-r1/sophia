@@ -17,15 +17,16 @@ class process(mp.Process): # Created by function calls and type checking
 		
 		super().__init__(name = get_process().name + '.' + routine.name, target = self.execute, args = args)
 		self.type = routine.type
+		self.supertype = getattr(routine, 'supertype', None) # Supertype of type routine
 		self.instances = []
 		self.path = [0]
 		self.node = routine # Current node; sets initial module as entry point
 		self.value = None # Current value
 		self.namespace = namespace # Reference to shared namespace hierarchy
 		self.reserved = [] # List of reserved names in the current namespace
-		self.proxy = sophia_process(self)
-		self.messages, self.proxy.messages = mp.Pipe() # Pipe to receive messages
-		self.end, self.proxy.end = mp.Pipe() # Pipe to send return value
+		self.proxy = sophia_process(arche.proxy(self))
+		self.messages, self.proxy.value.messages = mp.Pipe() # Pipe to receive messages
+		self.end, self.proxy.value.end = mp.Pipe() # Pipe to send return value
 
 	def __repr__(self):
 
@@ -41,16 +42,20 @@ class process(mp.Process): # Created by function calls and type checking
 		self.reserved = params
 		self.namespace[self.pid] = kleio.namespace(params, args) # Updates namespace hierarchy
 		self.instances.append(self.node.execute()) # Start routine
+		self.instances[-1].send(None)
 		while self.node: # Runtime loop
 			hemera.debug_process(self)
 			if self.node.nodes and 0 <= self.path[-1] < len(self.node.nodes): # Walk down
 				self.node.nodes[self.path[-1]].head = self.node # Sets child head to self
 				self.node = self.node.nodes[self.path[-1]] # Set value to child node
 				self.path.append(0)
+				self.instances.append(self.node.execute()) # Initialises generator
 				if isinstance(self.node, coroutine):
 					self.branch() # Skips body of routine
-				self.instances.append(self.node.execute()) # Initialises generator
-				self.value = self.instances[-1].send(None) # Somehow, it's never necessary to send a value down the tree
+				if isinstance(self.node, type_statement): # Initialises type routine
+					self.node.prepare()
+				else:
+					self.value = self.instances[-1].send(None) # Somehow, it's never necessary to send a value down the tree
 			else: # Walk up
 				self.instances.pop() # Removes generator
 				self.node = self.node.head # Walk upward
@@ -63,7 +68,10 @@ class process(mp.Process): # Created by function calls and type checking
 					self.node = None # Can't send to self
 		else:
 			for routine in mp.active_children(): # Makes sure all child processes are finished before terminating
-				routine.join()
+				if routine.supertype: # Type routine
+					routine.terminate() # Type routines end just before being removed from the namespace
+				else:
+					routine.join()
 			hemera.debug_namespace(self)
 			del self.namespace[self.pid] # Clear namespace
 
@@ -121,7 +129,7 @@ class process(mp.Process): # Created by function calls and type checking
 				return value
 			else:
 				pid = self.namespace[pid].parent
-		return self.error('Undefined name: ' + name)
+		return self.error('Undefined name: ' + repr(name))
 
 	def cast(self, operand, type_name): # Checks type of value and returns boolean
 		
@@ -138,7 +146,7 @@ class process(mp.Process): # Created by function calls and type checking
 			return value # Return indicates success; cast() raises an exception on failure
 
 	def error(self, status): # Error handler
-
+		
 		hemera.debug_error(self.name, status)
 		self.end.send(None) # Null return
 		self.node = None # Immediately end routine
@@ -182,10 +190,7 @@ class node: # Base node object
 			for n, symbol in enumerate(line[scope:]): # Skips tabs
 				if (symbol[0] in kadmos.characters or symbol[0] in ("'", '"')) and (symbol not in kadmos.keyword_operators): # Quick test for literal
 					if symbol in kadmos.structure_tokens or symbol in kadmos.keyword_tokens:
-						if symbol == 'type' and n != 0 and line[-1] != ':': # Special keyword
-							token = literal(symbol)
-						else:
-							token = keyword(symbol)
+						token = keyword(symbol)
 					else:
 						token = literal(symbol)
 						if tokens[-1] and isinstance(tokens[-1][-1], literal): # Checks for type
@@ -240,7 +245,9 @@ class node: # Base node object
 			elif line[0].value in kadmos.keyword_tokens:
 				token = line[0] # Keywords will get special handling later
 			elif line[-1].value == ':':
-				if line[0].value[0] in kadmos.characters: # Functions have names and operators have symbols
+				if line[0].type == 'type' and '(' not in [token.value for token in line]:
+					token = type_statement(line)
+				elif line[0].value[0] in kadmos.characters: # Functions have names and operators have symbols
 					token = function_statement(line)
 				else:
 					token = operator_statement(line)
@@ -277,8 +284,8 @@ class coroutine(node): # Base coroutine object
 		super().__init__(value)
 
 	def __repr__(self):
-
-		return type(self).__name__ + ' ' + str([item.type + ' ' + item.value for item in self.value])
+		
+		return type(self).__name__ + ' ' + str([str(item.type) + ' ' + str(item.value) for item in self.value])
 
 class module(coroutine): # Module object is always the top level of a syntax tree
 
@@ -307,31 +314,33 @@ class type_statement(coroutine):
 
 	def __init__(self, tokens):
 		
-		super().__init__([tokens[1]]) # Type
-		self.name, self.type = tokens[1].value, tokens[1].value
-		if len(tokens) > 3: # Naive check for subtyping
-			self.supertype = tokens[3].value
+		super().__init__([tokens[0]]) # Type
+		self.name, self.type = tokens[0].value, tokens[0].value
+		if len(tokens) > 2: # Naive check for subtyping
+			self.supertype = tokens[2].value
 			if self.supertype in kadmos.sub_types: # Corrects shortened type names
 				self.supertype = kadmos.sub_types[self.supertype]
 		else:
 			self.supertype = 'untyped'
 
-	def execute(self):
-
+	def prepare(self): # Initialises type routine
+		
 		routine = process(get_process().namespace, self) # Create new routine
 		routine.start() # Start process for routine
-		if isinstance(self.head, (assignment, bind, send)):
-			yield routine.proxy # Yields proxy object as a promise
-		else:
-			yield routine.proxy.get() # Blocks until function returns
-		get_process().bind(self.value[0].value, sophia_type(self))
+		return get_process().bind(self.name, sophia_type(routine.proxy))
+
+	def execute(self):
+		
 		while True: # Execution loop
-			while get_process().path[-1] < len(self.nodes): # Allows more fine-grained control flow than using a for loop
+			routine = get_process()
+			routine.bind(self.name, routine.messages.recv())
+			routine.reserved = [self.name] # Reserve cast value
+			while routine.path[-1] < len(self.nodes): # Allows more fine-grained control flow than using a for loop
 				yield
 			else: # Default behaviour for no return or yield
-				get_process().end.send(None) # Sends value to return queue
-				routine().branch(0) # Reset path to initial
-				yield
+				routine.end.send(routine.find(self.name)) # Sends cast value to return queue upon success
+				routine.branch(0) # Reset path to initial
+				routine.reserved = [] # Unreserve cast value
 
 class operator_statement(coroutine):
 
@@ -342,13 +351,12 @@ class operator_statement(coroutine):
 
 	def execute(self):
 		
-		get_process().bind(self.value[0].value, sophia_operator(self))
-		while True: # Execution loop
-			while get_process().path[-1] < len(self.nodes): # Allows more fine-grained control flow than using a for loop
-				yield
-			else: # Default behaviour for no return or yield
-				get_process().end.send(None) # Sends value to return queue
-				yield
+		get_process().bind(self.name, sophia_operator(self))
+		while get_process().path[-1] < len(self.nodes): # Allows more fine-grained control flow than using a for loop
+			yield
+		else: # Default behaviour for no return or yield
+			get_process().end.send(None) # Sends value to return queue
+			yield
 
 class function_statement(coroutine):
 
@@ -360,12 +368,11 @@ class function_statement(coroutine):
 	def execute(self):
 		
 		get_process().bind(self.name, sophia_function(self))
-		while True: # Execution loop
-			while get_process().path[-1] < len(self.nodes): # Allows more fine-grained control flow than using a for loop
-				yield
-			else: # Default behaviour for no return or yield
-				get_process().end.send(None) # Sends value to return queue
-				yield
+		while get_process().path[-1] < len(self.nodes): # Allows more fine-grained control flow than using a for loop
+			yield
+		else: # Default behaviour for no return or yield
+			get_process().end.send(None) # Sends value to return queue
+			yield
 
 class statement(node):
 
@@ -498,13 +505,13 @@ class constraint_statement(statement):
 
 	def execute(self):
 
-		while main.routines[-1].path[-1] < len(self.nodes):
+		while get_process().path[-1] <= len(self.nodes):
 			constraint = yield
 			if not isinstance(constraint, sophia_boolean):
 				return get_process().error('Constraint must evaluate to boolean')
 			if not constraint:
-				yield main.terminate(None)
-		yield
+				get_process().end.send(None) # Null return
+				get_process().node = None
 
 class return_statement(statement):
 
@@ -568,7 +575,7 @@ class literal(identifier): # Adds literal behaviours to a node
 
 	def execute(self): # Terminal nodes
 	
-		if isinstance(self.value, sophia_untyped):
+		if isinstance(self.value, sophia_untyped) or self.value is None:
 			value = self.value
 		elif isinstance(self.head, receive): # Yields node to receive operator
 			value = self
@@ -839,7 +846,7 @@ class sophia_untyped: # Non-abstract base class
 
 	def __new__(cls, value): # Using __new__ for casting; this allows a separate __init__ and returns null for failed casts
 
-		if isinstance(value, sophia_untyped) and cls is not sophia_process: # Normalises Sophia values
+		if isinstance(value, sophia_untyped): # Normalises Sophia values
 			value = value.value
 		if isinstance(value, cls.types):
 			return object.__new__(cls)
@@ -871,70 +878,50 @@ class sophia_routine(sophia_untyped): # Abstract routine type
 
 	types = coroutine # Currently user-defined only
 
-	def __new__(cls, value): # Using __new__ for casting; this allows a separate __init__ and returns null for failed casts
-
-		if isinstance(value, sophia_untyped) and cls is not sophia_process: # Normalises Sophia values
-			value = value.value
-		if isinstance(value, cls.types):
-			return object.__new__(cls)
-
 class sophia_process(sophia_untyped): # Proxy object pretending to be a process
 
-	def __new__(cls, value): # Special __new__ for internal type
-		
-		if isinstance(value, (cls, process, dict)): # Because of __getnewargs__()
-			return object.__new__(cls)
-
-	def __init__(self, value):
-		
-		if isinstance(value, dict):
-			self.__dict__.update(value)
-		else:
-			self.name = value.name
-			self.type = value.type
-			self.pid = value.pid
-			self.messages = None # Pipe to send messages
-			self.end = None # Pipe for return value
-			self.bound = False # Determines whether process is bound
-
-	def __getnewargs__(self): # Handles unpickling; return value is passed to __new__()
-
-		return (self.__dict__.copy(),)
+	types = arche.proxy # Internal type only
 
 	def __repr__(self):
 
-		return 'process ' + self.name
+		return 'process ' + self.value.name
 
 	def send(self, value): # Proxy method to send to process
 
-		return self.messages.send(value)
+		return self.value.messages.send(value)
 
 	def get(self): # Proxy method to get return value from process
 
-		return self.end.recv()
+		return self.value.end.recv()
 
 class sophia_type(sophia_routine): # Type type
 
-	types = (type_statement, type)
+	types = (arche.proxy, type)
 
 	def __call__(self, value): # Enables function calls on value
 
-		if isinstance(self.value, type_statement):
-			pass
+		if isinstance(self.value, arche.proxy):
+			self.send(value)
+			return self.get()
 		else:
 			return self.value(value) # Return instance of type
 
 	def cast(self, value): # Explicit cast to type with modification of value
 
-		try:
-			return self.value.__cast__(value) # Defers to type
-		except AttributeError:
-			return get_process().error('Unsupported type conversion: ' + self.value.__name__)
+		return self.value.__cast__(value) # Defers to type
 
 	def supertype(self): # Gets supertype
 
-		if isinstance(self.value, type_statement):
-			return get_process().find(self.value.supertype)
+		if isinstance(self.value, arche.proxy):
+			return get_process().find(self.value.supertype) # Ths should always refer to the type statement node at this point in execution
+
+	def send(self, value): # Proxy method to send to process
+
+		return self.value.messages.send(value)
+
+	def get(self): # Proxy method to get return value from process
+
+		return self.value.end.recv()
 
 class sophia_operator(sophia_routine): # Operator type
 
@@ -988,6 +975,10 @@ class sophia_boolean(sophia_value): # Boolean type
 	def __cast__(cls, value):
 
 		return cls(bool(value.value))
+
+	def __bool__(self):
+
+		return self.value
 
 	def __repr__(self):
 
@@ -1100,7 +1091,7 @@ if __name__ == '__main__': # Hatred
 		get_process().name = 'runtime'
 		types = {k.split('_')[1]: sophia_type(v) for k, v in globals().items() if k.split('_')[0] == 'sophia'}
 		operators = {v.symbol: sophia_operator(v) for k, v in arche.__dict__.items() if k.split('_')[0] == 'op'}
-		functions = {k.split('_')[1]: sophia_function(v) for k, v in arche.__dict__.items() if k.split('_')[0] == 'sophia'}
+		functions = {k.split('_')[1]: sophia_function(v) for k, v in arche.__dict__.items() if k.split('_')[0] == 'f'}
 		namespace = runtime.dict({0: runtime.Lock()}) # Unfortunate namespace hierarchy, but at least processes never write to the same memory
 		namespace[1] = kleio.namespace((types | operators | functions).keys(), (types | operators | functions).values()) # Built-ins
 		main = process(namespace, module('test.sophia')) # Spawn initial process

@@ -1,6 +1,8 @@
-int ++ (int x):
+type even extends int:
 
-	return x + 1
+	constraint:
+		even % 2 = 0
 
-x: 1
-print(++x)
+even a: 2
+even b: 4
+even c: 5
