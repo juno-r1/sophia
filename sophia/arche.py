@@ -20,7 +20,7 @@ class slice: # Initialised during execution
 
 class proxy: # Base proxy object
 
-	def __init__(self, process):
+	def __init__(self, process, link = False):
 		
 		self.name = process.name
 		self.type = process.type
@@ -29,6 +29,7 @@ class proxy: # Base proxy object
 		self.messages = None # Pipe to send messages
 		self.end = None # Pipe for return value
 		self.bound = False # Determines whether process is bound
+		self.link = link # For linked modules
 
 	def send(self, value): # Proxy method to send to process
 

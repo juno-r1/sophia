@@ -1,3 +1,5 @@
+link main
+
 type even extends int:
 
 	constraint:

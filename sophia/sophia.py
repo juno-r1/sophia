@@ -13,7 +13,7 @@ from fractions import Fraction as real
 
 class process(mp.Process): # Created by function calls and type checking
 
-	def __init__(self, namespace, routine, *args): # God objects? What is she objecting to?
+	def __init__(self, namespace, routine, *args, link = False): # God objects? What is she objecting to?
 		
 		super().__init__(name = get_process().name + '.' + routine.name, target = self.execute, args = args)
 		self.type = routine.type
@@ -24,7 +24,7 @@ class process(mp.Process): # Created by function calls and type checking
 		self.value = None # Current value
 		self.namespace = namespace # Reference to shared namespace hierarchy
 		self.reserved = [] # List of reserved names in the current namespace
-		self.proxy = sophia_process(self)
+		self.proxy = sophia_process(self, link = link)
 		self.messages, self.proxy.messages = mp.Pipe() # Pipe to receive messages
 		self.end, self.proxy.end = mp.Pipe() # Pipe to send return value
 
@@ -68,10 +68,14 @@ class process(mp.Process): # Created by function calls and type checking
 				if isinstance(self.node, (coroutine, return_statement)) and self.path[-1] == len(self.node.nodes): # Check if finished
 					self.node = None # Can't send to self
 		else:
+			if self.proxy.link:
+				self.proxy.end.poll(None) # Hangs for linked modules
 			for routine in mp.active_children(): # Makes sure all child processes are finished before terminating
 				if routine.supertype: # Type routine
 					routine.terminate() # Type routines end just before being removed from the namespace
 				else:
+					if routine.proxy.link:
+						routine.end.send(None) # Allows linked modules to end
 					routine.join()
 			hemera.debug_namespace(self)
 			del self.namespace[self.pid] # Clear namespace
@@ -323,7 +327,8 @@ class module(coroutine): # Module object is always the top level of a syntax tre
 		while routine.path[-1] < len(self.nodes): # Allows more fine-grained control flow than using a for loop
 			yield
 		else: # Default behaviour for no return or yield
-			routine.end.send(None) # Sends value to return queue
+			if not routine.proxy.link:
+				routine.end.send(None) # Sends value to return queue
 			yield
 
 class type_statement(coroutine):
@@ -559,15 +564,22 @@ class link_statement(statement):
 
 	def __init__(self, tokens):
 
-		super().__init__(None, *tokens[1::2]) # Allows multiple links
+		super().__init__(tokens[1::2]) # Allows multiple links
 
 	def __repr__(self):
 
 		return 'link_statement ' + str([repr(item) for item in self.nodes])
 
-	def execute(self):
+	def execute(self, routine):
 
-		pass # I don't know how to implement this yet
+		for item in self.value:
+			name = item.value
+			if '.' not in name:
+				name = name + '.sophia'
+			module_routine = process(routine.namespace, module(name), link = True)
+			routine.bind(item.value.split('.')[0], module_routine.proxy, 'module')
+			module_routine.start()
+		yield
 
 class identifier(node): # Generic identifier class
 
@@ -879,9 +891,17 @@ class sophia_untyped: # Abstract base class
 		if isinstance(value, cls):
 			return True
 
+class sophia_process(arche.proxy, sophia_untyped): pass # Proxy object pretending to be a process
+
 class sophia_routine(sophia_untyped): pass # Abstract routine type
 
-class sophia_process(arche.proxy, sophia_untyped): pass # Proxy object pretending to be a process
+class sophia_module(arche.proxy, sophia_routine): # Module type
+
+	@classmethod
+	def cast(cls, value):
+
+		if isinstance(value, arche.proxy):
+			return True
 
 class sophia_type(arche.proxy, sophia_routine): # Type type
 
