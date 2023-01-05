@@ -3,6 +3,9 @@ type even extends int:
 	constraint:
 		even % 2 = 0
 
+int ++ (int x):
+
+	return x + 1
+
 even a: 2
-even b: 4
-even c: 5
+print(++a)

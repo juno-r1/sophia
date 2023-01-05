@@ -20,15 +20,23 @@ class slice: # Initialised during execution
 
 class proxy: # Base proxy object
 
-	def __init__(self, value):
+	def __init__(self, process):
 		
-		self.name = value.name
-		self.type = value.type
-		self.supertype = value.supertype
-		self.pid = value.pid
+		self.name = process.name
+		self.type = process.type
+		self.supertype = process.supertype
+		self.pid = process.pid
 		self.messages = None # Pipe to send messages
 		self.end = None # Pipe for return value
 		self.bound = False # Determines whether process is bound
+
+	def send(self, value): # Proxy method to send to process
+
+		return self.messages.send(value)
+
+	def get(self): # Proxy method to get return value from process
+
+		return self.end.recv()
 
 class operator: # Base operator object
 
@@ -38,6 +46,12 @@ class operator: # Base operator object
 		self.unary = unary # Unary function
 		self.binary = binary # Binary function
 		self.types = types # Tuple of return type and input types
+
+class routine: # Base function object
+
+	def __init__(self, value):
+
+		self.value = value
 
 def u_add(x):
 
@@ -130,120 +144,136 @@ def b_uni(x, y):
 		else:
 			return x + y
 
-op_add = operator('+',							# Symbol
-				  u_add,						# Unary operator
-				  b_add,						# Binary operator
-				  'number', 'number', 'number')	# Return type and input types
+def u_bnt(x):
 
-op_sub = operator('-',
-				  u_sub,
-				  b_sub,
-				  'number', 'number', 'number')
+	pass
 
-op_mul = operator('*',
-				  None,
-				  b_mul,
-				  'number', 'number', 'number')
+def b_bnd(x, y):
 
-op_div = operator('/',
-				  None,
-				  b_div,
-				  'number', 'number', 'number')
+	pass
 
-op_exp = operator('^',
-				  None,
-				  b_exp,
-				  'number', 'number', 'number')
+def b_bor(x, y):
 
-op_mod = operator('%',
-				  None,
-				  b_mod,
-				  'number', 'number', 'number')
+	pass
 
-op_eql = operator('=',
-				  None,
-				  b_eql,
-				  'boolean', 'untyped', 'untyped')
+def b_bxr(x, y):
 
-op_neq = operator('!=',
-				  None,
-				  b_neq,
-				  'boolean', 'untyped', 'untyped')
+	pass
 
-op_ltn = operator('<',
-				  None,
-				  b_ltn,
-				  'boolean', 'number', 'number')
+op_add = ('+',							# Symbol
+		  u_add,						# Unary operator
+		  b_add,						# Binary operator
+		  'number', 'number', 'number')	# Return type and input types
 
-op_gtn = operator('>',
-				  None,
-				  b_gtn,
-				  'boolean', 'number', 'number')
+op_sub = ('-',
+		  u_sub,
+		  b_sub,
+		  'number', 'number', 'number')
 
-op_leq = operator('<=',
-				  None,
-				  b_leq,
-				  'boolean', 'number', 'number')
+op_mul = ('*',
+		  None,
+		  b_mul,
+		  'number', 'number', 'number')
 
-op_geq = operator('>=',
-				  None,
-				  b_geq,
-				  'boolean', 'number', 'number')
+op_div = ('/',
+		  None,
+		  b_div,
+		  'number', 'number', 'number')
 
-op_sbs = operator('in',
-				  None,
-				  b_sbs,
-				  'boolean', 'untyped', 'sequence')
+op_exp = ('^',
+		 None,
+		 b_exp,
+		 'number', 'number', 'number')
 
-op_lnt = operator('not',
-				  u_lnt,
-				  None,
-				  'boolean', 'boolean', 'boolean')
+op_mod = ('%',
+		  None,
+		  b_mod,
+		  'number', 'number', 'number')
 
-op_lnd = operator('and',
-				  None,
-				  b_lnd,
-				  'boolean', 'boolean', 'boolean')
+op_eql = ('=',
+		  None,
+		  b_eql,
+		  'boolean', 'untyped', 'untyped')
 
-op_lor = operator('or',
-				  None,
-				  b_lor,
-				  'boolean', 'boolean', 'boolean')
+op_neq = ('!=',
+		  None,
+		  b_neq,
+		  'boolean', 'untyped', 'untyped')
 
-op_lxr = operator('xor',
-				  None,
-				  b_lxr,
-				  'boolean', 'boolean', 'boolean')
+op_ltn = ('<',
+		  None,
+		  b_ltn,
+		  'boolean', 'number', 'number')
 
-op_ins = operator('&',
-				  None,
-				  b_ins,
-				  'sequence', 'sequence', 'sequence')
+op_gtn = ('>',
+		  None,
+		  b_gtn,
+		  'boolean', 'number', 'number')
 
-op_uni = operator('|',
-				  None,
-				  b_uni,
-				  'sequence', 'sequence', 'sequence')
+op_leq = ('<=',
+		  None,
+		  b_leq,
+		  'boolean', 'number', 'number')
 
-op_bnt = operator('~', # Byte operators currently unimplemented
-				  None,
-				  None,
-				  'untyped', 'untyped', 'untyped')
+op_geq = ('>=',
+		  None,
+		  b_geq,
+		  'boolean', 'number', 'number')
 
-op_bnd = operator('&&',
-				  None,
-				  None,
-				  'untyped', 'untyped', 'untyped')
+op_sbs = ('in',
+		  None,
+		  b_sbs,
+		  'boolean', 'untyped', 'sequence')
 
-op_bor = operator('||',
-				  None,
-				  None,
-				  'untyped', 'untyped', 'untyped')
+op_lnt = ('not',
+		  u_lnt,
+		  None,
+		  'boolean', 'boolean', 'boolean')
 
-op_bxr = operator('^^',
-				  None,
-				  None,
-				  'untyped', 'untyped', 'untyped')
+op_lnd = ('and',
+		  None,
+		  b_lnd,
+		  'boolean', 'boolean', 'boolean')
+
+op_lor = ('or',
+		  None,
+		  b_lor,
+		  'boolean', 'boolean', 'boolean')
+
+op_lxr = ('xor',
+		  None,
+		  b_lxr,
+		  'boolean', 'boolean', 'boolean')
+
+op_ins = ('&',
+		  None,
+		  b_ins,
+		  'sequence', 'sequence', 'sequence')
+
+op_uni = ('|',
+		  None,
+		  b_uni,
+		  'sequence', 'sequence', 'sequence')
+
+op_bnt = ('~',
+		  u_bnt,
+		  None,
+		  'untyped', 'untyped', 'untyped')
+
+op_bnd = ('&&',
+		  None,
+		  b_bnd,
+		  'untyped', 'untyped', 'untyped')
+
+op_bor = ('||',
+		  None,
+		  b_bor,
+		  'untyped', 'untyped', 'untyped')
+
+op_bxr = ('^^',
+		  None,
+		  b_bxr,
+		  'untyped', 'untyped', 'untyped')
 
 def f_input(value):
 

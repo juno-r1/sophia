@@ -24,9 +24,9 @@ class process(mp.Process): # Created by function calls and type checking
 		self.value = None # Current value
 		self.namespace = namespace # Reference to shared namespace hierarchy
 		self.reserved = [] # List of reserved names in the current namespace
-		self.proxy = sophia_process(arche.proxy(self))
-		self.messages, self.proxy.value.messages = mp.Pipe() # Pipe to receive messages
-		self.end, self.proxy.value.end = mp.Pipe() # Pipe to send return value
+		self.proxy = sophia_process(self)
+		self.messages, self.proxy.messages = mp.Pipe() # Pipe to receive messages
+		self.end, self.proxy.end = mp.Pipe() # Pipe to send return value
 
 	def __repr__(self):
 
@@ -35,13 +35,14 @@ class process(mp.Process): # Created by function calls and type checking
 	def execute(self, *args): # Target of run()
 		
 		params = self.node.value[1:] # Gets coroutine name, return type, and parameters
+		types = [item.type for item in params] # Get types of params
 		if len(params) != len(args):
 			return self.error('Expected {0} arguments, received {1}'.format(len(params), len(args)))
 		args = [self.cast(arg, params[i].type) for i, arg in enumerate(args)] # Check type of args against params
 		params = [item.value for item in params] # Get names of params
 		self.reserved = params
-		self.namespace[self.pid] = kleio.namespace(params, args) # Updates namespace hierarchy
-		self.instances.append(self.node.execute()) # Start routine
+		self.namespace[self.pid] = kleio.namespace(params, args, types) # Updates namespace hierarchy
+		self.instances.append(self.node.execute(self)) # Start routine
 		self.instances[-1].send(None)
 		while self.node: # Runtime loop
 			hemera.debug_process(self)
@@ -49,11 +50,11 @@ class process(mp.Process): # Created by function calls and type checking
 				self.node.nodes[self.path[-1]].head = self.node # Sets child head to self
 				self.node = self.node.nodes[self.path[-1]] # Set value to child node
 				self.path.append(0)
-				self.instances.append(self.node.execute()) # Initialises generator
+				self.instances.append(self.node.execute(self)) # Initialises generator
 				if isinstance(self.node, coroutine):
 					self.branch() # Skips body of routine
 				if isinstance(self.node, type_statement): # Initialises type routine
-					self.node.prepare()
+					self.node(self)
 				else:
 					self.value = self.instances[-1].send(None) # Somehow, it's never necessary to send a value down the tree
 			else: # Walk up
@@ -94,12 +95,19 @@ class process(mp.Process): # Created by function calls and type checking
 			self.node = loop
 			self.branch()
 
-	def bind(self, name, value): # Creates or updates a name binding in main
+	def bind(self, name, value, type_value = None): # Creates or updates a name binding in main
 		
 		if self.namespace[1].read(name) or name in self.reserved: # Quicker and easier to do it here
 			return self.error('Bind to reserved name: ' + name)
 		namespace = self.namespace[self.pid] # Retrieve routine namespace
+		if type_value:
+			value = self.cast(value, type_value)
+		else:
+			type_value = self.namespace[self.pid].read_type(name)
+			if type_value:
+				value = self.cast(value, type_value)
 		namespace.write(name, value) # Mutate namespace
+		namespace.write_type(name, type_value)
 		self.namespace[0].acquire() # Acquires namespace lock
 		self.namespace[self.pid] = namespace # Update shared dict; nested objects don't sync unless you make them
 		self.namespace[0].release() # Releases namespace lock
@@ -112,18 +120,19 @@ class process(mp.Process): # Created by function calls and type checking
 		self.namespace[self.pid] = namespace # Update shared dict; nested objects don't sync unless you make them
 		self.namespace[0].release() # Releases namespace lock
 
-	def find(self, name): # Retrieves a binding in the routine's available namespace
+	def find(self, name, get_type = False): # Retrieves a binding's value in the routine's available namespace
 		
 		value = self.namespace[1].read(name) # Searches built-ins first; built-ins are independent of namespaces
 		if value:
 			return value
 		pid = self.pid
 		while pid in self.namespace:
-			self.namespace[0].acquire()
-			value = self.namespace[pid].read(name)
-			self.namespace[0].release()
+			if get_type:
+				value = self.namespace[pid].read_type(name)
+			else:
+				value = self.namespace[pid].read(name)
 			if value:
-				if isinstance(value, sophia_process) and (not value.bound or value.end.poll()): # If the name is associated with an unbound or finished routine:
+				if isinstance(value, sophia_process) and self.namespace[pid].read_type(name) != 'type' and (not value.bound or value.end.poll()): # If the name is associated with an unbound or finished routine:
 					value = self.cast(value.get(), value.type) # Block for return value and check type
 					self.namespace[pid].write(name, value) # Is it breaking encapsulation if the target routine is finished when this happens?
 				return value
@@ -137,11 +146,18 @@ class process(mp.Process): # Created by function calls and type checking
 		if not type_name: # For literals of unspecified type
 			return value
 		type_routine = self.find(type_name)
-		while type_routine:
-			value = type_routine(value) # Invokes type check
+		stack = [] # Stack of user-defined types, with the requested type at the bottom
+		while isinstance(type_routine, sophia_process):
+			stack.append(type_routine)
+			type_routine = self.find(type_routine.supertype) # Type routine is guaranteed to be a built-in when loop ends, so it checks that before any of the types on the stack
+		if not type_routine.cast(value): # Check built-in type
+			return self.error('Failed cast to ' + type_name + ': ' + repr(operand))
+		while stack:
+			type_routine = stack.pop()
+			type_routine.send(value)
+			value = type_routine.get()
 			if value is None:
 				return self.error('Failed cast to ' + type_name + ': ' + repr(operand))
-			type_routine = type_routine.supertype() # Returns null for built-ins
 		else:
 			return value # Return indicates success; cast() raises an exception on failure
 
@@ -285,7 +301,7 @@ class coroutine(node): # Base coroutine object
 
 	def __repr__(self):
 		
-		return type(self).__name__ + ' ' + str([str(item.type) + ' ' + str(item.value) for item in self.value])
+		return str([str(item.type) + ' ' + str(item.value) for item in self.value])
 
 class module(coroutine): # Module object is always the top level of a syntax tree
 
@@ -302,12 +318,12 @@ class module(coroutine): # Module object is always the top level of a syntax tre
 
 		return 'module ' + self.name
 
-	def execute(self):
+	def execute(self, routine):
 		
-		while get_process().path[-1] < len(self.nodes): # Allows more fine-grained control flow than using a for loop
+		while routine.path[-1] < len(self.nodes): # Allows more fine-grained control flow than using a for loop
 			yield
 		else: # Default behaviour for no return or yield
-			get_process().end.send(None) # Sends value to return queue
+			routine.end.send(None) # Sends value to return queue
 			yield
 
 class type_statement(coroutine):
@@ -323,17 +339,16 @@ class type_statement(coroutine):
 		else:
 			self.supertype = 'untyped'
 
-	def prepare(self): # Initialises type routine
+	def __call__(self, routine): # Initialises type routine
 		
-		routine = process(get_process().namespace, self) # Create new routine
-		routine.start() # Start process for routine
-		return get_process().bind(self.name, sophia_type(routine.proxy))
+		type_routine = process(routine.namespace, self) # Create new routine
+		type_routine.start() # Start process for routine
+		return routine.bind(self.name, type_routine.proxy, 'type')
 
-	def execute(self):
+	def execute(self, routine):
 		
 		while True: # Execution loop
-			routine = get_process()
-			routine.bind(self.name, routine.messages.recv())
+			routine.bind(self.name, routine.messages.recv(), self.supertype)
 			routine.reserved = [self.name] # Reserve cast value
 			while routine.path[-1] < len(self.nodes): # Allows more fine-grained control flow than using a for loop
 				yield
@@ -349,13 +364,24 @@ class operator_statement(coroutine):
 		super().__init__([token for token in tokens[0:-1:2] if token.value != ')']) # Sets operator symbol and a list of parameters as self.value
 		self.name, self.type = tokens[0].value, tokens[0].type
 
-	def execute(self):
+	def __call__(self, routine, *args):
+
+		x = routine.cast(args[0], self.value[1].type)
+		if len(args) > 1:
+			y = routine.cast(args[1], self.value[2].type)
+			value = process(routine.namespace, self, x, y) # Create new routine
+		else:
+			value = process(routine.namespace, self, x) # Create new routine
+		value.start() # Start process for routine
+		return routine.cast(value.proxy.get(), self.type) # Get value immediately
+
+	def execute(self, routine):
 		
-		get_process().bind(self.name, sophia_operator(self))
-		while get_process().path[-1] < len(self.nodes): # Allows more fine-grained control flow than using a for loop
+		routine.bind(self.name, self, 'operator')
+		while routine.path[-1] < len(self.nodes): # Allows more fine-grained control flow than using a for loop
 			yield
 		else: # Default behaviour for no return or yield
-			get_process().end.send(None) # Sends value to return queue
+			routine.end.send(None) # Sends value to return queue
 			yield
 
 class function_statement(coroutine):
@@ -365,13 +391,13 @@ class function_statement(coroutine):
 		super().__init__([token for token in tokens[0:-1:2] if token.value != ')']) # Sets name and a list of parameters as self.value
 		self.name, self.type = tokens[0].value, tokens[0].type
 
-	def execute(self):
+	def execute(self, routine):
 		
-		get_process().bind(self.name, sophia_function(self))
-		while get_process().path[-1] < len(self.nodes): # Allows more fine-grained control flow than using a for loop
+		routine.bind(self.name, self, 'function')
+		while routine.path[-1] < len(self.nodes): # Allows more fine-grained control flow than using a for loop
 			yield
 		else: # Default behaviour for no return or yield
-			get_process().end.send(None) # Sends value to return queue
+			routine.end.send(None) # Sends value to return queue
 			yield
 
 class statement(node):
@@ -390,11 +416,10 @@ class assignment(statement):
 
 		return 'assignment ' + repr(self.value)
 
-	def execute(self):
+	def execute(self, routine):
 		
 		value = yield # Yields to main
-		value = get_process().cast(value, self.value.type) # Type cast
-		yield get_process().bind(self.value.value, value) # Yields to go up
+		yield routine.bind(self.value.value, value, self.value.type) # Yields to go up
 
 class if_statement(statement):
 
@@ -402,16 +427,16 @@ class if_statement(statement):
 
 		super().__init__(None, kadmos.lexer(tokens[1:-1]).parse())
 
-	def execute(self):
+	def execute(self, routine):
 
 		condition = yield
 		if not isinstance(condition, sophia_boolean): # Over-specify on purpose to implement Sophia's specific requirement for a boolean
-			return get_process().error('Condition must evaluate to boolean')
+			return routine.error('Condition must evaluate to boolean')
 		elif condition:
-			while get_process().path[-1] <= len(self.nodes):
+			while routine.path[-1] <= len(self.nodes):
 				yield
 		else:
-			yield get_process().branch()
+			yield routine.branch()
 
 class while_statement(statement):
 
@@ -419,22 +444,22 @@ class while_statement(statement):
 
 		super().__init__(None, kadmos.lexer(tokens[1:-1]).parse())
 
-	def execute(self):
+	def execute(self, routine):
 
 		condition = yield
 		if not isinstance(condition, sophia_boolean): # Over-specify on purpose to implement Sophia's specific requirement for a boolean
-			return get_process().error('Condition must evaluate to boolean')
+			return routine.error('Condition must evaluate to boolean')
 		elif not condition:
-			yield get_process().branch()
+			yield routine.branch()
 		while condition:
-			while get_process().path[-1] < len(self.nodes): # Continue breaks this condition early
+			while routine.path[-1] < len(self.nodes): # Continue breaks this condition early
 				yield
-			get_process().branch(0) # Repeat nodes
+			routine.branch(0) # Repeat nodes
 			condition = yield
 			if not isinstance(condition, sophia_boolean): # Over-specify on purpose to implement Sophia's specific requirement for a boolean
-				return get_process().error('Condition must evaluate to boolean')
+				return routine.error('Condition must evaluate to boolean')
 		else:
-			yield get_process().branch(len(self.nodes)) # Skip nodes
+			yield routine.branch(len(self.nodes)) # Skip nodes
 
 class for_statement(statement):
 
@@ -442,20 +467,20 @@ class for_statement(statement):
 
 		super().__init__(tokens[1], kadmos.lexer(tokens[3:-1]).parse())
 
-	def execute(self):
+	def execute(self, routine):
 
 		index = self.value
 		sequence = yield
 		sequence = iter(sequence) # Enables fast slice
 		try:
 			while True: # Loop until the iterator is exhausted
-				get_process().bind(index.value, next(sequence), index.type) # Binds the next value of the sequence to the loop index
-				while get_process().path[-1] < len(self.nodes): # Continue breaks this condition early
+				routine.bind(index.value, next(sequence), index.type) # Binds the next value of the sequence to the loop index
+				while routine.path[-1] < len(self.nodes): # Continue breaks this condition early
 					yield
-				get_process().branch(1) # Repeat nodes
+				routine.branch(1) # Repeat nodes
 		except StopIteration: # Break
-			get_process().unbind(index.value) # Unbinds the index
-			yield get_process().branch(len(self.nodes)) # Skip nodes
+			routine.unbind(index.value) # Unbinds the index
+			yield routine.branch(len(self.nodes)) # Skip nodes
 
 class else_statement(statement):
 
@@ -467,9 +492,9 @@ class else_statement(statement):
 			self.value, self.nodes, self.execute = head.value, head.nodes, head.execute # Else statement pretends to be its head statement
 			del head # So no head?
 
-	def execute(self): # Final else statement; gets overridden for non-final
+	def execute(self, routine): # Final else statement; gets overridden for non-final
 		
-		while get_process().path[-1] <= len(self.nodes):
+		while routine.path[-1] <= len(self.nodes):
 			yield
 
 class assert_statement(statement):
@@ -488,13 +513,13 @@ class assert_statement(statement):
 			super().__init__(None, *nodes)
 			self.length = len(nodes)
 
-	def execute(self):
+	def execute(self, routine):
 		
-		while get_process().path[-1] < self.length: # Evaluates all head statement nodes
+		while routine.path[-1] < self.length: # Evaluates all head statement nodes
 			value = yield
 			if value is None: # Catches null expressions
-				yield get_process().branch()
-		while get_process().path[-1] <= len(self.nodes):
+				yield routine.branch()
+		while routine.path[-1] <= len(self.nodes):
 			yield
 	
 class constraint_statement(statement):
@@ -503,15 +528,15 @@ class constraint_statement(statement):
 
 		super().__init__(None)
 
-	def execute(self):
+	def execute(self, routine):
 
-		while get_process().path[-1] <= len(self.nodes):
+		while routine.path[-1] <= len(self.nodes):
 			constraint = yield
 			if not isinstance(constraint, sophia_boolean):
-				return get_process().error('Constraint must evaluate to boolean')
+				return routine.error('Constraint must evaluate to boolean')
 			if not constraint:
-				get_process().end.send(None) # Null return
-				get_process().node = None
+				routine.end.send(None) # Null return
+				routine.node = None
 
 class return_statement(statement):
 
@@ -522,13 +547,13 @@ class return_statement(statement):
 		else:
 			super().__init__(None)
 
-	def execute(self):
+	def execute(self, routine):
 		
 		if self.nodes:
 			value = yield
 		else:
 			value = None
-		yield get_process().end.send(value) # Sends value to return queue
+		yield routine.end.send(value) # Sends value to return queue
 
 class link_statement(statement):
 
@@ -550,9 +575,9 @@ class identifier(node): # Generic identifier class
 
 		if value[0] in '.0123456789': # Terrible way to check for a number without using a try/except block
 			if '.' in value:
-				value = sophia_real(real(str(value))) # Cast to real by default
+				value = sophia_real(str(value)) # Cast to real by default
 			else:
-				value = sophia_integer(int(value)) # Cast to int
+				value = sophia_integer(value) # Cast to int
 		elif value[0] in ('"', "'"):
 			value = sophia_string(value[1:-1]) # Interpret as string
 		elif value in kadmos.sub_values:
@@ -573,7 +598,7 @@ class literal(identifier): # Adds literal behaviours to a node
 		else:
 			return self # Gives self as node
 
-	def execute(self): # Terminal nodes
+	def execute(self, routine): # Terminal nodes
 	
 		if isinstance(self.value, sophia_untyped) or self.value is None:
 			value = self.value
@@ -581,13 +606,13 @@ class literal(identifier): # Adds literal behaviours to a node
 			value = self
 		else: # If reference:
 			try:
-				value = get_process().find(self.value)
-				value = get_process().cast(value, self.type) # Type casting
+				value = routine.find(self.value)
+				value = routine.cast(value, self.type) # Type casting
 			except (NameError, TypeError) as status:
-				if isinstance(self.head, assert_statement) and get_process().path[-1] < self.head.length: # Allows assert statements to reference unbound names without error
+				if isinstance(self.head, assert_statement) and routine.path[-1] < self.head.length: # Allows assert statements to reference unbound names without error
 					value = None
 				else:
-					return get_process().error(status.args[0])
+					return routine.error(status.args[0])
 		yield value # Send value to main
 
 class keyword(identifier): # Adds keyword behaviours to a node
@@ -596,9 +621,9 @@ class keyword(identifier): # Adds keyword behaviours to a node
 
 		return self
 
-	def execute(self):
+	def execute(self, routine):
 
-		yield get_process().control(self.value) # Control object handling continue and break
+		yield routine.control(self.value) # Control object handling continue and break
 
 class operator(node): # Generic operator node
 
@@ -614,20 +639,19 @@ class prefix(operator): # Adds prefix behaviours to a node
 		self.nodes = [lex.parse(self.lbp)]
 		return self
 
-	def execute(self): # Unary operators
+	def execute(self, routine): # Unary operators
 
-		op = get_process().find(self.value) # Gets the operator definition
+		op = routine.find(self.value) # Gets the operator definition
 		x = yield
-		yield op(x) # Implements unary operator
+		yield op(routine, x)
 
 class receive(prefix): # Defines the receive operator
 
-	def execute(self):
+	def execute(self, routine):
 
 		node = yield
-		value = get_process().messages.recv()
-		value = get_process().cast(value, node.type)
-		get_process().bind(node.value, value)
+		value = routine.messages.recv()
+		routine.bind(node.value, value, node.type)
 		yield value
 
 class infix(operator): # Adds infix behaviours to a node
@@ -637,12 +661,12 @@ class infix(operator): # Adds infix behaviours to a node
 		self.nodes = [left, lex.parse(self.lbp)]
 		return self
 
-	def execute(self):
+	def execute(self, routine):
 		
-		op = get_process().find(self.value) # Gets the operator definition
+		op = routine.find(self.value) # Gets the operator definition
 		x = yield
 		y = yield
-		yield op(x, y) # Implements left-binding binary operator
+		yield op(routine, x, y)
 
 class infix_r(operator): # Adds right-binding infix behaviours to a node
 
@@ -651,7 +675,7 @@ class infix_r(operator): # Adds right-binding infix behaviours to a node
 		self.nodes = [left, lex.parse(self.lbp - 1)]
 		return self
 
-	def execute(self):
+	def execute(self, routine):
 
 		if self.value == ':': # Sorts out list slices and key-item pairs by returning them as a slice object or a dictionary
 			x = yield
@@ -676,10 +700,10 @@ class infix_r(operator): # Adds right-binding infix behaviours to a node
 				value = [x, y]
 			yield value
 		else: # Binary operators
-			op = get_process().find(self.value) # Gets the operator definition
+			op = routine.find(self.value) # Gets the operator definition
 			x = yield
 			y = yield
-			yield op(x, y) # Implements right-binding binary operator
+			yield op(routine, x, y)
 
 class bind(operator): # Defines the bind operator
 
@@ -692,13 +716,13 @@ class bind(operator): # Defines the bind operator
 		self.value, self.nodes = left, [lex.parse(self.lbp)]
 		return self
 
-	def execute(self):
+	def execute(self, routine):
 
 		value = yield # Yields to main
 		if not isinstance(value, sophia_process):
-			return get_process().error('Invalid bind')
+			return routine.error('Invalid bind')
 		value.bound = True
-		get_process().bind(self.value.value, value) # Yields to go up
+		routine.bind(self.value.value, value) # Yields to go up
 		yield value
 
 class send(operator): # Defines the send operator
@@ -712,15 +736,15 @@ class send(operator): # Defines the send operator
 		self.nodes, self.value = [left], lex.parse(self.lbp)
 		return self
 
-	def execute(self):
+	def execute(self, routine):
 
 		value = yield # Sending only ever takes 1 argument
-		value = get_process().cast(value, self.routine().type) # Enforce output type for send value
-		address = get_process().find(self.value.value)
+		value = routine.cast(value, self.routine().type) # Enforce output type for send value
+		address = routine.find(self.value.value)
 		if not isinstance(address, sophia_process):
-			return get_process().error('Invalid send')
-		if address.name == get_process().name:
-			return get_process().error('Send source and destination are the same')
+			return routine.error('Invalid send')
+		if address.name == routine.name:
+			return routine.error('Send source and destination are the same')
 		address.send(value) # Sends value to destination queue
 		yield address
 
@@ -746,7 +770,7 @@ class left_bracket(operator): # Adds left-bracket behaviours to a node
 
 class function_call(left_bracket):
 
-	def execute(self):
+	def execute(self, routine):
 
 		function = yield
 		if len(self.nodes) > 1:
@@ -755,25 +779,32 @@ class function_call(left_bracket):
 			args = []
 		if not isinstance(args, list): # Type correction
 			args = [args] # Very tiresome type correction, at that
-		if isinstance(function, sophia_function):
-			value = function(*args) # Behaves like a Python function
-			if isinstance(value, sophia_process) and not isinstance(self.head, (assignment, bind, send)):
-				yield value.get() # Blocks until function returns
+		if isinstance(function, function_statement): # If user-defined:
+			routine = process(routine.namespace, function, *args) # Create new routine
+			routine.start() # Start process for routine
+			value = routine.proxy # Yields proxy object as a promise
+		elif hasattr(function, '__call__'): # If built-in:
+			if args: # Python doesn't like unpacking empty tuples
+				value = function(*args) # Since value is a Python function in this case
 			else:
-				yield value
+				value = function()
 		else:
-			return get_process().error(function.__name__ + ' is not a function')
+			return routine.error(function.__name__ + ' is not a function')
+		if isinstance(value, sophia_process) and not isinstance(self.head, (assignment, bind, send)):
+			yield value.get() # Blocks until function returns
+		else:
+			yield value
 
 class parenthesis(left_bracket):
 
-	def execute(self):
+	def execute(self, routine):
 
 		x = yield
 		yield x
 
 class sequence_index(left_bracket):
 
-	def execute(self):
+	def execute(self, routine):
 		
 		value = yield
 		subscript = yield
@@ -783,15 +814,15 @@ class sequence_index(left_bracket):
 			if isinstance(i, arche.slice):
 				if isinstance(value, sophia_sequence):
 					if i.nodes[1] < -1 * len(value) or i.nodes[1] > len(value): # If out of bounds:
-						return get_process().error('Index out of bounds')
+						return routine.error('Index out of bounds')
 				else:
-					return get_process().error('Value not sliceable')
+					return routine.error('Value not sliceable')
 			elif isinstance(value, sophia_record):
 				if i not in value:
-					return get_process().error('Key not in record: ' + i)
+					return routine.error('Key not in record: ' + i)
 			else:
 				if i < -1 * len(value) or i >= len(value): # If out of bounds:
-					return get_process().error('Index out of bounds')
+					return routine.error('Index out of bounds')
 			if isinstance(i, arche.slice):
 				if isinstance(value, sophia_string):
 					value = sophia_string(''.join([value[n] for n in i.value])) # Constructs slice of string using range
@@ -813,7 +844,7 @@ class sequence_literal(left_bracket):
 			items = []
 		if not isinstance(items, (list, arche.slice)):
 			items = [items]
-		if isinstance(items[0], dict): # If items is a key-item pair in a record
+		if isinstance(items[0], dict) and not isinstance(items[0], sophia_record): # If items is a key-item pair in a record
 			yield sophia_record({list(item.keys())[0]: list(item.values())[0] for item in items}) # Stupid way to merge a list of dicts
 		if isinstance(items, list): # If list:
 			yield sophia_list(items)
@@ -822,10 +853,10 @@ class sequence_literal(left_bracket):
 
 class meta_statement(left_bracket):
 
-	def execute(self):
+	def execute(self, routine):
 		
 		if len(self.nodes) > 1:
-			return get_process().error('Meta-statement forms invalid expression')
+			return routine.error('Meta-statement forms invalid expression')
 		data = yield # Evaluate string
 		self.parse(data) # Run-time parser stage
 		value = yield # Yield into evaluated statement or expression
@@ -838,262 +869,106 @@ class right_bracket(operator): # Adds right-bracket behaviours to a node
 
 		super().__init__(value)
 
-# Type definitions
+# Value definitions
 
-class sophia_untyped: # Non-abstract base class
-
-	types = object # Type or tuple of types that the class instance's value can be
-
-	def __new__(cls, value): # Using __new__ for casting; this allows a separate __init__ and returns null for failed casts
-
-		if isinstance(value, sophia_untyped): # Normalises Sophia values
-			value = value.value
-		if isinstance(value, cls.types):
-			return object.__new__(cls)
-
-	def __init__(self, value): # Default __init__()
-
-		if isinstance(value, sophia_untyped): # Normalises Sophia values
-			value = value.value
-		self.value = value
+class sophia_untyped: # Abstract base class
 
 	@classmethod
-	def __cast__(cls, value): # Default __cast__(); untyped doesn't convert values by definition
-
-		value = cls(value)
-		if value:
-			return value
-		else:
-			return get_process.error('Invalid type conversion')
-
-	def __getnewargs__(self): # Handles unpickling; return value is passed to __new__()
-
-		return (self.value,)
-
-	def __repr__(self):
-
-		return repr(self.value)
-
-class sophia_routine(sophia_untyped): # Abstract routine type
-
-	types = coroutine # Currently user-defined only
-
-class sophia_process(sophia_untyped): # Proxy object pretending to be a process
-
-	types = arche.proxy # Internal type only
-
-	def __repr__(self):
-
-		return 'process ' + self.value.name
-
-	def send(self, value): # Proxy method to send to process
-
-		return self.value.messages.send(value)
-
-	def get(self): # Proxy method to get return value from process
-
-		return self.value.end.recv()
-
-class sophia_type(sophia_routine): # Type type
-
-	types = (arche.proxy, type)
-
-	def __call__(self, value): # Enables function calls on value
-
-		if isinstance(self.value, arche.proxy):
-			self.send(value)
-			return self.get()
-		else:
-			return self.value(value) # Return instance of type
-
-	def cast(self, value): # Explicit cast to type with modification of value
-
-		return self.value.__cast__(value) # Defers to type
-
-	def supertype(self): # Gets supertype
-
-		if isinstance(self.value, arche.proxy):
-			return get_process().find(self.value.supertype) # Ths should always refer to the type statement node at this point in execution
-
-	def send(self, value): # Proxy method to send to process
-
-		return self.value.messages.send(value)
-
-	def get(self): # Proxy method to get return value from process
-
-		return self.value.end.recv()
-
-class sophia_operator(sophia_routine): # Operator type
-
-	types = (operator_statement, arche.operator)
-
-	def __call__(self, *args): # Enables function calls on value
+	def cast(cls, value):
 		
-		if isinstance(self.value, operator_statement): # User-defined operator
-			x = get_process().cast(args[0], self.value.value[1].type)
-			if len(args) == 2:
-				y = get_process().cast(args[1], self.value.value[2].type)
-			routine = process(get_process().namespace, self.value, *args) # Create new routine
-			routine.start() # Start process for routine
-			value = routine.proxy.get() # Get value immediately
-			return get_process().cast(value, self.value.value[0].type)
-		else: # Built-in operator
-			x = get_process().cast(args[0], self.value.types[1])
-			if len(args) == 2:
-				y = get_process().cast(args[1], self.value.types[2])
-			if len(args) == 2:
-				value = self.value.binary(x.value, y.value)
-			else:
-				value = self.value.unary(x.value)
-			return get_process().cast(value, self.value.types[0])
+		if isinstance(value, cls):
+			return True
+
+class sophia_routine(sophia_untyped): pass # Abstract routine type
+
+class sophia_process(arche.proxy, sophia_untyped): pass # Proxy object pretending to be a process
+
+class sophia_type(arche.proxy, sophia_routine): # Type type
+
+	@classmethod
+	def cast(cls, value):
+
+		if isinstance(value, (arche.proxy, type)):
+			return True
+
+class sophia_operator(arche.operator, sophia_routine): # Operator type
+
+	def __call__(self, routine, *args):
+
+		x = routine.cast(args[0], self.types[1])
+		if len(args) > 1:
+			y = routine.cast(args[1], self.types[2])
+			value = self.binary(x, y)
+		else:
+			value = self.unary(x)
+		if value is not None and not isinstance(value, sophia_untyped): # Normalise value to Sophia type
+			type_name = type(value).__name__
+			if type_name in kadmos.sub_types:
+				type_name = kadmos.sub_types[type_name]
+			type_routine = routine.find(type_name)
+			value = type_routine(value) # Attempt conversion to Sophia type
+		return routine.cast(value, self.types[0])
+
+	@classmethod
+	def cast(cls, value):
+
+		if isinstance(value, (cls, operator_statement)):
+			return True
 
 class sophia_function(sophia_routine): # Function type
 
-	types = (function_statement, sophia_untyped.__init__.__class__) # Hatred
-
-	def __call__(self, *args): # Enables function calls on value
-
-		if isinstance(self.value, function_statement): # If user-defined:
-			routine = process(get_process().namespace, self.value, *args) # Create new routine
-			routine.start() # Start process for routine
-			return routine.proxy # Yields proxy object as a promise
-		else: # If built-in:
-			if args: # Python doesn't like unpacking empty tuples
-				return self.value(*args) # Since value is a Python function in this case
-			else:
-				return self.value()
-
-class sophia_value(sophia_untyped): # Abstract singular value type
-
-	types = (bool, int, float, real)
-
-class sophia_boolean(sophia_value): # Boolean type
-
-	types = bool
-
 	@classmethod
-	def __cast__(cls, value):
+	def cast(cls, value):
 
-		return cls(bool(value.value))
+		if isinstance(value, (cls.__init__.__class__, function_statement)): # Hatred
+			return True
 
-	def __bool__(self):
+class sophia_value(sophia_untyped): pass # Abstract element type
 
-		return self.value
+class sophia_boolean(int, sophia_value): # Boolean type
+
+	def __bool__(self): # Hell
+
+		if self == 1:
+			return True
+		else:
+			return False
 
 	def __repr__(self):
 
-		return str(self.value).lower()
+		return str(bool(self)).lower()
 
 	def __str__(self):
 
-		return str(self.value).lower()
+		return str(bool(self)).lower()
 
-class sophia_number(sophia_value): # Abstract number type
+class sophia_number(sophia_value): pass # Abstract number type
 
-	types = (int, float, real)
+class sophia_integer(int, sophia_number): pass # Integer type
 
-	def __new__(cls, value): # Number types have specific conversion requirements
-		
-		if isinstance(value, sophia_untyped):
-			value = value.value
-		if isinstance(value, cls.types) and type(value)(value) == value:
-			return object.__new__(cls)
+class sophia_float(float, sophia_number): pass # Float type
 
-	def __init__(self, value):
+class sophia_real(real, sophia_number): pass # Real type
 
-		if isinstance(value, sophia_untyped):
-			value = value.value
-		if isinstance(value, __class__.types) and type(value)(value) == value:
-			value = type(value)(value)
-		self.value = value
+class sophia_sequence(sophia_untyped): pass # Abstract sequence type
 
-class sophia_integer(sophia_number): # Integer type
-	
-	types = int
+class sophia_string(str, sophia_sequence): pass # String type
 
-	@classmethod
-	def __cast__(cls, value):
+class sophia_list(tuple, sophia_sequence): pass # List type
 
-		return cls(int(value.value))
-
-class sophia_float(sophia_number): # Float type
-
-	types = float
-
-	@classmethod
-	def __cast__(cls, value):
-
-		return cls(float(value.value))
-
-class sophia_real(sophia_number): # Real type
-
-	types = real
-
-	@classmethod
-	def __cast__(cls, value):
-
-		return cls(real(str(value.value)))
-
-class sophia_sequence(sophia_untyped): # Abstract sequence type
-
-	types = (str, tuple, dict)
-
-	def length(self):
-
-		return len(self)
-
-class sophia_string(sophia_sequence): # String type
-
-	types = str
-
-	@classmethod
-	def __cast__(cls, value):
-
-		return cls(str(value.value))
-
-class sophia_list(sophia_sequence): # List type
-
-	types = tuple
-
-	def __new__(cls, value):
-
-		if isinstance(value, list):
-			value = tuple(value)
-		if isinstance(value, cls.types):
-			return object.__new__(cls)
-
-	def __init__(self, value):
-
-		if isinstance(value, sophia_untyped):
-			value = value.value
-		if isinstance(value, list):
-			value = tuple(value)
-		self.value = value
-
-	@classmethod
-	def __cast__(cls, value):
-
-		return cls(tuple(value.value))
-
-class sophia_record(sophia_sequence): # Record type
-
-	types = dict
-
-	@classmethod
-	def __cast__(cls, value):
-
-		return cls(dict(value.value))
+class sophia_record(dict, sophia_sequence): pass # Record type
 
 if __name__ == '__main__': # Hatred
 
 	with mp.Manager() as runtime: # The stupidest global state you've ever seen in your life
 		
 		get_process().name = 'runtime'
-		types = {k.split('_')[1]: sophia_type(v) for k, v in globals().items() if k.split('_')[0] == 'sophia'}
-		operators = {v.symbol: sophia_operator(v) for k, v in arche.__dict__.items() if k.split('_')[0] == 'op'}
-		functions = {k.split('_')[1]: sophia_function(v) for k, v in arche.__dict__.items() if k.split('_')[0] == 'f'}
+		types = [(k.split('_')[1], v, 'type') for k, v in globals().items() if k.split('_')[0] == 'sophia']
+		operators = [(v[0], sophia_operator(*v), 'operator') for k, v in arche.__dict__.items() if k.split('_')[0] == 'op']
+		functions = [(k.split('_')[1], v, 'function') for k, v in arche.__dict__.items() if k.split('_')[0] == 'f']
+		built_ins = types + operators + functions
 		namespace = runtime.dict({0: runtime.Lock()}) # Unfortunate namespace hierarchy, but at least processes never write to the same memory
-		namespace[1] = kleio.namespace((types | operators | functions).keys(), (types | operators | functions).values()) # Built-ins
+		namespace[1] = kleio.namespace((i[0] for i in built_ins), (i[1] for i in built_ins), (i[2] for i in built_ins)) # Built-ins
 		main = process(namespace, module('test.sophia')) # Spawn initial process
 		main.start() # Start initial process
 		main.join() # Prevent exit until initial process ends
