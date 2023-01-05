@@ -24,9 +24,11 @@ class process(mp.Process): # Created by function calls and type checking
 		self.value = None # Current value
 		self.namespace = namespace # Reference to shared namespace hierarchy
 		self.reserved = [] # List of reserved names in the current namespace
-		self.proxy = sophia_process(self, link = link)
+		self.link = link # For linked modules
+		self.proxy = sophia_process(self)
 		self.messages, self.proxy.messages = mp.Pipe() # Pipe to receive messages
 		self.end, self.proxy.end = mp.Pipe() # Pipe to send return value
+		self.ready = mp.Event()
 
 	def __repr__(self):
 
@@ -42,6 +44,7 @@ class process(mp.Process): # Created by function calls and type checking
 		params = [item.value for item in params] # Get names of params
 		self.reserved = params
 		self.namespace[self.pid] = kleio.namespace(params, args, types) # Updates namespace hierarchy
+		self.ready.set() # Alerts other routines that this routine has been initialised
 		self.instances.append(self.node.execute(self)) # Start routine
 		self.instances[-1].send(None)
 		while self.node: # Runtime loop
@@ -68,13 +71,13 @@ class process(mp.Process): # Created by function calls and type checking
 				if isinstance(self.node, (coroutine, return_statement)) and self.path[-1] == len(self.node.nodes): # Check if finished
 					self.node = None # Can't send to self
 		else:
-			if self.proxy.link:
+			if self.link:
 				self.proxy.end.poll(None) # Hangs for linked modules
 			for routine in mp.active_children(): # Makes sure all child processes are finished before terminating
 				if routine.supertype: # Type routine
 					routine.terminate() # Type routines end just before being removed from the namespace
 				else:
-					if routine.proxy.link:
+					if routine.link:
 						routine.end.send(None) # Allows linked modules to end
 					routine.join()
 			hemera.debug_namespace(self)
@@ -99,21 +102,23 @@ class process(mp.Process): # Created by function calls and type checking
 			self.node = loop
 			self.branch()
 
-	def bind(self, name, value, type_value = None): # Creates or updates a name binding in main
+	def bind(self, name, value, type_value = None, pid = None): # Creates or updates a name binding in main
 		
-		if self.namespace[1].read(name) or name in self.reserved: # Quicker and easier to do it here
-			return self.error('Bind to reserved name: ' + name)
-		namespace = self.namespace[self.pid] # Retrieve routine namespace
+		if not pid:
+			pid = self.pid
+			if self.namespace[1].read(name) or name in self.reserved: # Quicker and easier to do it here
+				return self.error('Bind to reserved name: ' + name)
+		namespace = self.namespace[pid] # Retrieve routine namespace
 		if type_value:
 			value = self.cast(value, type_value)
 		else:
-			type_value = self.namespace[self.pid].read_type(name)
+			type_value = self.namespace[pid].read_type(name)
 			if type_value:
 				value = self.cast(value, type_value)
 		namespace.write(name, value) # Mutate namespace
 		namespace.write_type(name, type_value)
 		self.namespace[0].acquire() # Acquires namespace lock
-		self.namespace[self.pid] = namespace # Update shared dict; nested objects don't sync unless you make them
+		self.namespace[pid] = namespace # Update shared dict; nested objects don't sync unless you make them
 		self.namespace[0].release() # Releases namespace lock
 
 	def unbind(self, name): # Destroys a name binding in the current namespace
@@ -124,24 +129,32 @@ class process(mp.Process): # Created by function calls and type checking
 		self.namespace[self.pid] = namespace # Update shared dict; nested objects don't sync unless you make them
 		self.namespace[0].release() # Releases namespace lock
 
-	def find(self, name, get_type = False): # Retrieves a binding's value in the routine's available namespace
+	def find(self, name): # Retrieves a binding's value in its available namespace
 		
-		value = self.namespace[1].read(name) # Searches built-ins first; built-ins are independent of namespaces
+		names = name.split('.')
+		value = self.namespace[1].read(names[0]) # Searches built-ins first; built-ins are independent of namespaces
 		if value:
 			return value
 		pid = self.pid
 		while pid in self.namespace:
-			if get_type:
-				value = self.namespace[pid].read_type(name)
-			else:
-				value = self.namespace[pid].read(name)
+			value = self.namespace[pid].read(names[0])
 			if value:
-				if isinstance(value, sophia_process) and self.namespace[pid].read_type(name) != 'type' and (not value.bound or value.end.poll()): # If the name is associated with an unbound or finished routine:
-					value = self.cast(value.get(), value.type) # Block for return value and check type
-					self.namespace[pid].write(name, value) # Is it breaking encapsulation if the target routine is finished when this happens?
-				return value
+				if isinstance(value, sophia_process):
+					if not value.bound or value.end.poll(): # If the name is associated with an unbound or finished routine:
+						value = self.cast(value.get(), value.type) # Block for return value and check type
+						self.bind(names[0], value, pid = pid) # Is it breaking encapsulation if the target routine is finished when this happens?
+				break
 			else:
 				pid = self.namespace[pid].parent
+		for i, n in enumerate(names[1:]):
+			if not isinstance(value, sophia_process): # Get type operation instead
+				break
+			pid = value.pid
+			self.namespace[0].acquire() # Lock is necessary to ensure any outstanding binds are complete
+			value = self.namespace[pid].read(n)
+			self.namespace[0].release()
+		else:
+			return value
 		return self.error('Undefined name: ' + repr(name))
 
 	def cast(self, operand, type_name): # Checks type of value and returns boolean
@@ -327,7 +340,7 @@ class module(coroutine): # Module object is always the top level of a syntax tre
 		while routine.path[-1] < len(self.nodes): # Allows more fine-grained control flow than using a for loop
 			yield
 		else: # Default behaviour for no return or yield
-			if not routine.proxy.link:
+			if not routine.link:
 				routine.end.send(None) # Sends value to return queue
 			yield
 
@@ -348,6 +361,9 @@ class type_statement(coroutine):
 		
 		type_routine = process(routine.namespace, self) # Create new routine
 		type_routine.start() # Start process for routine
+		type_routine.ready.wait() # Await routine initialisation
+		type_routine.proxy.pid = type_routine.pid
+		type_routine.proxy.bound = True
 		return routine.bind(self.name, type_routine.proxy, 'type')
 
 	def execute(self, routine):
@@ -577,8 +593,11 @@ class link_statement(statement):
 			if '.' not in name:
 				name = name + '.sophia'
 			module_routine = process(routine.namespace, module(name), link = True)
-			routine.bind(item.value.split('.')[0], module_routine.proxy, 'module')
 			module_routine.start()
+			module_routine.ready.wait() # Await routine initialisation
+			module_routine.proxy.pid = module_routine.pid
+			module_routine.proxy.bound = True
+			routine.bind(item.value.split('.')[0], module_routine.proxy, 'module')
 		yield
 
 class identifier(node): # Generic identifier class
@@ -617,14 +636,8 @@ class literal(identifier): # Adds literal behaviours to a node
 		elif isinstance(self.head, receive): # Yields node to receive operator
 			value = self
 		else: # If reference:
-			try:
-				value = routine.find(self.value)
-				value = routine.cast(value, self.type) # Type casting
-			except (NameError, TypeError) as status:
-				if isinstance(self.head, assert_statement) and routine.path[-1] < self.head.length: # Allows assert statements to reference unbound names without error
-					value = None
-				else:
-					return routine.error(status.args[0])
+			value = routine.find(self.value)
+			value = routine.cast(value, self.type) # Type casting
 		yield value # Send value to main
 
 class keyword(identifier): # Adds keyword behaviours to a node
@@ -794,7 +807,9 @@ class function_call(left_bracket):
 		if isinstance(function, function_statement): # If user-defined:
 			routine = process(routine.namespace, function, *args) # Create new routine
 			routine.start() # Start process for routine
+			routine.ready.wait()
 			value = routine.proxy # Yields proxy object as a promise
+			value.pid = routine.pid # Updates PID
 		elif hasattr(function, '__call__'): # If built-in:
 			if args: # Python doesn't like unpacking empty tuples
 				value = function(*args) # Since value is a Python function in this case

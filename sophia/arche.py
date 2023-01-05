@@ -25,11 +25,11 @@ class proxy: # Base proxy object
 		self.name = process.name
 		self.type = process.type
 		self.supertype = process.supertype
-		self.pid = process.pid
+		self.pid = process.pid # Unset on initialisation
+		self.link = process.link # For linked modules
 		self.messages = None # Pipe to send messages
 		self.end = None # Pipe for return value
 		self.bound = False # Determines whether process is bound
-		self.link = link # For linked modules
 
 	def send(self, value): # Proxy method to send to process
 
