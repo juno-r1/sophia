@@ -1,0 +1,6 @@
+int a: 1
+
+assert int a:
+	print('!')
+else:
+	print('?')

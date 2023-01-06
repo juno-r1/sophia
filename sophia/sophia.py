@@ -146,7 +146,7 @@ class process(mp.Process): # Created by function calls and type checking
 				break
 			else:
 				pid = self.namespace[pid].parent
-		for i, n in enumerate(names[1:]):
+		for n in names[1:]:
 			if not isinstance(value, sophia_process): # Get type operation instead
 				break
 			pid = value.pid
@@ -180,9 +180,10 @@ class process(mp.Process): # Created by function calls and type checking
 
 	def error(self, status): # Error handler
 		
-		hemera.debug_error(self.name, status)
-		self.end.send(None) # Null return
-		self.node = None # Immediately end routine
+		if not isinstance(self.node.head, assert_statement): # Suppresses error for assert statement
+			hemera.debug_error(self.name, status)
+			self.end.send(None) # Null return
+			self.node = None # Immediately end routine
 
 # Parse tree definitions
 
