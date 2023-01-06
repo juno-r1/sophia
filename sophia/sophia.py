@@ -1,10 +1,4 @@
-# ☉
-# 08/05/2022: Parser implemented (first working version)
-# 15/07/2022: Hello world program
-# 04/08/2022: Fibonacci program
-# 09/08/2022: Basic feature set implemented (0.0)
-# 16/08/2022: Basic feature set re-implemented (0.1)
-# 20/08/2022: Type system implemented (0.1)
+# ☉ 0.2 06-01-2023
 
 import arche, hemera, kadmos, kleio
 import multiprocessing as mp
@@ -819,11 +813,8 @@ class function_call(left_bracket):
 		if not isinstance(args, list): # Type correction
 			args = [args] # Very tiresome type correction, at that
 		if isinstance(function, list): # If type operation:
-			type_operation = True
 			args = [function[0]] + args # Shuffle arguments
 			function = function[1] # Get actual function
-		else:
-			type_operation = False
 		if isinstance(function, function_statement): # If user-defined:
 			routine = process(routine.namespace, function, *args) # Create new routine
 			routine.start() # Start process for routine
