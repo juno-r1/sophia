@@ -1,6 +1,11 @@
-int a: 1
+type even extends int:
 
-assert int a:
-	print('!')
-else:
-	print('?')
+	constraint:
+		even % 2 = 0
+
+	int increment (even):
+
+		return even + 1
+
+list a: [1, 2, 3]
+print(a.length())

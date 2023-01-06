@@ -129,13 +129,14 @@ class process(mp.Process): # Created by function calls and type checking
 		self.namespace[self.pid] = namespace # Update shared dict; nested objects don't sync unless you make them
 		self.namespace[0].release() # Releases namespace lock
 
-	def find(self, name): # Retrieves a binding's value in its available namespace
+	def find(self, name, pid = None): # Retrieves a binding's value in its available namespace
 		
 		names = name.split('.')
 		value = self.namespace[1].read(names[0]) # Searches built-ins first; built-ins are independent of namespaces
 		if value:
 			return value
-		pid = self.pid
+		if not pid:
+			pid = self.pid
 		while pid in self.namespace:
 			value = self.namespace[pid].read(names[0])
 			if value:
@@ -147,12 +148,23 @@ class process(mp.Process): # Created by function calls and type checking
 			else:
 				pid = self.namespace[pid].parent
 		for n in names[1:]:
-			if not isinstance(value, sophia_process): # Get type operation instead
-				break
-			pid = value.pid
-			self.namespace[0].acquire() # Lock is necessary to ensure any outstanding binds are complete
-			value = self.namespace[pid].read(n)
-			self.namespace[0].release()
+			if isinstance(value, sophia_process): # Access process namespace
+				pid = value.pid
+				self.namespace[0].acquire() # Lock is necessary to ensure any outstanding binds are complete
+				value = self.namespace[pid].read(n)
+				self.namespace[0].release()
+			else: # Get type operation instead
+				if n != names[-1]: # Type operations have to be the last specified name
+					break
+				type_name = self.namespace[pid].read_type(names[-2])
+				type_routine = self.find(type_name, pid = pid) # Search value's scope for type
+				if not type_routine:
+					return self.error('Undefined name: ' + repr(name))
+				if isinstance(type_routine, sophia_process):
+					op = self.namespace[type_routine.pid].read(n) # Get type operation
+				else: # Built-in types are Python types and built-in type operations are Python type methods
+					op = getattr(type_routine, n, None) # Get built-in type method
+				value = [value, op] # Return list of type operation, type name, and first argument
 		else:
 			return value
 		return self.error('Undefined name: ' + repr(name))
@@ -638,7 +650,8 @@ class literal(identifier): # Adds literal behaviours to a node
 			value = self
 		else: # If reference:
 			value = routine.find(self.value)
-			value = routine.cast(value, self.type) # Type casting
+			if not isinstance(self.head, function_call):
+				value = routine.cast(value, self.type) # Type casting
 		yield value # Send value to main
 
 class keyword(identifier): # Adds keyword behaviours to a node
@@ -805,6 +818,12 @@ class function_call(left_bracket):
 			args = []
 		if not isinstance(args, list): # Type correction
 			args = [args] # Very tiresome type correction, at that
+		if isinstance(function, list): # If type operation:
+			type_operation = True
+			args = [function[0]] + args # Shuffle arguments
+			function = function[1] # Get actual function
+		else:
+			type_operation = False
 		if isinstance(function, function_statement): # If user-defined:
 			routine = process(routine.namespace, function, *args) # Create new routine
 			routine.start() # Start process for routine
@@ -864,7 +883,7 @@ class sequence_index(left_bracket):
 
 class sequence_literal(left_bracket):
 
-	def execute(self):
+	def execute(self, routine):
 		
 		if self.nodes:
 			items = yield
@@ -986,7 +1005,11 @@ class sophia_float(float, sophia_number): pass # Float type
 
 class sophia_real(real, sophia_number): pass # Real type
 
-class sophia_sequence(sophia_untyped): pass # Abstract sequence type
+class sophia_sequence(sophia_untyped): # Abstract sequence type
+
+	def length(self):
+
+		return len(self)
 
 class sophia_string(str, sophia_sequence): pass # String type
 
