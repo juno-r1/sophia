@@ -1,7 +1,7 @@
 characters = '.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz' # Sorted by position in UTF-8
 parens = '()[]{}'
 comment = '//'
-structure_tokens = ('if', 'else', 'while', 'for', 'assert', 'constraint', 'return', 'yield', 'link', 'import')
+structure_tokens = ('if', 'while', 'for', 'else', 'assert', 'constraint', 'return', 'link')
 keyword_tokens = ('is', 'extends', 'continue', 'break')
 keyword_operators = ('not', 'or', 'and', 'xor', 'in')
 sub_types = {'int': 'integer', # Lookup table for type names
@@ -16,7 +16,6 @@ binding_power = (('(', ')', '[', ']', '{', '}'), # The left-binding power of a b
 				 (':',),
 				 ('<-',),
 				 ('->',),
-				 ('in',),
 				 ('or', '||',),
 				 ('and', '&&',),
 				 ('xor', '^^'),

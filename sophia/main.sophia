@@ -1,3 +1,12 @@
-int add (int x, int y):
+type prime extends int:
 
-	return x + y
+	constraint:
+		prime > 1
+		prime % 2 != 0 or prime = 2
+	for i in 3 : prime ^ (1/2) + 1 : 2:
+		constraint:
+			prime % i != 0
+
+for i in 0:20:1:
+	assert prime i:
+		print(i)

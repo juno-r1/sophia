@@ -25,20 +25,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="aletheia.py" />
-    <Compile Include="archive\0.1\backup.py" />
-    <Compile Include="archive\0.1\core.py" />
-    <Compile Include="archive\0.1\hemera.py" />
-    <Compile Include="archive\0.1\sophia.py" />
     <Compile Include="arche.py" />
-    <Compile Include="archive\0.2_pre\aletheia.py" />
-    <Compile Include="archive\0.2_pre\arche.py" />
-    <Compile Include="archive\0.2_pre\backup.py" />
-    <Compile Include="archive\0.2_pre\hemera.py" />
-    <Compile Include="archive\0.2_pre\kadmos.py" />
-    <Compile Include="archive\0.2_pre\kleio.py" />
-    <Compile Include="archive\0.2_pre\sophia.py" />
     <Compile Include="hemera.py" />
-    <Compile Include="archive\0.0\sophia.py" />
     <Compile Include="backup.py" />
     <Compile Include="kleio.py" />
     <Compile Include="sophia.py" />
@@ -46,24 +34,12 @@
     <Compile Include="test.py" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="archive\0.1\main.sophia" />
-    <Content Include="archive\0.1\reference.pdf" />
-    <Content Include="archive\0.1\test.sophia" />
-    <Content Include="archive\0.2_pre\main.sophia" />
-    <Content Include="archive\0.2_pre\plan.txt" />
-    <Content Include="archive\0.2_pre\test.sophia" />
     <Content Include="main.sophia" />
     <Content Include="plan.txt" />
     <Content Include="test.sophia" />
   </ItemGroup>
   <ItemGroup>
     <InterpreterReference Include="Global|PythonCore|3.9" />
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="archive\" />
-    <Folder Include="archive\0.0\" />
-    <Folder Include="archive\0.1\" />
-    <Folder Include="archive\0.2_pre\" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

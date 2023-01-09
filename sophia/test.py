@@ -1,4 +1,6 @@
-from fractions import Fraction as real
+a = {'a': 1, 'b': 2, 'c': 3}
 
-a = real(1)
-print(type(a).__name__)
+items = list(a.items())
+i = range(0, 2, 1)
+value = dict([items[n] for n in i])
+print(value)

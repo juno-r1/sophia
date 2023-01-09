@@ -14,7 +14,7 @@ class namespace: # Base namespace object
 
 	def __repr__(self):
 		
-		return '===\n' + self.name + '\n---\n' + '\n---\n'.join((name + ' ' + str(self.types[name]) + ' ' + repr(value) for name, value in self.values.items())) + '\n==='
+		return '===\n' + self.name + '\n---\n' + '\n---\n'.join((name + ' ' + self.types[name] + ' ' + repr(value) for name, value in self.values.items())) + '\n==='
 
 	def read(self, name):
 
@@ -36,15 +36,9 @@ class namespace: # Base namespace object
 
 	def write_type(self, name, value):
 		
-		if value:
-			self.types[name] = value # Update or create new binding
-		elif name not in self.types:
-			self.types[name] = 'untyped'
+		self.types[name] = value # Update or create new binding
 
-	def delete(self, name):
-
-		try:
-			del self.values[name] # Delete binding if it exists in the namespace
-			del self.types[name]
-		except KeyError:
-			raise NameError('Undefined name: ' + name)
+	def delete(self, name): # Internal method; should never raise KeyError
+		
+		del self.values[name] # Delete binding if it exists in the namespace
+		del self.types[name]

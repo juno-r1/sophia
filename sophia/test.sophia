@@ -1,11 +1,1 @@
-type even extends int:
-
-	constraint:
-		even % 2 = 0
-
-	int increment (even):
-
-		return even + 1
-
-list a: [1, 2, 3]
-print(a.length())
+int a: 1

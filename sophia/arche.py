@@ -14,17 +14,15 @@ class slice: # Initialised during execution
 
 		return iter(self.value) # Enables iteration over range without expanding slice
 
-	def execute(self): # Returns expansion of slice
-
-		return [i for i in self.value]
+class element(tuple): pass # Stupid hack to make record construction work
 
 class proxy: # Base proxy object
 
-	def __init__(self, process, link = False):
+	def __init__(self, process):
 		
 		self.name = process.name
 		self.type = process.type
-		self.supertype = process.supertype
+		self.supertype = process.supertype # Types only
 		self.pid = process.pid # Unset on initialisation
 		self.link = process.link # For linked modules
 		self.messages = None # Pipe to send messages
@@ -47,6 +45,20 @@ class operator: # Base operator object
 		self.unary = unary # Unary function
 		self.binary = binary # Binary function
 		self.types = types # Tuple of return type and input types
+
+	def __call__(self, routine, *args):
+
+		x = routine.cast(args[0], self.types[1])
+		if x is None:
+			return None
+		if len(args) > 1:
+			y = routine.cast(args[1], self.types[2])
+			if y is None:
+				return None
+			value = self.binary(x, y)
+		else:
+			value = self.unary(x)
+		return routine.cast(value, self.types[0])
 
 class routine: # Base function object
 

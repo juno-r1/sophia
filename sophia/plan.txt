@@ -1,239 +1,37 @@
-integer f (integer n):
+interpreter architecture
 
-	integer a: n
-	integer b: 0
-	while a < 10:
-		a: a + b
-		b: yield a
-	else:
-		return a
+namespace
+name, value, type (pointer, not string)
 
-x <- f(1)			// Creates a binding for the coroutine f with initial argument n = 1 and runs until yield or return
-y: x				// y = 1
-y: 2 -> x			// y = 3
-y: 7 -> x			// y = 10; invocation of return statement overwrites coroutine binding with the return value
-y: 1 -> x			// Error: no coroutine x
-
-x <- io.out			// Redirects the output stream to x
-print('test')		// Sends 'test' to the output stream, which redirects to x
-y: x				// y = 'test'
-
-with x <- io.in:	// Redirects the input stream to x inside the block
-	x -> io.out		// Sends the input stream to the output stream
-
-with x <- io.error:	// Redirects the error stream to x inside the block
-	a: 1 / 0		// Cause an error on purpose
-	assert x:		// Assert that an error has been sent to x:
-		x -> io.out	// Send the error to the output stream
-
-x <- sample.txt		// Binds a file to x
-y: x				// Assigns the display value of x - the known contents of the file - to y
-'abc' -> x			// Appends the string 'abc' to file, throwing an error if not possible
-
-x <- f(1)
-io.in -> x -> io.out// Pipelines the input stream to x and x to the output stream
-
-// The behaviour of the null value has been changed so that any operation or function that returns it immediately throws an error unless in the head of an assert statement
-
-int f (int n):
-
-	return null
-
-f(1) // Throws an error immediately
-
-assert f(1):
-	print('!')
+bind
+takes name, value, *type
+if type:
+	write type
 else:
-	print('?') // Prints '?'
+	if no existing binding:
+		make type untyped
+cast value to type
+write value
 
-int f (int n):
-
-	while true:
-		if n = 1:
-			n: yield null
+find
+takes name
+read value
+resolve process if needed
+if qualified:
+	for name in names:
+		if value is process:
+			read value from namespace
 		else:
-			n: yield n
+			read type
+			get operation from type
 
-assert x <- f(1): // Binds f(1) to x so it can be used elsewhere and catches the null return in the assert statement
-	print(x)
-else:
-	print('?') // Prints '?'
+cast
+takes value, type
+construct stack of user-defined types and built-in type
+	get supertype from type (pointer, not string, resolved on initialise)
 
-print(2 -> x) // Prints 2
-print(1 -> x) // Error: null return
+test suite
 
-else statement
-else has two behaviours:
-	no branch
-		execute and branch all elses (true, normal loop)
-	branch
-		branch and execute next statement (false, break)
-neither behaviour requires previous context
-else statements after loops do the opposite of what they do in python - they activate when the loop exits without completing
-
-int increment (int n):
-
-	int i: n
-	while true:
-		i: i + 1
-		yield i
-
-int x: increment(1) // x = 2; coroutine is lost
-
-int x <- increment(1) // x = 2; coroutine is bound to x
-y: x // y = 2
-y: null -> x // y = 3
-y: null -> x // y = 4
-y: null -> x // y = 5
-
-untyped type definition:
-- all data except null
-- basic type operations that can be performed safely on any data
-
-null's status as an error type is enforced by the type system, not by specific mechanisms in the interpreter
-null *can* be used, but it has no valid type operations and is not part of the type system
-routines return null to indicate error status; handling null returns is the responsibility of the user
-
-return
-yield control to main
-send control to routine
-pop routine
-set address to routine exit
-yield return value
-
-yield
-set routine entry to self
-yield control to main
-send control to routine
-pop routine
-store routine in namespace
-set address to routine exit
-yield return value
-
-send
-set current routine entry to self (no need to set exit of destination)
-yield control to main
-send control to routine
-get destination routine from namespace
-switch current routine with destination routine
-transfer routine exit over to destination routine binding
-store current routine in namespace
-set address to destination routine entry
-yield return value
-
-something's wrong with the way instances are stored in the global routine right now
-
-return
-terminate routine and return to calling environment
-
-yield
-suspend routine and return to calling environment
-
-send
-switch routine to any bound coroutine in the current namespace (return and yield return to initial send)
-replaces current namespace (like moving sideways) INCLUDING GLOBAL
-
-the dot operator (not actually an operator) gives you access to the namespace of another coroutine, but not to edit it
-
-int template (int n):
-
-	int i: n + 1
-	while true:
-		yield true
-
-
-x <- template(1)
-z: x.n // z = 2
-
-this namespace access enables the creation of coroutines that act as complex mutable data structures
-this can emulate oop, if you really want that
-
----
-
-make sophia operate under a slightly altered version of the actor model
-routines are actors
-each routine has its own namespace
-a routine's namespace *can* be viewed by other routines that know about it but a routine can only alter its own namespace
-sends are messages
-
-The actor model adopts the philosophy that everything is an actor. This is similar to the everything is an object philosophy used by some object-oriented programming languages.
-
-sophia is fundamentally based around routines. all program execution occurs inside a routine. functions, types, modules, and external streams such as files and ports are all modelled as routines.
-
-a routine can, concurrently and in no particular order:
-
-receive messages from other routines
-(?)
-send messages to other routines
-sophia sends messages using the send notation.
-
-create other routines
-sophia creates routines using the bind notation. a routine is the parent actor and supervisor of the routines bound to its namespace.
-
-designate the behaviour to be used for the next message it receives
-sophia uses the standard procedural programming model to mutate the state of the routine's namespace to this end.
-
-There is no assumed sequence to the above actions and they could be carried out in parallel.
-
-Decoupling the sender from communications sent was a fundamental advance of the actor model enabling asynchronous communication and control structures as patterns of passing messages.
-
-Recipients of messages are identified by address, sometimes called "mailing address". Thus an actor can only communicate with actors whose addresses it has. It can obtain those from a message it receives, or if the address is for an actor it has itself created.
-all routines are named, including the initial routine. modules use the names of their files.
-
-The actor model is characterized by inherent concurrency of computation within and among actors, dynamic creation of actors, inclusion of actor addresses in messages, and interaction only through direct asynchronous message passing with no restriction on message arrival order.
-
-dot notation (routine.name) is a syntactic sugar for sending a message to a routine in order to receive a value stored in its namespace in return; as such, it is asynchronous. dot notation gives the appearance of being able to directly access another routine's namespace - like importing modules in python - while adhering to the actor model.
-
-unresolved questions:
-protocol for sending and receiving messages
-
-like erlang, routines in sophia are allowed to crash. when a routine crashes, it terminates and a message is sent from it to its supervisor containing null, so that the supervisor knows that the routine has been destroyed. null is considered to be an error value; if a routine sends null, it is automatically destroyed. it is the responsibility of the supervisor to restart the routine or otherwise manage the crash to avoid cascading errors that eventually crash the runtime.
-
-execution order
-asynchronous execution order means that the runtime can start executing more instructions while awaiting the result of an instruction. in sophia, some instructions can be executed asynchronously, and execution can continue until the program needs the result of the branch to continue safely.
-
-sending strategy
-routines are stored with a reference to their supervisor, and all of their child routines are in their namespaces. it is therefore possible to implement traditional scoping rules and name resolution without a call stack.
-
-message protocols
-
-bind operator (<-)
-creates a routine and binds it to a name
-
-send operator (->)
-sends a message to a routine asynchronously
-previous implementation was designed under the assumption of synchronous execution and control returning to the same point; send operator no longer returns a value
-
-receive operator (*) // To confuse people who use C
-gets a message from the current routine's queue and binds it to a name, or awaits a message if the queue is empty
-
-actor (): // All functions are automatically coroutines and actors; this function is a child actor of the global routine
-
-	print(*message) // Awaits a message from another process and then prints it
-
-x <- actor() // Binds a coroutine to x and *then* begins execution in a new process
-1 -> x // Sends 1 to x
-// Prints "1"
-
-a routine emitting null, whether from returning or sending, signals the termination of the routine
-
----
-
-no call stack required; instead, store supervisor in binding and children in namespace
-no need to manage namespacing basically ever since the namespaces that a routine can access are intrinsically tied to it
-one process per routine?
-multiprocessing, process object for each routine?
-
----
-
-type definition starts a routine for a type
-type routine is always running asynchronously
-type casting sends a message to the routine and awaits a response
-routine can only process one message at a time
-manually sending to a type routine is equivalent to a type check
-for example, x -> int is equivalent to python int(x)
-
-the code defined in the type definition runs when a message is sent to the routine. it sends the message back to its source if successful (runs all the way through without error), and performs the protocol for a failed constraint if not
-
-type routine must not return
-type routine cannot be bound
+series of test scripts testing every feature of the language
+if the interpreter can execute every script without failing, the interpreter is valid
+each test is a routine that throws an error if it fails and returns true if it succeeds
