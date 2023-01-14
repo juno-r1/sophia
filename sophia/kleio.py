@@ -14,7 +14,7 @@ class namespace: # Base namespace object
 
 	def __repr__(self):
 		
-		return '===\n' + self.name + '\n---\n' + '\n---\n'.join((name + ' ' + self.types[name] + ' ' + repr(value) for name, value in self.values.items())) + '\n==='
+		return '===\n' + self.name + '\n---\n' + '\n---\n'.join((name + ' ' + str(self.types[name]) + ' ' + repr(value) for name, value in self.values.items())) + '\n==='
 
 	def read(self, name):
 

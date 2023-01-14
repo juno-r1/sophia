@@ -30,10 +30,10 @@ class process(mp.Process): # Created by function calls and type checking
 	def execute(self, *args): # Target of run()
 		
 		params = self.node.value[1:] # Gets coroutine name, return type, and parameters
-		types = [item.type for item in params] # Get types of params
+		types = [self.find(item.type) for item in params] # Get types of params
 		if len(params) != len(args):
 			return self.error('Expected {0} arguments, received {1}'.format(len(params), len(args)))
-		args = [self.cast(arg, params[i].type) for i, arg in enumerate(args)] # Check type of args against params
+		args = [self.cast(arg, types[i]) for i, arg in enumerate(args)] # Check type of args against params
 		params = [item.value for item in params] # Get names of params
 		self.reserved = params
 		self.namespace[self.pid] = kleio.namespace(params, args, types) # Updates namespace hierarchy
@@ -41,7 +41,7 @@ class process(mp.Process): # Created by function calls and type checking
 		self.instances.append(self.node.execute(self)) # Start routine
 		self.instances[-1].send(None)
 		while self.node: # Runtime loop
-			hemera.debug_process(self)
+			#hemera.debug_process(self)
 			if self.node.nodes and 0 <= self.path[-1] < len(self.node.nodes): # Walk down
 				self.node.nodes[self.path[-1]].head = self.node # Sets child head to self
 				self.node = self.node.nodes[self.path[-1]] # Set value to child node
@@ -70,7 +70,7 @@ class process(mp.Process): # Created by function calls and type checking
 				if routine.link:
 					routine.end.send(None) # Allows linked modules to end
 				routine.join()
-			hemera.debug_namespace(self)
+			#hemera.debug_namespace(self)
 			del self.namespace[self.pid] # Clear namespace
 
 	def branch(self, path = -1):
@@ -96,7 +96,7 @@ class process(mp.Process): # Created by function calls and type checking
 		
 		if not pid:
 			pid = self.pid
-			if self.namespace[1].read(name) or name in self.reserved: # Quicker and easier to do it here
+			if name in self.reserved or self.namespace[1].read(name): # Quicker and easier to do it here
 				return self.error('Bind to reserved name: ' + name)
 		namespace = self.namespace[pid] # Retrieve routine namespace
 		if type_routine:
@@ -131,7 +131,7 @@ class process(mp.Process): # Created by function calls and type checking
 		pid = self.pid
 		while pid in self.namespace:
 			value = self.namespace[pid].read(names[0])
-			if value:
+			if value is not None:
 				if sophia_process(value) and (not value.bound or value.end.poll()): # If the name is associated with an unbound or finished routine:
 					value = self.bind(names[0], value.get(), pid = pid) # Is it breaking encapsulation if the target routine is finished when this happens?
 				break
@@ -166,7 +166,7 @@ class process(mp.Process): # Created by function calls and type checking
 			stack.append(type_routine)
 			type_routine = self.find(type_routine.supertype) # Type routine is guaranteed to be a built-in when loop ends, so it checks that before any of the types on the stack
 		if type_routine(value) is None: # Check built-in type
-			return self.error('Failed cast to ' + type_routine.__name__ + ': ' + error)
+			return self.error('Failed cast to ' + type_routine.__name__.split('_')[1] + ': ' + error)
 		while stack:
 			if type_routine(value) is None:
 				return self.error('Failed cast to ' + type_routine.name + ': ' + error)
@@ -221,7 +221,7 @@ class node: # Base node object
 					if symbol in kadmos.structure_tokens or symbol in kadmos.keyword_tokens:
 						token = keyword(symbol)
 					else:
-						if symbol in '.0123456789': # Terrible way to check for a number without using a try/except block
+						if symbol[0] in '.0123456789': # Terrible way to check for a number without using a try/except block
 							if '.' in symbol:
 								token = literal(real(symbol)) # Cast to real by default
 							else:
@@ -400,14 +400,14 @@ class operator_statement(coroutine):
 
 	def __call__(self, routine, *args):
 
-		x = routine.cast(args[0], self.value[1].type)
+		x = routine.cast(args[0], routine.find(self.value[1].type))
 		if len(args) > 1:
-			y = routine.cast(args[1], self.value[2].type)
+			y = routine.cast(args[1], routine.find(self.value[2].type))
 			value = process(routine.namespace, self, x, y) # Create new routine
 		else:
 			value = process(routine.namespace, self, x) # Create new routine
 		value.start() # Start process for routine
-		return routine.cast(value.proxy.get(), self.type) # Get value immediately
+		return routine.cast(value.proxy.get(), routine.find(self.type)) # Get value immediately
 
 	def execute(self, routine):
 		
@@ -468,7 +468,7 @@ class if_statement(statement):
 	def execute(self, routine):
 
 		condition = yield
-		if not sophia_boolean(condition): # Over-specify on purpose to implement Sophia's specific requirement for a boolean
+		if sophia_boolean(condition) is None: # Over-specify on purpose to implement Sophia's specific requirement for a boolean
 			return routine.error('Condition must evaluate to boolean')
 		elif condition:
 			while routine.path[-1] <= len(self.nodes):
@@ -485,7 +485,7 @@ class while_statement(statement):
 	def execute(self, routine):
 
 		condition = yield
-		if not sophia_boolean(condition): # Over-specify on purpose to implement Sophia's specific requirement for a boolean
+		if sophia_boolean(condition) is None: # Over-specify on purpose to implement Sophia's specific requirement for a boolean
 			return routine.error('Condition must evaluate to boolean')
 		elif not condition:
 			yield routine.branch()
@@ -494,7 +494,7 @@ class while_statement(statement):
 				yield
 			routine.branch(0) # Repeat nodes
 			condition = yield
-			if not sophia_boolean(condition): # Over-specify on purpose to implement Sophia's specific requirement for a boolean
+			if sophia_boolean(condition) is None: # Over-specify on purpose to implement Sophia's specific requirement for a boolean
 				return routine.error('Condition must evaluate to boolean')
 		else:
 			yield routine.branch(len(self.nodes)) # Skip nodes
@@ -570,7 +570,7 @@ class constraint_statement(statement):
 
 		while routine.path[-1] <= len(self.nodes):
 			constraint = yield
-			if not sophia_boolean(constraint):
+			if sophia_boolean(constraint) is None:
 				return routine.error('Constraint must evaluate to boolean')
 			if not constraint:
 				return routine.error('Failed constraint')
@@ -631,7 +631,7 @@ class literal(identifier): # Adds literal behaviours to a node
 		return self # Gives self as node
 
 	def execute(self, routine): # Literal values are evaluated at parse time
-
+		
 		yield self.value # Send value to main
 
 class name(identifier): # Adds name behaviours to a node
@@ -816,10 +816,10 @@ class function_call(left_bracket):
 		function = yield
 		if len(self.nodes) > 1:
 			args = yield
+			if not isinstance(args, list): # Type correction
+				args = [args] # Very tiresome type correction, at that
 		else:
 			args = []
-		if not isinstance(args, list): # Type correction
-			args = [args] # Very tiresome type correction, at that
 		if isinstance(function, list): # If type operation:
 			args = [function[0]] + args # Shuffle arguments
 			function = function[1] # Get actual function
@@ -927,7 +927,7 @@ class sophia_untyped: # Abstract base class
 				return value
 		else:
 			for subclass in cls.__subclasses__():
-				if subclass(value):
+				if subclass(value) is not None:
 					return value
 
 class sophia_routine(sophia_untyped): # Abstract routine type
@@ -966,7 +966,9 @@ class sophia_boolean(sophia_value): # Boolean type
 
 		return str(self).lower()
 
-class sophia_number(sophia_value): pass # Abstract number type
+class sophia_number(sophia_value): # Abstract number type
+
+	types = None
 
 class sophia_integer(sophia_number): # Integer type
 
@@ -1011,6 +1013,6 @@ if __name__ == '__main__': # Hatred
 		built_ins = types + operators + functions
 		namespace = runtime.dict({0: runtime.Lock()}) # Unfortunate namespace hierarchy, but at least processes never write to the same memory
 		namespace[1] = kleio.namespace((i[0] for i in built_ins), (i[1] for i in built_ins), (i[2] for i in built_ins)) # Built-ins
-		main = process(namespace, module('test.sophia')) # Spawn initial process
+		main = process(namespace, module('aletheia.sophia')) # Spawn initial process
 		main.start() # Start initial process
 		main.join() # Prevent exit until initial process ends
