@@ -1,14 +1,9 @@
 int fib (int n):
 
-	int a: 0
-	int b: 1
-	int c: 0
-	int i: 1
-	while i < n:
-		c: b
-		b: a + b
-		a: c
-		i: i + 1
-	return b
+	int a: 0; int b: 1
+	for i in 1:n:1:
+		a: b; b: a + b
+	return a
 
-print(fib(10))
+a: fib(10)
+print(a)

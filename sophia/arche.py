@@ -1,4 +1,6 @@
 from multiprocessing import current_process
+from fractions import Fraction as real
+from time import perf_counter_ns as count
 
 class slice: # Initialised during execution
 
@@ -21,13 +23,10 @@ class proxy: # Base proxy object
 	def __init__(self, process):
 		
 		self.name = process.name
-		self.type = process.type
-		self.supertype = process.supertype # Types only
-		self.pid = process.pid # Unset on initialisation
-		self.link = process.link # For linked modules
+		self.bound = False # Determines whether process is bound
+		self.pid = None # Unset on initialisation
 		self.messages = None # Pipe to send messages
 		self.end = None # Pipe for return value
-		self.bound = False # Determines whether process is bound
 
 	def send(self, value): # Proxy method to send to process
 
@@ -60,12 +59,6 @@ class operator: # Base operator object
 			value = self.unary(x)
 		return routine.cast(value, routine.find(self.types[0]))
 
-class routine: # Base function object
-
-	def __init__(self, value):
-
-		self.value = value
-
 def u_add(x):
 
 	return x
@@ -89,16 +82,16 @@ def b_mul(x, y):
 def b_div(x, y):
 
 	if y != 0: # Null return on division-by-zero
-		return x / y
+		return real(x) / real(y) # Normalise type
 
 def b_exp(x, y):
 
-	return x ** y
+	return real(real(x) ** real(y)) # Normalise type more forcefully (exponentiation can produce irrational numbers)
 
 def b_mod(x, y):
 
 	if y != 0: # Null return on modulo-by-zero
-		return x % y
+		return real(x) % real(y) # Normalise type
 
 def b_eql(x, y):
 
@@ -299,3 +292,7 @@ def f_print(*value):
 def f_error(value):
 		
 	return current_process().error(value)
+
+def f_time():
+
+	return count()

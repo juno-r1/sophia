@@ -6,8 +6,7 @@ keyword_tokens = ('is', 'extends', 'continue', 'break')
 keyword_operators = ('not', 'or', 'and', 'xor', 'in')
 sub_types = {'int': 'integer', # Lookup table for type names
 			 'bool': 'boolean',
-			 'str': 'string',
-			 'Fraction': 'real'}
+			 'str': 'string'}
 sub_values = {'true': True, # Lookup table for special values
 			  'false': False,
 			  'null': None}
@@ -85,9 +84,9 @@ def line_split(line): # Takes a line from the file data and splits it into token
 					shift = True
 				else:
 					break
-			elif symbol in ('\t', '\n', ':', ',') or symbol in parens:
+			elif symbol in ('\t', '\n', ':', ';', ',') or symbol in parens:
 				shift = True
-			elif symbol in ("'", '"'): # Strings
+			elif symbol in '\'\"': # Strings
 				try:
 					end = line.index(symbol) + 1 # Everything before this index is inside a string
 					symbol, line = symbol + line[0:end], line[end:]
@@ -98,7 +97,6 @@ def line_split(line): # Takes a line from the file data and splits it into token
 				shift = True
 		else:
 			tokens.append(symbol)
-	
 	return tokens
 
 def balanced(tokens): # Takes a string and checks if its parentheses are balanced
@@ -124,4 +122,4 @@ def bp(symbol):
 		if symbol in level:
 			return i + 1
 	else:
-		return len(binding_power) + 1 # Default binding power
+		return len(binding_power) # Default binding power; 1 less than unary operators

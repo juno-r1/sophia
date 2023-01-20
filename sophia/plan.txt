@@ -35,3 +35,9 @@ test suite
 series of test scripts testing every feature of the language
 if the interpreter can execute every script without failing, the interpreter is valid
 each test is a routine that throws an error if it fails and returns true if it succeeds
+
+---
+
+type checking
+
+each routine has its own dictionary of type names and references to types
