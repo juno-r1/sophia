@@ -41,3 +41,18 @@ each test is a routine that throws an error if it fails and returns true if it s
 type checking
 
 each routine has its own dictionary of type names and references to types
+
+---
+
+a routine can only bind to its own namespace
+
+a routine can send to any routine it has a reference to
+
+a routine can access the namespace of:
+
+itself (safe)
+	only requires internal (non-shared) namespace
+any supervisor (unsafe)
+	requires shared namespace and routine resolution
+any process (unsafe)
+	requires random namespace access; special handling of type operations

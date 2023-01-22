@@ -1,44 +1,23 @@
-from multiprocessing import current_process, parent_process
+from multiprocessing import Pipe
 
-class namespace: # Base namespace object
+class proxy: # Base proxy object
 
-	def __init__(self, params, args, types):
-
-		self.name = current_process().name
-		if parent_process():
-			self.parent = parent_process().pid # PID of parent process
-		else:
-			self.parent = 1 # Points to builtins
-		self.values = dict(zip(params, args)) # Dict of values for faster access
-		self.types = dict(zip(params, types)) # Dict of types for correct typing
-
-	def __repr__(self):
+	def __init__(self, process):
 		
-		return '===\n' + self.name + '\n---\n' + '\n---\n'.join((name + ' ' + str(self.types[name]) + ' ' + str(value) for name, value in self.values.items())) + '\n==='
+		self.bound = False # Determines whether process is bound
+		self.messages, process.messages = Pipe() # Pipe to send messages
+		self.end, process.end = Pipe() # Pipe for return value
 
-	def read(self, name):
+class reference: # Reference to proxy
 
-		try:
-			return self.values[name] # Return binding if it exists in the namespace
-		except KeyError:
-			return None
+	def __init__(self, pid):
 
-	def write(self, name, value):
-		
-		self.values[name] = value # Update or create new binding
+		self.pid = pid
 
-	def read_type(self, name):
+	def send(self, value): # Proxy method to send to process
 
-		try:
-			return self.types[name] # Return binding if it exists in the namespace
-		except KeyError:
-			return None
+		return self.messages.send(value)
 
-	def write_type(self, name, value):
-		
-		self.types[name] = value # Update or create new binding
+	def get(self): # Proxy method to get return value from process
 
-	def delete(self, name): # Internal method; should never raise KeyError
-		
-		del self.values[name] # Delete binding if it exists in the namespace
-		del self.types[name]
+		return self.end.recv()

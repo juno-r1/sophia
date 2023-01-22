@@ -2,39 +2,31 @@ from multiprocessing import current_process
 from fractions import Fraction as real
 from time import perf_counter_ns as count
 
-class slice: # Initialised during execution
+class element(tuple): pass # Stupid hack to make record construction work
 
-	def __init__(self, slice_list):
+class iterable: # Loop index
+
+	def __init__(self, value):
+
+		self.value = iter(value)
+
+	def __next__(self):
+
+		return next(self.value)
+
+class slice: # Slice object
+
+	def __init__(self, sequence):
 		
-		if slice_list[1] >= 0: # Correction for inclusive range
-			slice_list[1] = slice_list[1] + 1
+		if sequence[1] >= 0: # Correction for inclusive range
+			sequence[1] = sequence[1] + 1
 		else:
-			slice_list[1] = slice_list[1] - 1
-		self.value, self.nodes = range(*slice_list), slice_list # Stores slice and iterator
+			sequence[1] = sequence[1] - 1
+		self.value, self.nodes = range(*sequence), sequence # Stores slice and iterator
 
 	def __iter__(self): # Enables loop syntax
 
 		return iter(self.value) # Enables iteration over range without expanding slice
-
-class element(tuple): pass # Stupid hack to make record construction work
-
-class proxy: # Base proxy object
-
-	def __init__(self, process):
-		
-		self.name = process.name
-		self.bound = False # Determines whether process is bound
-		self.pid = None # Unset on initialisation
-		self.messages = None # Pipe to send messages
-		self.end = None # Pipe for return value
-
-	def send(self, value): # Proxy method to send to process
-
-		return self.messages.send(value)
-
-	def get(self): # Proxy method to get return value from process
-
-		return self.end.recv()
 
 class operator: # Base operator object
 
@@ -281,18 +273,15 @@ op_bxr = ('^^',
 		  b_bxr,
 		  'untyped', 'untyped', 'untyped')
 
-def f_input(value):
+f_input = input # First-class functions exist and can be used
 
-	return input(value)
+f_print = print
 
-def f_print(*value):
-
-	return print(*value)
+f_time = count
 
 def f_error(value):
-		
+	
 	return current_process().error(value)
 
-def f_time():
-
-	return count()
+operators = {v[0]: operator(*v) for k, v in globals().items() if k.split('_')[0] == 'op'}
+functions = {k.split('_')[1]: v for k, v in globals().items() if k.split('_')[0] == 'f'}

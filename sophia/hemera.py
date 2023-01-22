@@ -12,7 +12,7 @@ def debug_tree(node, level = 0): # Takes a parse tree
 
 def debug_process(process): # Takes a process object
 
-	print(repr(process), file = stderr)
+		print(str(getattr(process.node, 'n', 0)).zfill(4), process.name, process.path[-1], repr(process.node), file = stderr)
 
 def debug_memory(memory): # Takes the namespace hierarchy
 	
@@ -21,7 +21,7 @@ def debug_memory(memory): # Takes the namespace hierarchy
 
 def debug_namespace(process): # Takes a process object
 	
-	print(repr(process.namespace[process.pid]), file = stderr)
+	print(repr(process), file = stderr)
 
 def debug_error(name, status): # Prints error information
 
