@@ -37,20 +37,6 @@ class operator: # Base operator object
 		self.binary = binary # Binary function
 		self.types = types # Tuple of return type and input types
 
-	def __call__(self, routine, *args):
-		
-		x = routine.cast(args[0], routine.find(self.types[1]))
-		if x is None:
-			return None
-		if len(args) > 1:
-			y = routine.cast(args[1], routine.find(self.types[2]))
-			if y is None:
-				return None
-			value = self.binary(x, y)
-		else:
-			value = self.unary(x)
-		return routine.cast(value, routine.find(self.types[0]))
-
 def u_add(x):
 
 	return x
@@ -285,3 +271,19 @@ def f_error(value):
 
 operators = {v[0]: operator(*v) for k, v in globals().items() if k.split('_')[0] == 'op'}
 functions = {k.split('_')[1]: v for k, v in globals().items() if k.split('_')[0] == 'f'}
+
+supertypes = {'untyped': ['untyped'], # Suboptimal way to optimise subtype checking
+			  'process': ['process', 'untyped'],
+			  'routine': ['routine', 'untyped'],
+			  'type': ['type', 'routine', 'untyped'],
+			  'operator': ['operator', 'routine', 'untyped'],
+			  'function': ['function', 'routine', 'untyped'],
+			  'value': ['value', 'untyped'],
+			  'boolean': ['boolean', 'value', 'untyped'],
+			  'number': ['number', 'value', 'untyped'],
+			  'integer': ['integer', 'number', 'value', 'untyped'],
+			  'real': ['real', 'number', 'value', 'untyped'],
+			  'sequence': ['sequence', 'untyped'],
+			  'string': ['string', 'sequence', 'untyped'],
+			  'list': ['list', 'sequence', 'untyped'],
+			  'record': ['record', 'sequence', 'untyped']}
