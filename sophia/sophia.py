@@ -1,5 +1,6 @@
 # ☉ 0.2 06-01-2023
 
+from re import I
 import arche, hemera, kadmos, kleio
 import multiprocessing as mp
 from fractions import Fraction as real
@@ -15,9 +16,10 @@ class process(mp.Process): # Created by function calls and type checking
 		types = [item.type for item in routine.value[1:]] # Get types of params
 		if len(params) != len(args):
 			return self.error('Expected {0} arguments, received {1}'.format(len(params), len(args)))
-		self.built_ins = {k.split('_')[1]: v for k, v in globals().items() if k.split('_')[0] == 'sophia'} | arche.operators | arche.functions # No type binding necessary because builtins are never bound to
+		type_built_ins = {k.split('_')[1]: v for k, v in globals().items() if k.split('_')[0] == 'sophia'}
+		self.built_ins = type_built_ins | arche.operators | arche.functions # No type binding necessary because builtins are never bound to
 		self.values = dict(zip(params, args)) # Dict of values for faster access
-		self.types = dict(zip(params, types)) # Dict of types for correct typing
+		self.types = {k: 'type' for k in type_built_ins} | {k: 'operator' for k in arche.operators} | {k: 'function' for k in arche.functions} | dict(zip(params, types)) # Dict of types for correct typing
 		self.supertypes = arche.supertypes # Dict of type hierarchy
 		self.namespace = namespace # Reference to shared proxy space
 		self.reserved = [item.value for item in routine.value] # List of reserved names in the current namespace
@@ -102,25 +104,14 @@ class process(mp.Process): # Created by function calls and type checking
 		del self.values[name] # Delete binding if it exists in the namespace
 		del self.types[name] # Internal method; should never raise KeyError
 
-	def find(self, name, operation = None): # Retrieves a binding's value in its available namespace and optionally checks its type
+	def find(self, name): # Retrieves a binding's value in the current namespace
 		
 		if name in self.built_ins:
-			value = self.built_ins[name]
+			return self.built_ins[name]
 		elif name in self.values:
-			value = self.values[name]
+			return self.values[name]
 		else:
 			return self.error('Undefined name: ' + repr(name))
-		if operation:
-			type_routine = self.types[name]
-			if isinstance(type_routine, type_statement):
-				pass
-			else:
-				operation = getattr(type_routine, operation, None)
-				if operation:
-					value = [value, operation]
-				else:
-					return self.error('Undefined type operation: ' + repr(name))
-		return value
 
 	def cast(self, value, type_name, known = None): # Checks type of value and returns boolean
 		
@@ -162,11 +153,17 @@ class node: # Base node object
 		self.scope = 0
 		self.active = -1 # Indicates path index for activation of start()
 		self.branch = False
-		self.routine = None
 
 	def __repr__(self):
 
 		return str(self.value)
+
+	def routine(self):
+
+		routine = self
+		while not isinstance(routine, coroutine):
+			routine = routine.head
+		return routine
 
 	def parse(self, data): # Recursively descends into madness and creates a tree of nodes with self as head
 
@@ -204,10 +201,7 @@ class node: # Base node object
 						else:
 							token = name(symbol)
 							if tokens[-1] and isinstance(tokens[-1][-1], name): # Checks for type
-								token_type = tokens[-1].pop().value # Gets type of identifier 
-								if token_type in kadmos.sub_types: # Corrects shortened type names
-									token_type = kadmos.sub_types[token_type]
-								token.type = token_type # Sets type of identifier
+								token.type = tokens[-1].pop().value # Sets type of identifier
 				else:
 					if symbol in kadmos.parens[0::2]:
 						if symbol == '(':
@@ -234,10 +228,7 @@ class node: # Base node object
 						else:
 							if len(tokens[-1]) == 1 and isinstance(tokens[-1][-1], name) and line[-1] == ':': # Special case for operator definition
 								token = name(symbol)
-								token_type = tokens[-1].pop().value # Gets type of identifier 
-								if token_type in kadmos.sub_types: # Corrects shortened type names
-									token_type = kadmos.sub_types[token_type]
-								token.type = token_type # Sets type of identifier
+								token.type = tokens[-1].pop().value # Sets return type of operator
 							else:
 								token = infix(symbol)
 					else:
@@ -282,25 +273,20 @@ class node: # Base node object
 			head.nodes.append(line) # Link nodes
 			last = line
 
-		node, node.length, path, routines = self, len(self.nodes), [0], [self]
+		node, node.length, path = self, len(self.nodes), [0]
 		while node: # Pre-runtime loop completes node linking and sets length
 			if path[-1] == node.length: # Walk up
-				if isinstance(node, coroutine):
-					routines.pop()
 				node = node.head # Walk upward
 				if node:
 					path.pop()
 					path[-1] = path[-1] + 1
 			else: # Walk down
 				node.nodes[path[-1]].head = node # Set head
-				node.routine = routines[-1] # Set routine
 				node = node.nodes[path[-1]] # Set value to child node
 				node.length = len(node.nodes) # Set length
 				path.append(0)
-				if isinstance(node, coroutine):
-					routines.append(self)
 		else:
-			#hemera.debug_tree(self) # Uncomment for parse tree debug information
+			hemera.debug_tree(self) # Uncomment for parse tree debug information
 			return self
 
 class coroutine(node): # Base coroutine object
@@ -340,11 +326,9 @@ class type_statement(coroutine):
 	def __init__(self, tokens):
 		
 		super().__init__([tokens[0]]) # Type
-		self.name = tokens[0].value
+		self.name, self.type = tokens[0].value, tokens[0].value
 		if len(tokens) > 2: # Naive check for subtyping
 			self.supertype = tokens[2].value
-			if self.supertype in kadmos.sub_types: # Corrects shortened type names
-				self.supertype = kadmos.sub_types[self.supertype]
 		else:
 			self.supertype = 'untyped'
 		self.namespace = [] # Persistent namespace of type operations
@@ -402,6 +386,13 @@ class function_statement(coroutine):
 
 		super().__init__([token for token in tokens[0:-1:2] if token.value != ')']) # Sets name and a list of parameters as self.value
 		self.name = tokens[0].value
+
+	def __call__(self, *args):
+
+		routine = process(mp.current_process().namespace, function, *args) # Create new routine
+		value = kleio.reference(routine.proxy) # Creates future from routine proxy
+		routine.start() # Start process for routine
+		value.pid = routine.pid # Updates PID
 
 	def start(self, routine):
 		
@@ -513,7 +504,7 @@ class for_statement(statement):
 
 	def start(self, routine):
 		
-		sequence = arche.iterable(routine.get('sequence')) # Enables fast slice
+		sequence = arche.iterable(routine.get('iterable')) # Enables fast slice
 		try:
 			value = next(sequence)
 			type_name = self.value.type
@@ -524,7 +515,7 @@ class for_statement(statement):
 					type_name = 'untyped'
 			routine.cast(value, type_name)
 			routine.bind(self.value.value, value, type_name)
-			routine.send(sequence, 'iterable') # Stack trickery
+			routine.send(sequence, '.index') # Stack trickery with invalid type name
 		except StopIteration:
 			routine.branch(self.node.length)
 
@@ -532,14 +523,14 @@ class for_statement(statement):
 		
 		sequence = routine.data.pop() # Don't check for type
 		type_name = routine.type_data.pop()
-		while type_name != 'iterable':
+		while type_name != '.index':
 			sequence = routine.data.pop()
 			type_name = routine.type_data.pop()
 		try:
 			value = next(sequence)
 			routine.cast(value, routine.types[self.value.value])
 			routine.bind(self.value.value, value)
-			routine.send(sequence, 'iterable') # Iterable isn't even a type
+			routine.send(sequence, '.index') # .index isn't even a type
 			routine.branch(1) # Skip start
 		except StopIteration:
 			routine.unbind(self.value.value)
@@ -655,17 +646,19 @@ class literal(identifier): # Adds literal behaviours to a node
 
 	def execute(self, routine): # Literal values are evaluated at parse time
 		
-		routine.send(self.value, self.type) # Send value to main
+		routine.send(self.value, self.type)
 
 class name(identifier): # Adds name behaviours to a node
 
 	def __init__(self, tokens):
 
-		if '.' in tokens:
-			super().__init__(tokens.split('.')[0])
-			self.operation = tokens.split('.')[1]
+		names = tokens.split('.')
+		if names[0] in kadmos.sub_types: # Corrects shortened type names
+			names[0] = kadmos.sub_types[names[0]]
+		super().__init__(names[0])
+		if len(names) > 1:
+			self.operation = names[1]
 		else:
-			super().__init__(tokens)
 			self.operation = None
 
 	def nud(self, lex):
@@ -682,7 +675,18 @@ class name(identifier): # Adds name behaviours to a node
 			type_name = routine.types[self.value]
 		else:
 			type_name = self.type
-		routine.send(routine.find(self.value, self.operation), type_name)
+		value = routine.find(self.value)
+		if self.operation:
+			type_routine = routine.find(type_name)
+			if isinstance(type_routine, type_statement):
+				pass
+			else:
+				operation = getattr(type_routine, self.operation, None)
+				if operation:
+					routine.send(operation, 'function')
+				else:
+					return routine.error('Undefined type operation: ' + self.value)
+		routine.send(value, type_name)
 
 class keyword(identifier): # Adds keyword behaviours to a node
 
@@ -704,7 +708,7 @@ class keyword(identifier): # Adds keyword behaviours to a node
 		routine.node = loop
 		if self.value == 'continue':
 			if loop.value: # For loop
-				if 'iterable' in routine.type_data: # Tests if loop is unbound
+				if '.index' in routine.type_data: # Tests if loop is unbound
 					loop.execute(routine)
 				else:
 					routine.branch(loop.length)
@@ -715,7 +719,7 @@ class keyword(identifier): # Adds keyword behaviours to a node
 			if loop.value: # End for loop correctly
 				routine.data.pop() # Don't check for type
 				type_name = routine.type_data.pop()
-				while type_name != 'iterable':
+				while type_name != '.index':
 					routine.data.pop()
 					type_name = routine.type_data.pop()
 				routine.unbind(self.value.value)
@@ -887,22 +891,13 @@ class function_call(left_bracket):
 				args = [args] # Very tiresome type correction, at that
 		else:
 			args = []
-		function = routine.get()
-		if isinstance(function, list): # If type operation:
-			args = [function[0]] + args # Shuffle arguments
-			function = function[1] # Get actual function
-		if isinstance(function, function_statement): # If user-defined:
-			routine = process(routine.namespace, function, *args) # Create new routine
-			value = kleio.reference(routine.proxy) # Creates future from routine proxy
-			routine.start() # Start process for routine
-			value.pid = routine.pid # Updates PID
-		elif hasattr(function, '__call__'): # If built-in:
-			if args: # Python doesn't like unpacking empty tuples
-				value = function(*args) # Since value is a Python function in this case
-			else:
-				value = function()
+		if self.nodes[0].operation: # Type operation
+			args = [routine.get()] + args # Shuffle arguments
+		function = routine.get('function') # Get actual function
+		if args: # Python doesn't like unpacking empty tuples
+			value = function(*args) # Since value is a Python function in this case
 		else:
-			return routine.error(function.__name__ + ' is not a function')
+			value = function()
 		if sophia_process(value) and not isinstance(self.head, (assignment, bind, send)):
 			routine.send(value.get()) # Blocks until function returns
 		else:
@@ -964,13 +959,23 @@ class sequence_literal(left_bracket):
 
 class meta_statement(left_bracket):
 
-	def execute(self, routine):
-		
+	def __init__(self, value):
+
+		super().__init__(value)
+		self.active = 1
+		self.length = 2 # Becomes true at runtime
+
+	def start(self, routine):
+
 		if len(self.nodes) > 1:
 			return routine.error('Meta-statement forms invalid expression')
-		data = routine.get() # Evaluate string
-		self.parse(data) # Run-time parser stage
-		self.nodes = [self.nodes[0]]
+		data = routine.get('string')
+		value = self.parse(data)
+		hemera.debug_tree(value)
+
+	def execute(self, routine):
+		
+		return
 
 class right_bracket(operator): # Adds right-bracket behaviours to a node
 
@@ -1007,6 +1012,21 @@ class sophia_type(sophia_routine): # Type type
 	
 	types = type, type_statement
 
+	def cast(self, value): # Type conversion
+		
+		type_routine = self
+		if type_routine.supertype:
+			mp.current_process().cast(value, type_routine.name) # Check validity 
+		while type_routine.supertype:
+			type_routine = type_routine.supertype
+		if type_routine.types and issubclass(type_routine, (sophia_value, sophia_sequence)):
+			try:
+				return type_routine.types(value)
+			except TypeError:
+				return mp.current_process().error('Failed conversion to ' + type_routine.__name__.split('_')[1] + ': ' + str(value))
+		else:
+			return mp.current_process().error('Unsupported conversion to ' + type_routine.__name__.split('_')[1] + ': ' + str(value))
+
 class sophia_operator(sophia_routine): # Operator type
 
 	types = arche.operator, operator_statement
@@ -1035,7 +1055,15 @@ class sophia_real(sophia_number): # Real type
 
 	types = real
 
-class sophia_sequence(sophia_untyped): # Abstract sequence type
+class sophia_iterable(sophia_untyped): # Abstract iterable type
+
+	types = None
+
+class sophia_slice(sophia_iterable): # Slice type
+
+	types = arche.slice
+
+class sophia_sequence(sophia_iterable): # Abstract sequence type
 
 	types = None
 
@@ -1049,7 +1077,7 @@ class sophia_string(sophia_sequence): # String type
 
 class sophia_list(sophia_sequence): # List type
 
-	types = tuple, arche.slice
+	types = tuple
 
 class sophia_record(sophia_sequence): # Record type
 

@@ -1,5 +1,4 @@
-a: 0
-assert a, null:
-	print('!')
-else:
-	print('?')
+list a: [1, 2, 3]
+real b: 1.5
+int c: a.length()
+str d: str.cast(b)

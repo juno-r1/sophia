@@ -259,11 +259,17 @@ op_bxr = ('^^',
 		  b_bxr,
 		  'untyped', 'untyped', 'untyped')
 
-f_input = input # First-class functions exist and can be used
+def f_input(value): # Functions should be wrapped because checking Python functions for type fucking sucks
 
-f_print = print
+	return input(value)
 
-f_time = count
+def f_print(*value):
+
+	return print(*value)
+
+def f_time():
+
+	return count()
 
 def f_error(value):
 	
@@ -283,7 +289,9 @@ supertypes = {'untyped': ['untyped'], # Suboptimal way to optimise subtype check
 			  'number': ['number', 'value', 'untyped'],
 			  'integer': ['integer', 'number', 'value', 'untyped'],
 			  'real': ['real', 'number', 'value', 'untyped'],
-			  'sequence': ['sequence', 'untyped'],
-			  'string': ['string', 'sequence', 'untyped'],
-			  'list': ['list', 'sequence', 'untyped'],
-			  'record': ['record', 'sequence', 'untyped']}
+			  'iterable': ['iterable', 'untyped'],
+			  'slice' : ['slice', 'iterable', 'untyped'],
+			  'sequence': ['sequence', 'iterable', 'untyped'],
+			  'string': ['string', 'sequence', 'iterable', 'untyped'],
+			  'list': ['list', 'sequence', 'iterable', 'untyped'],
+			  'record': ['record', 'sequence', 'iterable', 'untyped']}
