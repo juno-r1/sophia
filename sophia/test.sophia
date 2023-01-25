@@ -1,3 +1,5 @@
-number a: 0; number b: 1
-for i in 1:10000:1:
-	a: b; b: a + b
+a: 0
+assert a, null:
+	print('!')
+else:
+	print('?')
