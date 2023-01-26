@@ -10,18 +10,13 @@ def debug_tree(node, level = 0): # Takes a parse tree
 	if level == 1:
 		print('===', file = stderr)
 
-def debug_process(process): # Takes a process object
+def debug_control(control): # Takes a process object
 
-		print(str(getattr(process.node, 'n', 0)).zfill(4), process.name, process.path[-1], repr(process.node), file = stderr)
+	print(str(getattr(control.node, 'n', 0)).zfill(4), control.name, control.path[-1], repr(control.node), file = stderr)
 
-def debug_memory(memory): # Takes the namespace hierarchy
+def debug_namespace(control): # Takes a control object
 	
-	for namespace in tuple(memory.values())[1:]: # Excludes namespace lock
-		print(repr(namespace), file = stderr)
-
-def debug_namespace(process): # Takes a process object
-	
-	print('===', process.name, '---', '\n---\n'.join((name + ' ' + str(process.types[name]) + ' ' + str(value) for name, value in process.values.items())) + '\n===', sep = '\n', file = stderr)
+	print('===', 'control.name', '---', '\n---\n'.join((name + ' ' + str(control.types[name]) + ' ' + str(value) for name, value in control.values.items())) + '\n===', sep = '\n', file = stderr)
 
 def debug_error(name, status): # Prints error information
 

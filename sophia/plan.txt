@@ -50,4 +50,14 @@ implement interfaces using the syntax:
 type <name> extends <name: type> with <name: type>[, ...]
 
 adding an interface to a type extends its namespace with the interface's namespace
-the interface must be a supertype of the defined type
+the interface must be a supertype of the defined type and cannot have a concrete data type
+
+---
+
+events
+
+persistent routines that perform the routine body every time they receive a message
+<type> <name> awaits <name>:
+
+can be used as an iterator
+can be used as an *object*

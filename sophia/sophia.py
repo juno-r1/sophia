@@ -1,42 +1,36 @@
 # ☉ 0.2 06-01-2023
 
-from re import I
 import arche, hemera, kadmos, kleio
 import multiprocessing as mp
 from fractions import Fraction as real
 
 import cProfile
 
-class process(mp.Process): # Created by function calls and type checking
+class control: # Chaos... control!
 
-	def __init__(self, namespace, routine, *args, link = False): # God objects? What is she objecting to?
+	def __init__(self, routine, *args): # God objects? What is she objecting to?
 		
-		super().__init__(name = mp.current_process().name + '.' + routine.name, target = self.execute, args = ())
 		params = [item.value for item in routine.value[1:]] # Gets coroutine name, return type, and parameters
 		types = [item.type for item in routine.value[1:]] # Get types of params
 		if len(params) != len(args):
 			return self.error('Expected {0} arguments, received {1}'.format(len(params), len(args)))
 		type_built_ins = {k.split('_')[1]: v for k, v in globals().items() if k.split('_')[0] == 'sophia'}
 		self.built_ins = type_built_ins | arche.operators | arche.functions # No type binding necessary because builtins are never bound to
+		self.built_in_types = {i: 'type' for i in type_built_ins} | {i: 'operator' for i in arche.operators} | {i: 'function' for i in arche.functions}
 		self.values = dict(zip(params, args)) # Dict of values for faster access
-		self.types = {k: 'type' for k in type_built_ins} | {k: 'operator' for k in arche.operators} | {k: 'function' for k in arche.functions} | dict(zip(params, types)) # Dict of types for correct typing
-		self.supertypes = arche.supertypes # Dict of type hierarchy
-		self.namespace = namespace # Reference to shared proxy space
+		self.types = dict(zip(params, types)) # Dict of types for correct typing
 		self.reserved = [item.value for item in routine.value] # List of reserved names in the current namespace
+		self.supertypes = arche.supertypes # Dict of type hierarchy
 		self.proxy = kleio.proxy(self)
-		self.link = link # For linked modules
 		self.node = routine # Current node; sets initial module as entry point
 		self.path = [0]
 		self.data = [] # Unfortunately, a stack
-		self.type_data = []
+		self.type_data = [] # Unfortunately, another stack
 
 	def execute(self): # Target of run()
 		
-		pr = cProfile.Profile()
-		pr.enable()
-		self.namespace[self.pid] = self.proxy # Inserts proxy into namespace hierarchy; PID only exists at runtime
 		while self.node: # Runtime loop
-			#hemera.debug_process(self)
+			#hemera.debug_control(self)
 			if self.path[-1] == -1: # Branch
 				self.node = self.node.head # Walk upward
 				self.path.pop()
@@ -58,16 +52,8 @@ class process(mp.Process): # Created by function calls and type checking
 			elif self.path[-1] == self.node.length:
 				self.node.execute(self)
 		else:
-			if self.link:
-				self.proxy.end.poll(None) # Hangs for linked modules
-			for routine in mp.active_children(): # Makes sure all child processes are finished before terminating
-				if routine.link:
-					routine.end.send(None) # Allows linked modules to end
-				routine.join()
 			hemera.debug_namespace(self)
-			del self.namespace[self.pid] # Clear namespace
-			pr.disable()
-			#pr.print_stats(sort='tottime') # sort as you wish
+			return self.values # Return namespace as result to implement linking
 
 	def get(self, type_name = 'untyped'): # Data retrieval checks for type
 
@@ -286,7 +272,7 @@ class node: # Base node object
 				node.length = len(node.nodes) # Set length
 				path.append(0)
 		else:
-			hemera.debug_tree(self) # Uncomment for parse tree debug information
+			#hemera.debug_tree(self) # Uncomment for parse tree debug information
 			return self
 
 class coroutine(node): # Base coroutine object
@@ -307,7 +293,7 @@ class module(coroutine): # Module object is always the top level of a syntax tre
 		super().__init__(value = [self]) # Sets initial node to self
 		with open(file_name, 'r') as f: # Binds file data to runtime object
 			self.file_data = f.read() # node.parse() takes a string containing newlines
-		self.name = file_name.split('.')[0]
+		self.name, self.type = file_name.split('.')[0], 'untyped'
 		self.active = -1
 		self.parse(self.file_data) # Here's tree
 
@@ -316,9 +302,8 @@ class module(coroutine): # Module object is always the top level of a syntax tre
 		return 'module ' + self.name
 
 	def execute(self, routine):
-
-		if not routine.link:
-			routine.end.send(None) # Sends value to return queue
+		
+		routine.end.send(None) # Sends value to return queue
 		routine.node = None
 
 class type_statement(coroutine):
@@ -333,16 +318,16 @@ class type_statement(coroutine):
 			self.supertype = 'untyped'
 		self.namespace = [] # Persistent namespace of type operations
 
-	def __call__(self, routine, value): # Initialises type routine
+	#def __call__(self, routine, value): # Initialises type routine
 		
-		type_routine = process(routine.namespace, self, value) # Create new routine
-		type_routine.start() # Start process for routine
+	#	type_routine = process(routine.namespace, self, value) # Create new routine
+	#	type_routine.start() # Start process for routine
 
 	def start(self, routine): # Initialises type
 		
-		routine.bind(self.name, self, sophia_type)
+		routine.bind(self.name, self, 'type')
 		for node in self.nodes:
-			if isinstance(node, function_statement) and node.value[1].value == self.name: # Detect type operation
+			if sophia_function(node) and node.value[1].value == self.name: # Detect type operation
 				self.namespace.append(node)
 		routine.branch() # Skips body of routine
 
@@ -356,23 +341,23 @@ class operator_statement(coroutine):
 	def __init__(self, tokens):
 
 		super().__init__([token for token in tokens[0:-1:2] if token.value != ')']) # Sets operator symbol and a list of parameters as self.value
-		self.name = tokens[0].value
+		self.name, self.type = tokens[0].value, tokens[0].type
 		self.types = [item.type for item in self.value]
 
-	def __call__(self, routine, *args):
+	#def __call__(self, routine, *args):
 
-		x = routine.cast(args[0], self.value[1].type)
-		if len(args) > 1:
-			y = routine.cast(args[1], self.value[2].type)
-			value = process(routine.namespace, self, x, y) # Create new routine
-		else:
-			value = process(routine.namespace, self, x) # Create new routine
-		value.start() # Start process for routine
-		return routine.cast(value.proxy.get(), self.type) # Get value immediately
+	#	x = routine.cast(args[0], self.value[1].type)
+	#	if len(args) > 1:
+	#		y = routine.cast(args[1], self.value[2].type)
+	#		value = process(routine.namespace, self, x, y) # Create new routine
+	#	else:
+	#		value = process(routine.namespace, self, x) # Create new routine
+	#	value.start() # Start process for routine
+	#	return routine.cast(value.proxy.get(), self.type) # Get value immediately
 
 	def start(self, routine):
 		
-		routine.bind(self.name, self, sophia_operator)
+		routine.bind(self.name, self, 'operator')
 		routine.branch() # Skips body of routine
 
 	def execute(self, routine):
@@ -385,18 +370,18 @@ class function_statement(coroutine):
 	def __init__(self, tokens):
 
 		super().__init__([token for token in tokens[0:-1:2] if token.value != ')']) # Sets name and a list of parameters as self.value
-		self.name = tokens[0].value
+		self.name, self.type = tokens[0].value, tokens[0].type
 
-	def __call__(self, *args):
+	#def __call__(self, *args):
 
-		routine = process(mp.current_process().namespace, function, *args) # Create new routine
-		value = kleio.reference(routine.proxy) # Creates future from routine proxy
-		routine.start() # Start process for routine
-		value.pid = routine.pid # Updates PID
+	#	routine = process(mp.current_process().namespace, self, *args) # Create new routine
+	#	routine.start() # Start process for routine
+	#	mp.current_process().namespace[routine.pid] = routine.proxy # Update namespace with proxy
+	#	return kleio.reference(routine.pid) # Return reference
 
 	def start(self, routine):
 		
-		routine.bind(self.name, self, sophia_function)
+		routine.bind(self.name, self, 'function')
 		routine.branch() # Skips body of routine
 
 	def execute(self, routine):
@@ -435,7 +420,9 @@ class assignment(node):
 		for i in range(self.length - 1, -1, -1):
 			type_name = self.value[i].type
 			if not type_name:
-				if self.value[i].value in routine.types:
+				if self.value[i].value in routine.built_in_types:
+					type_name = routine.built_in_types[self.value[i].value]
+				elif self.value[i].value in routine.types:
 					type_name = routine.types[self.value[i].value]
 				else:
 					type_name = 'untyped'
@@ -589,7 +576,7 @@ class return_statement(statement):
 	def execute(self, routine):
 		
 		if self.nodes:
-			value = routine.get(self.routine.type)
+			value = routine.get(self.routine().type)
 		else:
 			value = None
 		routine.end.send(value) # Sends value to return queue
@@ -609,16 +596,16 @@ class link_statement(statement):
 		else:
 			return 'link_statement ' + str([repr(item) for item in self.nodes])
 
-	def execute(self, routine):
+	#def execute(self, routine):
 
-		for item in self.value:
-			name = item.value
-			if '.' not in name:
-				name = name + '.sophia'
-			module_routine = process(routine.namespace, module(name), link = True)
-			module_routine.start()
-			module_routine.proxy.bound = True
-			routine.bind(item.value.split('.')[0], module_routine.proxy, sophia_process)
+	#	for item in self.value:
+	#		name = item.value
+	#		if '.' not in name:
+	#			name = name + '.sophia'
+	#		module_routine = process(routine.namespace, module(name), link = True)
+	#		module_routine.start()
+	#		module_routine.proxy.bound = True
+	#		routine.bind(item.value.split('.')[0], module_routine.proxy, sophia_process)
 
 class else_statement(statement):
 
@@ -833,12 +820,8 @@ class bind(operator): # Defines the bind operator
 		return self
 
 	def execute(self, routine):
-
-		value = routine.get() # Yields to main
-		if not sophia_process(value):
-			return routine.error('Invalid bind')
-		value.bound = True
-		routine.bind(self.value.value, value, sophia_process) # Binds routine
+		
+		routine.bind(self.value.value, routine.get('process'), 'process') # Binds routine
 
 class send(operator): # Defines the send operator
 
@@ -848,18 +831,14 @@ class send(operator): # Defines the send operator
 
 	def led(self, lex, left): # Parses like a binary operator but stores the right operand like assignment
 		
-		self.nodes, self.value = [left], lex.parse(self.lbp)
+		self.nodes = [left, lex.parse(self.lbp)]
 		return self
 
 	def execute(self, routine):
 		
-		value = routine.get(self.routine.type) # Enforce output type for send value
-		address = routine.find(self.value.value)
-		if not sophia_process(address):
-			return routine.error('Invalid send')
-		if address.name == routine.name:
-			return routine.error('Send source and destination are the same')
-		address.send(value, ) # Sends value to destination queue
+		address = routine.find('process')
+		value = routine.get(self.routine().type) # Enforce output type for send value
+		address.send(value) # Sends value to destination queue
 
 class left_bracket(operator): # Adds left-bracket behaviours to a node
 
@@ -1084,11 +1063,14 @@ class sophia_record(sophia_sequence): # Record type
 	types = dict
 
 if __name__ == '__main__': # Hatred
-	
-	with mp.Manager() as runtime: # The stupidest global state you've ever seen in your life
-		
-		mp.current_process().name = 'runtime'
-		namespace = runtime.dict()
-		main = process(namespace, module('test.sophia')) # Spawn initial process
-		main.start() # Start initial process
-		main.join() # Prevent exit until initial process ends
+
+	with mp.Pool() as pool:
+
+		pr = cProfile.Profile()
+		pr.enable()
+		main = control(module('test.sophia')) # Spawn initial process
+		namespace = {'main': pool.apply_async(main.execute, ())}
+		namespace['main'].get() # Prevent exit until initial process ends
+		pool.close() # Close pool when initial process ends
+		pr.disable()
+		pr.print_stats(sort = 'tottime')
