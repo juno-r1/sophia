@@ -10,13 +10,13 @@ def debug_tree(node, level = 0): # Takes a parse tree
 	if level == 1:
 		print('===', file = stderr)
 
-def debug_control(control): # Takes a process object
+def debug_task(task): # Takes a process object
 
-	print(str(getattr(control.node, 'n', 0)).zfill(4), control.name, control.path[-1], repr(control.node), file = stderr)
+	print(str(getattr(task.node, 'n', 0)).zfill(4), task.name, task.path[-1], repr(task.node), file = stderr)
 
-def debug_namespace(control): # Takes a control object
+def debug_namespace(task): # Takes a task object
 	
-	print('===', 'control.name', '---', '\n---\n'.join((name + ' ' + str(control.types[name]) + ' ' + str(value) for name, value in control.values.items())) + '\n===', sep = '\n', file = stderr)
+	print('===', task.id, '---', '\n---\n'.join((name + ' ' + str(task.types[name]) + ' ' + str(value) for name, value in task.values.items())) + '\n===', sep = '\n', file = stderr)
 
 def debug_error(name, status): # Prints error information
 

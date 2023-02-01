@@ -2,11 +2,11 @@ from multiprocessing import Pipe, current_process
 
 class proxy: # Base proxy object
 
-	def __init__(self, process):
+	def __init__(self, stream):
 		
 		self.bound = False
-		self.messages, process.messages = Pipe() # Pipe to send messages
-		self.end, process.end = Pipe() # Pipe for return value
+		self.stream = Pipe() # Pipe for message sending
+		self.messages = Pipe() # Pipe for message receiving
 
 class reference: # Reference to proxy
 
@@ -21,3 +21,7 @@ class reference: # Reference to proxy
 	def get(self): # Proxy method to get return value from process
 		
 		return current_process().namespace[self.pid].end.recv()
+
+def initialise(stream):
+	
+	current_process().stream = stream

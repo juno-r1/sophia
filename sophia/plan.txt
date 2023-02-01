@@ -1,43 +1,3 @@
-interpreter architecture
-
-namespace
-name, value, type (pointer, not string)
-
-bind
-takes name, value, *type
-if type:
-	write type
-else:
-	if no existing binding:
-		make type untyped
-cast value to type
-write value
-
-find
-takes name
-read value
-resolve process if needed
-if qualified:
-	for name in names:
-		if value is process:
-			read value from namespace
-		else:
-			read type
-			get operation from type
-
-cast
-takes value, type
-construct stack of user-defined types and built-in type
-	get supertype from type (pointer, not string, resolved on initialise)
-
-test suite
-
-series of test scripts testing every feature of the language
-if the interpreter can execute every script without failing, the interpreter is valid
-each test is a routine that throws an error if it fails and returns true if it succeeds
-
----
-
 type checking
 
 each routine has its own dictionary of type names and references to types
@@ -47,7 +7,8 @@ each routine has its own dictionary of type names and references to types
 interfaces
 
 implement interfaces using the syntax:
-type <name> extends <name: type> with <name: type>[, ...]
+
+type <name> [extends <name: type> [with <name: type>[, ...]]]:
 
 adding an interface to a type extends its namespace with the interface's namespace
 the interface must be a supertype of the defined type and cannot have a concrete data type
@@ -57,7 +18,11 @@ the interface must be a supertype of the defined type and cannot have a concrete
 events
 
 persistent routines that perform the routine body every time they receive a message
-<type> <name> awaits <name>:
+start clause takes initial parameters and performs initial execution
+
+<name: type> awaits <name: type>:
+
+	start [with <name: type>[, ...]]:
 
 can be used as an iterator
 can be used as an *object*

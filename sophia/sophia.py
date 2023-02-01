@@ -1,36 +1,39 @@
 # ☉ 0.2 06-01-2023
 
-import arche, hemera, kadmos, kleio
+import aletheia, arche, hemera, kadmos, kleio
 import multiprocessing as mp
 from fractions import Fraction as real
 
 import cProfile
 
-class control: # Chaos... control!
+class task:
 
-	def __init__(self, routine, *args): # God objects? What is she objecting to?
+	def __init__(self, routine, *args, link = False): # God objects? What is she objecting to?
 		
 		params = [item.value for item in routine.value[1:]] # Gets coroutine name, return type, and parameters
 		types = [item.type for item in routine.value[1:]] # Get types of params
 		if len(params) != len(args):
 			return self.error('Expected {0} arguments, received {1}'.format(len(params), len(args)))
-		type_built_ins = {k.split('_')[1]: v for k, v in globals().items() if k.split('_')[0] == 'sophia'}
-		self.built_ins = type_built_ins | arche.operators | arche.functions # No type binding necessary because builtins are never bound to
-		self.built_in_types = {i: 'type' for i in type_built_ins} | {i: 'operator' for i in arche.operators} | {i: 'function' for i in arche.functions}
+		self.link = link
+		self.id = id(self) # Guaranteed not to share memory with other tasks
+		self.built_ins = aletheia.types | arche.operators | arche.functions # No type binding necessary because builtins are never bound to
+		self.built_in_types = {i: 'type' for i in aletheia.types} | {i: 'operator' for i in arche.operators} | {i: 'function' for i in arche.functions}
 		self.values = dict(zip(params, args)) # Dict of values for faster access
 		self.types = dict(zip(params, types)) # Dict of types for correct typing
 		self.reserved = [item.value for item in routine.value] # List of reserved names in the current namespace
 		self.supertypes = arche.supertypes # Dict of type hierarchy
-		self.proxy = kleio.proxy(self)
 		self.node = routine # Current node; sets initial module as entry point
 		self.path = [0]
 		self.data = [] # Unfortunately, a stack
 		self.type_data = [] # Unfortunately, another stack
+		self.sentinel = None # Return value of task
 
 	def execute(self): # Target of run()
 		
+		if not self.node.nodes: # Empty routine
+			self.node = None
 		while self.node: # Runtime loop
-			#hemera.debug_control(self)
+			#hemera.debug_task(self)
 			if self.path[-1] == -1: # Branch
 				self.node = self.node.head # Walk upward
 				self.path.pop()
@@ -52,8 +55,12 @@ class control: # Chaos... control!
 			elif self.path[-1] == self.node.length:
 				self.node.execute(self)
 		else:
-			hemera.debug_namespace(self)
-			return self.values # Return namespace as result to implement linking
+			#hemera.debug_namespace(self)
+			if self.link:
+				return self.values
+			else:
+				mp.current_process().stream.put(None) # Ends runtime loop
+				return self.sentinel
 
 	def get(self, type_name = 'untyped'): # Data retrieval checks for type
 
@@ -180,7 +187,7 @@ class node: # Base node object
 							if isinstance(token.value, bool):
 								token.type = 'boolean'
 							else:
-								token.type = None
+								token.type = None # Null is caught by untyped
 						elif symbol[0] in '\'\"': # Strings have to be resolved at run time because they're indistinguishable from names otherwise
 							token = literal(symbol[1:-1])
 							token.type = 'string'
@@ -303,7 +310,6 @@ class module(coroutine): # Module object is always the top level of a syntax tre
 
 	def execute(self, routine):
 		
-		routine.end.send(None) # Sends value to return queue
 		routine.node = None
 
 class type_statement(coroutine):
@@ -327,7 +333,7 @@ class type_statement(coroutine):
 		
 		routine.bind(self.name, self, 'type')
 		for node in self.nodes:
-			if sophia_function(node) and node.value[1].value == self.name: # Detect type operation
+			if aletheia.sophia_function(node) and node.value[1].value == self.name: # Detect type operation
 				self.namespace.append(node)
 		routine.branch() # Skips body of routine
 
@@ -576,10 +582,7 @@ class return_statement(statement):
 	def execute(self, routine):
 		
 		if self.nodes:
-			value = routine.get(self.routine().type)
-		else:
-			value = None
-		routine.end.send(value) # Sends value to return queue
+			routine.sentinel = routine.get(self.routine().type)
 		routine.node = None
 
 class link_statement(statement):
@@ -873,11 +876,13 @@ class function_call(left_bracket):
 		if self.nodes[0].operation: # Type operation
 			args = [routine.get()] + args # Shuffle arguments
 		function = routine.get('function') # Get actual function
-		if args: # Python doesn't like unpacking empty tuples
+		if isinstance(function, function_statement):
+			mp.current_process.stream.put([routine.id, function] + args)
+		elif args: # Python doesn't like unpacking empty tuples
 			value = function(*args) # Since value is a Python function in this case
 		else:
 			value = function()
-		if sophia_process(value) and not isinstance(self.head, (assignment, bind, send)):
+		if aletheia.sophia_process(value) and not isinstance(self.head, (bind, send)):
 			routine.send(value.get()) # Blocks until function returns
 		else:
 			routine.send(value)
@@ -898,23 +903,23 @@ class sequence_index(left_bracket):
 			subscript = [subscript]
 		for i in subscript: # Iteratively accesses the sequence
 			if isinstance(i, arche.slice):
-				if sophia_sequence(value):
+				if aletheia.sophia_sequence(value):
 					if i.nodes[1] < -1 * len(value) or i.nodes[1] > len(value): # If out of bounds:
 						return routine.error('Index out of bounds')
 				else:
 					return routine.error('Value not sliceable')
-			elif sophia_record(value):
+			elif aletheia.sophia_record(value):
 				if i not in value:
 					return routine.error('Key not in record: ' + i)
 			else:
 				if i < -1 * len(value) or i >= len(value): # If out of bounds:
 					return routine.error('Index out of bounds')
-			if isinstance(i, arche.slice):
-				if sophia_string(value):
+			if aletheia.sophia_slice(i):
+				if aletheia.sophia_string(value):
 					value = ''.join([value[n] for n in i]) # Constructs slice of string using range
-				elif sophia_list(value):
+				elif aletheia.sophia_list(value):
 					value = tuple([value[n] for n in i]) # Constructs slice of list using range
-				elif sophia_record(value):
+				elif aletheia.sophia_record(value):
 					items = list(value.items())
 					value = dict([items[n] for n in i]) # Constructs slice of record using range
 			else:
@@ -945,9 +950,7 @@ class meta_statement(left_bracket):
 		self.length = 2 # Becomes true at runtime
 
 	def start(self, routine):
-
-		if len(self.nodes) > 1:
-			return routine.error('Meta-statement forms invalid expression')
+		
 		data = routine.get('string')
 		value = self.parse(data)
 		hemera.debug_tree(value)
@@ -962,115 +965,19 @@ class right_bracket(operator): # Adds right-bracket behaviours to a node
 
 		super().__init__(value)
 
-# Type definitions
+if __name__ == '__main__': # Supervisor process and pool management
 
-class sophia_untyped: # Abstract base class
-
-	types = object
-	supertype = None
+	stream = mp.Queue() # Supervisor message stream
 	
-	def __new__(cls, value): # Type check disguised as an object constructor
+	with mp.Pool(initializer = kleio.initialise, initargs = (stream,)) as pool: # Cheeky way to sneak a queue into a task
 		
-		if cls.types:
-			if isinstance(value, cls.types):
-				return value
-		else:
-			for subclass in cls.__subclasses__():
-				if subclass(value) is not None:
-					return value
-
-class sophia_process(sophia_untyped): # Process/module type
-	
-	types = kleio.reference
-
-class sophia_routine(sophia_untyped): # Abstract routine type
-
-	types = None # Null types makes __new__ check the types of a type's subclasses
-
-class sophia_type(sophia_routine): # Type type
-	
-	types = type, type_statement
-
-	def cast(self, value): # Type conversion
-		
-		type_routine = self
-		if type_routine.supertype:
-			mp.current_process().cast(value, type_routine.name) # Check validity 
-		while type_routine.supertype:
-			type_routine = type_routine.supertype
-		if type_routine.types and issubclass(type_routine, (sophia_value, sophia_sequence)):
-			try:
-				return type_routine.types(value)
-			except TypeError:
-				return mp.current_process().error('Failed conversion to ' + type_routine.__name__.split('_')[1] + ': ' + str(value))
-		else:
-			return mp.current_process().error('Unsupported conversion to ' + type_routine.__name__.split('_')[1] + ': ' + str(value))
-
-class sophia_operator(sophia_routine): # Operator type
-
-	types = arche.operator, operator_statement
-
-class sophia_function(sophia_routine): # Function type
-
-	types = sophia_untyped.__new__.__class__, function_statement # Hatred
-
-class sophia_value(sophia_untyped): # Abstract element type
-
-	types = None
-
-class sophia_boolean(sophia_value): # Boolean type
-
-	types = bool
-
-class sophia_number(sophia_value): # Abstract number type
-
-	types = None
-
-class sophia_integer(sophia_number): # Integer type
-
-	types = int
-
-class sophia_real(sophia_number): # Real type
-
-	types = real
-
-class sophia_iterable(sophia_untyped): # Abstract iterable type
-
-	types = None
-
-class sophia_slice(sophia_iterable): # Slice type
-
-	types = arche.slice
-
-class sophia_sequence(sophia_iterable): # Abstract sequence type
-
-	types = None
-
-	def length(self):
-
-		return len(self)
-
-class sophia_string(sophia_sequence): # String type
-
-	types = str
-
-class sophia_list(sophia_sequence): # List type
-
-	types = tuple
-
-class sophia_record(sophia_sequence): # Record type
-
-	types = dict
-
-if __name__ == '__main__': # Hatred
-
-	with mp.Pool() as pool:
-
 		pr = cProfile.Profile()
 		pr.enable()
-		main = control(module('test.sophia')) # Spawn initial process
-		namespace = {'main': pool.apply_async(main.execute, ())}
-		namespace['main'].get() # Prevent exit until initial process ends
-		pool.close() # Close pool when initial process ends
-		pr.disable()
-		pr.print_stats(sort = 'tottime')
+		main = task(module('test.sophia')) # Create initial task
+		results = {main.id: pool.apply_async(main.execute)} # Return values of tasks
+		while message := stream.get(): # Event listener pattern; runs until null sentinel value
+			pass
+		else:
+			results[main.id].get() # Prevent exit until initial process ends
+			pr.disable()
+			pr.print_stats(sort = 'tottime')

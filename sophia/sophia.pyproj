@@ -34,7 +34,6 @@
     <Compile Include="test.py" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="aletheia.sophia" />
     <Content Include="main.sophia" />
     <Content Include="plan.txt" />
     <Content Include="test.sophia" />
