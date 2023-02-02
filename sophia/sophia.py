@@ -8,14 +8,14 @@ import cProfile
 
 class task:
 
-	def __init__(self, routine, *args, link = False): # God objects? What is she objecting to?
+	def __init__(self, routine, args, link = False): # God objects? What is she objecting to?
 		
 		params = [item.value for item in routine.value[1:]] # Gets coroutine name, return type, and parameters
 		types = [item.type for item in routine.value[1:]] # Get types of params
 		if len(params) != len(args):
 			return self.error('Expected {0} arguments, received {1}'.format(len(params), len(args)))
 		self.link = link
-		self.id = id(self) # Guaranteed not to share memory with other tasks
+		self.pid = id(self) # Guaranteed not to collide with other task PIDs; not the same as the PID of the pool process
 		self.built_ins = aletheia.types | arche.operators | arche.functions # No type binding necessary because builtins are never bound to
 		self.built_in_types = {i: 'type' for i in aletheia.types} | {i: 'operator' for i in arche.operators} | {i: 'function' for i in arche.functions}
 		self.values = dict(zip(params, args)) # Dict of values for faster access
@@ -38,6 +38,7 @@ class task:
 				self.node = self.node.head # Walk upward
 				self.path.pop()
 				self.path[-1] = self.path[-1] + 1
+				continue # Skip start function
 			elif self.path[-1] == self.node.length: # Walk up
 				self.node = self.node.head # Walk upward
 				if self.node:
@@ -55,11 +56,11 @@ class task:
 			elif self.path[-1] == self.node.length:
 				self.node.execute(self)
 		else:
-			#hemera.debug_namespace(self)
+			hemera.debug_namespace(self)
+			self.message('terminate')
 			if self.link:
 				return self.values
 			else:
-				mp.current_process().stream.put(None) # Ends runtime loop
 				return self.sentinel
 
 	def get(self, type_name = 'untyped'): # Data retrieval checks for type
@@ -76,6 +77,13 @@ class task:
 		
 		self.data.append(value)
 		self.type_data.append(type_name)
+
+	def message(self, instruction = None, *args):
+		
+		if instruction:
+			mp.current_process().stream.put([instruction, self.pid] + list(args))
+		else:
+			mp.current_process().stream.put(None)
 
 	def branch(self, path = -1):
 
@@ -125,8 +133,7 @@ class task:
 	def error(self, status): # Error handler
 		
 		if not isinstance(self.node, assert_statement): # Suppresses error for assert statement
-			hemera.debug_error(self.name, status)
-			self.end.send(None) # Null return
+			hemera.debug_error(self.pid, status)
 			self.node = None # Immediately end routine
 
 # Parse tree definitions
@@ -225,8 +232,10 @@ class node: # Base node object
 							else:
 								token = infix(symbol)
 					else:
-						if symbol == '*':
+						if symbol == '>':
 							token = receive(symbol)
+						elif symbol == '*':
+							token = resolve(symbol)
 						else:
 							token = prefix(symbol) # NEGATION TAKES PRECEDENCE OVER EXPONENTIATION - All unary operators have the highest possible left-binding power
 				tokens[-1].append(token)
@@ -377,13 +386,6 @@ class function_statement(coroutine):
 
 		super().__init__([token for token in tokens[0:-1:2] if token.value != ')']) # Sets name and a list of parameters as self.value
 		self.name, self.type = tokens[0].value, tokens[0].type
-
-	#def __call__(self, *args):
-
-	#	routine = process(mp.current_process().namespace, self, *args) # Create new routine
-	#	routine.start() # Start process for routine
-	#	mp.current_process().namespace[routine.pid] = routine.proxy # Update namespace with proxy
-	#	return kleio.reference(routine.pid) # Return reference
 
 	def start(self, routine):
 		
@@ -760,6 +762,13 @@ class receive(prefix): # Defines the receive operator
 		routine.bind(self.value.value, value, type_routine)
 		routine.send(value)
 
+class resolve(prefix): # Defines the resolution operator
+
+	def execute(self, routine):
+		
+		routine.message('dereference', routine.get('process'))
+		routine.send(routine.calls.recv())
+
 class infix(operator): # Adds infix behaviours to a node
 
 	def led(self, lex, left):
@@ -877,15 +886,19 @@ class function_call(left_bracket):
 			args = [routine.get()] + args # Shuffle arguments
 		function = routine.get('function') # Get actual function
 		if isinstance(function, function_statement):
-			mp.current_process.stream.put([routine.id, function] + args)
-		elif args: # Python doesn't like unpacking empty tuples
-			value = function(*args) # Since value is a Python function in this case
+			type_name = function.type
+			if isinstance(self.head, bind):
+				routine.message('spawn', function, args)
+			else:
+				routine.message('call', function, args)
+			value = routine.calls.recv()
 		else:
-			value = function()
-		if aletheia.sophia_process(value) and not isinstance(self.head, (bind, send)):
-			routine.send(value.get()) # Blocks until function returns
-		else:
-			routine.send(value)
+			type_name = None
+			if args: # Yeah
+				value = function(*args) # Since value is a Python function in this case
+			else:
+				value = function()
+		routine.send(value, type_name)
 
 class parenthesis(left_bracket):
 
@@ -968,16 +981,50 @@ class right_bracket(operator): # Adds right-bracket behaviours to a node
 if __name__ == '__main__': # Supervisor process and pool management
 
 	stream = mp.Queue() # Supervisor message stream
+	events = globals() # Access event handling functions
+
+	def call(pid, routine, args):
+
+		routine = task(routine, args)
+		tasks[routine.pid] = kleio.proxy(routine)
+		tasks[routine.pid].result = pool.apply_async(routine.execute)
+		tasks[routine.pid].requests.append(pid) # Submit request for return value
+
+	def spawn(pid, routine, args):
+
+		routine = task(routine, args)
+		tasks[routine.pid] = kleio.proxy(routine)
+		tasks[routine.pid].result = pool.apply_async(routine.execute)
+		tasks[routine.pid].references.append(pid) # Mark reference to process
+		tasks[pid].calls.send(kleio.reference(routine.pid)) # Return reference to process
+
+	def dereference(pid, routine):
+
+		if tasks[routine.pid].result.ready():
+			tasks[pid].calls.send(tasks[routine.pid].result.get())
+		else:
+			tasks[routine.pid].requests.append(pid) # Submit request for return value
+
+	def terminate(pid):
+
+		value = tasks[pid].result.get()
+		for process in tasks[pid].requests:
+			tasks[process].calls.send(value)
+		if not tasks[pid].references: # Free task
+			del tasks[pid]
+		if pid == main.pid:
+			stream.put(None) # End supervisor
+		#print(value, flush = True)
 	
 	with mp.Pool(initializer = kleio.initialise, initargs = (stream,)) as pool: # Cheeky way to sneak a queue into a task
 		
 		pr = cProfile.Profile()
 		pr.enable()
-		main = task(module('test.sophia')) # Create initial task
-		results = {main.id: pool.apply_async(main.execute)} # Return values of tasks
-		while message := stream.get(): # Event listener pattern; runs until null sentinel value
-			pass
-		else:
-			results[main.id].get() # Prevent exit until initial process ends
+		main = task(module('test.sophia'), []) # Create initial task
+		tasks = {main.pid: kleio.proxy(main)} # Proxies of tasks
+		tasks[main.pid].result = pool.apply_async(main.execute) # Needs to be started after the proxy is created so that the pipes work
+		while message := stream.get(): # Event listener pattern; runs until null sentinel value sent from unlinked module
+			events[message[0]](*message[1:]) # Executes event
+		else: 
 			pr.disable()
-			pr.print_stats(sort = 'tottime')
+			#pr.print_stats(sort = 'tottime')

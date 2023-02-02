@@ -1,4 +1,9 @@
-number a: 0; number b: 1
-for i in 1:10000:1:
-	a: b; b: a + b
-return a
+int fib (int n):
+
+	number a: 0; number b: 1
+	for i in 1:n:1:
+		a: b; b: a + b
+	return a
+
+a <- fib(1000)
+b: *a

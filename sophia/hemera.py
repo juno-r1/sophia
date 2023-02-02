@@ -12,12 +12,26 @@ def debug_tree(node, level = 0): # Takes a parse tree
 
 def debug_task(task): # Takes a process object
 
-	print(str(getattr(task.node, 'n', 0)).zfill(4), task.name, task.path[-1], repr(task.node), file = stderr)
+	print(str(getattr(task.node, 'n', 0)).zfill(4),
+		  task.pid,
+		  task.path[-1],
+		  repr(task.node),
+		  file = stderr)
 
 def debug_namespace(task): # Takes a task object
 	
-	print('===', task.id, '---', '\n---\n'.join((name + ' ' + str(task.types[name]) + ' ' + str(value) for name, value in task.values.items())) + '\n===', sep = '\n', file = stderr)
+	print('===',
+	      task.pid,
+		  '---',
+		  '\n---\n'.join((name + ' ' + str(task.types[name]) + ' ' + str(value) for name, value in task.values.items())) + '\n===',
+		  sep = '\n',
+		  file = stderr)
 
 def debug_error(name, status): # Prints error information
 
-	print('===', name, status, '===', sep = '\n', file = stderr)
+	print('===',
+	      name,
+		  status,
+		  '===',
+		  sep = '\n',
+		  file = stderr)
