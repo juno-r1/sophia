@@ -70,8 +70,7 @@ class task:
 		if known and type_name in self.supertypes[known]: # Instantly succeeds if checked type is supertype of known type
 			return value
 		else:
-			self.cast(value, type_name, known)
-			return value
+			return self.cast(value, type_name, known)
 
 	def send(self, value, type_name = None):
 		
@@ -126,7 +125,7 @@ class task:
 		while stack:
 			type_routine = stack.pop()
 			if type_routine(self, value) is None:
-				return self.error('Failed cast to ' + type_routine.name + ': ' + value)
+				return self.error('Failed cast to ' + type_routine.name + ': ' + repr(value))
 		else:
 			return value # Return indicates success; cast() raises an exception on failure
 
@@ -552,7 +551,7 @@ class assert_statement(statement):
 	def start(self, routine):
 
 		for i in range(self.active):
-			if routine.get() is None:
+			if routine.get(self.nodes[i].type) is None:
 				return routine.branch()
 
 	def execute(self, routine):
@@ -571,7 +570,8 @@ class constraint_statement(statement):
 		for constraint in self.nodes:
 			constraint = routine.get('boolean')
 			if not constraint:
-				return routine.error('Failed constraint: ' + self.routine().name)
+				routine.node = None
+				return
 
 class return_statement(statement):
 

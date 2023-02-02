@@ -10,7 +10,7 @@ type even extends int:
 	constraint:
 		even % 2 = 0
 
-int a: 1
+int a: 2
 assert even a:
 	print('Yippee!')
 else:
