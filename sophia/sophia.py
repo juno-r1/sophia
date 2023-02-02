@@ -118,14 +118,14 @@ class task:
 		
 		type_routine = self.find(type_name)
 		stack = [] # Stack of user-defined types, with the requested type at the bottom
-		while type_routine.supertype and type_routine is not known: # Known type optimises by truncating stack
+		while type_routine.supertype and type_routine.name != known: # Known type optimises by truncating stack
 			stack.append(type_routine)
 			type_routine = self.find(type_routine.supertype) # Type routine is guaranteed to be a built-in when loop ends, so it checks that before any of the types on the stack
 		if type_routine(value) is None: # Check built-in type
 			return self.error('Failed cast to ' + type_routine.__name__.split('_')[1] + ': ' + repr(value))
 		while stack:
 			type_routine = stack.pop()
-			if type_routine(value) is None:
+			if type_routine(self, value) is None:
 				return self.error('Failed cast to ' + type_routine.name + ': ' + value)
 		else:
 			return value # Return indicates success; cast() raises an exception on failure
@@ -325,22 +325,26 @@ class type_statement(coroutine):
 
 	def __init__(self, tokens):
 		
-		super().__init__([tokens[0]]) # Type
+		super().__init__([tokens[0]]) # Type and type parameter
 		self.name, self.type = tokens[0].value, tokens[0].value
 		if len(tokens) > 2: # Naive check for subtyping
 			self.supertype = tokens[2].value
 		else:
 			self.supertype = 'untyped'
+		param = name(tokens[0].value)
+		param.type = self.supertype
+		self.value.append(param)
 		self.namespace = [] # Persistent namespace of type operations
 
-	#def __call__(self, routine, value): # Initialises type routine
+	def __call__(self, routine, value): # Initialises type routine
 		
-	#	type_routine = process(routine.namespace, self, value) # Create new routine
-	#	type_routine.start() # Start process for routine
+		routine.message('call', self, [value])
+		return routine.calls.recv()
 
 	def start(self, routine): # Initialises type
 		
 		routine.bind(self.name, self, 'type')
+		routine.supertypes[self.name] = [self.name] + routine.supertypes[self.supertype]
 		for node in self.nodes:
 			if aletheia.sophia_function(node) and node.value[1].value == self.name: # Detect type operation
 				self.namespace.append(node)
@@ -348,7 +352,7 @@ class type_statement(coroutine):
 
 	def execute(self, routine):
 		
-		routine.end.send(routine.find(self.name)) # Sends cast value to return queue upon success
+		routine.sentinel = routine.find(self.name) # Returns cast value upon success
 		routine.node = None
 
 class operator_statement(coroutine):
@@ -359,26 +363,24 @@ class operator_statement(coroutine):
 		self.name, self.type = tokens[0].value, tokens[0].type
 		self.types = [item.type for item in self.value]
 
-	#def __call__(self, routine, *args):
-
-	#	x = routine.cast(args[0], self.value[1].type)
-	#	if len(args) > 1:
-	#		y = routine.cast(args[1], self.value[2].type)
-	#		value = process(routine.namespace, self, x, y) # Create new routine
-	#	else:
-	#		value = process(routine.namespace, self, x) # Create new routine
-	#	value.start() # Start process for routine
-	#	return routine.cast(value.proxy.get(), self.type) # Get value immediately
-
 	def start(self, routine):
 		
 		routine.bind(self.name, self, 'operator')
 		routine.branch() # Skips body of routine
 
 	def execute(self, routine):
-
-		routine.end.send(None) # Sends value to return queue
+		
 		routine.node = None
+
+	def unary(self, routine, x):
+		
+		routine.message('call', self, [x])
+		return routine.calls.recv()
+
+	def binary(self, routine, x, y):
+		
+		routine.message('call', self, [x, y])
+		return routine.calls.recv()
 
 class function_statement(coroutine):
 
@@ -386,6 +388,7 @@ class function_statement(coroutine):
 
 		super().__init__([token for token in tokens[0:-1:2] if token.value != ')']) # Sets name and a list of parameters as self.value
 		self.name, self.type = tokens[0].value, tokens[0].type
+		self.types = [item.type for item in self.value]
 
 	def start(self, routine):
 		
@@ -394,7 +397,6 @@ class function_statement(coroutine):
 
 	def execute(self, routine):
 		
-		routine.end.send(None) # Sends value to return queue
 		routine.node = None
 
 class assignment(node):
@@ -569,7 +571,7 @@ class constraint_statement(statement):
 		for constraint in self.nodes:
 			constraint = routine.get('boolean')
 			if not constraint:
-				return routine.error('Failed constraint: ' + self.routine.name)
+				return routine.error('Failed constraint: ' + self.routine().name)
 
 class return_statement(statement):
 
@@ -743,7 +745,7 @@ class prefix(operator): # Adds prefix behaviours to a node
 
 		op = routine.find(self.value) # Gets the operator definition
 		x = routine.get(op.types[1])
-		routine.send(op.unary(x), op.types[0]) # Equivalent for all operators
+		routine.send(op.unary(routine, x), op.types[0]) # Equivalent for all operators
 
 class receive(prefix): # Defines the receive operator
 
@@ -756,10 +758,10 @@ class receive(prefix): # Defines the receive operator
 		
 		value = routine.messages.recv()
 		if self.value.type:
-			type_routine = self.value.type
+			type_name = self.value.type
 		else:
-			type_routine = None
-		routine.bind(self.value.value, value, type_routine)
+			type_name = None
+		routine.bind(self.value.value, value, type_name)
 		routine.send(value)
 
 class resolve(prefix): # Defines the resolution operator
@@ -781,7 +783,7 @@ class infix(operator): # Adds infix behaviours to a node
 		op = routine.find(self.value) # Gets the operator definition
 		x = routine.get(op.types[2])
 		y = routine.get(op.types[1]) # Operands are received in reverse order
-		routine.send(op.binary(y, x), op.types[0])
+		routine.send(op.binary(routine, y, x), op.types[0])
 
 class infix_r(operator): # Adds right-binding infix behaviours to a node
 
@@ -818,7 +820,7 @@ class infix_r(operator): # Adds right-binding infix behaviours to a node
 			op = routine.find(self.value) # Gets the operator definition
 			x = routine.get(op.types[2])
 			y = routine.get(op.types[1])
-			routine.send(op.binary(y, x), op.types[0])
+			routine.send(op.binary(routine, y, x), op.types[0])
 
 class bind(operator): # Defines the bind operator
 
@@ -848,9 +850,9 @@ class send(operator): # Defines the send operator
 
 	def execute(self, routine):
 		
-		address = routine.find('process')
-		value = routine.get(self.routine().type) # Enforce output type for send value
-		address.send(value) # Sends value to destination queue
+		address = routine.get('process')
+		value = routine.get()
+		routine.message('transfer', address, value)
 
 class left_bracket(operator): # Adds left-bracket behaviours to a node
 
@@ -981,7 +983,7 @@ class right_bracket(operator): # Adds right-bracket behaviours to a node
 if __name__ == '__main__': # Supervisor process and pool management
 
 	stream = mp.Queue() # Supervisor message stream
-	events = globals() # Access event handling functions
+	events = globals() # Shortcut to access event handling functions
 
 	def call(pid, routine, args):
 
@@ -1005,6 +1007,10 @@ if __name__ == '__main__': # Supervisor process and pool management
 		else:
 			tasks[routine.pid].requests.append(pid) # Submit request for return value
 
+	def transfer(pid, routine, message):
+
+		tasks[routine.pid].messages.send(message)
+
 	def terminate(pid):
 
 		value = tasks[pid].result.get()
@@ -1014,7 +1020,6 @@ if __name__ == '__main__': # Supervisor process and pool management
 			del tasks[pid]
 		if pid == main.pid:
 			stream.put(None) # End supervisor
-		#print(value, flush = True)
 	
 	with mp.Pool(initializer = kleio.initialise, initargs = (stream,)) as pool: # Cheeky way to sneak a queue into a task
 		

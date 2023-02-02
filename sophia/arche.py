@@ -37,90 +37,90 @@ class operator: # Base operator object
 		self.binary = binary # Binary function
 		self.types = types # Tuple of return type and input types
 
-def u_add(x):
+def u_add(_, x):
 
 	return x
 
-def b_add(x, y):
+def b_add(_, x, y):
 
 	return x + y
 
-def u_sub(x):
+def u_sub(_, x):
 
 	return -x
 
-def b_sub(x, y):
+def b_sub(_, x, y):
 
 	return x - y
 
-def b_mul(x, y):
+def b_mul(_, x, y):
 
 	return x * y
 
-def b_div(x, y):
+def b_div(_, x, y):
 
 	if y != 0: # Null return on division-by-zero
 		return real(x) / real(y) # Normalise type
 
-def b_exp(x, y):
+def b_exp(_, x, y):
 
 	return real(real(x) ** real(y)) # Normalise type more forcefully (exponentiation can produce irrational numbers)
 
-def b_mod(x, y):
+def b_mod(_, x, y):
 
 	if y != 0: # Null return on modulo-by-zero
 		return real(x) % real(y) # Normalise type
 
-def b_eql(x, y):
+def b_eql(_, x, y):
 
 	return x == y
 
-def b_neq(x, y):
+def b_neq(_, x, y):
 
 	return x != y
 
-def b_ltn(x, y):
+def b_ltn(_, x, y):
 	
 	return x < y
 
-def b_gtn(x, y):
+def b_gtn(_, x, y):
 
 	return x > y
 
-def b_leq(x, y):
+def b_leq(_, x, y):
 
 	return x <= y
 
-def b_geq(x, y):
+def b_geq(_, x, y):
 
 	return x >= y
 
-def b_sbs(x, y):
+def b_sbs(_, x, y):
 
 	return x in y
 
-def u_lnt(x):
+def u_lnt(_, x):
 
 	return not x
 
-def b_lnd(x, y):
+def b_lnd(_, x, y):
 
 	return x and y
 
-def b_lor(x, y):
+def b_lor(_, x, y):
 
 	return x or y
 
-def b_lxr(x, y):
+def b_lxr(_, x, y):
 
 	return x != y
 
-def b_ins(x, y):
+def b_ins(_, x, y):
 
 	if type(x) is type(y): # Only works on operands of the same type
 		return [i for i in x if i in y] # Order of list dependent on order of operators
 
-def b_uni(x, y):
+def b_uni(_, x, y):
 
 	if type(x) is type(y):
 		if isinstance(x, dict):
@@ -128,19 +128,19 @@ def b_uni(x, y):
 		else:
 			return x + y
 
-def u_bnt(x):
+def u_bnt(_, x):
 
 	pass
 
-def b_bnd(x, y):
+def b_bnd(_, x, y):
 
 	pass
 
-def b_bor(x, y):
+def b_bor(_, x, y):
 
 	pass
 
-def b_bxr(x, y):
+def b_bxr(_, x, y):
 
 	pass
 
