@@ -1,4 +1,4 @@
-# ☉ 0.2 06-01-2023
+# ☉ 0.3 03-02-2023
 
 import aletheia, arche, hemera, kadmos, kleio
 import multiprocessing as mp
