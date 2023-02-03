@@ -154,13 +154,6 @@ class node: # Base node object
 
 		return str(self.value)
 
-	def routine(self):
-
-		routine = self
-		while not isinstance(routine, coroutine):
-			routine = routine.head
-		return routine
-
 	def parse(self, data): # Recursively descends into madness and creates a tree of nodes with self as head
 
 		lines, tokens, scopes = [kadmos.line_split(line) for line in data.splitlines() if line], [], [] # Splits lines into symbols and filters empty lines
@@ -307,13 +300,18 @@ class coroutine(node): # Base coroutine object
 
 class module(coroutine): # Module object is always the top level of a syntax tree
 
-	def __init__(self, file_name):
+	def __init__(self, file_name, source = None):
 
 		super().__init__(value = [self]) # Sets initial node to self
-		with open(file_name, 'r') as f: # Binds file data to runtime object
-			self.file_data = f.read() # node.parse() takes a string containing newlines
-		self.name, self.type = file_name.split('.')[0], 'untyped'
+		if source: # Meta-statement
+			self.file_data = file_name
+			self.name, self.type = '<meta>', 'untyped'
+		else: # Default module creation
+			with open(file_name, 'r') as f: # Binds file data to runtime object
+				self.file_data = f.read() # node.parse() takes a string containing newlines
+			self.name, self.type = file_name.split('.')[0], 'untyped'
 		self.active = -1
+		self.source = source
 		self.parse(self.file_data) # Here's tree
 
 	def __repr__(self):
@@ -322,7 +320,9 @@ class module(coroutine): # Module object is always the top level of a syntax tre
 
 	def execute(self, routine):
 		
-		routine.node = None
+		routine.node = self.source
+		if routine.node:
+			routine.path.pop() # Handles meta-statement
 
 class type_statement(coroutine):
 
@@ -891,12 +891,22 @@ class function_call(left_bracket):
 			args = [routine.get()] + args # Shuffle arguments
 		function = routine.get('function') # Get actual function
 		if isinstance(function, function_statement):
-			type_name = function.type
+			for i, arg in enumerate(args):
+				if function.types[i + 1] is None:
+					type_name = 'untyped'
+				else:
+					type_name = function.types[i + 1]
+				if routine.cast(arg, type_name) is None:
+					return routine.error('Failed cast to ' + type_name + ': ' + repr(arg))
 			if isinstance(self.head, bind):
 				routine.message('spawn', function, args)
 			else:
 				routine.message('call', function, args)
-			value = routine.calls.recv()
+			if function.types[0] is None:
+				type_name = 'untyped'
+			else:
+				type_name = function.types[0]
+			value = routine.cast(routine.calls.recv(), type_name)
 		else:
 			type_name = None
 			if args: # Yeah
@@ -965,13 +975,12 @@ class meta_statement(left_bracket):
 
 		super().__init__(value)
 		self.active = 1
-		self.length = 2 # Becomes true at runtime
 
 	def start(self, routine):
 		
-		data = routine.get('string')
-		value = self.parse(data)
-		hemera.debug_tree(value)
+		tree = module(routine.get('string'), source = self) # Here's tree
+		routine.node = tree # Redirect control flow to new tree
+		routine.path.append(0)
 
 	def execute(self, routine):
 		

@@ -10,7 +10,7 @@ class sophia_untyped: # Non-abstract base class
 	def __new__(cls, value): # Type check disguised as an object constructor
 		
 		if cls.types:
-			if isinstance(value, cls.types) or type(value).__name__ == cls.types[1].__name__:
+			if isinstance(value, cls.types):
 				return value
 		else:
 			for subclass in cls.__subclasses__():

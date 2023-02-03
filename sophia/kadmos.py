@@ -6,7 +6,8 @@ keyword_tokens = ('is', 'extends', 'continue', 'break')
 keyword_operators = ('not', 'or', 'and', 'xor', 'in')
 sub_types = {'int': 'integer', # Lookup table for type names
 			 'bool': 'boolean',
-			 'str': 'string'}
+			 'str': 'string',
+			 'num': 'number'}
 sub_values = {'true': True, # Lookup table for special values
 			  'false': False,
 			  'null': None}

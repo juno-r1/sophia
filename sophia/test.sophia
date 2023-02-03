@@ -1,6 +1,6 @@
 int fib (int n):
 
-	number a: 0; number b: 1
+	num a: 0; num b: 1
 	for i in 1:n:1:
 		a: b; b: a + b
 	return a
@@ -10,9 +10,8 @@ type even extends int:
 	constraint:
 		even % 2 = 0
 
-	int halve (even):
+	real halve (even):
 
 		return even / 2
 
-even a: 2
-int b: a.halve()
+{'a: 1'}
