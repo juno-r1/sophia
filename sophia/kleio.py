@@ -8,7 +8,8 @@ class proxy: # Base proxy object
 		self.messages, routine.messages = Pipe() # Pipe for message receiving
 		self.result = None # Return value of task
 		self.requests = [] # Tasks awaiting the return value of the key task
-		self.references = [] # Tasks with a reference to this task; functions as a reference counter
+		self.references = [] # Tasks that this task references
+		self.count = 0 # Reference counter
 
 class reference: # Reference to proxy
 

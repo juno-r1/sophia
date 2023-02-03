@@ -7,6 +7,8 @@ type prime extends int:
 		constraint:
 			prime % i != 0
 
-for i in 0:20:1:
-	assert prime i:
-		print(i)
+//for i in 0:20:1:
+//	assert prime i:
+//		print(i)
+
+link test

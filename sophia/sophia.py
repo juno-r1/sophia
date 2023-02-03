@@ -10,19 +10,19 @@ class task:
 
 	def __init__(self, routine, args, link = False): # God objects? What is she objecting to?
 		
+		self.pid = id(self) # Guaranteed not to collide with other task PIDs; not the same as the PID of the pool process
+		self.link = link
+		self.node = routine # Current node; sets initial module as entry point
 		params = [item.value for item in routine.value[1:]] # Gets coroutine name, return type, and parameters
 		types = [item.type for item in routine.value[1:]] # Get types of params
 		if len(params) != len(args):
 			return self.error('Expected {0} arguments, received {1}'.format(len(params), len(args)))
-		self.link = link
-		self.pid = id(self) # Guaranteed not to collide with other task PIDs; not the same as the PID of the pool process
 		self.built_ins = aletheia.types | arche.operators | arche.functions # No type binding necessary because builtins are never bound to
 		self.built_in_types = {i: 'type' for i in aletheia.types} | {i: 'operator' for i in arche.operators} | {i: 'function' for i in arche.functions}
 		self.values = dict(zip(params, args)) # Dict of values for faster access
 		self.types = dict(zip(params, types)) # Dict of types for correct typing
 		self.reserved = [item.value for item in routine.value] # List of reserved names in the current namespace
 		self.supertypes = arche.supertypes # Dict of type hierarchy
-		self.node = routine # Current node; sets initial module as entry point
 		self.path = [0]
 		self.data = [] # Unfortunately, a stack
 		self.type_data = [] # Unfortunately, another stack
@@ -58,10 +58,7 @@ class task:
 		else:
 			hemera.debug_namespace(self)
 			self.message('terminate')
-			if self.link:
-				return self.values
-			else:
-				return self.sentinel
+			return self.sentinel
 
 	def get(self, type_name = 'untyped'): # Data retrieval checks for type
 
@@ -275,8 +272,15 @@ class node: # Base node object
 			last = line
 
 		node, node.length, path = self, len(self.nodes), [0]
-		while node: # Pre-runtime loop completes node linking and sets length
+		while node: # Pre-runtime parse completes node linking, sets length, defines type operations
 			if path[-1] == node.length: # Walk up
+				if aletheia.sophia_type(node):
+					for item in node.nodes:
+						if aletheia.sophia_function(item) and item.value[1].value == node.name: # Detect type operation
+							item.value[1].type = node.supertype
+							node.namespace[item.name] = item
+					node.nodes = [item for item in node.nodes if not (aletheia.sophia_function(item) and item.value[1].value == node.name)] # Strip type operations from parse tree
+					node.length = len(node.nodes)
 				node = node.head # Walk upward
 				if node:
 					path.pop()
@@ -333,7 +337,7 @@ class type_statement(coroutine):
 		param = name(tokens[0].value)
 		param.type = self.supertype
 		self.value.append(param)
-		self.namespace = [] # Persistent namespace of type operations
+		self.namespace = dict() # Persistent namespace of type operations
 
 	def __call__(self, routine, value): # Initialises type routine
 		
@@ -344,9 +348,6 @@ class type_statement(coroutine):
 		
 		routine.bind(self.name, self, 'type')
 		routine.supertypes[self.name] = [self.name] + routine.supertypes[self.supertype]
-		for node in self.nodes:
-			if aletheia.sophia_function(node) and node.value[1].value == self.name: # Detect type operation
-				self.namespace.append(node)
 		routine.branch() # Skips body of routine
 
 	def execute(self, routine):
@@ -586,7 +587,7 @@ class return_statement(statement):
 	def execute(self, routine):
 		
 		if self.nodes:
-			routine.sentinel = routine.get(self.routine().type)
+			routine.sentinel = routine.get()
 		routine.node = None
 
 class link_statement(statement):
@@ -603,16 +604,14 @@ class link_statement(statement):
 		else:
 			return 'link_statement ' + str([repr(item) for item in self.nodes])
 
-	#def execute(self, routine):
+	def execute(self, routine):
 
-	#	for item in self.value:
-	#		name = item.value
-	#		if '.' not in name:
-	#			name = name + '.sophia'
-	#		module_routine = process(routine.namespace, module(name), link = True)
-	#		module_routine.start()
-	#		module_routine.proxy.bound = True
-	#		routine.bind(item.value.split('.')[0], module_routine.proxy, sophia_process)
+		for item in self.value:
+			name = item.value
+			if '.' not in name:
+				name = name + '.sophia'
+			routine.message('spawn', module(name), [])
+			routine.bind(name.split('.')[0], routine.calls.recv(), 'process')
 
 class else_statement(statement):
 
@@ -673,7 +672,11 @@ class name(identifier): # Adds name behaviours to a node
 		if self.operation:
 			type_routine = routine.find(type_name)
 			if isinstance(type_routine, type_statement):
-				pass
+				if self.operation in type_routine.namespace:
+					operation = type_routine.namespace[self.operation]
+					routine.send(operation, 'function')
+				else:
+					return routine.error('Undefined type operation: ' + self.value)
 			else:
 				operation = getattr(type_routine, self.operation, None)
 				if operation:
@@ -997,7 +1000,8 @@ if __name__ == '__main__': # Supervisor process and pool management
 		routine = task(routine, args)
 		tasks[routine.pid] = kleio.proxy(routine)
 		tasks[routine.pid].result = pool.apply_async(routine.execute)
-		tasks[routine.pid].references.append(pid) # Mark reference to process
+		tasks[routine.pid].count = tasks[routine.pid].count + 1
+		tasks[pid].references.append(routine.pid) # Mark reference to process
 		tasks[pid].calls.send(kleio.reference(routine.pid)) # Return reference to process
 
 	def dereference(pid, routine):
@@ -1016,10 +1020,14 @@ if __name__ == '__main__': # Supervisor process and pool management
 		value = tasks[pid].result.get()
 		for process in tasks[pid].requests:
 			tasks[process].calls.send(value)
-		if not tasks[pid].references: # Free task
-			del tasks[pid]
+		for process in tasks[pid].references:
+			tasks[process].count = tasks[process].count - 1
+			if tasks[process].count == 0:
+				del tasks[process] # Free referenced tasks
 		if pid == main.pid:
 			stream.put(None) # End supervisor
+		if tasks[pid].count == 0: # Free own task
+			del tasks[pid]
 	
 	with mp.Pool(initializer = kleio.initialise, initargs = (stream,)) as pool: # Cheeky way to sneak a queue into a task
 		

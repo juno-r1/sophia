@@ -1,5 +1,4 @@
 import arche, kleio
-from sophia import type_statement, operator_statement, function_statement # Not a circular dependency
 from multiprocessing import current_process
 from fractions import Fraction as real
 
@@ -11,14 +10,14 @@ class sophia_untyped: # Non-abstract base class
 	def __new__(cls, value): # Type check disguised as an object constructor
 		
 		if cls.types:
-			if isinstance(value, cls.types):
+			if isinstance(value, cls.types) or type(value).__name__ == cls.types[1].__name__:
 				return value
 		else:
 			for subclass in cls.__subclasses__():
 				if subclass(value) is not None:
 					return value
 
-class sophia_process(sophia_untyped): # Process/module type
+class sophia_process(sophia_untyped): # Process type
 	
 	types = kleio.reference
 
@@ -28,7 +27,12 @@ class sophia_routine(sophia_untyped): # Abstract routine type
 
 class sophia_type(sophia_routine): # Type type
 	
-	types = type, type_statement
+	types = type
+
+	def __new__(cls, value):
+		
+		if isinstance(value, cls.types) or type(value).__name__ == 'type_statement': # I hate that this is necessary so so much
+			return value
 
 	def cast(self, value): # Type conversion
 		
@@ -47,11 +51,21 @@ class sophia_type(sophia_routine): # Type type
 
 class sophia_operator(sophia_routine): # Operator type
 
-	types = arche.operator, operator_statement
+	types = arche.operator
+
+	def __new__(cls, value):
+		
+		if isinstance(value, cls.types) or type(value).__name__ == 'operator_statement':
+			return value
 
 class sophia_function(sophia_routine): # Function type
 
-	types = sophia_untyped.__new__.__class__, function_statement # Hatred
+	types = sophia_untyped.__new__.__class__ # Hatred
+
+	def __new__(cls, value):
+		
+		if isinstance(value, cls.types) or type(value).__name__ == 'function_statement':
+			return value
 
 class sophia_value(sophia_untyped): # Abstract element type
 

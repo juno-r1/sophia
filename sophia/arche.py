@@ -37,7 +37,7 @@ class operator: # Base operator object
 		self.binary = binary # Binary function
 		self.types = types # Tuple of return type and input types
 
-def u_add(_, x):
+def u_add(_, x): # Pain
 
 	return x
 
