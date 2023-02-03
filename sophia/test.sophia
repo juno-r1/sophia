@@ -14,4 +14,4 @@ type even extends int:
 
 		return even / 2
 
-{'a: 1'}
+{'a: fib(5)'}

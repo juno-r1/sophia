@@ -56,7 +56,7 @@ class task:
 			elif self.path[-1] == self.node.length:
 				self.node.execute(self)
 		else:
-			hemera.debug_namespace(self)
+			#hemera.debug_namespace(self)
 			self.message('terminate')
 			return self.sentinel
 
