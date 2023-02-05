@@ -1,3 +1,4 @@
-list a: [[1, 2, 3], 2, 3 + 1]
-for i in a:
-	print(str.cast(i))
+record a: ['a': 1]
+assert a[0]:
+	return true
+else return false

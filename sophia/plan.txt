@@ -26,3 +26,14 @@ start clause takes initial parameters and performs initial execution
 
 can be used as an iterator
 can be used as an *object*
+
+---
+
+assertions
+
+things that can be asserted that would otherwise throw an error:
+
+type errors
+undefined name
+invalid index
+null return/receive/resolve

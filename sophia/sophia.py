@@ -206,8 +206,8 @@ class task:
 		self.path[-1] = path # Skip nodes
 
 	def error(self, status): # Error handler
-		
-		if not isinstance(self.node, assert_statement): # Suppresses error for assert statement
+
+		if not self.node.asserted: # Suppresses error for assert statement
 			self.node = None # Immediately end routine
 			if 'suppress' not in self.flags:
 				hemera.debug_error(self.name, status)
@@ -229,6 +229,7 @@ class node: # Base node object
 		self.scope = 0
 		self.active = -1 # Indicates path index for activation of start()
 		self.branch = False
+		self.asserted = False # Controls assertion handling
 
 	def __repr__(self): return str(self.value)
 
@@ -329,8 +330,12 @@ class node: # Base node object
 			last = line
 
 		node, node.length, path = self, len(self.nodes), [0]
-		while node: # Pre-runtime parse completes node linking, sets length, defines type operations
+		while node: # Pre-runtime parse completes node linking, sets length, defines type operations and assertion
 			if path[-1] == node.length: # Walk up
+				if isinstance(node, assert_statement):
+					node.asserted = True
+					for i in range(node.active):
+						node.nodes[i].asserted = True
 				if aletheia.sophia_type(node):
 					for item in node.nodes:
 						if aletheia.sophia_function(item) and item.value[1].value == node.name: # Detect type operation
@@ -574,10 +579,14 @@ class for_statement(statement):
 class assert_statement(statement):
 
 	def __init__(self, tokens):
-
-		nodes, sequence = [], []
+		
+		nodes, sequence, parens = [], [], 0
 		for token in tokens[1:-1]: # Collects all expressions in head statement
-			if token.value == ',':
+			if isinstance(token, left_bracket):
+				parens = parens + 1
+			elif isinstance(token, right_bracket):
+				parens = parens - 1
+			if token.value == ',' and parens == 0:
 				nodes.append(kadmos.lexer(sequence).parse())
 				sequence = []
 			else:
@@ -589,9 +598,9 @@ class assert_statement(statement):
 		self.active = len(nodes)
 
 	def start(self, routine):
-
+		
 		for i in range(self.active):
-			if routine.get(self.nodes[i].type) is None:
+			if routine.get(self.nodes[i].type if self.nodes[i].type else 'untyped') is None:
 				return routine.branch()
 
 	def execute(self, routine): return
@@ -867,11 +876,11 @@ class function_call(left_bracket):
 			args = [routine.get()] + args # Shuffle arguments
 		function = routine.get('function') # Get actual function
 		if len(function.types) - 1 != len(args):
-			return self.error('Expected {0} arguments, received {1}'.format(len(function.types) - 1, len(args)))
+			return routine.send(routine.error('Expected {0} arguments, received {1}'.format(len(function.types) - 1, len(args)))) # Requires data to be sent to the stack
 		for i, arg in enumerate(args):
 			type_name = function.types[i + 1] if function.types[i + 1] else 'untyped'
 			if routine.cast(arg, type_name) is None: # Force error even when asserted, because assertion only covers the return value
-				return routine.error('Failed cast to ' + type_name + ': ' + repr(arg))
+				return routine.send(routine.error('Failed cast to ' + type_name + ': ' + repr(arg)))
 		if isinstance(function, function_statement):
 			routine.message('bind' if isinstance(self.head, bind) else 'call', function, args)
 			value = routine.calls.recv()
@@ -897,14 +906,14 @@ class sequence_index(left_bracket):
 				length = len(value) # Only bother doing this when you need to
 				if aletheia.sophia_slice(i):
 					if (not (-length <= i.indices[0] < length)) or (not (-length <= i.indices[1] < length)): # If out of bounds:
-						return routine.error('Index out of bounds')
+						return routine.send(routine.error('Slice out of bounds: ' + str(i.indices)))
 				else:
 					if aletheia.sophia_record(value) and i not in value:
-						return routine.error('Key not in record: ' + i)
+						return routine.send(routine.error('Key not in record: ' + str(i)))
 					elif not (-length <= i < length): # If out of bounds:
-						return routine.error('Index out of bounds')
+						return routine.send(routine.error('Index out of bounds'  + str(i)))
 			else:
-				return routine.error('Invalid index')
+				return routine.send(routine.error('Invalid index'))
 			if aletheia.sophia_slice(i):
 				if aletheia.sophia_string(value):
 					value = ''.join([value[n] for n in i]) # Constructs slice of string using range
