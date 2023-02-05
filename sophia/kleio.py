@@ -1,4 +1,4 @@
-from multiprocessing import Pipe, current_process
+from multiprocessing import Pipe
 
 class proxy: # Base proxy object
 
@@ -16,7 +16,3 @@ class reference: # Reference to proxy
 	def __init__(self, pid):
 
 		self.pid = pid
-
-def initialise(stream):
-	
-	current_process().stream = stream

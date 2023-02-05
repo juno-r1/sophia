@@ -1,17 +1,3 @@
-int fib (int n):
-
-	num a: 0; num b: 1
-	for i in 1:n:1:
-		a: b; b: a + b
-	return a
-
-type even extends int:
-
-	constraint:
-		even % 2 = 0
-
-	real halve (even):
-
-		return even / 2
-
-{'a: fib(5)'}
+list a: [[1, 2, 3], 2, 3 + 1]
+for i in a:
+	print(str.cast(i))

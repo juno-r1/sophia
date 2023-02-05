@@ -67,7 +67,7 @@ class eol: # Creates a sentinel object
 		
 		self.lbp = -1
 
-def line_split(line): # Takes a line from the file data and splits it into tokens
+def split(line): # Takes a line from the file data and splits it into tokens
 	
 	tokens = []
 	if not balanced(line):
