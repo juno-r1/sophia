@@ -155,7 +155,7 @@ class task:
 	def bind(self, name, value, type_name = None): # Creates or updates a name binding in main
 		
 		if name in self.reserved or name in self.built_in_values: # Quicker and easier to do it here
-			return self.error('Bind to reserved name: ' + name)
+			return self.error('BIND', name)
 		self.values[name] = value # Mutate namespace
 		if type_name:
 			self.types[name] = type_name
@@ -174,7 +174,7 @@ class task:
 		elif name in self.values:
 			return self.values[name]
 		else:
-			return self.error('Undefined name: ' + repr(name))
+			return self.error('FIND', repr(name))
 
 	def check(self, name, default = None): # Internal function to check if a name has a type bound to it
 
@@ -193,11 +193,11 @@ class task:
 			stack.append(type_routine)
 			type_routine = self.find(type_routine.supertype) # Type routine is guaranteed to be a built-in when loop ends, so it checks that before any of the types on the stack
 		if type_routine(value) is None: # Check built-in type
-			return self.error('Failed cast to ' + type_routine.name + ': ' + repr(value))
+			return self.error('CAST', type_routine.name, repr(value))
 		while stack:
 			type_routine = stack.pop()
 			if type_routine(self, value) is None:
-				return self.error('Failed cast to ' + type_routine.name + ': ' + repr(value))
+				return self.error('CAST', type_routine.name, repr(value))
 		else:
 			return value # Return indicates success; cast() raises an exception on failure
 
@@ -205,12 +205,12 @@ class task:
 
 		self.path[-1] = path # Skip nodes
 
-	def error(self, status): # Error handler
+	def error(self, status, *args): # Error handler
 
 		if not self.node.asserted: # Suppresses error for assert statement
 			self.node = None # Immediately end routine
 			if 'suppress' not in self.flags:
-				hemera.debug_error(self.name, status)
+				hemera.debug_error(self.name, status, args)
 
 # Parse tree definitions
 
@@ -703,7 +703,7 @@ class name(identifier): # Adds name behaviours to a node
 					routine.send(operation, 'function')
 					break
 			else:
-				return routine.error('Undefined type operation: ' + self.value + '.' + self.operation)
+				return routine.error('FIND', self.value + '.' + self.operation)
 		routine.send(value, type_name)
 
 class keyword(identifier): # Adds keyword behaviours to a node
@@ -876,11 +876,11 @@ class function_call(left_bracket):
 			args = [routine.get()] + args # Shuffle arguments
 		function = routine.get('function') # Get actual function
 		if len(function.types) - 1 != len(args):
-			return routine.send(routine.error('Expected {0} arguments, received {1}'.format(len(function.types) - 1, len(args)))) # Requires data to be sent to the stack
+			return routine.send(routine.error('ARGS', len(function.types) - 1, len(args))) # Requires data to be sent to the stack
 		for i, arg in enumerate(args):
 			type_name = function.types[i + 1] if function.types[i + 1] else 'untyped'
-			if routine.cast(arg, type_name) is None: # Force error even when asserted, because assertion only covers the return value
-				return routine.send(routine.error('Failed cast to ' + type_name + ': ' + repr(arg)))
+			if routine.cast(arg, type_name) is None:
+				return routine.send(None)
 		if isinstance(function, function_statement):
 			routine.message('bind' if isinstance(self.head, bind) else 'call', function, args)
 			value = routine.calls.recv()
@@ -902,18 +902,17 @@ class sequence_index(left_bracket):
 		if not isinstance(subscript, list):
 			subscript = [subscript]
 		for i in subscript: # Iteratively accesses the sequence
-			if aletheia.sophia_sequence(value):
-				length = len(value) # Only bother doing this when you need to
-				if aletheia.sophia_slice(i):
-					if (not (-length <= i.indices[0] < length)) or (not (-length <= i.indices[1] < length)): # If out of bounds:
-						return routine.send(routine.error('Slice out of bounds: ' + str(i.indices)))
-				else:
-					if aletheia.sophia_record(value) and i not in value:
-						return routine.send(routine.error('Key not in record: ' + str(i)))
-					elif not (-length <= i < length): # If out of bounds:
-						return routine.send(routine.error('Index out of bounds'  + str(i)))
+			routine.cast(value, 'sequence')
+			length = len(value) # Only bother doing this when you need to
+			if aletheia.sophia_slice(i):
+				if (not (-length <= i.indices[0] < length)) or (not (-length <= i.indices[1] < length)): # If out of bounds:
+					return routine.send(routine.error('INDX', str(i.indices)))
+			elif aletheia.sophia_record(value):
+				if i not in value:
+					return routine.send(routine.error('INDX', str(i)))
 			else:
-				return routine.send(routine.error('Invalid index'))
+				if not (isinstance(i, int) and -length <= i < length):
+					return routine.send(routine.error('INDX', str(i)))
 			if aletheia.sophia_slice(i):
 				if aletheia.sophia_string(value):
 					value = ''.join([value[n] for n in i]) # Constructs slice of string using range

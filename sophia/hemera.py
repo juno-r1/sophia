@@ -27,11 +27,17 @@ def debug_namespace(task): # Takes a task object
 		  sep = '\n',
 		  file = stderr)
 
-def debug_error(name, status): # Prints error information
+def debug_error(name, status, args): # Prints error information
 
 	print('===',
 	      name,
-		  status,
+		  errors[status].format(*args) if args else errors[status],
 		  '===',
 		  sep = '\n',
 		  file = stderr)
+
+errors = {'BIND': 'Bind to reserved name: {0}',
+		  'FIND': 'Undefined name: {0}',
+		  'CAST': 'Failed cast to {0}: {1}',
+		  'ARGS': 'Expected {0} arguments, received {1}',
+		  'INDX': 'Invalid index: {0}'}
