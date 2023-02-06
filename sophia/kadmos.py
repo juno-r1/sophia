@@ -1,3 +1,6 @@
+import hemera
+from os import getpid, kill # Necessary for clean-ish exit from process
+
 characters = '.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz' # Sorted by position in UTF-8
 parens = '()[]{}'
 comment = '//'
@@ -67,13 +70,11 @@ class eol: # Creates a sentinel object
 		
 		self.lbp = -1
 
-def split(line): # Takes a line from the file data and splits it into tokens
+def split(line, i): # Takes a line from the file data and splits it into tokens
 	
-	if not line:
-		return []
-	if not balanced(line):
-		raise SyntaxError('Unmatched parentheses')
 	tokens = []
+	if not balanced(line):
+		return 'UPRN'
 	while line:
 		shift = False # Push flag
 		symbol = ''
@@ -95,7 +96,7 @@ def split(line): # Takes a line from the file data and splits it into tokens
 					symbol, line = symbol + line[0:end], line[end:]
 					shift = True
 				except ValueError:
-					raise SyntaxError('Unmatched quotes')
+					return 'UQTE'
 			elif not line or (symbol[-1] in characters) != (line[0] in characters): # XOR for last and next character being part of an operator
 				shift = True
 		else:
@@ -106,9 +107,17 @@ def balanced(tokens): # Takes a string and checks if its parentheses are balance
 	
 	opening = parens[0::2] # Gets all opening parentheses from string
 	closing = parens[1::2] # Gets all closing parentheses from string
+	string = ''
 	stack = [] # Guess
 
 	for token in tokens:
+		if string:
+			if token == string:
+				string = ''
+			else:
+				continue
+		elif token in '\'\"':
+			string = token
 		if token in opening: # If character is an opening parenthesis:
 			stack.append(token) # Add to stack
 		elif token in closing: # If character is a closing parenthesis:

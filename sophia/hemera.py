@@ -36,8 +36,10 @@ def debug_error(name, line, status, args): # Prints error information
 		  sep = '\n',
 		  file = stderr)
 
-errors = {'BIND': 'Bind to reserved name: {0}',
-		  'FIND': 'Undefined name: {0}',
+errors = {'ARGS': 'Expected {0} arguments, received {1}',
+		  'BIND': 'Bind to reserved name: {0}',
 		  'CAST': 'Failed cast to {0}: {1}',
-		  'ARGS': 'Expected {0} arguments, received {1}',
-		  'INDX': 'Invalid index: {0}'}
+		  'FIND': 'Undefined name: {0}',
+		  'INDX': 'Invalid index: {0}',
+		  'UPRN': 'Unmatched parentheses',
+		  'UQTE': 'Unmatched quotes'}

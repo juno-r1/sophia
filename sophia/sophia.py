@@ -1,4 +1,4 @@
-# ☉ 0.3 03-02-2023
+# ☉ 0.3.1 06-02-2023
 
 import aletheia, arche, hemera, kadmos, kleio, mathos
 import multiprocessing as mp
@@ -10,7 +10,7 @@ class runtime: # Base runtime object
 	def __init__(self, address, *flags):
 		
 		mp.freeze_support()
-		mp.set_start_method('spawn') if os_name == 'nt' else mp.set_start_method('fork')
+		mp.set_start_method('spawn' if os_name == 'nt' else 'fork')
 		self.stream = mp.Queue() # Supervisor message stream
 		self.pool = mp.Pool(initializer = self.initialise)
 		self.main = task(module(address), [], flags) # Initial task
@@ -29,7 +29,7 @@ class runtime: # Base runtime object
 		self.tasks[routine.pid].requests.append(pid) # Submit request for return value
 
 	def bind(self, pid, routine, args):
-
+		
 		routine = task(routine, args, self.flags)
 		self.tasks[routine.pid] = kleio.proxy(routine)
 		self.tasks[routine.pid].result = self.pool.apply_async(routine.execute)
@@ -138,10 +138,7 @@ class task:
 	def get(self, type_name = 'untyped'): # Data retrieval checks for type
 
 		value, known = self.data.pop(), self.type_data.pop()
-		if known and known in self.supertypes and type_name in self.supertypes[known]:
-			return value # Instantly succeeds if checked type is supertype of known type
-		else:
-			return self.cast(value, type_name, known)
+		return value if known and type_name in self.supertypes[known] else self.cast(value, type_name, known) # Instantly succeeds if checked type is supertype of known type
 
 	def send(self, value, type_name = None):
 		
@@ -157,6 +154,9 @@ class task:
 		if name in self.reserved or name in self.built_in_values: # Quicker and easier to do it here
 			return self.error('BIND', name)
 		self.values[name] = value # Mutate namespace
+		if isinstance(value, type_statement) and value.name not in self.supertypes: # Deals with types being sent between routines
+			self.find(value.supertype) # Result isn't used; only called to verify existence in routine
+			self.supertypes[value.name] = [value.name] + self.supertypes[value.supertype]
 		if type_name:
 			self.types[name] = type_name
 		elif name not in self.types:
@@ -234,10 +234,40 @@ class node: # Base node object
 
 	def __str__(self): return str(self.value)
 
-	def parse(self, data): # Recursively descends into madness and creates a tree of nodes with self as head
+class coroutine(node): # Base coroutine object
 
-		lines, tokens, scopes = [kadmos.split(line) for line in data.splitlines()], [], [] # Splits lines into symbols and filters empty lines
+	def __init__(self, value):
+
+		super().__init__(value)
+		self.active = 0
+
+	def __str__(self): return str(['{0} {1}'.format(item.type, item.value) for item in self.value])
+
+class module(coroutine): # Module object is always the top level of a syntax tree
+
+	def __init__(self, file_name, source = None):
+
+		super().__init__(value = [self]) # Sets initial node to self
+		if source: # Meta-statement
+			self.file_data = file_name
+			self.name, self.type = '<meta>', 'untyped'
+		else: # Default module creation
+			with open(file_name, 'r') as f: # Binds file data to runtime object
+				self.file_data = f.read() # node.parse() takes a string containing newlines
+			self.name, self.type = file_name.split('.')[0], 'untyped'
+		self.active = -1
+		self.source = source
+		self.offset = source.line if source else 1
+		self.parse(self.file_data) # Here's tree
+
+	def __str__(self): return 'module ' + self.name
+
+	def parse(self, data): # Recursively descends into madness and creates a tree of nodes with self as head
+		
+		lines, tokens, scopes = [kadmos.split(line, i + self.offset) for i, line in enumerate(data.splitlines())], [], [] # Splits lines into symbols and filters empty lines
 		for i, line in enumerate(lines): # Tokenises each item in lines
+			if isinstance(line, str): # Unmatched parentheses or quotes
+				return hemera.debug_error(self.name, i + self.offset, line, ()) # Executes with empty parse tree
 			scope = line.count('\t') # Gets scope level from number of tabs
 			if not line[scope:]:
 				continue # Skips empty lines
@@ -293,7 +323,7 @@ class node: # Base node object
 							token = resolve(symbol)
 						else:
 							token = prefix(symbol) # NEGATION TAKES PRECEDENCE OVER EXPONENTIATION - All unary operators have the highest possible left-binding power
-				token.line = i + 1
+				token.line = i + self.offset
 				tokens[-1].append(token)
 				
 		parsed = []
@@ -356,33 +386,6 @@ class node: # Base node object
 				path.append(0)
 
 		return self
-
-class coroutine(node): # Base coroutine object
-
-	def __init__(self, value):
-
-		super().__init__(value)
-		self.active = 0
-
-	def __str__(self): return str(['{0} {1}'.format(item.type, item.value) for item in self.value])
-
-class module(coroutine): # Module object is always the top level of a syntax tree
-
-	def __init__(self, file_name, source = None):
-
-		super().__init__(value = [self]) # Sets initial node to self
-		if source: # Meta-statement
-			self.file_data = file_name
-			self.name, self.type = '<meta>', 'untyped'
-		else: # Default module creation
-			with open(file_name, 'r') as f: # Binds file data to runtime object
-				self.file_data = f.read() # node.parse() takes a string containing newlines
-			self.name, self.type = file_name.split('.')[0], 'untyped'
-		self.active = -1
-		self.source = source
-		self.parse(self.file_data) # Here's tree
-
-	def __str__(self): return 'module ' + self.name
 
 	def execute(self, routine):
 		
