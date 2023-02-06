@@ -174,7 +174,7 @@ class task:
 		elif name in self.values:
 			return self.values[name]
 		else:
-			return self.error('FIND', repr(name))
+			return self.error('FIND', name)
 
 	def check(self, name, default = None): # Internal function to check if a name has a type bound to it
 
@@ -193,11 +193,11 @@ class task:
 			stack.append(type_routine)
 			type_routine = self.find(type_routine.supertype) # Type routine is guaranteed to be a built-in when loop ends, so it checks that before any of the types on the stack
 		if type_routine(value) is None: # Check built-in type
-			return self.error('CAST', type_routine.name, repr(value))
+			return self.error('CAST', type_routine.name, str(value))
 		while stack:
 			type_routine = stack.pop()
 			if type_routine(self, value) is None:
-				return self.error('CAST', type_routine.name, repr(value))
+				return self.error('CAST', type_routine.name, str(value))
 		else:
 			return value # Return indicates success; cast() raises an exception on failure
 
@@ -231,7 +231,7 @@ class node: # Base node object
 		self.branch = False
 		self.asserted = False # Controls assertion handling
 
-	def __repr__(self): return str(self.value)
+	def __str__(self): return str(self.value)
 
 	def parse(self, data): # Recursively descends into madness and creates a tree of nodes with self as head
 
@@ -362,7 +362,7 @@ class coroutine(node): # Base coroutine object
 		super().__init__(value)
 		self.active = 0
 
-	def __repr__(self): return str([str(item.type) + ' ' + str(item.value) for item in self.value])
+	def __str__(self): return str(['{0} {1}'.format(item.type, item.value) for item in self.value])
 
 class module(coroutine): # Module object is always the top level of a syntax tree
 
@@ -380,7 +380,7 @@ class module(coroutine): # Module object is always the top level of a syntax tre
 		self.source = source
 		self.parse(self.file_data) # Here's tree
 
-	def __repr__(self): return 'module ' + self.name
+	def __str__(self): return 'module ' + self.name
 
 	def execute(self, routine):
 		
@@ -480,7 +480,7 @@ class assignment(node):
 			expressions.append(kadmos.lexer(stack).parse())
 			super().__init__(names, *expressions)
 
-	def __repr__(self): return 'assignment ' + repr([item.value for item in self.value])
+	def __str__(self): return 'assignment ' + str([item.value for item in self.value])
 
 	def execute(self, routine):
 
@@ -501,7 +501,7 @@ class assignment(node):
 
 class statement(node):
 
-	def __repr__(self): return 'else ' + type(self).__name__ if self.branch else type(self).__name__
+	def __str__(self): return ('else ' if self.branch else '') + type(self).__name__
 
 class if_statement(statement):
 
@@ -640,12 +640,12 @@ class link_statement(statement):
 		super().__init__(tokens[1::2]) # Allows multiple links
 		self.branch = tokens[0].branch
 
-	def __repr__(self): return 'else link_statement ' + str([repr(item) for item in self.nodes]) if self.branch else 'link_statement ' + str([repr(item) for item in self.nodes])
+	def __str__(self): return ('else ' if self.branch else '') + 'link_statement ' + str([item.value for item in self.nodes])
 
 	def execute(self, routine):
 
 		for item in self.value:
-			name = item.value if '.' in name else item.value + '.sophia'
+			name = item.value if '.' in item.value else (item.value + '.sophia')
 			routine.message('bind', module(name), [])
 			routine.bind(name.split('.')[0], routine.calls.recv(), 'process')
 
@@ -794,8 +794,7 @@ class infix(operator): # Adds infix behaviours to a node
 	def execute(self, routine):
 		
 		op = routine.find(self.value)
-		x = routine.get(op.types[2])
-		y = routine.get(op.types[1]) # Operands are received in reverse order
+		x, y = routine.get(op.types[2]), routine.get(op.types[1]) # Operands are received in reverse order
 		routine.send(op.binary(routine, y, x), op.types[0])
 
 class infix_r(operator): # Adds right-binding infix behaviours to a node
@@ -821,13 +820,12 @@ class infix_r(operator): # Adds right-binding infix behaviours to a node
 			routine.send([y] + x if self.nodes and self.nodes[1].value == ',' else [y, x])
 		else: # Binary operators
 			op = routine.find(self.value) # Gets the operator definition
-			x = routine.get(op.types[2])
-			y = routine.get(op.types[1])
+			x, y = routine.get(op.types[2]), routine.get(op.types[1])
 			routine.send(op.binary(routine, y, x), op.types[0])
 
 class bind(operator): # Defines the bind operator
 
-	def __repr__(self): return 'bind ' + repr(self.value)
+	def __str__(self): return 'bind ' + self.value
 
 	def led(self, lex, left): # Parses like a binary operator but stores the left operand like assignment
 		
@@ -840,7 +838,7 @@ class bind(operator): # Defines the bind operator
 
 class send(operator): # Defines the send operator
 
-	def __repr__(self): return 'send ' + repr(self.value)
+	def __str__(self): return 'send'
 
 	def led(self, lex, left): # Parses like a binary operator but stores the right operand like assignment
 		

@@ -1,6 +1,1 @@
-record a: ['a': 1]
-list b: [1]
-b['a']
-assert a[0]:
-	return true
-else return false
+return 1 + 2
