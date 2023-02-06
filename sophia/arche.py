@@ -40,10 +40,14 @@ class slice: # Slice object
 		
 		return slice([self.indices[1], self.indices[0], -self.indices[2]])
 
+	def __str__(self):
+
+		return '{0}:{1}:{2}'.format(*self.indices)
+
 class procedure: # Base function object
 
 	def __init__(self, routine, *types):
-
+		
 		self.call = routine
 		self.types = types
 

@@ -27,10 +27,10 @@ def debug_namespace(task): # Takes a task object
 		  sep = '\n',
 		  file = stderr)
 
-def debug_error(name, status, args): # Prints error information
+def debug_error(name, line, status, args): # Prints error information
 
 	print('===',
-	      name,
+	      '{0} (line {1})'.format(name, line),
 		  errors[status].format(*args) if args else errors[status],
 		  '===',
 		  sep = '\n',

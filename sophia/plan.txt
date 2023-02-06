@@ -1,39 +1,46 @@
-type checking
-
-each routine has its own dictionary of type names and references to types
-
----
-
 interfaces
 
-implement interfaces using the syntax:
+interface <name> [extends <name: type>]:
 
-type <name> [extends <name: type> [with <name: type>[, ...]]]:
+type <name> [extends <name: type> [with <name: interface>[, ...]]]:
 
 adding an interface to a type extends its namespace with the interface's namespace
-the interface must be a supertype of the defined type and cannot have a concrete data type
+the interface must extend a supertype of the defined type and cannot place constraints on its supertype
+interfaces are a subtype of type that are final and cannot be instanced
 
 ---
 
 events
 
 persistent routines that perform the routine body every time they receive a message
+event returns a value every call but maintains a persistent namespace
 start clause takes initial parameters and performs initial execution
 
 <name: type> awaits <name: type>:
 
 	start [with <name: type>[, ...]]:
 
-can be used as an iterator
+can be used as an iterator by sending to it and then resolving it
 can be used as an *object*
 
 ---
 
-assertions
+symbolic algebra
 
-things that can be asserted that would otherwise throw an error:
+use the parse tree itself to represent expressions
+nodes can signal to use symbolic representation if they produce a result that cannot be represented by numeric data types
 
-type errors
-undefined name
-invalid index
-null return/receive/resolve
+---
+
+safety and unsafety operators
+
+safety operator ? returns true for untyped, false for null
+unsafety operator ! returns value for truthy values, null for falsy values - truthiness okay here because operator is an explicitly signalled behaviour that isn't default
+need to be implemented separately because taking or returning null violates the type system
+
+---
+
+conditional operator
+
+conditional operator [...] if [...] else [...] returns based on condition
+implement as binary operator <if> that captures an expression up to the sentinel value <else>

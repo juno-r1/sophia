@@ -1,1 +1,4 @@
-return 1 + 2
+slice a: 0:10:2
+
+print(1)
+return str.cast(a)

@@ -69,9 +69,11 @@ class eol: # Creates a sentinel object
 
 def split(line): # Takes a line from the file data and splits it into tokens
 	
-	tokens = []
+	if not line:
+		return []
 	if not balanced(line):
 		raise SyntaxError('Unmatched parentheses')
+	tokens = []
 	while line:
 		shift = False # Push flag
 		symbol = ''

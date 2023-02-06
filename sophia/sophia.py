@@ -206,11 +206,11 @@ class task:
 		self.path[-1] = path # Skip nodes
 
 	def error(self, status, *args): # Error handler
-
+		
 		if not self.node.asserted: # Suppresses error for assert statement
-			self.node = None # Immediately end routine
 			if 'suppress' not in self.flags:
-				hemera.debug_error(self.name, status, args)
+				hemera.debug_error(self.name, self.node.line, status, args)
+			self.node = None # Immediately end routine
 
 # Parse tree definitions
 
@@ -227,6 +227,7 @@ class node: # Base node object
 		self.nodes = [i for i in nodes] # For operands that should be evaluated
 		self.length = 0 # Performance optimisation
 		self.scope = 0
+		self.line = 0
 		self.active = -1 # Indicates path index for activation of start()
 		self.branch = False
 		self.asserted = False # Controls assertion handling
@@ -235,14 +236,14 @@ class node: # Base node object
 
 	def parse(self, data): # Recursively descends into madness and creates a tree of nodes with self as head
 
-		lines, tokens, scopes = [kadmos.split(line) for line in data.splitlines() if line], [], [] # Splits lines into symbols and filters empty lines
-		for line in lines: # Tokenises each item in lines
+		lines, tokens, scopes = [kadmos.split(line) for line in data.splitlines()], [], [] # Splits lines into symbols and filters empty lines
+		for i, line in enumerate(lines): # Tokenises each item in lines
 			scope = line.count('\t') # Gets scope level from number of tabs
 			if not line[scope:]:
 				continue # Skips empty lines
 			scopes.append(scope)
 			tokens.append([])
-			for n, symbol in enumerate(line[scope:]): # Skips tabs
+			for symbol in line[scope:]: # Skips tabs
 				if (symbol[0] in kadmos.characters or symbol[0] in '\'\"') and (symbol not in kadmos.keyword_operators): # Quick test for literal
 					if symbol in kadmos.structure_tokens or symbol in kadmos.keyword_tokens:
 						token = keyword(symbol)
@@ -292,6 +293,7 @@ class node: # Base node object
 							token = resolve(symbol)
 						else:
 							token = prefix(symbol) # NEGATION TAKES PRECEDENCE OVER EXPONENTIATION - All unary operators have the highest possible left-binding power
+				token.line = i + 1
 				tokens[-1].append(token)
 				
 		parsed = []
