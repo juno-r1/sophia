@@ -1,4 +1,4 @@
-# Sophia 0.3
+# Sophia 0.3.1
 
 Sophia is a high-level general-purpose procedural programming language oriented around the actor model. [Find more information here.](https://github.com/juno-r1/sophia/wiki)
 
