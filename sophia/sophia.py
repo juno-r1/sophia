@@ -264,10 +264,10 @@ class module(coroutine): # Module object is always the top level of a syntax tre
 
 	def parse(self, data): # Recursively descends into madness and creates a tree of nodes with self as head
 		
-		lines, tokens, scopes = [kadmos.split(line, i + self.offset) for i, line in enumerate(data.splitlines())], [], [] # Splits lines into symbols and filters empty lines
+		lines, tokens, scopes = [kadmos.split(line, self.source.line if self.source else i + 1) for i, line in enumerate(data.splitlines())], [], [] # Splits lines into symbols
 		for i, line in enumerate(lines): # Tokenises each item in lines
-			if isinstance(line, str): # Unmatched parentheses or quotes
-				return hemera.debug_error(self.name, i + self.offset, line, ()) # Executes with empty parse tree
+			if isinstance(line, str): # Error messages
+				return hemera.debug_error(self.name, self.source.line if self.source else i + 1, line, ()) # Executes with empty parse tree
 			scope = line.count('\t') # Gets scope level from number of tabs
 			if not line[scope:]:
 				continue # Skips empty lines
@@ -323,7 +323,7 @@ class module(coroutine): # Module object is always the top level of a syntax tre
 							token = resolve(symbol)
 						else:
 							token = prefix(symbol) # NEGATION TAKES PRECEDENCE OVER EXPONENTIATION - All unary operators have the highest possible left-binding power
-				token.line = i + self.offset
+				token.line = self.source.line if self.source else i + 1
 				tokens[-1].append(token)
 				
 		parsed = []
