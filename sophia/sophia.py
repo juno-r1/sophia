@@ -216,11 +216,8 @@ class task:
 
 class node: # Base node object
 
-	n = 0 # Accumulator for unique index; used for debug info
-
 	def __init__(self, value, *nodes): # Do not store state in nodes
 		
-		self.n, node.n = node.n, node.n + 1
 		self.value = value # For operands that shouldn't be evaluated or that should be handled differently
 		self.type = None
 		self.head = None # Determined by scope parsing
@@ -264,16 +261,21 @@ class module(coroutine): # Module object is always the top level of a syntax tre
 
 	def parse(self, data): # Recursively descends into madness and creates a tree of nodes with self as head
 		
-		lines, tokens, scopes = [kadmos.split(line, self.source.line if self.source else i + 1) for i, line in enumerate(data.splitlines())], [], [] # Splits lines into symbols
-		for i, line in enumerate(lines): # Tokenises each item in lines
+		lines = [kadmos.split(line) for line in kadmos.group(data.splitlines())] # Splits lines into symbols
+		tokens, scopes, i = [], [], 0
+		for line in lines: # Tokenises each item in lines
+			i = i + 1
 			if isinstance(line, str): # Error messages
-				return hemera.debug_error(self.name, self.source.line if self.source else i + 1, line, ()) # Executes with empty parse tree
+				return hemera.debug_error(self.name, self.source.line if self.source else i, line, ()) # Executes with empty parse tree
 			scope = line.count('\t') # Gets scope level from number of tabs
 			if not line[scope:]:
 				continue # Skips empty lines
 			scopes.append(scope)
 			tokens.append([])
 			for symbol in line[scope:]: # Skips tabs
+				if symbol == '\r': # Increments line count for trailing lines
+					i = i + 1
+					continue
 				if (symbol[0] in kadmos.characters or symbol[0] in '\'\"') and (symbol not in kadmos.keyword_operators): # Quick test for literal
 					if symbol in kadmos.structure_tokens or symbol in kadmos.keyword_tokens:
 						token = keyword(symbol)
@@ -323,7 +325,7 @@ class module(coroutine): # Module object is always the top level of a syntax tre
 							token = resolve(symbol)
 						else:
 							token = prefix(symbol) # NEGATION TAKES PRECEDENCE OVER EXPONENTIATION - All unary operators have the highest possible left-binding power
-				token.line = self.source.line if self.source else i + 1
+				token.line = self.source.line if self.source else i
 				tokens[-1].append(token)
 				
 		parsed = []
@@ -343,6 +345,7 @@ class module(coroutine): # Module object is always the top level of a syntax tre
 				token = assignment(line)
 			else: # Tokenises expressions
 				token = kadmos.lexer(line).parse() # Passes control to a lexer object that returns an expression tree when parse() is called
+			token.line = line[0].line
 			parsed.append(token)
 
 		head, last = self, self # Head token and last line
@@ -469,6 +472,7 @@ class assignment(node):
 
 	def __init__(self, tokens): # Supports multiple assignment
 		
+		tokens = tokens.copy()
 		names, expressions, stack = [], [], []
 		names.append(tokens.pop(0)) # Name
 		tokens.pop(0) # Colon

@@ -2,7 +2,7 @@ from sys import stderr
 
 def debug_tree(node, level = 0): # Takes a parse tree
 	
-	print(str(getattr(node, 'n', 0)).zfill(4) + '\t' + ('  ' * level) + str(node), file = stderr) # n is the unique id of a node, if enabled
+	print(str(node.line).zfill(4) + '\t' + ('  ' * level) + str(node), file = stderr) # n is the unique id of a node, if enabled
 	if node.nodes: # True for non-terminals, false for terminals
 		level += 1 # This actually works, because parameters are just local variables, for some reason
 		for item in node.nodes:

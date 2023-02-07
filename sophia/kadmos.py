@@ -1,12 +1,10 @@
-import hemera
-from os import getpid, kill # Necessary for clean-ish exit from process
-
 characters = '.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz' # Sorted by position in UTF-8
 parens = '()[]{}'
 comment = '//'
 structure_tokens = ('if', 'while', 'for', 'else', 'assert', 'constraint', 'return', 'link')
 keyword_tokens = ('is', 'extends', 'continue', 'break')
 keyword_operators = ('not', 'or', 'and', 'xor', 'in')
+trailing = (';', ',')
 sub_types = {'int': 'integer', # Lookup table for type names
 			 'bool': 'boolean',
 			 'str': 'string',
@@ -64,13 +62,26 @@ class lexer: # Lex object to get around not being able to peek the next value of
 	# https://web.archive.org/web/20150228044653/http://effbot.org/zone/simple-top-down-parsing.htm
 	# https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
 
-class eol: # Creates a sentinel object
+class eol: # Sentinel object
 
-	def __init__(self):
-		
-		self.lbp = -1
+	def __init__(self): self.lbp = -1
 
-def split(line, i): # Takes a line from the file data and splits it into tokens
+class newline: pass # Line divider
+
+def group(lines): # Groups lines with trailing characters
+
+	grouped = [lines[0]]
+	for line in lines[1:]:
+		if grouped[-1] and grouped[-1][-1] in trailing:
+			i = 0
+			while line[i] in ('\t', ' '):
+				i = i + 1
+			grouped[-1] = grouped[-1] + '\r' +  line[i:]
+		else:
+			grouped.append(line)
+	return grouped
+
+def split(line): # Takes a line from the file data and splits it into tokens
 	
 	tokens = []
 	if not balanced(line):
