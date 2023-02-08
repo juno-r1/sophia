@@ -35,7 +35,7 @@ class runtime: # Base runtime object
 		self.tasks[routine.pid].result = self.pool.apply_async(routine.execute)
 		self.tasks[routine.pid].count = self.tasks[routine.pid].count + 1
 		self.tasks[pid].references.append(routine.pid) # Mark reference to process
-		self.tasks[pid].calls.send(kleio.reference(routine.pid)) # Return reference to process
+		self.tasks[pid].calls.send(kleio.reference(routine)) # Return reference to process
 
 	def send(self, pid, routine, message):
 
@@ -84,6 +84,7 @@ class task:
 		
 		self.pid = id(self) # Guaranteed not to collide with other task PIDs; not the same as the PID of the pool process
 		self.name = routine.name
+		self.type = routine.type
 		self.node = routine # Current node; sets initial module as entry point
 		self.flags = flags
 		params = [item.value for item in routine.value[1:]] # Gets coroutine name, return type, and parameters
@@ -242,19 +243,18 @@ class coroutine(node): # Base coroutine object
 
 class module(coroutine): # Module object is always the top level of a syntax tree
 
-	def __init__(self, file_name, source = None):
+	def __init__(self, file_name, source = None, name = None):
 
 		super().__init__(value = [self]) # Sets initial node to self
 		if source: # Meta-statement
 			self.file_data = file_name
-			self.name, self.type = '<meta>', 'untyped'
+			self.name, self.type = name, 'untyped'
 		else: # Default module creation
 			with open(file_name, 'r') as f: # Binds file data to runtime object
 				self.file_data = f.read() # node.parse() takes a string containing newlines
 			self.name, self.type = file_name.split('.')[0], 'untyped'
 		self.active = -1
 		self.source = source
-		self.offset = source.line if source else 1
 		self.parse(self.file_data) # Here's tree
 
 	def __str__(self): return 'module ' + self.name
@@ -276,12 +276,15 @@ class module(coroutine): # Module object is always the top level of a syntax tre
 				if symbol == '\r': # Increments line count for trailing lines
 					i = i + 1
 					continue
-				if (symbol[0] in kadmos.characters or symbol[0] in '\'\"') and (symbol not in kadmos.keyword_operators): # Quick test for literal
+				elif (symbol[0] in kadmos.characters or symbol[0] in '\'\"') and (symbol not in kadmos.keyword_operators): # Quick test for literal
 					if symbol in kadmos.structure_tokens or symbol in kadmos.keyword_tokens:
-						token = keyword(symbol)
-						if tokens[-1] and tokens[-1][-1].value == 'else':
-							tokens[-1].pop()
-							token.branch = True
+						if tokens[-1] and symbol in ('if', 'else'):
+							token = left_conditional(symbol) if symbol == 'if' else right_conditional(symbol)
+						else:
+							token = keyword(symbol)
+							if tokens[-1] and tokens[-1][-1].value == 'else':
+								tokens[-1].pop()
+								token.branch = True
 					else:
 						if symbol[0] in '.0123456789': # Terrible way to check for a number without using a try/except block
 							token, token.type = (literal(real(symbol)), 'real') if '.' in symbol else (literal(int(symbol)), 'integer') # Type of literals is known at parse time
@@ -305,11 +308,11 @@ class module(coroutine): # Module object is always the top level of a syntax tre
 							token = meta_statement(symbol)
 					elif symbol in kadmos.parens[1::2]:
 						token = right_bracket(symbol)
-					elif tokens[-1] and isinstance(tokens[-1][-1], (identifier, right_bracket)): # If the preceding token is a literal (if the current token is an infix):
-						if symbol in ('^', ',', ':'):
+					elif tokens[-1] and isinstance(tokens[-1][-1], (literal, name, right_bracket)): # If the preceding token is a literal (if the current token is an infix):
+						if symbol in ('^', ':', ','):
 							token = infix_r(symbol)
 						elif symbol == '<-':
-							token = bind(symbol)
+							token = bind(tokens[-1].pop().value)
 						elif symbol == '->':
 							token = send(symbol)
 						else:
@@ -323,6 +326,10 @@ class module(coroutine): # Module object is always the top level of a syntax tre
 							token = receive(symbol)
 						elif symbol == '*':
 							token = resolve(symbol)
+						elif symbol == '?':
+							token = safe(symbol)
+						elif symbol == '!':
+							token = unsafe(symbol)
 						else:
 							token = prefix(symbol) # NEGATION TAKES PRECEDENCE OVER EXPONENTIATION - All unary operators have the highest possible left-binding power
 				token.line = self.source.line if self.source else i
@@ -773,7 +780,19 @@ class prefix(operator): # Adds prefix behaviours to a node
 		x = routine.get(op.types[1])
 		routine.send(op.unary(routine, x), op.types[0]) # Equivalent for all operators
 
+class bind(prefix): # Defines the bind operator
+
+	def __str__(self): return 'bind ' + self.value
+
+	def execute(self, routine):
+		
+		address = routine.get('process')
+		routine.bind(self.value, address, 'process') # Binds routine
+		routine.send(address, 'process')
+
 class receive(prefix): # Defines the receive operator
+
+	def __str__(self): return '>' + self.value.value
 
 	def nud(self, lex):
 
@@ -784,14 +803,30 @@ class receive(prefix): # Defines the receive operator
 		
 		value = routine.messages.recv()
 		routine.bind(self.value.value, value, self.value.type if self.value.type else None)
-		routine.send(value)
+		routine.send(value, self.value.type if self.value.type else None)
 
 class resolve(prefix): # Defines the resolution operator
 
 	def execute(self, routine):
 		
-		routine.message('resolve', routine.get('process'))
-		routine.send(routine.calls.recv())
+		reference = routine.get('process')
+		routine.message('resolve', reference)
+		routine.send(routine.cast(routine.calls.recv(), reference.type), reference.type)
+
+class safe(prefix): # Defines the safety operator
+
+	def execute(self, routine):
+
+		value = routine.data.pop() # Bypass type checking
+		routine.type_data.pop()
+		routine.send(True if value is not None else False, 'boolean')
+
+class unsafe(prefix): # Defines the unsafety operator
+
+	def execute(self, routine):
+
+		value = routine.get()
+		routine.send(value if value else None) # I'm sure someone has a use for this
 
 class infix(operator): # Adds infix behaviours to a node
 
@@ -805,6 +840,43 @@ class infix(operator): # Adds infix behaviours to a node
 		op = routine.find(self.value)
 		x, y = routine.get(op.types[2]), routine.get(op.types[1]) # Operands are received in reverse order
 		routine.send(op.binary(routine, y, x), op.types[0])
+
+class left_conditional(infix): # Defines the conditional operator
+
+	def __init__(self, value):
+
+		super().__init__(value)
+		self.active = 1
+
+	def led(self, lex, left):
+		
+		n = lex.parse(self.lbp)
+		left, n.nodes[0] = n.nodes[0], left
+		self.nodes = [left, n]
+		return self
+
+	def start(self, routine):
+
+		condition = routine.get('boolean')
+		routine.node = self.nodes[1]
+		routine.path.append(0 if condition else 1)
+
+	def execute(self, routine): return
+
+class right_conditional(infix): # Defines the conditional operator
+
+	def __init__(self, value):
+
+		super().__init__(value)
+		self.active = 1
+
+	def start(self, routine):
+		
+		routine.node = self.head
+		routine.path.pop()
+		routine.path[-1] = routine.path[-1] + 1
+
+	def execute(self, routine): return
 
 class infix_r(operator): # Adds right-binding infix behaviours to a node
 
@@ -821,6 +893,8 @@ class infix_r(operator): # Adds right-binding infix behaviours to a node
 			if self.head.value == ':':
 				routine.send(value)
 			elif len(value) == 2:
+				if aletheia.sophia_integer(value[0]): # Equalise integer type
+					value[0] = int(value[0])
 				routine.send(arche.element(value))
 			else:
 				routine.send(arche.slice(value))
@@ -832,31 +906,15 @@ class infix_r(operator): # Adds right-binding infix behaviours to a node
 			x, y = routine.get(op.types[2]), routine.get(op.types[1])
 			routine.send(op.binary(routine, y, x), op.types[0])
 
-class bind(operator): # Defines the bind operator
-
-	def __str__(self): return 'bind ' + self.value
-
-	def led(self, lex, left): # Parses like a binary operator but stores the left operand like assignment
-		
-		self.value, self.nodes = left, [lex.parse(self.lbp)]
-		return self
-
-	def execute(self, routine):
-		
-		routine.bind(self.value.value, routine.get('process'), 'process') # Binds routine
-
-class send(operator): # Defines the send operator
+class send(infix_r): # Defines the send operator
 
 	def __str__(self): return 'send'
 
-	def led(self, lex, left): # Parses like a binary operator but stores the right operand like assignment
-		
-		self.nodes = [left, lex.parse(self.lbp)]
-		return self
-
 	def execute(self, routine):
 		
-		routine.message('send', routine.get('process'), routine.get())
+		address = routine.get('process')
+		routine.message('send', address, routine.get())
+		routine.send(address, 'process')
 
 class left_bracket(operator): # Adds left-bracket behaviours to a node
 
@@ -893,7 +951,7 @@ class function_call(left_bracket):
 			value = routine.calls.recv()
 		else:
 			value = function.call(*args) if args else function.call() # Sure wish apply() still existed in Python
-		type_name = function.types[0] if function.types[0] else 'untyped'
+		type_name = 'process' if aletheia.sophia_process(value) else (function.types[0] if function.types[0] else 'untyped')
 		value = routine.cast(value, type_name)
 		routine.send(value, type_name)
 
@@ -911,6 +969,8 @@ class sequence_index(left_bracket):
 		for i in subscript: # Iteratively accesses the sequence
 			routine.cast(value, 'sequence')
 			length = len(value) # Only bother doing this when you need to
+			if aletheia.sophia_integer(i): # Sophia's integer type is abstract, Python's isn't
+				i = int(i)
 			if aletheia.sophia_slice(i):
 				if (not (-length <= i.indices[0] < length)) or (not (-length <= i.indices[1] < length)): # If out of bounds:
 					return routine.send(routine.error('INDX', str(i.indices)))
@@ -918,7 +978,7 @@ class sequence_index(left_bracket):
 				if i not in value:
 					return routine.send(routine.error('INDX', str(i)))
 			else:
-				if not (isinstance(i, int) and -length <= i < length):
+				if not (aletheia.sophia_integer(i) and -length <= i < length):
 					return routine.send(routine.error('INDX', str(i)))
 			if aletheia.sophia_slice(i):
 				if aletheia.sophia_string(value):
@@ -953,7 +1013,7 @@ class meta_statement(left_bracket):
 
 	def start(self, routine):
 		
-		tree = module(routine.get('string'), source = self) # Here's tree
+		tree = module(routine.get('string'), source = self, name = routine.name) # Here's tree
 		routine.node = tree # Redirect control flow to new tree
 		routine.path.append(0)
 

@@ -13,6 +13,10 @@ class proxy: # Base proxy object
 
 class reference: # Reference to proxy
 
-	def __init__(self, pid):
+	def __init__(self, routine):
 
-		self.pid = pid
+		self.pid = routine.pid
+		self.name = routine.name
+		self.type = routine.type
+
+	def __str__(self): return 'process ' + self.name

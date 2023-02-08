@@ -12,7 +12,7 @@ def debug_tree(node, level = 0): # Takes a parse tree
 
 def debug_task(task): # Takes a process object
 
-	print(str(getattr(task.node, 'n', 0)).zfill(4),
+	print(str(task.node.line).zfill(4),
 		  task.name,
 		  task.path[-1],
 		  str(task.node),
@@ -23,7 +23,8 @@ def debug_namespace(task): # Takes a task object
 	print('===',
 	      task.name,
 		  '---',
-		  '\n---\n'.join((name + ' ' + task.types[name] + ' ' + str(value) for name, value in task.values.items())) + '\n===',
+		  '\n---\n'.join((' '.join((name, task.types[name], str(value))) for name, value in task.values.items())),
+		  '===',
 		  sep = '\n',
 		  file = stderr)
 
@@ -42,4 +43,4 @@ errors = {'ARGS': 'Expected {0} arguments, received {1}',
 		  'FIND': 'Undefined name: {0}',
 		  'INDX': 'Invalid index: {0}',
 		  'UPRN': 'Unmatched parentheses',
-		  'UQTE': 'Unmatched quotes'}
+		  'UQTE': 'Unmatched quotes',}

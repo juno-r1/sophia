@@ -6,7 +6,7 @@ type <name> [extends <name: type> [with <name: interface>[, ...]]]:
 
 adding an interface to a type extends its namespace with the interface's namespace
 the interface must extend a supertype of the defined type and cannot place constraints on its supertype
-interfaces are a subtype of type that are final and cannot be instanced
+interfaces are final and cannot be instanced
 
 ---
 
@@ -29,14 +29,6 @@ symbolic algebra
 
 use the parse tree itself to represent expressions
 nodes can signal to use symbolic representation if they produce a result that cannot be represented by numeric data types
-
----
-
-safety and unsafety operators
-
-safety operator ? returns true for untyped, false for null
-unsafety operator ! returns value for truthy values, null for falsy values - truthiness okay here because operator is an explicitly signalled behaviour that isn't default
-need to be implemented separately because taking or returning null violates the type system
 
 ---
 

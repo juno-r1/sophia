@@ -15,8 +15,9 @@ sub_values = {'true': True, # Lookup table for special values
 binding_power = (('(', ')', '[', ']', '{', '}'), # The left-binding power of a binary operator is expressed by its position in this tuple of tuples
 				 (',',),
 				 (':',),
-				 ('<-',),
 				 ('->',),
+				 ('if',),
+				 ('else',),
 				 ('or', '||',),
 				 ('and', '&&',),
 				 ('xor', '^^'),
@@ -65,8 +66,6 @@ class lexer: # Lex object to get around not being able to peek the next value of
 class eol: # Sentinel object
 
 	def __init__(self): self.lbp = -1
-
-class newline: pass # Line divider
 
 def group(lines): # Groups lines with trailing characters
 
