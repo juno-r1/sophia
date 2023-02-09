@@ -1,11 +1,11 @@
 int x awaits int n:
 
-	start:
+	start with int inc:
 
-		int inc: 1
-		return inc
+		acc: inc
+		return acc
 	
-	inc: inc + n
-	return inc
+	acc: acc + n
+	return acc
 
-return *(2 -> a <- x())
+return *(3 -> 2 -> a <- x(1))

@@ -56,10 +56,7 @@ class runtime: # Base runtime object
 			self.tasks[reference.pid].result.get() # Wait until routine is done with previous message
 			namespace = self.tasks[reference.pid].calls.recv() # Get namespace from task
 			routine = self.events[reference.pid]
-			routine.node = routine.start.nodes[1]
-			routine.path = [1, 0]
-			routine.values, routine.types, routine.reserved, routine.supertypes = namespace # Update version of task in this process
-			routine.bind(routine.start.message.value, message)
+			routine.prepare(namespace, message) # Mutate this version of the task
 			self.tasks[reference.pid].result = self.pool.apply_async(routine.execute)
 		else:
 			self.tasks[reference.pid].messages.send(message)
@@ -174,6 +171,13 @@ class task:
 						 self.supertypes)) # Send mutable namespace to supervisor
 		self.message('terminate')
 		return self.sentinel
+
+	def prepare(self, namespace, message): # Sets up task for event execution
+
+		self.node = self.start.nodes[1]
+		self.path = [1, 0]
+		self.values, self.types, self.reserved, self.supertypes = namespace # Update version of task in this process
+		self.bind(self.start.message.value, message)
 
 	def get(self, type_name = 'untyped'): # Data retrieval checks for type
 
@@ -422,7 +426,10 @@ class module(coroutine): # Module object is always the top level of a syntax tre
 					node.asserted = True
 					for i in range(node.active):
 						node.nodes[i].asserted = True
-				if aletheia.sophia_type(node):
+				elif isinstance(node, event_statement):
+					node.value = node.value + node.nodes[0].value
+					node.types = [item.type for item in node.value]
+				elif isinstance(node, type_statement):
 					for item in node.nodes:
 						if aletheia.sophia_function(item) and item.value[1].value == node.name: # Detect type operation
 							item.value[1].type = node.supertype
@@ -1018,7 +1025,7 @@ class send(infix_r): # Defines the send operator
 	def execute(self, routine):
 		
 		address = routine.get('process')
-		routine.message('send', address, routine.get())
+		routine.message('send', address, routine.get(address.event if address.event else 'untyped'))
 		routine.send(address, 'process')
 
 class left_bracket(operator): # Adds left-bracket behaviours to a node
