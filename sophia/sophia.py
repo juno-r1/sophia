@@ -360,6 +360,8 @@ class module(coroutine): # Module object is always the top level of a syntax tre
 			elif line[-1].value == ':':
 				if line[0].type == 'type' and '(' not in [token.value for token in line]:
 					token = type_statement(line)
+				elif line[0].type == 'interface' and '(' not in [token.value for token in line]:
+					token = interface_statement(line)
 				elif line[0].value[0] in kadmos.characters: # Functions have names and operators have symbols
 					token = function_statement(line)
 				else:
@@ -426,6 +428,7 @@ class type_statement(coroutine):
 		super().__init__([tokens[0]]) # Type and type parameter
 		self.name, self.type = tokens[0].value, tokens[0].value
 		self.supertype = tokens[2].value if len(tokens) > 2 else 'untyped'
+		self.interfaces = [token.value for token in tokens[4::2]]
 		param = name(tokens[0].value)
 		param.type = self.supertype
 		self.value.append(param)
@@ -438,14 +441,39 @@ class type_statement(coroutine):
 
 	def start(self, routine): # Initialises type
 		
-		routine.bind(self.name, self, 'type')
+		for name in self.interfaces:
+			interface = routine.find(name)
+			if not interface:
+				return
+			if interface.supertype not in routine.supertypes[self.supertype]: # Check for compability of interface
+				return routine.error('INTR', interface.name, self.name)
+			self.namespace = self.namespace | {item.name: item for item in interface.nodes}
 		routine.supertypes[self.name] = [self.name] + routine.supertypes[self.supertype]
+		routine.bind(self.name, self, 'type')
 		routine.branch() # Skips body of routine
 
 	def execute(self, routine):
 		
 		routine.sentinel = routine.find(self.name) # Returns cast value upon success
 		routine.node = None
+
+class interface_statement(coroutine):
+
+	def __init__(self, tokens):
+		
+		super().__init__([tokens[0]]) # Type and type parameter
+		self.name, self.type = tokens[0].value, tokens[0].value
+		self.supertype = tokens[2].value if len(tokens) > 2 else 'untyped'
+		param = name(tokens[0].value)
+		param.type = self.supertype
+		self.value.append(param)
+
+	def start(self, routine): # Initialises type
+		
+		routine.bind(self.name, self, 'interface')
+		routine.branch() # Skips body of routine
+
+	def execute(self, routine): return
 
 class operator_statement(coroutine):
 
@@ -714,6 +742,8 @@ class name(identifier): # Adds name behaviours to a node
 			names[0] = kadmos.sub_types[names[0]]
 		super().__init__(names[0])
 		self.operation = names[1] if len(names) > 1 else None
+
+	def __str__(self): return '{0}.{1}'.format(self.value, self.operation) if self.operation else self.value
 
 	def nud(self, lex):
 

@@ -1,1 +1,17 @@
-return 1 if true else 0
+interface mult extends int:
+
+	int double (mult):
+
+		return mult * 2
+
+type even extends int with mult:
+
+	constraint:
+		even % 2 = 0
+
+	int halve (even):
+
+		return even / 2
+
+even a: 2
+return a.double()

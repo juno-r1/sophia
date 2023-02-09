@@ -46,6 +46,7 @@ errors = {'ARGS': 'Expected {0} arguments, received {1}',
 		  'CAST': 'Failed cast to {0}: {1}',
 		  'FIND': 'Undefined name: {0}',
 		  'INDX': 'Invalid index: {0}',
+		  'INTR': 'Interface {0} is incompatible with type {1}',
 		  'TIME': 'Timeout warning' '\n' 'Press Ctrl+C to interrupt program',
 		  'UPRN': 'Unmatched parentheses',
 		  'UQTE': 'Unmatched quotes',}

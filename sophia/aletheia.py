@@ -55,6 +55,15 @@ class sophia_type(sophia_routine): # Type type
 
 	cast = (cast, 'untyped', 'type', 'untyped')
 
+class sophia_interface(sophia_routine): # Interface type
+
+	name = 'interface'
+
+	def __new__(cls, value):
+		
+		if type(value).__name__ == 'interface_statement':
+			return value
+
 class sophia_operator(sophia_routine): # Operator type
 
 	name = 'operator'
