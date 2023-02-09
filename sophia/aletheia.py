@@ -74,7 +74,21 @@ class sophia_operator(sophia_routine): # Operator type
 		if isinstance(value, cls.types) or type(value).__name__ == 'operator_statement':
 			return value
 
-class sophia_function(sophia_routine): # Function type
+class sophia_callable(sophia_routine): # Callable type
+
+	name = 'callable'
+	types = None
+
+class sophia_event(sophia_callable): # Event type
+
+	name = 'event'
+
+	def __new__(cls, value):
+		
+		if type(value).__name__ == 'event_statement':
+			return value
+
+class sophia_function(sophia_callable): # Function type
 
 	name = 'function'
 	types = arche.procedure
@@ -163,8 +177,11 @@ supertypes = {'untyped': ['untyped'], # Suboptimal way to optimise subtype check
 			  'process': ['process', 'untyped'],
 			  'routine': ['routine', 'untyped'],
 			  'type': ['type', 'routine', 'untyped'],
+			  'interface': ['interface', 'routine', 'untyped'],
 			  'operator': ['operator', 'routine', 'untyped'],
-			  'function': ['function', 'routine', 'untyped'],
+			  'callable': ['callable', 'routine', 'untyped'],
+			  'event': ['event', 'callable', 'routine', 'untyped'],
+			  'function': ['function', 'callable', 'routine', 'untyped'],
 			  'value': ['value', 'untyped'],
 			  'boolean': ['boolean', 'value', 'untyped'],
 			  'number': ['number', 'value', 'untyped'],

@@ -2,7 +2,6 @@
 The Arche module defines built-in functions and internal data types.
 '''
 
-from time import perf_counter_ns
 from sys import stderr
 
 class element(tuple): pass # Stupid hack to make record construction work
@@ -69,16 +68,10 @@ def f_error(status):
 	print(status, file = stderr)
 	return None
 
-def f_time():
-
-	return perf_counter_ns()
-
 pro_input = (f_input, 'string', 'string')
 
 pro_print = (f_print, 'boolean', 'string')
 
 pro_error = (f_error, 'untyped', 'string') # Fails its type check on purpose to throw an error
-
-pro_time = (f_time, 'integer')
 
 functions = {'_'.join(k.split('_')[1:]): procedure(*v) for k, v in globals().items() if k.split('_')[0] == 'pro'}

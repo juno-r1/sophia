@@ -1,15 +1,3 @@
-interfaces
-
-interface <name> [extends <name: type>]:
-
-type <name> [extends <name: type> [with <name: interface>[, ...]]]:
-
-adding an interface to a type extends its namespace with the interface's namespace
-the interface must extend a supertype of the defined type and cannot place constraints on its supertype
-interfaces are final and cannot be instanced
-
----
-
 events
 
 persistent routines that perform the routine body every time they receive a message

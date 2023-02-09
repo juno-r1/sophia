@@ -1,17 +1,11 @@
-interface mult extends int:
+int x awaits int n:
 
-	int double (mult):
+	start:
 
-		return mult * 2
+		int inc: 1
+		return inc
+	
+	return n + inc
 
-type even extends int with mult:
-
-	constraint:
-		even % 2 = 0
-
-	int halve (even):
-
-		return even / 2
-
-even a: 2
-return a.double()
+a <- x()
+return *(2 -> a)

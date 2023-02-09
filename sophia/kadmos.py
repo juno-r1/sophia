@@ -5,8 +5,8 @@ The Kadmos module provides convenient classes and methods for parsing.
 characters = '.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz' # Sorted by position in UTF-8
 parens = '()[]{}'
 comment = '//'
-structure_tokens = ('if', 'while', 'for', 'else', 'assert', 'constraint', 'return', 'link')
-keyword_tokens = ('is', 'extends', 'with', 'continue', 'break')
+structure_tokens = ('if', 'while', 'for', 'else', 'assert', 'constraint', 'return', 'link', 'start')
+keyword_tokens = ('continue', 'break', 'is', 'extends', 'with', 'awaits')
 keyword_operators = ('not', 'or', 'and', 'xor', 'in')
 trailing = (';', ',')
 sub_types = {'int': 'integer', # Lookup table for type names
@@ -90,7 +90,7 @@ def split(line): # Takes a line from the file data and splits it into tokens
 	
 	tokens = []
 	if not balanced(line):
-		return 'UPRN'
+		return 'UPRN' # Unmatched parentheses
 	while line:
 		shift = False # Push flag
 		symbol = ''
@@ -104,7 +104,7 @@ def split(line): # Takes a line from the file data and splits it into tokens
 					shift = True
 				else:
 					break
-			elif symbol in ('\t', '\n', ':', ';', ',') or symbol in parens:
+			elif symbol in ('\t', '\n', ':', ';', ',') or (symbol in parens) or (line and line[0] in parens):
 				shift = True
 			elif symbol in '\'\"': # Strings
 				try:
@@ -112,7 +112,7 @@ def split(line): # Takes a line from the file data and splits it into tokens
 					symbol, line = symbol + line[0:end], line[end:]
 					shift = True
 				except ValueError:
-					return 'UQTE'
+					return 'UQTE' # Unmatched parentheses
 			elif not line or (symbol[-1] in characters) != (line[0] in characters): # XOR for last and next character being part of an operator
 				shift = True
 		else:
