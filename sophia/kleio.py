@@ -22,6 +22,6 @@ class reference: # Reference to proxy
 		self.pid = routine.pid
 		self.name = routine.name
 		self.type = routine.type
-		self.event = routine.node.head.message.type if routine.event else None
+		self.event = routine.start.message.type if type(routine.start).__name__ == 'event_statement' else None
 
 	def __str__(self): return 'process ' + self.name

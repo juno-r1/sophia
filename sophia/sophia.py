@@ -1,7 +1,7 @@
 '''
 The Sophia module is the core of the language.
 The module defines the runtime environment and core language constructs.
-This is the root module and the only module that the user should access.
+This is the root module and the only module that the user should need to access.
 '''
 
 # ☉ 0.3.1 07-02-2023
@@ -22,6 +22,7 @@ class runtime: # Base runtime object
 		self.pool = mp.Pool(initializer = self.initialise)
 		self.main = task(module(address), [], flags) # Initial task
 		self.tasks = {self.main.pid: kleio.proxy(self.main)} # Proxies of tasks
+		self.events = {} # Persistent event tasks
 		self.flags = flags
 
 	def initialise(self): # Cheeky way to sneak a queue into a task
@@ -37,29 +38,28 @@ class runtime: # Base runtime object
 
 	def bind(self, pid, routine, args):
 		
-		event = True if aletheia.sophia_event(routine) else False
-		routine = task(routine, args, self.flags, event)
+		event = aletheia.sophia_event(routine)
+		routine = task(routine, args, self.flags)
 		self.tasks[routine.pid] = kleio.proxy(routine)
+		if event:
+			routine.node = routine.start.nodes[0]
+			routine.path = [0, 0]
+			self.events[routine.pid] = routine # Persistent reference to event
 		self.tasks[routine.pid].result = self.pool.apply_async(routine.execute)
 		self.tasks[routine.pid].count = self.tasks[routine.pid].count + 1
 		self.tasks[pid].references.append(routine.pid) # Mark reference to process
 		self.tasks[pid].calls.send(kleio.reference(routine)) # Return reference to process
 
 	def send(self, pid, reference, message):
-
-		if reference.event: # Would love to not have to make a new task 
+		
+		if reference.event:
 			self.tasks[reference.pid].result.get() # Wait until routine is done with previous message
-			task_dict = self.tasks[reference.pid].calls.recv() # Receives task's object __dict__ upon completion
-			head = task_dict['event'].head
-			routine = task(head, (), self.flags, event = True)
-			routine.__dict__ = task_dict
-			routine.pid, routine.node, routine.path = reference.pid, routine.event, [1, 0]
-			routine.values[head.message.value] = message
-			routine.types[head.message.value] = head.message.type
-			proxy = self.tasks[reference.pid] # Update proxy to new task
-			new = kleio.proxy(routine)
-			new.requests, new.references, new.count = proxy.requests, proxy.references, proxy.count
-			self.tasks[reference.pid] = new
+			namespace = self.tasks[reference.pid].calls.recv() # Get namespace from task
+			routine = self.events[reference.pid]
+			routine.node = routine.start.nodes[1]
+			routine.path = [1, 0]
+			routine.values, routine.types, routine.reserved, routine.supertypes = namespace # Update version of task in this process
+			routine.bind(routine.start.message.value, message)
 			self.tasks[reference.pid].result = self.pool.apply_async(routine.execute)
 		else:
 			self.tasks[reference.pid].messages.send(message)
@@ -80,6 +80,8 @@ class runtime: # Base runtime object
 			self.tasks[process].count = self.tasks[process].count - 1
 			if self.tasks[process].count == 0:
 				del self.tasks[process] # Free referenced tasks
+				if process in self.events: # Free events
+					del self.events[process]
 		if pid == self.main.pid:
 			self.stream.put(None) # End supervisor
 		elif self.tasks[pid].count == 0: # Free own task
@@ -112,23 +114,23 @@ class runtime: # Base runtime object
 
 class task:
 
-	def __init__(self, routine, args, flags, event = False): # God objects? What is she objecting to?
+	def __init__(self, routine, args, flags): # God objects? What is she objecting to?
 		
 		params = [item.value for item in routine.value[1:]] # Gets coroutine name, return type, and parameters
 		types = [item.type for item in routine.value[1:]] # Get types of params
 		self.pid = id(self) # Guaranteed not to collide with other task PIDs; not the same as the PID of the pool process
 		self.name = routine.name
 		self.type = routine.type
-		self.node = routine.nodes[0] if event else routine # Current node; sets initial module or start node as entry point
+		self.start = routine # Start node
+		self.node = routine # Current node; sets initial module or start node as entry point
 		self.flags = flags
-		self.event = routine.nodes[1] if event else None
 		self.built_in_values = aletheia.types | mathos.operators | arche.functions
 		self.built_in_types = {i: 'type' for i in aletheia.types} | {i: 'operator' for i in mathos.operators} | {i: 'function' for i in arche.functions}
 		self.values = dict(zip(params, args)) # Dict of values for faster access
 		self.types = dict(zip(params, types)) # Dict of types for correct typing
 		self.reserved = [item.value for item in routine.value] # List of reserved names in the current namespace
 		self.supertypes = aletheia.supertypes # Dict of type hierarchy
-		self.path = [0, 0] if event else [0]
+		self.path = [0]
 		self.data = [] # Unfortunately, a stack
 		self.type_data = [] # Unfortunately, another stack
 		self.sentinel = None # Return value of task
@@ -166,7 +168,10 @@ class task:
 				self.node.execute(self)
 		if 'debug_namespace' in self.flags:
 			hemera.debug_namespace(self)
-		self.calls.send(self.__dict__)
+		self.calls.send((self.values,
+						 self.types,
+						 self.reserved,
+						 self.supertypes)) # Send mutable namespace to supervisor
 		self.message('terminate')
 		return self.sentinel
 
