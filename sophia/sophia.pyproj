@@ -28,7 +28,6 @@
     <Compile Include="arche.py" />
     <Compile Include="harmonia.py" />
     <Compile Include="hemera.py" />
-    <Compile Include="backup.py" />
     <Compile Include="kleio.py" />
     <Compile Include="mathos.py" />
     <Compile Include="sophia.py" />

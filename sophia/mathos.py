@@ -1,3 +1,7 @@
+'''
+The Mathos module defines built-in operators.
+'''
+
 from fractions import Fraction as real
 
 class operator: # Base operator object

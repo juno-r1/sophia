@@ -1,3 +1,9 @@
+'''
+The Harmonia test suite is a tool intended for developers of Sophia implementations.
+The test suite is used to validate the implementation of the language specification.
+Users can use this tool to verify the integrity of their installation.
+'''
+
 import sophia, os
 
 target = { # Target return value of each test

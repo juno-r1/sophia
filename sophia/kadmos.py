@@ -1,3 +1,7 @@
+'''
+The Kadmos module provides convenient classes and methods for parsing.
+'''
+
 characters = '.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz' # Sorted by position in UTF-8
 parens = '()[]{}'
 comment = '//'

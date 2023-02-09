@@ -1,3 +1,7 @@
+'''
+The Kleio module defines classes for process management.
+'''
+
 from multiprocessing import Pipe
 
 class proxy: # Base proxy object

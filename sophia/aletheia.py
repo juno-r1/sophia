@@ -1,3 +1,7 @@
+'''
+The Aletheia module defines built-in types and type operations.
+'''
+
 import arche, kleio, mathos
 from fractions import Fraction as real
 

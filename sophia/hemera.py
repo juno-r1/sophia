@@ -1,3 +1,7 @@
+'''
+The Hemera module defines Sophia's IO interface, error messages, and debug tools.
+'''
+
 from sys import stderr
 
 def debug_tree(node, level = 0): # Takes a parse tree

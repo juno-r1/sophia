@@ -1,10 +1,16 @@
+'''
+The Sophia module is the core of the language.
+The module defines the runtime environment and core language constructs.
+This is the root module and the only module that the user should access.
+'''
+
 # ☉ 0.3.1 07-02-2023
 
 import aletheia, arche, hemera, kadmos, kleio, mathos
 import multiprocessing as mp
-from queue import Empty
-from os import name as os_name
 from fractions import Fraction as real
+from os import name as os_name
+from queue import Empty
 
 class runtime: # Base runtime object
 

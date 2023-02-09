@@ -1,3 +1,7 @@
+'''
+The Arche module defines built-in functions and internal data types.
+'''
+
 from time import perf_counter_ns
 from sys import stderr
 
