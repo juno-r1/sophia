@@ -6,13 +6,11 @@ target = { # Target return value of each test
 
 if __name__ == '__main__':
 	
-	successes = 0
-	failures = 0
 	print('', 'pass', 'fail', sep = '\t')
+	successes, failures = 0, 0
 	for i, path in enumerate(os.listdir('harmonia')):
 		runtime = sophia.runtime('harmonia\\{0}'.format(path), 'timeout')
-		result = runtime.run()
-		result = True if result == target[i] else False
+		result = True if runtime.run() == target[i] else False
 		if result:
 			successes = successes + 1
 		else:
@@ -22,7 +20,7 @@ if __name__ == '__main__':
 			  '' if result else 'x',
 			  sep = '\t')
 	else:
-		print()
-		print('{0} / {1} successes'.format(successes, successes + failures),
+		print('',
+			  '{0} / {1} successes'.format(successes, successes + failures),
 			  'implementation verified!\n' if not failures else '',
 			  sep = '\n')

@@ -29,10 +29,3 @@ symbolic algebra
 
 use the parse tree itself to represent expressions
 nodes can signal to use symbolic representation if they produce a result that cannot be represented by numeric data types
-
----
-
-conditional operator
-
-conditional operator [...] if [...] else [...] returns based on condition
-implement as binary operator <if> that captures an expression up to the sentinel value <else>

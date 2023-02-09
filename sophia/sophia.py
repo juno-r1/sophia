@@ -260,7 +260,7 @@ class module(coroutine): # Module object is always the top level of a syntax tre
 			self.file_data = file_name
 			self.name, self.type = name, 'untyped'
 		else: # Default module creation
-			with open(file_name, 'r') as f: # Binds file data to runtime object
+			with open('sophia\\' + file_name, 'r') as f: # Binds file data to runtime object
 				self.file_data = f.read() # node.parse() takes a string containing newlines
 			self.name, self.type = file_name.split('.')[0], 'untyped'
 		self.active = -1
