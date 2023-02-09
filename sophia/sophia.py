@@ -2,6 +2,7 @@
 
 import aletheia, arche, hemera, kadmos, kleio, mathos
 import multiprocessing as mp
+from queue import Empty
 from os import name as os_name
 from fractions import Fraction as real
 
@@ -68,9 +69,18 @@ class runtime: # Base runtime object
 			from cProfile import Profile
 			pr = Profile()
 			pr.enable()
+		message = True
+		interval = 10 if 'timeout' in self.flags else None # Timeout interval
 		self.tasks[self.main.pid].result = self.pool.apply_async(self.main.execute) # Start execution of initial module
-		while message := self.stream.get(): # Event listener pattern; runs until null sentinel value sent from initial module
-			getattr(self, message[0])(*message[1:]) # Executes event
+		while message: # Event listener pattern; runs until null sentinel value sent from initial module
+			try:
+				message = self.stream.get(timeout = interval)
+				if not message:
+					break
+				getattr(self, message[0])(*message[1:]) # Executes event
+			except Empty:
+				message = True
+				hemera.debug_error('sophia', 0, 'TIME', ()) # Prints timeout warning but continues
 		self.pool.close()
 		self.pool.join()
 		if 'profile' in self.flags:
@@ -851,7 +861,7 @@ class left_conditional(infix): # Defines the conditional operator
 	def led(self, lex, left):
 		
 		n = lex.parse(self.lbp)
-		left, n.nodes[0] = n.nodes[0], left
+		left, n.nodes[0] = n.nodes[0], left # Swap for initial execution of condition
 		self.nodes = [left, n]
 		return self
 
@@ -874,7 +884,7 @@ class right_conditional(infix): # Defines the conditional operator
 		
 		routine.node = self.head
 		routine.path.pop()
-		routine.path[-1] = routine.path[-1] + 1
+		routine.path[-1] = routine.node.length
 
 	def execute(self, routine): return
 

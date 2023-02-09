@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>77ea40b1-1af6-4971-ad30-ff261d0da3cb</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>run.py</StartupFile>
+    <StartupFile>harmonia.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -26,6 +26,7 @@
   <ItemGroup>
     <Compile Include="aletheia.py" />
     <Compile Include="arche.py" />
+    <Compile Include="harmonia.py" />
     <Compile Include="hemera.py" />
     <Compile Include="backup.py" />
     <Compile Include="kleio.py" />
@@ -35,12 +36,16 @@
     <Compile Include="run.py" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="harmonia\0.sophia" />
     <Content Include="main.sophia" />
     <Content Include="plan.txt" />
     <Content Include="test.sophia" />
   </ItemGroup>
   <ItemGroup>
     <InterpreterReference Include="Global|PythonCore|3.9" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="harmonia\" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

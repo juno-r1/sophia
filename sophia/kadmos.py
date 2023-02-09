@@ -69,6 +69,8 @@ class eol: # Sentinel object
 
 def group(lines): # Groups lines with trailing characters
 
+	if not lines:
+		return []
 	grouped = [lines[0]]
 	for line in lines[1:]:
 		if grouped[-1] and grouped[-1][-1] in trailing:
