@@ -36,6 +36,8 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="harmonia\0.sophia" />
+    <Content Include="harmonia\1.sophia" />
+    <Content Include="harmonia\2.sophia" />
     <Content Include="sophia\main.sophia" />
     <Content Include="plan.txt" />
     <Content Include="sophia\test.sophia" />

@@ -17,10 +17,14 @@ class runtime: # Base runtime object
 	def __init__(self, address, *flags):
 		
 		mp.freeze_support()
-		mp.set_start_method('spawn' if os_name == 'nt' else 'fork')
+		try:
+			mp.set_start_method('spawn' if os_name == 'nt' else 'fork')
+		except RuntimeError:
+			pass
+		self.directory = 'harmonia' if 'harmonia' in flags else 'sophia'
 		self.stream = mp.Queue() # Supervisor message stream
 		self.pool = mp.Pool(initializer = self.initialise)
-		self.main = task(module(address), [], flags) # Initial task
+		self.main = task(module(address, root = self.directory), [], flags) # Initial task
 		self.tasks = {self.main.pid: kleio.proxy(self.main)} # Proxies of tasks
 		self.events = {} # Persistent event tasks
 		self.flags = flags
@@ -45,6 +49,15 @@ class runtime: # Base runtime object
 			routine.node = routine.start.nodes[0]
 			routine.path = [0, 0]
 			self.events[routine.pid] = routine # Persistent reference to event
+		self.tasks[routine.pid].result = self.pool.apply_async(routine.execute)
+		self.tasks[routine.pid].count = self.tasks[routine.pid].count + 1
+		self.tasks[pid].references.append(routine.pid) # Mark reference to process
+		self.tasks[pid].calls.send(kleio.reference(routine)) # Return reference to process
+
+	def link(self, pid, name, args):
+		
+		routine = task(module(name, root = self.directory), args, self.flags)
+		self.tasks[routine.pid] = kleio.proxy(routine)
 		self.tasks[routine.pid].result = self.pool.apply_async(routine.execute)
 		self.tasks[routine.pid].count = self.tasks[routine.pid].count + 1
 		self.tasks[pid].references.append(routine.pid) # Mark reference to process
@@ -91,7 +104,7 @@ class runtime: # Base runtime object
 			pr = Profile()
 			pr.enable()
 		message = True
-		interval = 10 if 'timeout' in self.flags else None # Timeout interval
+		interval = 10 if 'timeout' in self.flags or 'harmonia' in self.flags else None # Timeout interval
 		self.tasks[self.main.pid].result = self.pool.apply_async(self.main.execute) # Start execution of initial module
 		while message: # Event listener pattern; runs until null sentinel value sent from initial module
 			try:
@@ -286,14 +299,14 @@ class coroutine(node): # Base coroutine object
 
 class module(coroutine): # Module object is always the top level of a syntax tree
 
-	def __init__(self, file_name, source = None, name = None):
+	def __init__(self, file_name, source = None, name = None, root = 'sophia'):
 
 		super().__init__(value = [self]) # Sets initial node to self
 		if source: # Meta-statement
 			self.file_data = file_name
 			self.name, self.type = name, 'untyped'
 		else: # Default module creation
-			with open('sophia\\' + file_name, 'r') as f: # Binds file data to runtime object
+			with open('{0}\\{1}'.format(root, file_name), 'r') as f: # Binds file data to runtime object
 				self.file_data = f.read() # node.parse() takes a string containing newlines
 			self.name, self.type = file_name.split('.')[0], 'untyped'
 		self.active = -1
@@ -758,7 +771,7 @@ class link_statement(statement):
 
 		for item in self.value:
 			name = item.value if '.' in item.value else (item.value + '.sophia')
-			routine.message('bind', module(name), [])
+			routine.message('link', name, [])
 			routine.bind(name.split('.')[0], routine.calls.recv(), 'process')
 
 class start_statement(statement):

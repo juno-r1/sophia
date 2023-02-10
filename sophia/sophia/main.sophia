@@ -1,11 +1,11 @@
-int x awaits int n:
+int increment awaits int x:
 
-	start with int inc:
+	start with int n:
 
-		acc: inc
+		acc: n
 		return acc
 	
-	acc: acc + n
+	acc: acc + x
 	return acc
 
-return *(3 -> 2 -> a <- x(1))
+return *(3 -> 2 -> a <- increment(1))

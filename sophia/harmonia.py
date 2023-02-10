@@ -7,7 +7,9 @@ Users can use this tool to verify the integrity of their installation.
 import sophia, os
 
 target = { # Target return value of each test
-	0000: None
+	0: None,
+	1: None,
+	2: True
 }
 
 if __name__ == '__main__':
@@ -15,7 +17,7 @@ if __name__ == '__main__':
 	print('', 'pass', 'fail', sep = '\t')
 	successes, failures = 0, 0
 	for i, path in enumerate(os.listdir('harmonia')):
-		runtime = sophia.runtime('harmonia\\{0}'.format(path), 'timeout')
+		runtime = sophia.runtime(path, 'harmonia')
 		result = True if runtime.run() == target[i] else False
 		if result:
 			successes = successes + 1
