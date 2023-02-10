@@ -427,6 +427,9 @@ class module(coroutine): # Module object is always the top level of a syntax tre
 					for i in range(node.active):
 						node.nodes[i].asserted = True
 				elif isinstance(node, event_statement):
+					if not isinstance(node.nodes[0], start_statement):
+						self.nodes = []
+						return hemera.debug_error(self.name, node.line, 'EVNT', ())
 					node.value = node.value + node.nodes[0].value
 					node.types = [item.type for item in node.value]
 				elif isinstance(node, type_statement):

@@ -41,12 +41,15 @@ def debug_error(name, line, status, args): # Prints error information
 		  sep = '\n',
 		  file = stderr)
 
-errors = {'ARGS': 'Expected {0} arguments, received {1}',
-		  'BIND': 'Bind to reserved name: {0}',
-		  'CAST': 'Failed cast to {0}: {1}',
-		  'FIND': 'Undefined name: {0}',
-		  'INDX': 'Invalid index: {0}',
-		  'INTR': 'Interface {0} is incompatible with type {1}',
-		  'TIME': 'Timeout warning' '\n' 'Press Ctrl+C to interrupt program',
-		  'UPRN': 'Unmatched parentheses',
-		  'UQTE': 'Unmatched quotes',}
+errors = {
+	'ARGS': 'Expected {0} arguments, received {1}',
+	'BIND': 'Bind to reserved name: {0}',
+	'CAST': 'Failed cast to {0}: {1}',
+	'EVNT': 'Event has no initial',
+	'FIND': 'Undefined name: {0}',
+	'INDX': 'Invalid index: {0}',
+	'INTR': 'Interface {0} is incompatible with type {1}',
+	'TIME': 'Timeout warning' '\n' 'Press Ctrl+C to interrupt program',
+	'UPRN': 'Unmatched parentheses',
+	'UQTE': 'Unmatched quotes'
+}

@@ -1,15 +1,31 @@
-events
+extended type system
 
-persistent routines that perform the routine body every time they receive a message
-event returns a value every call but maintains a persistent namespace
-start clause takes initial parameters and performs initial execution
+union types contain the set of values that conform to any of the types but only support operations shared by all of the types
+intersection types contain the set of values that conform to all of the types but support operations of any of the types
+member types specify the type of each of the elements in a sequence
 
-<name: type> awaits <name: type>:
+extended types are written with angle bracket syntax:
 
-	start [with <name: type>[, ...]]:
+union types
+<list | string>
+intersection types
+<list & string>
+member types
+<list[string]>
 
-can be used as an iterator by sending to it and then resolving it
-can be used as an *object*
+extended type syntax is recursive:
+
+<list[int | string] & record[int | string]>
+
+---
+
+aliasing
+
+finally, a use for aliasing!
+the user can define aliases for complex extended types:
+
+user_type is <list[int & real] | record[int & real]>
+user_type a: [1, 2, 3]
 
 ---
 
