@@ -1,0 +1,30 @@
+// 3.2.7.1, 5.8
+
+type even extends int:
+
+	constraint:
+		even % 2 = 0
+
+	int halve (even):
+
+		return even / 2
+
+int x: 2
+assert even x:
+	even x: x
+	bool a: true
+else:
+	bool a: false
+
+bool b: x.halve() = 1
+
+int x: 1
+assert even x:
+	bool c: false
+else:
+	bool c: true
+
+list x: [1, 2, 3]
+bool d: x.length() = 3
+
+return a and b and c and d

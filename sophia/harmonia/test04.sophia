@@ -1,0 +1,7 @@
+// 2.2, 4.3
+
+real a: 0; real b: 1
+a: 0.5
+int a: 0
+a: b; b: a
+return [a, b]

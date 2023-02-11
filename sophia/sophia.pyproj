@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>77ea40b1-1af6-4971-ad30-ff261d0da3cb</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>run.py</StartupFile>
+    <StartupFile>harmonia.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -35,9 +35,29 @@
     <Compile Include="run.py" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="harmonia\0.sophia" />
-    <Content Include="harmonia\1.sophia" />
-    <Content Include="harmonia\2.sophia" />
+    <Content Include="harmonia\test00.sophia" />
+    <Content Include="harmonia\test01.sophia" />
+    <Content Include="harmonia\test02.sophia" />
+    <Content Include="harmonia\test03.sophia" />
+    <Content Include="harmonia\test04.sophia" />
+    <Content Include="harmonia\test05.sophia" />
+    <Content Include="harmonia\test06.sophia" />
+    <Content Include="harmonia\test07.sophia" />
+    <Content Include="harmonia\test08.sophia" />
+    <Content Include="harmonia\test09.sophia" />
+    <Content Include="harmonia\test10.sophia" />
+    <Content Include="harmonia\test11.sophia" />
+    <Content Include="harmonia\test12.sophia" />
+    <Content Include="harmonia\test13.sophia" />
+    <Content Include="harmonia\test14.sophia" />
+    <Content Include="harmonia\test15.sophia" />
+    <Content Include="harmonia\test16.sophia" />
+    <Content Include="harmonia\test17.sophia" />
+    <Content Include="harmonia\test18.sophia" />
+    <Content Include="harmonia\test19.sophia" />
+    <Content Include="harmonia\test20.sophia" />
+    <Content Include="harmonia\test21.sophia" />
+    <Content Include="harmonia\test22.sophia" />
     <Content Include="sophia\main.sophia" />
     <Content Include="plan.txt" />
     <Content Include="sophia\test.sophia" />

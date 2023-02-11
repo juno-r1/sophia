@@ -1,0 +1,7 @@
+// 3.2.5, 3.2.6
+
+slice x: 0:10:2
+int a: x[0:2:2, 1]
+bool b: true if a != 0 else false
+
+return [a, b]

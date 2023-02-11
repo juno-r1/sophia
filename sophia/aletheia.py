@@ -120,7 +120,7 @@ class sophia_integer(sophia_number): # Integer type
 
 	def __new__(cls, value):
 		
-		if isinstance(value, cls.types) and value % 1 == 0:
+		if not isinstance(value, bool) and isinstance(value, cls.types) and value % 1 == 0:
 			return value
 
 class sophia_real(sophia_number): # Real type

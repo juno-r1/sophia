@@ -14,14 +14,14 @@ from queue import Empty
 
 class runtime: # Base runtime object
 
-	def __init__(self, address, *flags):
+	def __init__(self, address, *flags, root = 'sophia'):
 		
 		mp.freeze_support()
 		try:
 			mp.set_start_method('spawn' if os_name == 'nt' else 'fork')
 		except RuntimeError:
 			pass
-		self.directory = 'harmonia' if 'harmonia' in flags else 'sophia'
+		self.directory = root
 		self.stream = mp.Queue() # Supervisor message stream
 		self.pool = mp.Pool(initializer = self.initialise)
 		self.main = task(module(address, root = self.directory), [], flags) # Initial task
@@ -86,6 +86,7 @@ class runtime: # Base runtime object
 		value = self.tasks[pid].result.get()
 		for process in self.tasks[pid].requests:
 			self.tasks[process].calls.send(value)
+		self.tasks[pid].requests = []
 		for process in self.tasks[pid].references:
 			self.tasks[process].count = self.tasks[process].count - 1
 			if self.tasks[process].count == 0:
@@ -104,13 +105,15 @@ class runtime: # Base runtime object
 			pr = Profile()
 			pr.enable()
 		message = True
-		interval = 10 if 'timeout' in self.flags or 'harmonia' in self.flags else None # Timeout interval
+		interval = 10 if 'timeout' in self.flags or self.directory == 'harmonia' else None # Timeout interval
 		self.tasks[self.main.pid].result = self.pool.apply_async(self.main.execute) # Start execution of initial module
 		while message: # Event listener pattern; runs until null sentinel value sent from initial module
 			try:
 				message = self.stream.get(timeout = interval)
 				if not message:
 					break
+				if 'debug_supervisor' in self.flags:
+					print(*message)
 				getattr(self, message[0])(*message[1:]) # Executes event
 			except Empty:
 				message = True
@@ -879,7 +882,7 @@ class keyword(identifier): # Adds keyword behaviours to a node
 				while type_name != '.index':
 					routine.data.pop()
 					type_name = routine.type_data.pop()
-				routine.unbind(self.value.value)
+				routine.unbind(loop.value.value)
 
 	def execute(self, routine): return # Shouldn't ever be called anyway
 

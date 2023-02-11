@@ -1,0 +1,23 @@
+// 3.2.9
+
+if ?true:
+	bool a: true
+else:
+	bool a: false
+
+if ?null:
+	bool b: false
+else:
+	bool b: true
+
+assert !true:
+	bool c: true
+else:
+	bool c: false
+
+assert !false:
+	bool d: false
+else:
+	bool d: true
+
+return a and b and c and d

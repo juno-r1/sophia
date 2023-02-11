@@ -47,13 +47,13 @@ def b_mod(_, x, y):
 	if y != 0: # Null return on modulo-by-zero
 		return real(x) % real(y) # Normalise type
 
-def b_eql(_, x, y):
+def b_eql(_, x, y): # Hatred
 
-	return x == y
+	return x is y if isinstance(x, bool) or isinstance(y, bool) else x == y
 
 def b_neq(_, x, y):
 
-	return x != y
+	return x is not y if isinstance(x, bool) or isinstance(y, bool) else x != y
 
 def b_ltn(_, x, y):
 	
@@ -94,7 +94,7 @@ def b_lxr(_, x, y):
 def b_ins(_, x, y):
 
 	if type(x) is type(y): # Only works on operands of the same type
-		return [i for i in x if i in y] # Order of list dependent on order of operators
+		return tuple(i for i in x if i in y) # Order of list dependent on order of operators
 
 def b_uni(_, x, y):
 
@@ -102,7 +102,7 @@ def b_uni(_, x, y):
 		if isinstance(x, dict):
 			return x | y
 		else:
-			return x + y
+			return type(x)(x + y)
 
 def u_bnt(_, x):
 

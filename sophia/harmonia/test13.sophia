@@ -1,0 +1,23 @@
+// 4.2, 5.3
+
+for i in 0:5:1:
+	int x: i
+bool a: x = 5
+
+int y: 0
+for i in 0:5:1:
+	int x: i
+	continue
+	int y: i
+bool b: x = 5 and y = 0
+
+int y: 0
+for i in 0:5:1:
+	int x: i
+	break
+	int y: i
+else:
+	int x: -1
+bool c: x = -1 and y = 0
+
+return a and b and c
