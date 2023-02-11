@@ -4,7 +4,7 @@ The module defines the runtime environment and core language constructs.
 This is the root module and the only module that the user should need to access.
 '''
 
-# ☉ 0.3.1 07-02-2023
+# ☉ 0.4 11-02-2023
 
 import aletheia, arche, hemera, kadmos, kleio, mathos
 import multiprocessing as mp

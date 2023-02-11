@@ -1,15 +1,1 @@
-// 5.9
-
-interface x extends num:
-
-	num halve (x):
-
-		return x / 2
-
-type even extends int with x:
-
-	constraint:
-		even % 2 = 0
-
-even a: 2
-return a.halve() = 1
+print('Hello world!')
