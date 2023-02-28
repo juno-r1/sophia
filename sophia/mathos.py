@@ -2,237 +2,273 @@
 The Mathos module defines built-in operators.
 '''
 
+from arche import element, slice, method
 from fractions import Fraction as real
 
-class operator: # Base operator object
-
-	def __init__(self, symbol, unary, binary, *types):
-
-		self.symbol = symbol # Operator symbol
-		self.unary = unary # Unary function
-		self.binary = binary # Binary function
-		self.types = types # Tuple of return type and input types
-
-def u_add(_, x): # Pain
+def u_add(x): # Pain
 
 	return x
 
-def b_add(_, x, y):
+def b_add(x, y):
 
 	return x + y
 
-def u_sub(_, x):
+op_add = method('+')
+op_add.register(u_add,
+				'number',
+				('number',))
+op_add.register(b_add,
+				'number',
+				('number', 'number'))
+
+def u_sub(x):
 
 	return -x
 
-def b_sub(_, x, y):
+def b_sub(x, y):
 
 	return x - y
 
-def b_mul(_, x, y):
+op_sub = method('-')
+op_sub.register(u_sub,
+				'number',
+				('number',))
+op_sub.register(b_sub,
+				'number',
+				('number', 'number'))
+
+def b_mul(x, y):
 
 	return x * y
 
-def b_div(_, x, y):
+op_mul = method('*')
+op_mul.register(b_mul,
+				'number',
+				('number', 'number'))
+
+def b_div(x, y):
 
 	if y != 0: # Null return on division-by-zero
-		return real(x) / real(y) # Normalise type
+		return x / y
 
-def b_exp(_, x, y):
+op_div = method('/')
+op_div.register(b_div,
+				'number',
+				('number', 'number'))
 
-	return real(real(x) ** real(y)) # Normalise type more forcefully (exponentiation can produce irrational numbers)
+def b_exp(x, y):
 
-def b_mod(_, x, y):
+	return real(x ** y) # Normalise type (exponentiation can produce irrational numbers)
+
+op_exp = method('^')
+op_exp.register(b_exp,
+				'number',
+				('number', 'number'))
+
+def b_mod(x, y):
 
 	if y != 0: # Null return on modulo-by-zero
 		return real(x) % real(y) # Normalise type
 
-def b_eql(_, x, y): # Hatred
+op_mod = method('%')
+op_mod.register(b_mod,
+				'number',
+				('number', 'number'))
 
-	return x is y if isinstance(x, bool) or isinstance(y, bool) else x == y
+def b_eql(x, y): # Stricter equality because of that dumb fucker bool
 
-def b_neq(_, x, y):
+	return type(x) is type(y) and x == y
 
-	return x is not y if isinstance(x, bool) or isinstance(y, bool) else x != y
+op_eql = method('=')
+op_eql.register(b_eql,
+				'boolean',
+				('untyped', 'untyped'))
 
-def b_ltn(_, x, y):
+def b_neq(x, y):
+
+	return type(x) is not type(y) or x != y
+
+op_neq = method('!=')
+op_neq.register(b_neq,
+				'boolean',
+				('untyped', 'untyped'))
+
+def b_ltn(x, y):
 	
 	return x < y
 
-def b_gtn(_, x, y):
+op_ltn = method('<')
+op_ltn.register(b_ltn,
+				'boolean',
+				('number', 'number'))
+
+def b_gtn(x, y):
 
 	return x > y
 
-def b_leq(_, x, y):
+op_gtn = method('>')
+op_gtn.register(b_gtn,
+				'boolean',
+				('number', 'number'))
+
+def b_leq(x, y):
 
 	return x <= y
 
-def b_geq(_, x, y):
+op_leq = method('<=')
+op_leq.register(b_leq,
+				'boolean',
+				('number', 'number'))
+
+def b_geq(x, y):
 
 	return x >= y
 
-def b_sbs(_, x, y):
+op_geq = method('>=')
+op_geq.register(b_geq,
+				'boolean',
+				('number', 'number'))
+
+def b_sbs(x, y):
 
 	return x in y
 
-def u_lnt(_, x):
+op_sbs = method('in')
+op_ltn.register(b_sbs,
+				'boolean',
+				('untyped', 'string'))
+op_ltn.register(b_sbs,
+				'boolean',
+				('untyped', 'list'))
+op_ltn.register(b_sbs,
+				'boolean',
+				('untyped', 'record'))
+op_ltn.register(b_sbs,
+				'boolean',
+				('untyped', 'slice'))
+
+def u_lnt(x):
 
 	return not x
 
-def b_lnd(_, x, y):
+op_lnt = method('not')
+op_lnt.register(u_lnt,
+				'boolean',
+				('boolean',))
+
+def b_lnd(x, y):
 
 	return x and y
 
-def b_lor(_, x, y):
+op_lnd = method('and')
+op_lnd.register(b_lnd,
+				'boolean',
+				('boolean', 'boolean'))
+
+def b_lor(x, y):
 
 	return x or y
 
-def b_lxr(_, x, y):
+op_lor = method('or')
+op_lor.register(b_lor,
+				'boolean',
+				('boolean', 'boolean'))
+
+def b_lxr(x, y):
 
 	return x != y
 
-def b_ins(_, x, y):
+op_lxr = method('xor')
+op_lxr.register(b_lxr,
+				'boolean',
+				('boolean', 'boolean'))
 
-	if type(x) is type(y): # Only works on operands of the same type
-		return tuple(i for i in x if i in y) # Order of list dependent on order of operators
+def b_ins_string(x, y):
 
-def b_uni(_, x, y):
+	return ''.join(i for i in x if i in y) # Order of list dependent on order of operators
 
-	if type(x) is type(y):
-		if isinstance(x, dict):
-			return x | y
-		else:
-			return type(x)(x + y)
+def b_ins_list(x, y):
 
-def u_bnt(_, x):
+	return tuple(i for i in x if i in y)
 
-	return
+def b_ins_record(x, y):
 
-def b_bnd(_, x, y):
+	return tuple(k for k in x.keys() if k in y)
 
-	return
+def b_ins_slice(x, y):
+	
+	n, m = x.indices[2], y.indices[2]
+	while m != 0: # Euclidean algorithm for greatest common divisor
+		n, m = m, n % m
+	if n % (y.indices[0] - x.indices[0]) == 0: # Solution for intersection of slices
+		step = (x.indices[2] * y.indices[2]) / n # Step of intersection
+		ranges = [x.indices[0], x.indices[1], y.indices[0], y.indices[1]].sort()
+		lower = ranges[1] - (ranges[1] % step) + step # Gets highest lower bound
+		upper = ranges[2] - (ranges[2] % step) # Gets lowest upper bound
+		return slice((lower, upper, m))
+	else:
+		return None
 
-def b_bor(_, x, y):
+op_ins = method('&')
+op_ins.register(b_ins_string,
+				'string',
+				('string', 'string'))
+op_ins.register(b_ins_list,
+				'list',
+				('list', 'list'))
+op_ins.register(b_ins_record,
+				'list',
+				('record', 'record'))
+op_ins.register(b_ins_slice,
+				'slice',
+				('slice', 'slice'))
 
-	return
+def b_uni_string(x, y):
 
-def b_bxr(_, x, y):
+	return x + y
 
-	return
+def b_uni_list(x, y):
 
-op_add = ('+',							# Symbol
-		  u_add,						# Unary operator
-		  b_add,						# Binary operator
-		  'number', 'number', 'number')	# Return type and input types
+	return tuple(list(x) + list(y))
 
-op_sub = ('-',
-		  u_sub,
-		  b_sub,
-		  'number', 'number', 'number')
+def b_uni_record(x, y):
 
-op_mul = ('*',
-		  None,
-		  b_mul,
-		  'number', 'number', 'number')
+	return x | y
 
-op_div = ('/',
-		  None,
-		  b_div,
-		  'number', 'number', 'number')
+def b_uni_slice(x, y):
 
-op_exp = ('^',
-		  None,
-		  b_exp,
-		  'number', 'number', 'number')
+	return tuple((list(x) + list(y)).sort())
 
-op_mod = ('%',
-		  None,
-		  b_mod,
-		  'number', 'number', 'number')
+op_uni = method('|')
+op_uni.register(b_uni_string,
+				'string',
+				('string', 'string'))
+op_uni.register(b_uni_list,
+				'list',
+				('list', 'list'))
+op_uni.register(b_uni_record,
+				'record',
+				('record', 'record'))
+op_uni.register(b_uni_slice,
+				'list',
+				('slice', 'slice'))
 
-op_eql = ('=',
-		  None,
-		  b_eql,
-		  'boolean', 'untyped', 'untyped')
+def b_slc(x, y):
 
-op_neq = ('!=',
-		  None,
-		  b_neq,
-		  'boolean', 'untyped', 'untyped')
+	return element((x, y))
 
-op_ltn = ('<',
-		  None,
-		  b_ltn,
-		  'boolean', 'number', 'number')
+def t_slc(x, y, z):
 
-op_gtn = ('>',
-		  None,
-		  b_gtn,
-		  'boolean', 'number', 'number')
+	return slice([x, y, z])
 
-op_leq = ('<=',
-		  None,
-		  b_leq,
-		  'boolean', 'number', 'number')
+op_slc = method(':')
+op_slc.register(b_slc,
+				'untyped',
+				('untyped', 'untyped'))
+op_slc.register(t_slc,
+				'slice',
+				('integer', 'integer', 'integer'))
 
-op_geq = ('>=',
-		  None,
-		  b_geq,
-		  'boolean', 'number', 'number')
+# Namespace composition
 
-op_sbs = ('in',
-		  None,
-		  b_sbs,
-		  'boolean', 'untyped', 'sequence')
-
-op_lnt = ('not',
-		  u_lnt,
-		  None,
-		  'boolean', 'boolean', 'boolean')
-
-op_lnd = ('and',
-		  None,
-		  b_lnd,
-		  'boolean', 'boolean', 'boolean')
-
-op_lor = ('or',
-		  None,
-		  b_lor,
-		  'boolean', 'boolean', 'boolean')
-
-op_lxr = ('xor',
-		  None,
-		  b_lxr,
-		  'boolean', 'boolean', 'boolean')
-
-op_ins = ('&',
-		  None,
-		  b_ins,
-		  'sequence', 'sequence', 'sequence')
-
-op_uni = ('|',
-		  None,
-		  b_uni,
-		  'sequence', 'sequence', 'sequence')
-
-op_bnt = ('~',
-		  u_bnt,
-		  None,
-		  'untyped', 'untyped', 'untyped')
-
-op_bnd = ('&&',
-		  None,
-		  b_bnd,
-		  'untyped', 'untyped', 'untyped')
-
-op_bor = ('||',
-		  None,
-		  b_bor,
-		  'untyped', 'untyped', 'untyped')
-
-op_bxr = ('^^',
-		  None,
-		  b_bxr,
-		  'untyped', 'untyped', 'untyped')
-
-operators = {v[0]: operator(*v) for k, v in globals().items() if k.split('_')[0] == 'op'}
+operators = {v.name: v for k, v in globals().items() if k.split('_')[0] == 'op'}

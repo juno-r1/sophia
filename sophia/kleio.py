@@ -22,6 +22,8 @@ class reference: # Reference to proxy
 		self.pid = routine.pid
 		self.name = routine.name
 		self.type = routine.type
-		self.event = routine.start.message.type if type(routine.start).__name__ == 'event_statement' else None
+		self.check = routine.start.message.type if routine.start.message.type else 'untyped'
 
-	def __str__(self): return 'process ' + self.name
+class future(reference): pass # Future object
+
+class stream(reference): pass # Stream object

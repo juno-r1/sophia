@@ -2,8 +2,10 @@
 The Aletheia module defines built-in types and type operations.
 '''
 
-import arche, kleio, mathos
+import arche, kleio
 from fractions import Fraction as real
+
+# Built-in types
 
 class sophia_untyped: # Non-abstract base class
 
@@ -13,183 +15,199 @@ class sophia_untyped: # Non-abstract base class
 	
 	def __new__(cls, value): # Type check disguised as an object constructor
 		
-		if cls.types:
-			if isinstance(value, cls.types):
-				return value
-		else:
-			for subclass in cls.__subclasses__():
-				if subclass(value) is not None:
-					return value
+		return value if isinstance(value, cls.types) else None
 
-class sophia_process(sophia_untyped): # Process type
-	
-	name = 'process'
-	types = kleio.reference
+	@classmethod
+	def __null__(cls, value): return
 
-class sophia_routine(sophia_untyped): # Abstract routine type
+	@classmethod
+	def __type__(cls, value): return
 
-	name = 'routine'
-	types = None # Null types makes __new__ check the types of a type's subclasses
+	@classmethod
+	def __event__(cls, value): return
 
-class sophia_type(sophia_routine): # Type type
+	@classmethod
+	def __function__(cls, value): return
+
+	@classmethod
+	def __boolean__(cls, value): return
+
+	@classmethod
+	def __number__(cls, value): return
+
+	@classmethod
+	def __string__(cls, value): return
+
+	@classmethod
+	def __list__(cls, value): return
+
+	@classmethod
+	def __record__(cls, value): return
+
+	@classmethod
+	def __future__(cls, value): return
+
+	@classmethod
+	def __stream__(cls, value): return
+
+class sophia_type(sophia_untyped): # Type type
 	
 	name = 'type'
-	types = type
+	types = type, arche.event
 
-	def __new__(cls, value):
-		
-		if isinstance(value, cls.types) or type(value).__name__ == 'type_statement': # I hate that this is necessary so so much
-			return value
-
-	def cast(self, value): # Type conversion
-		
-		while self.supertype:
-			self = self.supertype
-		try: # Please find a better way to do this
-			try:
-				return self.types[0](value)
-			except TypeError:
-				return self.types(value)
-		except TypeError:
-			return None
-
-	cast = (cast, 'untyped', 'type', 'untyped')
-
-class sophia_interface(sophia_routine): # Interface type
-
-	name = 'interface'
-
-	def __new__(cls, value):
-		
-		if type(value).__name__ == 'interface_statement':
-			return value
-
-class sophia_operator(sophia_routine): # Operator type
-
-	name = 'operator'
-	types = mathos.operator
-
-	def __new__(cls, value):
-		
-		if isinstance(value, cls.types) or type(value).__name__ == 'operator_statement':
-			return value
-
-class sophia_callable(sophia_routine): # Callable type
-
-	name = 'callable'
-	types = None
-
-class sophia_event(sophia_callable): # Event type
+class sophia_event(sophia_untyped): # Event type
 
 	name = 'event'
+	types = arche.event
 
-	def __new__(cls, value):
-		
-		if type(value).__name__ == 'event_statement':
-			return value
-
-class sophia_function(sophia_callable): # Function type
+class sophia_function(sophia_untyped): # Function type
 
 	name = 'function'
-	types = arche.procedure
+	types = arche.method
 
-	def __new__(cls, value):
-		
-		if isinstance(value, cls.types) or type(value).__name__ == 'function_statement':
-			return value
-
-class sophia_value(sophia_untyped): # Abstract element type
-
-	name = 'value'
-	types = None
-
-class sophia_boolean(sophia_value): # Boolean type
+class sophia_boolean(sophia_untyped): # Boolean type
 
 	name = 'boolean'
 	types = bool
 
-class sophia_number(sophia_value): # Abstract number type
+	@classmethod
+	def __boolean__(cls, value): return value
+
+	@classmethod
+	def __number__(cls, value): return True if value != 0 else False
+
+	@classmethod
+	def __string__(cls, value): return True if value != '' else False
+
+	@classmethod
+	def __list__(cls, value): return True if value != [] else False
+
+	@classmethod
+	def __record__(cls, value): return True if value != {} else False
+
+	@classmethod
+	def __slice__(cls, value): return True if len(value) != 0 else False
+
+class sophia_number(sophia_untyped): # Abstract number type
 
 	name = 'number'
-	types = None
+	types = real
+
+	@classmethod
+	def __boolean__(cls, value): return 1 if value else 0
+
+	@classmethod
+	def __number__(cls, value): return value
+
+	@classmethod
+	def __string__(cls, value): return real(value)
 
 class sophia_integer(sophia_number): # Integer type
 
 	name = 'integer'
-	types = int, real
+	types = real
 
 	def __new__(cls, value):
 		
-		if not isinstance(value, bool) and isinstance(value, cls.types) and value % 1 == 0:
-			return value
+		return value if isinstance(value, real) and value % 1 == 0 else None
 
-class sophia_real(sophia_number): # Real type
-
-	name = 'real'
-	types = real, int # Abstract data type, remember
-
-class sophia_iterable(sophia_untyped): # Abstract iterable type
-
-	name = 'iterable'
-	types = None
-
-class sophia_sequence(sophia_iterable): # Abstract sequence type
-
-	name = 'sequence'
-	types = None
-
-	def length(self):
-
-		return len(self)
-
-	length = (length, 'integer', 'sequence')
-
-class sophia_string(sophia_sequence): # String type
+class sophia_string(sophia_untyped): # String type
 
 	name = 'string'
 	types = str
 
-class sophia_list(sophia_sequence): # List type
+	@classmethod
+	def __null__(cls, value): return 'null'
+
+	@classmethod
+	def __type__(cls, value): return 'type ' + value.name
+
+	@classmethod
+	def __event__(cls, value): return 'event ' + value.name
+
+	@classmethod
+	def __operator__(cls, value): return 'operator ' + value.name
+
+	@classmethod
+	def __function__(cls, value): return 'function ' + value.name
+
+	@classmethod
+	def __boolean__(cls, value): return 'true' if value else 'false'
+
+	@classmethod
+	def __number__(cls, value): return str(value)
+
+	@classmethod
+	def __string__(cls, value): return value
+
+	@classmethod
+	def __list__(cls, value): return '[' + ', '.join([arche.cast_type_untyped(cls, i) for i in value]) + ']'
+
+	@classmethod
+	def __record__(cls, value): return '[' + ', '.join([arche.cast_type_untyped(cls, k) + ': ' + arche.cast_type_untyped(cls, v) for k, v in value.items()]) + ']'
+
+	@classmethod
+	def __slice__(cls, value): return '{0}:{1}:{2}'.format(*value.indices)
+
+	@classmethod
+	def __future__(cls, value): return 'future ' + value.name
+
+	@classmethod
+	def __stream__(cls, value): return 'stream ' + value.name
+
+class sophia_list(sophia_untyped): # List type
 
 	name = 'list'
 	types = tuple
 
-class sophia_record(sophia_sequence): # Record type
+	@classmethod
+	def __string__(cls, value): return tuple(i for i in value)
+
+	@classmethod
+	def __list__(cls, value): return value
+
+	@classmethod
+	def __record__(cls, value): return tuple(value.items())
+
+	@classmethod
+	def __slice__(cls, value): return tuple(value.value)
+
+class sophia_record(sophia_untyped): # Record type
 
 	name = 'record'
 	types = dict
 
-class sophia_slice(sophia_sequence): # Slice type
+class sophia_slice(sophia_untyped): # Slice type
 
 	name = 'slice'
 	types = arche.slice
 
-	def reverse(self):
+class sophia_future(sophia_untyped): # Process type
+	
+	name = 'future'
+	types = kleio.future
 
-		return reversed(self)
+class sophia_stream(sophia_untyped): # Process type
+	
+	name = 'stream'
+	types = kleio.stream
 
-	reverse = (reverse, 'slice', 'slice')
+# Namespace composition
 
 types = {v.name: v for k, v in globals().items() if k.split('_')[0] == 'sophia'}
-for key in types:
-	types[key].namespace = {k: arche.procedure(*v) for k, v in types[key].__dict__.items() if '__' not in k and k not in ('name', 'types', 'supertype')}
-supertypes = {'untyped': ['untyped'], # Suboptimal way to optimise subtype checking
-			  'process': ['process', 'untyped'],
-			  'routine': ['routine', 'untyped'],
-			  'type': ['type', 'routine', 'untyped'],
-			  'interface': ['interface', 'routine', 'untyped'],
-			  'operator': ['operator', 'routine', 'untyped'],
-			  'callable': ['callable', 'routine', 'untyped'],
-			  'event': ['event', 'callable', 'routine', 'untyped'],
-			  'function': ['function', 'callable', 'routine', 'untyped'],
-			  'value': ['value', 'untyped'],
-			  'boolean': ['boolean', 'value', 'untyped'],
-			  'number': ['number', 'value', 'untyped'],
-			  'integer': ['integer', 'number', 'value', 'untyped'],
-			  'real': ['real', 'number', 'value', 'untyped'],
-			  'iterable': ['iterable', 'untyped'],
-			  'sequence': ['sequence', 'iterable', 'untyped'],
-			  'string': ['string', 'sequence', 'iterable', 'untyped'],
-			  'list': ['list', 'sequence', 'iterable', 'untyped'],
-			  'record': ['record', 'sequence', 'iterable', 'untyped'],
-			  'slice': ['slice', 'sequence', 'iterable', 'untyped']}
+supertypes = {
+	'null': ('null',),
+	'untyped': ('untyped',),
+	'type': ('type', 'untyped'),
+	'event': ('event', 'untyped'),
+	'function': ('function', 'untyped'),
+	'boolean': ('boolean', 'untyped'),
+	'number': ('number', 'untyped'),
+	'integer': ('integer', 'number', 'untyped'),
+	'string': ('string', 'untyped'),
+	'list': ('list', 'untyped'),
+	'record': ('record', 'untyped'),
+	'slice': ('slice', 'untyped'),
+	'future': ('future', 'untyped'),
+	'stream': ('stream', 'untyped')
+}

@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>77ea40b1-1af6-4971-ad30-ff261d0da3cb</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>harmonia.py</StartupFile>
+    <StartupFile>run.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -33,6 +33,7 @@
     <Compile Include="sophia.py" />
     <Compile Include="kadmos.py" />
     <Compile Include="run.py" />
+    <Compile Include="test.py" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="harmonia\test00.sophia" />
@@ -58,6 +59,7 @@
     <Content Include="harmonia\test20.sophia" />
     <Content Include="harmonia\test21.sophia" />
     <Content Include="harmonia\test22.sophia" />
+    <Content Include="harmonia\test23.sophia" />
     <Content Include="sophia\main.sophia" />
     <Content Include="plan.txt" />
     <Content Include="sophia\test.sophia" />

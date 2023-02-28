@@ -1,8 +1,35 @@
+standard streams
+
+streams can be modelled as processes of events:
+stdout accepts sent strings and returns boolean based on the success of printing
+stdin accepts sent strings and returns the input string
+stderr accepts sent strings and returns null
+
+---
+
+regularisation of routines
+
+allow binding of types, operators
+make bind work for built-ins
+
+---
+
+define type system as entity-relationship model
+
+make process subtype of iterable / define iterator protocol for processes using resolution operator
+above idea implements infinite streams, babey!
+allow type checking to check for interfaces
+code as specification
+multiple dispatch?
+
+---
+
 extended type system
 
 union types contain the set of values that conform to any of the types but only support operations shared by all of the types
 intersection types contain the set of values that conform to all of the types but support operations of any of the types
 member types specify the type of each of the elements in a sequence
+for member types, <sequence> is equivalent to <sequence[untyped]>
 
 extended types are written with angle bracket syntax:
 
@@ -16,6 +43,11 @@ member types
 extended type syntax is recursive:
 
 <list[int | string] & record[int | string]>
+
+when type checking, interfaces are equivalent to the union of the types that implement them
+for example:
+
+sequence is <string | list | record | slice>
 
 ---
 
@@ -33,3 +65,132 @@ symbolic algebra
 
 use the parse tree itself to represent expressions
 nodes can signal to use symbolic representation if they produce a result that cannot be represented by numeric data types
+
+---
+
+single-line function/operator syntax
+
+<name: callable> (<name>, ...) => <expression>
+
+single-line type syntax
+
+<name: type> [extends <name: type> [with <name: interface>, ...]] => <expression: boolean>
+
+=> operator is equivalent to return statement
+
+---
+
+sophia operations
+
+interfaces
+
+actor				bind, send, resolve
+arithmetic			arithmetic operations
+callable			function calls
+equal				equality and inequality comparison
+iterable			iteration
+logic				logical operations
+order				comparison excluding equality
+routine				able to create actors
+sequence			subscription, slicing, length
+set					set operators (union, intersection, difference, membership)
+symbol				operator syntax
+trait				defines type operations
+
+types
+
+name				interfaces
+
+untyped				equal
+
+number				arithmetic, order
+boolean				logic
+
+string				sequence, set, iterable
+list				sequence, set, iterable
+record				sequence, set, iterable
+slice				sequence, set, iterable
+
+function			routine, callable
+event				routine, callable
+operator			routine, symbol
+type				routine, set, order, trait
+
+future				actor
+stream				actor, iterable
+
+---
+
+dammit, now i *have* to implement multiple dispatch
+
+the return type of *all* operations - including literals - is known at runtime
+this means that any operands in a call have a known type
+if you know a value's type (which you do), you know what interfaces it implements
+
+this solves a great deal of problems
+type operations can be applied to *any* expressions, not just names
+operations can request interfaces, not just types
+
+some manner of algorithm required to resolve multiple dispatch
+resolve types of operands left-to-right
+subtype takes precedence over supertype
+
+actually, *every* operation in sophia can be modelled this way
+consider remodelling the execution loop to facilitate this?
+
+---
+
+refactor runtime to instruction execution instead of tree traversal
+
+sophia file
+parse tree
+dispatch instructions
+
+instructions allow null type but only if explicitly requested
+instructions can use more items from the stack than is indicated in their signature
+e.g. assignment can get strings for names
+negative index indicates that an instruction pushes to stack
+
+keyword
+<keyword> 0
+break 0
+
+literal
+<value> -1
+1 -1
+
+name
+<name> -1
+n -1
+
+operator
+<operator> 1|2
+(dispatch to operator)
+
+bind
+<- 2
+(dispatch callable as bind)
+(preceded by pushed name as string)
+
+receive
+> 1
+(preceded by pushed name as string)
+
+resolve
+* 1
+
+send
+-> 2
+
+function call
+( 2
+(dispatch callable as call)
+
+sequence index
+[ 2
+
+sequence literal
+[ 1
+
+meta-statement
+{ 1

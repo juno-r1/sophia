@@ -13,13 +13,13 @@ if __name__ == '__main__':
 		0: None,
 		1: None,
 		2: True,
-		3: (1, (real('1.1'),), ('1.1', True), (), {'e': (False,)}, {'f': 'f', 'g': 'g'}),
-		4: (1, 0),
-		5: (1, -1, 3, -1, 6, real('2/3'), real('8'), real('1')),
+		3: (real('1'), (real('1.1'),), ('1.1', True), (), {'e': (False,)}, {'f': 'f', 'g': 'g'}),
+		4: (real('1'), real('1')),
+		5: (real('1'), real('-1'), real('3'), real('-1'), real('6'), real('2/3'), real('8'), real('1')),
 		6: (True, True, True, True, True, True),
 		7: (True, True, True, True),
-		8: ((1, 2, 3, 3, 4, 5), (3,), True),
-		9: (4, True),
+		8: ((real('1'), real('2'), real('3'), real('3'), real('4'), real('5')), (real('3'),), True),
+		9: (real('4'), True),
 	   10: True,
 	   11: True,
 	   12: True,
@@ -32,7 +32,8 @@ if __name__ == '__main__':
 	   19: True,
 	   20: True,
 	   21: True,
-	   22: True
+	   22: True,
+	   23: True
 	}
 	
 	print('', 'Pass', 'Fail', sep = '\t')
