@@ -9,11 +9,11 @@ class element(tuple): pass # Stupid hack to make record construction work
 
 class slice: # Slice object
 
-	def __init__(self, sequence):
+	def __init__(self, indices):
 		
-		self.indices = sequence.copy() # Stores indices for reversal
-		sequence[1] = sequence[1] + 1 if sequence[2] >= 0 else sequence[1] - 1 # Correction for inclusive range
-		self.value = range(*sequence) # Stores slice iterator
+		self.indices = indices.copy() # Stores indices for reversal
+		indices[1] = indices[1] + 1 if indices[2] >= 0 else indices[1] - 1 # Correction for inclusive range
+		self.value = range(*indices) # Stores slice iterator
 
 	def __getitem__(self, index): # Enables O(1) indexing of slices
 		
@@ -22,7 +22,7 @@ class slice: # Slice object
 		else:
 			return self.indices[1] + self.indices[2] * (index + 1)
 
-class method: # Multimethod function
+class method: # Multimethod object
 
 	def __init__(self, name):
 
@@ -253,20 +253,23 @@ f_set.register(name_string,
 			   'null',
 			   ('string',))
 
-def return_null(task, sentinel):
+def return_null(task):
 	
-	task.sentinel = sentinel
 	task.path = 0
 	task.message('terminate')
+	return None
 
 def return_untyped(task, sentinel):
 	
-	task.sentinel = sentinel
 	task.path = 0
 	task.message('terminate')
+	return sentinel
 
 f_return = method('.return')
 f_return.register(return_null,
+				  'null',
+				  ())
+f_return.register(return_untyped,
 				  'null',
 				  ('null',))
 f_return.register(return_untyped,

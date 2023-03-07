@@ -146,51 +146,33 @@ sophia file
 parse tree
 dispatch instructions
 
+allocate memory by creating list of registers using sethi-ullman algorithm
+no need to worry about call stack or absolute jumps because calls spawn new tasks
+only necessary to create registers per label
 instructions allow null type but only if explicitly requested
-instructions can use more items from the stack than is indicated in their signature
 e.g. assignment can get strings for names
-negative index indicates that an instruction pushes to stack
 
-keyword
-<keyword> 0
-break 0
+model architecture as a RASP machine
+instructions stored in register self.instructions
+stack stored in register self.data
+instruction counter stored in register self.path
+sentinel value stored in register self.sentinel
+all other registers constitute the namespace
+optimise sethi-ullman algorithm by using names as addresses whenever possible
+in fact, constants can be skipped as instructions completely by initialising registers *with constants already in them*
 
-literal
-<value> -1
-1 -1
+register 0 is the null address and the return value
+if an instruction returns to register 0, assertion behaviour is assumed
+instructions can also return to register 0 if the operation's return doesn't matter
 
-name
-<name> -1
-n -1
+---
 
-operator
-<operator> 1|2
-(dispatch to operator)
+instruction architecture
 
-bind
-<- 2
-(dispatch callable as bind)
-(preceded by pushed name as string)
+:<label> <scope>
+<.><instruction> <return register> <input registers>
 
-receive
-> 1
-(preceded by pushed name as string)
+register allocation
 
-resolve
-* 1
-
-send
--> 2
-
-function call
-( 2
-(dispatch callable as call)
-
-sequence index
-[ 2
-
-sequence literal
-[ 1
-
-meta-statement
-{ 1
+if leaf node:
+	set co

@@ -60,9 +60,9 @@
     <Content Include="harmonia\test21.sophia" />
     <Content Include="harmonia\test22.sophia" />
     <Content Include="harmonia\test23.sophia" />
-    <Content Include="sophia\main.sophia" />
+    <Content Include="sophia\main.sph" />
     <Content Include="plan.txt" />
-    <Content Include="sophia\test.sophia" />
+    <Content Include="sophia\test.sph" />
   </ItemGroup>
   <ItemGroup>
     <InterpreterReference Include="Global|PythonCore|3.9" />

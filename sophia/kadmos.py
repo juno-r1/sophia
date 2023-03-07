@@ -43,6 +43,7 @@ class node: # Base node object
 		self.type = None
 		self.head = None # Determined by scope parsing
 		self.nodes = [i for i in nodes] # For operands that should be evaluated
+		self.registers = 0 # Ershov number of the node, optimised using the Sethi-Ullman algorithm
 		self.length = 0 # Performance optimisation
 		self.scope = 0
 		self.line = 0
@@ -137,13 +138,10 @@ class node: # Base node object
 			elif line[-1].value == ':':
 				if line[0].type == 'type' and '(' not in [token.value for token in line]:
 					token = type_statement(line)
-				elif line[0].value[0] in characters: # Functions have names and operators have symbols
-					if line[1].value == 'awaits':
-						token = event_statement(line)
-					else:
-						token = function_statement(line)
+				elif line[1].value == 'awaits':
+					token = event_statement(line)
 				else:
-					token = operator_statement(line)
+					token = function_statement(line)
 			elif len(line) > 1 and line[1].value == ':':
 				token = assignment(line)
 			else: # Tokenises expressions
@@ -186,6 +184,10 @@ class node: # Base node object
 				node = node.nodes[path[-1]] # Set value to child node
 				node.length = len(node.nodes) # Set length
 				path.append(0)
+			if not node.nodes: # Sets constant register
+				pass
+			elif True: # Sets working register
+				pass
 			if path[-1] == node.active:
 				instructions.extend(node.start())
 			elif path[-1] == node.length:
@@ -194,7 +196,11 @@ class node: # Base node object
 			instructions.extend(self.execute())
 		return instructions
 
-class coroutine(node): # Base coroutine object
+class statement(node): # Base statement object
+
+	def __str__(self): return ('else ' if self.branch else '') + type(self).__name__
+
+class coroutine(statement): # Base coroutine object
 
 	def __init__(self, value):
 
@@ -216,9 +222,9 @@ class module(coroutine): # Module object is always the top level of a syntax tre
 
 	def __str__(self): return 'module ' + self.name
 
-	def start(self): return (self.name, self.type, [], []),
+	def start(self): return ':{0} 0'.format(self.name),
 
-	def execute(self): return (None, -1), ('.return', 1)
+	def execute(self): return '.return 0', # Multiple dispatch makes this work without an input register
 
 class type_statement(coroutine):
 
@@ -242,14 +248,6 @@ class event_statement(coroutine):
 		self.message = tokens[2]
 		self.types = [item.type if item.type else 'untyped' for item in self.value]
 
-class operator_statement(coroutine):
-
-	def __init__(self, tokens):
-
-		super().__init__([token for token in tokens[0:-1:2] if token.value != ')']) # Sets operator symbol and a list of parameters as self.value
-		self.name, self.type = tokens[0].value, tokens[0].type
-		self.types = [item.type for item in self.value]
-
 class function_statement(coroutine):
 
 	def __init__(self, tokens):
@@ -258,7 +256,7 @@ class function_statement(coroutine):
 		self.name, self.type = tokens[0].value, tokens[0].type
 		self.types = [item.type if item.type else 'untyped' for item in self.value]
 
-class assignment(node):
+class assignment(statement):
 
 	def __init__(self, tokens): # Supports multiple assignment
 		
@@ -289,10 +287,6 @@ class assignment(node):
 				([item.value for item in self.value], -1),
 				([item.type for item in self.value], -1),
 				('.bind', 3))
-
-class statement(node):
-
-	def __str__(self): return ('else ' if self.branch else '') + type(self).__name__
 
 class if_statement(statement):
 
@@ -676,7 +670,7 @@ def split(line): # Takes a line from the file data and splits it into tokens
 					symbol, line = symbol + line[0:end], line[end:]
 					shift = True
 				except ValueError:
-					return 'UQTE' # Unmatched parentheses
+					return 'UQTE' # Unmatched quotes
 			elif not line or (symbol[-1] in characters) != (line[0] in characters): # XOR for last and next character being part of an operator
 				shift = True
 		else:
