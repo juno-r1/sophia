@@ -52,31 +52,18 @@ class event: # Multimethod object
 
 # Internal functions
 
-def bind_untyped(task, values, names, types):
+def bind_untyped(task, value):
 	
-	for i, name in enumerate(names):
-		task.bind(name, values[i], types[i])
+	type_name = task.instructions[task.path - 2].split(' ')[2]
+	instruction = task.instructions[task.path - 1].split(' ')
+	name, known = instruction[1], task.types[instruction[2]]
+	if task.cast(value, type_name, known):
+		return task.bind(name, value, type_name)
 
 f_bind = method('.bind')
 f_bind.register(bind_untyped,
-				'null',
-				('untyped', 'untyped', 'untyped'))
-
-def check_untyped_integer(task, types, length):
-	
-	length = int(length)
-	task.data, args = task.data[0:-length], task.data[-length:]
-	task.type_data, signature = task.type_data[0:-length], task.type_data[-length:] # Discard types
-	for i, name in enumerate(types):
-		if task.cast(args[i], name, signature[i]) is None:
-			return None
-	else:
-		return args
-
-f_check = method('.check')
-f_check.register(check_untyped_integer,
 				'untyped',
-				('untyped', 'integer'))
+				('untyped',))
 
 def concatenate_integer(task, length):
 
@@ -89,40 +76,6 @@ f_concatenate = method('.concatenate')
 f_concatenate.register(concatenate_integer,
 					   'untyped',
 					   ('integer',))
-
-def else_initial(task): return
-
-f_else = method('!else')
-f_else.register(else_initial,
-				'null',
-				())
-
-def else_final(task): return
-
-f_end_else = method('!end_else')
-f_end_else.register(else_final,
-					'null',
-					())
-
-def if_boolean(task, condition):
-	
-	if not condition:
-		task.branch('!if', '!end_if')
-
-f_if = method('!if')
-f_if.register(if_boolean,
-			  'null',
-			  ('boolean',))
-
-def if_final(task):
-
-	print(task.instructions[task.path][0])
-	task.branch('!else', '!end_else', initial = 0)
-
-f_end_if = method('!end_if')
-f_end_if.register(if_final,
-				  'null',
-				  ())
 
 def index_string_integer(task, sequence, index):
 
@@ -235,40 +188,12 @@ f_iterator.register(iterator_stream,
 					'.iterator',
 					('stream',))
 
-def name_null(task, name):
-	
-	task.data[-1], task.type_data[-1] = task.find(task.data[-1]), task.check(task.data[-1], default = 'untyped')
-
-def name_string(task, name):
-
-	value = task.find(task.data[-1])
-	if task.cast(value, name, task.check(task.data[-1], default = 'untyped')) is not None:
-		task.data[-1], task.type_data[-1] = value, name
-
-f_set = method('!name')
-f_set.register(name_null,
-			   'null',
-			   ('null',))
-f_set.register(name_string,
-			   'null',
-			   ('string',))
-
-def return_null(task):
-	
-	task.path = 0
-	task.message('terminate')
-	return None
-
 def return_untyped(task, sentinel):
 	
 	task.path = 0
-	task.message('terminate')
 	return sentinel
 
 f_return = method('.return')
-f_return.register(return_null,
-				  'null',
-				  ())
 f_return.register(return_untyped,
 				  'null',
 				  ('null',))
@@ -401,6 +326,14 @@ names = {
 }
 
 functions = {v.name: v for k, v in globals().items() if k.split('_')[0] == 'f'}
+
+def infer(value): # Infers type of value
+
+	name = type(value).__name__
+	if name in names:
+		return names[name]
+	else:
+		return 'untyped'
 
 #class module(coroutine): # Module object is always the top level of a syntax tree
 

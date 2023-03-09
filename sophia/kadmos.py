@@ -2,7 +2,7 @@
 The Kadmos module handles Sophia file parsing and instruction generation.
 '''
 
-import hemera
+import arche, hemera
 from fractions import Fraction as real
 
 characters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz' # Sorted by position in UTF-8
@@ -35,6 +35,63 @@ binding_power = (('(', ')', '[', ']', '{', '}'), # The left-binding power of a b
 				 ('*', '/', '%'),
 				 ('^',))
 
+class translator:
+
+	def __init__(self, node):
+		
+		self.start = node
+		self.node = node
+		self.path = [0]
+		self.constant = 0 # Constant register counter
+		self.instructions = list(node.start())
+		self.values = {'0': None, '&0': None} # Register namespace
+		self.types = {'0': 'null', '&0': 'null'} # Register types
+
+	def generate(self):
+		
+		self.node.length = len(self.node.nodes)
+		while self.node: # Pre-runtime generation of instructions
+			if self.path[-1] == self.node.length: # Walk up
+				self.node = self.node.head # Walk upward
+				if self.node:
+					self.path.pop()
+					self.path[-1] = self.path[-1] + 1
+				else:
+					continue
+			else: # Walk down
+				self.node.nodes[self.path[-1]].head = self.node # Set head
+				self.node = self.node.nodes[self.path[-1]] # Set value to child node
+				self.node.register = self.register()
+				self.node.length = len(self.node.nodes)
+				self.path.append(0)
+			if self.path[-1] == self.node.active:
+				self.instructions.extend(self.node.start())
+			elif self.path[-1] == self.node.length:
+				self.instructions.extend(self.node.execute())
+		if len(self.instructions) == 1:
+			self.instructions.extend(self.start.execute())
+		[print(i, self.types[i]) for i in self.values]
+		return self.instructions, self.values, self.types
+
+	def register(self):
+		
+		if self.node.nodes: # Temporary register
+			index = str(sum(self.path) + 1) # Sum of path is a pretty good way to minimise registers
+			self.values[index] = None
+			self.types[index] = 'untyped'
+			return index
+		else:
+			if isinstance(self.node, name): # Variable register
+				return self.node.value
+			elif self.node.value is None: # Null value is interned so that instructions can reliably take null as an operand
+				return '&0'
+			else: # Constant register
+				self.constant = self.constant + 1
+				index = '&' + str(self.constant)
+				self.values[index] = self.node.value
+				self.types[index] = arche.infer(self.node.value)
+				return index
+
 class node: # Base node object
 
 	def __init__(self, value, *nodes): # Do not store state in nodes
@@ -43,7 +100,7 @@ class node: # Base node object
 		self.type = None
 		self.head = None # Determined by scope parsing
 		self.nodes = [i for i in nodes] # For operands that should be evaluated
-		self.registers = 0 # Ershov number of the node, optimised using the Sethi-Ullman algorithm
+		self.register = '0' # Register that this node returns to
 		self.length = 0 # Performance optimisation
 		self.scope = 0
 		self.line = 0
@@ -167,35 +224,6 @@ class node: # Base node object
 			
 		return self
 
-	def generate(self):
-
-		node, node.length, path = self, len(self.nodes), [0]
-		instructions = list(self.start())
-		while node: # Pre-runtime generation of instructions
-			if path[-1] == node.length: # Walk up
-				node = node.head # Walk upward
-				if node:
-					path.pop()
-					path[-1] = path[-1] + 1
-				else:
-					continue
-			else: # Walk down
-				node.nodes[path[-1]].head = node # Set head
-				node = node.nodes[path[-1]] # Set value to child node
-				node.length = len(node.nodes) # Set length
-				path.append(0)
-			if not node.nodes: # Sets constant register
-				pass
-			elif True: # Sets working register
-				pass
-			if path[-1] == node.active:
-				instructions.extend(node.start())
-			elif path[-1] == node.length:
-				instructions.extend(node.execute())
-		if len(instructions) == 1:
-			instructions.extend(self.execute())
-		return instructions
-
 class statement(node): # Base statement object
 
 	def __str__(self): return ('else ' if self.branch else '') + type(self).__name__
@@ -224,7 +252,7 @@ class module(coroutine): # Module object is always the top level of a syntax tre
 
 	def start(self): return ':{0} 0'.format(self.name),
 
-	def execute(self): return '.return 0', # Multiple dispatch makes this work without an input register
+	def execute(self): return '.return 0 &0', # &0 is always null
 
 class type_statement(coroutine):
 
@@ -279,14 +307,13 @@ class assignment(statement):
 
 	def __str__(self): return 'assignment ' + str([item.value for item in self.value])
 
-	def execute(self):
+	def execute(self): # Yeah, I guess this works
 
-		return (([item.type for item in self.value], -1),
-				(len(self.nodes), -1),
-				('.check', 2),
-				([item.value for item in self.value], -1),
-				([item.type for item in self.value], -1),
-				('.bind', 3))
+		instructions = []
+		for i, item in enumerate(self.value):
+			instructions.append(':type {0} {1}'.format(self.scope, item.type if item.type else 'null'))
+			instructions.append('.bind {0} {1}'.format(item.value, self.nodes[i].register))
+		return instructions
 
 class if_statement(statement):
 
@@ -369,9 +396,9 @@ class return_statement(statement):
 	def execute(self):
 		
 		if self.nodes:
-			return ('.return', 1),
+			return '.return 0 {0}'.format(self.nodes[0].register),
 		else:
-			return (None, -1), ('.return', 1)
+			return '.return 0 &0',
 
 class link_statement(statement):
 
@@ -414,7 +441,7 @@ class literal(identifier): # Adds literal behaviours to a node
 
 	def nud(self, lex): return self # Gives self as node
 
-	def execute(self): return (self.value, -1),
+	def execute(self): return ()
 
 class name(identifier): # Adds name behaviours to a node
 
@@ -426,7 +453,7 @@ class name(identifier): # Adds name behaviours to a node
 		else:
 			return self # Gives self as node
 
-	def execute(self): return (self.value, -1), (self.type, -1), ('!name', 1)
+	def execute(self): return ()
 
 class keyword(identifier): # Adds keyword behaviours to a node
 
@@ -458,7 +485,9 @@ class prefix(operator): # Adds prefix behaviours to a node
 		self.nodes = [lex.parse(self.lbp)]
 		return self
 
-	def execute(self): return (self.value, 1),
+	def execute(self): return '{0} {1} {2}'.format(self.value,
+												   self.register,
+												   self.nodes[0].register),
 
 class bind(prefix): # Defines the bind operator
 
@@ -488,7 +517,10 @@ class infix(operator): # Adds infix behaviours to a node
 		self.nodes = [left, lex.parse(self.lbp)]
 		return self
 
-	def execute(self): return (self.value, 2),
+	def execute(self): return '{0} {1} {2} {3}'.format(self.value,
+													   self.register,
+													   self.nodes[0].register,
+													   self.nodes[1].register),
 
 class left_conditional(infix): # Defines the conditional operator
 
@@ -524,7 +556,10 @@ class infix_r(operator): # Adds right-binding infix behaviours to a node
 		self.nodes = [left, lex.parse(self.lbp - 1)]
 		return self
 
-	def execute(self): return (self.value, 2),
+	def execute(self): return '{0} {1} {2} {3}'.format(self.value,
+													   self.register,
+													   self.nodes[0].register,
+													   self.nodes[1].register),
 
 class concatenator(operator): # Adds comma behaviours to a node
 
@@ -562,7 +597,9 @@ class function_call(left_bracket):
 
 	def execute(self): return ('.call' if isinstance(self.head, bind) else '.spawn', 2),
 
-class parenthesis(left_bracket): pass
+class parenthesis(left_bracket):
+
+	def execute(self): return ()
 
 class sequence_index(left_bracket):
 

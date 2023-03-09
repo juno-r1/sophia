@@ -8,8 +8,7 @@ def debug_instructions(task):
 
 	for i, instruction in enumerate(task.instructions):
 		print(i,
-			  instruction[1],
-			  instruction[0],
+			  instruction,
 			  sep = '\t',
 			  file = stderr)
 	print('===', file = stderr)
@@ -19,7 +18,7 @@ def debug_namespace(task): # Takes a task object
 	print('===',
 	      task.name,
 		  '---',
-		  '\n---\n'.join((' '.join((name, task.types[name], str(value))) for name, value in task.values.items())),
+		  '\n---\n'.join((' '.join((name, task.types[name], str(value))) for name, value in task.values.items() if name[0] not in '0123456789&')),
 		  '===',
 		  sep = '\n',
 		  file = stderr)
@@ -31,8 +30,7 @@ def debug_supervisor(message): # Takes a message
 def debug_task(task): # Takes a process object
 
 	print(str(task.path),
-		  task.instructions[task.path][1],
-		  task.instructions[task.path][0],
+		  task.instructions[task.path],
 		  sep = '\t',
 		  file = stderr)
 

@@ -1,1 +1,2 @@
-int a: 1; int b: 2
+num a: 1 + 2; num b: 3 + 1
+return a

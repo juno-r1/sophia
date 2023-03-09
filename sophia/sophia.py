@@ -23,10 +23,11 @@ class runtime: # Base runtime object
 		initial = kadmos.module(address, root = root)
 		if 'tree' in flags:
 			hemera.debug_tree(initial) # Here's tree
+		self.instructions, self.values, self.types = kadmos.translator(initial).generate()
 		self.root = root
 		self.stream = mp.Queue() # Supervisor message stream
 		self.pool = mp.Pool(initializer = self.initialise)
-		self.main = task(*initial.generate(), flags) # Initial task
+		self.main = task(self.instructions, self.values, self.types, flags) # Initial task
 		self.tasks = {self.main.pid: kleio.proxy(self.main)} # Proxies of tasks
 		self.events = {} # Persistent event tasks
 		self.flags = flags
@@ -131,18 +132,18 @@ class runtime: # Base runtime object
 
 class task:
 
-	def __init__(self, instructions, namespace, flags): # God objects? What is she objecting to?
+	def __init__(self, instructions, values, types, flags): # God objects? What is she objecting to?
 		
 		self.name, self.type = instructions[0].split(' ')[0][1:] if instructions else '', 'untyped'
 		self.pid = id(self) # Guaranteed not to collide with other task PIDs; not the same as the PID of the pool process
 		self.flags = flags
 		self.internal_values = aletheia.types | mathos.operators | arche.functions
 		self.internal_types = {i: 'type' for i in aletheia.types} | {i: 'function' for i in mathos.operators | arche.functions}
-		self.values, self.types = namespace[0], namespace[1]
-		self.reserved = namespace[0].keys()
+		self.values, self.types = values, types
+		self.reserved = tuple(i for i in values)
 		self.supertypes = aletheia.supertypes
 		self.instructions = instructions
-		self.path = 1 if instructions else 0 # Ends early if no instructions
+		self.path = 1 if instructions else 0 # Does not execute if the parser encountered an error
 
 	def execute(self): # Target of run()
 		
@@ -152,11 +153,12 @@ class task:
 		while self.path:
 			if debug_task:
 				hemera.debug_task(self)
-			name, address, registers = self.instructions[self.path]
+			instruction = self.instructions[self.path].split(' ')
+			name, address, registers = instruction[0], instruction[1], instruction[2:]
 			self.path = self.path + 1
 			if name[0] == ':': # Label
 				continue
-			args = [self.values[register] for register in registers]
+			args = [self.find(register) for register in registers]
 			signature = tuple(self.types[register] for register in registers)
 			method = self.find(name)
 			instance, match = self.dispatch(method, signature)
@@ -167,7 +169,8 @@ class task:
 			else: # User-accessible methods
 				value = instance(*args) if args else instance()
 			self.values[address] = value
-			self.types[address] = self.infer(value) if method.finals[match] == '*' else method.finals[match]
+			if address[0] in '0123456789':
+				self.types[address] = arche.infer(value) if method.finals[match] == '*' else method.finals[match]
 		if 'namespace' in self.flags:
 			hemera.debug_namespace(self)
 		#self.calls.send((self.values,
@@ -175,7 +178,7 @@ class task:
 		#				 self.supertypes,
 		#				 self.reserved)) # Send mutable namespace to supervisor
 		self.message('terminate')
-		return self.sentinel
+		return self.values['0']
 
 	#def prepare(self, namespace, message): # Sets up task for event execution
 
@@ -184,16 +187,16 @@ class task:
 	#	self.values, self.types, self.supertypes, self.reserved = namespace # Update version of task in this process
 	#	self.bind(self.start.message.value, message)
 
-	#def message(self, instruction = None, *args):
+	def message(self, instruction = None, *args):
 		
-	#	mp.current_process().stream.put([instruction, self.pid] + list(args) if instruction else None)
+		mp.current_process().stream.put([instruction, self.pid] + list(args) if instruction else None)
 
-	def bind(self, name, value, type_name = None): # Creates or updates a name binding in main
+	def bind(self, name, value, type_name = 'null'): # Creates or updates a name binding in main
 		
-		if name in self.reserved or name in self.internal_values: # Quicker and easier to do it here
+		if name in self.reserved or name in self.internal_values:
 			return self.error('BIND', name)
-		self.values[name] = value # Mutate namespace
-		if type_name:
+		self.values[name] = value
+		if type_name != 'null':
 			self.types[name] = type_name
 		elif name not in self.types:
 			self.types[name] = 'untyped'
@@ -221,9 +224,9 @@ class task:
 		else:
 			return default
 
-	def cast(self, value, type_name, known = None): # Checks type of value and returns boolean
+	def cast(self, value, type_name, known = 'null'): # Checks type of value and returns boolean
 		
-		if not type_name:
+		if type_name == 'null':
 			return value
 		type_routine = self.find(type_name)
 		stack = [] # Stack of user-defined types, with the requested type at the bottom
@@ -238,14 +241,6 @@ class task:
 				return self.error('CAST', type_routine.name, str(value))
 		else:
 			return value # Return indicates success; cast() raises an exception on failure
-
-	def infer(self, value): # Infers type of value
-
-		name = type(value).__name__
-		if name in arche.names:
-			return arche.names[name]
-		else:
-			return 'untyped'
 
 	def dispatch(self, method, args): # Performs multiple dispatch on a function
 		
