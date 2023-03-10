@@ -57,25 +57,29 @@ def bind_untyped(task, value):
 	type_name = task.instructions[task.path - 2].split(' ')[2]
 	instruction = task.instructions[task.path - 1].split(' ')
 	name, known = instruction[1], task.types[instruction[2]]
-	if task.cast(value, type_name, known):
-		return task.bind(name, value, type_name)
+	if task.cast(value, type_name, known) is not None:
+		return task.bind(name, value, infer(value) if type_name == 'null' else type_name)
 
 f_bind = method('.bind')
 f_bind.register(bind_untyped,
 				'untyped',
 				('untyped',))
 
-def concatenate_integer(task, length):
+def concatenate_untyped(task, value):
+	
+	return [value]
 
-	length = int(length)
-	task.data, args = task.data[0:-length], task.data[-length:]
-	task.type_data = task.type_data[0:-length] # Discard types
-	return args
+def concatenate_untyped_untyped(task, sequence, value):
+	
+	return sequence + [value]
 
 f_concatenate = method('.concatenate')
-f_concatenate.register(concatenate_integer,
+f_concatenate.register(concatenate_untyped,
 					   'untyped',
-					   ('integer',))
+					   ('untyped',))
+f_concatenate.register(concatenate_untyped_untyped,
+					   'untyped',
+					   ('untyped', 'untyped'))
 
 def index_string_integer(task, sequence, index):
 
@@ -201,6 +205,10 @@ f_return.register(return_untyped,
 				  'untyped',
 				  ('untyped',))
 
+def sequence_null(task):
+
+	return []
+
 def sequence_untyped(task, sequence):
 	
 	if not isinstance(sequence, list):
@@ -215,6 +223,9 @@ def sequence_slice(task, sequence):
 	return tuple(sequence) # Tuple expands slice
 
 f_sequence = method('.sequence')
+f_sequence.register(sequence_null,
+					'untyped',
+					())
 f_sequence.register(sequence_untyped,
 					'*',
 					('untyped',))

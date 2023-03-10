@@ -156,7 +156,7 @@ class task:
 			instruction = self.instructions[self.path].split(' ')
 			name, address, registers = instruction[0], instruction[1], instruction[2:]
 			self.path = self.path + 1
-			if name[0] == ':': # Label
+			if name[0] == ';': # Label
 				continue
 			args = [self.find(register) for register in registers]
 			signature = tuple(self.types[register] for register in registers)

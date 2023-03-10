@@ -5,7 +5,7 @@ The Kadmos module handles Sophia file parsing and instruction generation.
 import arche, hemera
 from fractions import Fraction as real
 
-characters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz' # Sorted by position in UTF-8
+characters = '.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz' # Sorted by position in UTF-8
 parens = '()[]{}'
 comment = '//'
 structure_tokens = ('if', 'while', 'for', 'else', 'assert', 'return', 'link', 'start')
@@ -70,7 +70,7 @@ class translator:
 				self.instructions.extend(self.node.execute())
 		if len(self.instructions) == 1:
 			self.instructions.extend(self.start.execute())
-		[print(i, self.types[i]) for i in self.values]
+		[print(i, self.types[i], self.values[i]) for i in self.values]
 		return self.instructions, self.values, self.types
 
 	def register(self):
@@ -88,8 +88,9 @@ class translator:
 			else: # Constant register
 				self.constant = self.constant + 1
 				index = '&' + str(self.constant)
-				self.values[index] = self.node.value
-				self.types[index] = arche.infer(self.node.value)
+				value = () if isinstance(self.node, sequence_literal) else self.node.value
+				self.values[index] = value
+				self.types[index] = arche.infer(value)
 				return index
 
 class node: # Base node object
@@ -250,7 +251,7 @@ class module(coroutine): # Module object is always the top level of a syntax tre
 
 	def __str__(self): return 'module ' + self.name
 
-	def start(self): return ':{0} 0'.format(self.name),
+	def start(self): return ';{0} 0'.format(self.name),
 
 	def execute(self): return '.return 0 &0', # &0 is always null
 
@@ -311,7 +312,7 @@ class assignment(statement):
 
 		instructions = []
 		for i, item in enumerate(self.value):
-			instructions.append(':type {0} {1}'.format(self.scope, item.type if item.type else 'null'))
+			instructions.append(';type {0} {1}'.format(self.scope, item.type if item.type else 'null'))
 			instructions.append('.bind {0} {1}'.format(item.value, self.nodes[i].register))
 		return instructions
 
@@ -575,9 +576,9 @@ class concatenator(operator): # Adds comma behaviours to a node
 	def execute(self):
 		
 		if self.value == ':':
-			return (self.value, len(self.nodes)),
+			return ': {0} {1}'.format(self.register, ' '.join(item.register for item in self.nodes)),
 		else:
-			return (len(self.nodes), -1), ('.concatenate', 1) # n-ary comma operator
+			return ['.concatenate {0} {1}'.format(self.register, self.nodes[0].register)] + ['.concatenate {0} {1} {2}'.format(self.register, self.register, item.register) for item in self.nodes[1:]]
 
 class left_bracket(operator): # Adds left-bracket behaviours to a node
 
@@ -595,7 +596,9 @@ class left_bracket(operator): # Adds left-bracket behaviours to a node
 
 class function_call(left_bracket):
 
-	def execute(self): return ('.call' if isinstance(self.head, bind) else '.spawn', 2),
+	def execute(self): return '{0} {1} {2}'.format(self.value.value,
+												   self.register,
+												   ' '.join(item.register for item in self.nodes))
 
 class parenthesis(left_bracket):
 
@@ -603,16 +606,18 @@ class parenthesis(left_bracket):
 
 class sequence_index(left_bracket):
 
-	def execute(self): return ('.index', 2),
+	def execute(self): return '.index {0} {1} {2}'.format(self.register,
+														  self.nodes[0].register,
+														  self.nodes[1].register),
 
 class sequence_literal(left_bracket):
 
 	def execute(self):
 		
 		if self.nodes:
-			return ('.sequence', 1),
+			return '.sequence {0} {1}'.format(self.register, self.nodes[0].register),
 		else:
-			return ([], -1), ('.sequence', 1)
+			return ()
 
 class meta_statement(left_bracket):
 
@@ -621,7 +626,7 @@ class meta_statement(left_bracket):
 		super().__init__(value)
 		self.active = 1
 
-	def execute(self): return ('.meta', 1)
+	def execute(self): return
 
 class right_bracket(operator): # Adds right-bracket behaviours to a node
 
