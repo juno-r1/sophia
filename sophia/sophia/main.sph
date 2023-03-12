@@ -1,16 +1,5 @@
-if true:
-	bool a: true
+for i in 0:5:1:
+	int x: i
+bool a: x = 5
 
-if false:
-	bool b: false
-else:
-	bool b: true
-
-if false:
-	bool c: false
-else if true:
-	bool c: true
-else:
-	bool c: false
-
-return a and b and c
+return a

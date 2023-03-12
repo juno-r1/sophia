@@ -146,7 +146,7 @@ class node: # Base node object
 					else:
 						if symbol[0] in '.0123456789': # Terrible way to check for a number without using a try/except block
 							token = literal(real(symbol)) # Type of literals is known at parse time
-							token.type = 'number'
+							token.type = arche.infer(token.value) # Number or integer
 						elif symbol in sub_values:
 							token = literal(sub_values[symbol]) # Interpret booleans and null
 							token.type = 'boolean' if isinstance(token.value, bool) else None # Null is caught by untyped
@@ -341,16 +341,12 @@ class while_statement(statement):
 
 		super().__init__(None, lexer(tokens[1:-1]).parse())
 		self.branch = tokens[0].branch
+		self.label = '; {0} .start'
 		self.active = 1
 
-	def start(self):
-		
-		if self.branch:
-			return ';else {0}'.format(self.scope), '.branch 0 {0}'.format(self.nodes[0].register)
-		else:
-			return '.branch 0 {0}'.format(self.nodes[0].register),
+	def start(self): return '.branch 0 {0}'.format(self.nodes[0].register), '; {0} .branch'.format(self.scope)
 
-	def execute(self): return '.loop 0 {0}'.format(self.nodes[0].register), '.branch 0'
+	def execute(self): return '.loop 0', '; {0} .end'.format(self.scope)
 
 class for_statement(statement):
 
@@ -360,9 +356,12 @@ class for_statement(statement):
 		self.branch = tokens[0].branch
 		self.active = 1
 
-	def start(self): return ('!for', 1),
+	def start(self): return ('.iterator {0} {1}'.format(self.register, self.nodes[0].register,),
+							 '; {0} .start'.format(self.scope),
+							 '.for {0} {1}'.format(self.value.value, self.register),
+							 '; {0} {1}'.format(self.scope, self.value.type if self.value.type else 'null'))
 
-	def execute(self): return ('!end_for', 0),
+	def execute(self): return '.loop 0', '; {0} .end'.format(self.scope)
 
 class assert_statement(statement):
 

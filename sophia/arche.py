@@ -119,6 +119,29 @@ f_concatenate.register(concatenate_untyped_untyped,
 					   'untyped',
 					   ('untyped', 'untyped'))
 
+def for_untyped(task, iterator):
+	
+	type_name = task.instructions[task.path].split(' ')[2]
+	instruction = task.instructions[task.path - 1].split(' ')
+	name, known = instruction[1], task.types[instruction[2]]
+	try:
+		value = next(iterator)
+		if task.cast(value, type_name, known) is not None:
+			return task.bind(name, value, infer(value) if type_name == 'null' else type_name)
+	except StopIteration:
+		scope = int(task.instructions[task.path].split(' ')[1])
+		while True:
+			label = task.instructions[task.path].split(' ')
+			peek = task.instructions[task.path + 1]
+			if label[0] == ';' and int(label[1]) <= scope and label[2] == '.end' and '.else' not in peek:
+				return
+			task.path = task.path + 1
+
+f_for = method('.for')
+f_for.register(for_untyped,
+			   'untyped',
+			   ('untyped',))
+
 def index_string_integer(task, sequence, index):
 
 	length = len(sequence)
@@ -207,7 +230,7 @@ def iterator_record(task, iterable):
 
 def iterator_slice(task, iterable):
 
-	return iter(iterable.value)
+	return iter(iterable)
 
 def iterator_stream(task, iterable):
 
@@ -215,20 +238,34 @@ def iterator_stream(task, iterable):
 
 f_iterator = method('.iterator')
 f_iterator.register(iterator_string,
-					'.iterator', # Invalid type so that iterator can be found on the stack
+					'untyped',
 					('string',))
 f_iterator.register(iterator_list,
-					'.iterator',
+					'untyped',
 					('list',))
 f_iterator.register(iterator_record,
-					'.iterator',
+					'untyped',
 					('record',))
 f_iterator.register(iterator_slice,
-					'.iterator',
+					'untyped',
 					('slice',))
 f_iterator.register(iterator_stream,
-					'.iterator',
+					'untyped',
 					('stream',))
+
+def loop_null(task):
+
+	scope = int(task.instructions[task.path].split(' ')[1])
+	while True:
+		label = task.instructions[task.path].split(' ')
+		if label[0] == ';' and int(label[1]) <= scope and label[2] == '.start':
+			return
+		task.path = task.path - 1
+
+f_loop = method('.loop')
+f_loop.register(loop_null,
+				'null',
+				())
 
 def return_untyped(task, sentinel):
 	
@@ -359,15 +396,13 @@ f_reverse.register(reverse_slice,
 functions = {v.name: v for k, v in globals().items() if k.split('_')[0] == 'f'}
 
 names = {
-	'NoneType': 'null', # Internal types
-	'int': 'integer',
-	'list': 'untyped',
-	'element': 'untyped',
-	'type': 'type', # User-accessible types
+	'NoneType': 'null',
+	'type': 'type',
 	'event': 'event',
 	'method': 'function',
 	'bool': 'boolean',
 	'Fraction': 'number',
+	'int': 'integer',
 	'str': 'string',
 	'tuple': 'list',
 	'dict': 'record',
@@ -385,7 +420,7 @@ def infer(value): # Infers type of value
 		else:
 			return names[name]
 	else:
-		return 'untyped'
+		return 'untyped' # Applies to all internal types
 
 #class type_statement(coroutine):
 
@@ -459,51 +494,6 @@ def infer(value): # Infers type of value
 		
 #		routine.node = None
 
-#class while_statement(statement):
-
-#	def start(self, routine):
-
-#		condition = routine.get('boolean')
-#		if not condition:
-#			routine.node = routine.node.head # Walk upward
-#			if routine.node:
-#				routine.path.pop()
-#				routine.path[-1] = routine.path[-1] + 1
-#				while routine.path[-1] < routine.node.length and routine.node.nodes[routine.path[-1]].branch:
-#					routine.path[-1] = routine.path[-1] + 1
-
-#	def execute(self, routine):
-
-#		routine.branch(0)
-
-#class for_statement(statement):
-
-#	def start(self, routine):
-		
-#		sequence = iter(routine.get('iterable')) # Enables fast slice
-#		try:
-#			value = next(sequence)
-#			type_name = self.value.type if self.value.type else routine.check(self.value.value, default = 'untyped')
-#			routine.cast(value, type_name)
-#			routine.bind(self.value.value, value, type_name)
-#			routine.send(sequence, '.index') # Stack trickery with invalid type name
-#		except StopIteration:
-#			routine.branch(self.node.length)
-
-#	def execute(self, routine):
-		
-#		sequence, type_name = routine.data.pop(), routine.type_data.pop() # Don't check for type
-#		while type_name != '.index':
-#			sequence, type_name = routine.data.pop(), routine.type_data.pop()
-#		try:
-#			value = next(sequence)
-#			routine.cast(value, routine.types[self.value.value])
-#			routine.bind(self.value.value, value)
-#			routine.send(sequence, '.index') # .index isn't even a type
-#			routine.branch(1) # Skip start
-#		except StopIteration:
-#			routine.unbind(self.value.value)
-
 #class assert_statement(statement):
 
 #	def start(self, routine):
@@ -542,10 +532,6 @@ def infer(value): # Infers type of value
 #	def execute(self, routine):
 
 #		routine.node = None
-
-#class else_statement(statement):
-
-#	def execute(self, routine): return # Final else statement
 
 #class keyword(identifier): # Adds keyword behaviours to a node
 
