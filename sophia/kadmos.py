@@ -75,7 +75,6 @@ class translator:
 				self.instructions.extend(self.node.execute())
 		if len(self.instructions) == 1:
 			self.instructions.extend(self.start.execute())
-		#[print(i, self.types[i], self.values[i]) for i in self.values]
 		return self.instructions, self.values, self.types
 
 	def register(self):
@@ -395,12 +394,7 @@ class return_statement(statement):
 		super().__init__(None, lexer(tokens[1:]).parse()) if len(tokens) > 1 else super().__init__(None)
 		self.branch = tokens[0].branch
 
-	def execute(self):
-		
-		if self.nodes:
-			return '.return 0 {0}'.format(self.nodes[0].register),
-		else:
-			return '.return 0 &0',
+	def execute(self): return '.return 0 {0}'.format(self.nodes[0].register if self.nodes else '&0'),
 
 class link_statement(statement):
 
@@ -533,6 +527,7 @@ class left_conditional(infix): # Defines the conditional operator
 	def __init__(self, value):
 
 		super().__init__(value)
+		self.label = '; {0} .start'
 		self.active = 1
 
 	def led(self, lex, left):
@@ -542,7 +537,9 @@ class left_conditional(infix): # Defines the conditional operator
 		self.nodes = [left, n]
 		return self
 
-	def execute(self): return ('.if', 1),
+	def start(self): return '.branch 0 {0}'.format(self.nodes[0].register), '; {0} .branch'.format(self.scope)
+
+	def execute(self): return ()
 
 class right_conditional(infix): # Defines the conditional operator
 
@@ -551,9 +548,12 @@ class right_conditional(infix): # Defines the conditional operator
 		super().__init__(value)
 		self.active = 1
 
-	def start(self): return ('.end_if', 0), ('.else', 0)
+	def start(self): return ('.set {0} {1}'.format(self.head.register, self.nodes[0].register),
+							 '.branch 0',
+							 '; {0} .end'.format(self.head.scope),
+							 '; {0} .else'.format(self.head.scope))
 
-	def execute(self): return ('.end_else', 0),
+	def execute(self): return '.set {0} {1}'.format(self.head.register, self.nodes[1].register), '; {0} .end'.format(self.scope)
 
 class infix_r(operator): # Adds right-binding infix behaviours to a node
 

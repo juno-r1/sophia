@@ -130,20 +130,20 @@ op_geq.register(b_geq,
 				('number', 'number'))
 
 def b_sbs(_, x, y):
-
+	
 	return x in y
 
 op_sbs = method('in')
-op_ltn.register(b_sbs,
+op_sbs.register(b_sbs,
 				'boolean',
 				('untyped', 'string'))
-op_ltn.register(b_sbs,
+op_sbs.register(b_sbs,
 				'boolean',
 				('untyped', 'list'))
-op_ltn.register(b_sbs,
+op_sbs.register(b_sbs,
 				'boolean',
 				('untyped', 'record'))
-op_ltn.register(b_sbs,
+op_sbs.register(b_sbs,
 				'boolean',
 				('untyped', 'slice'))
 

@@ -1,21 +1,5 @@
-for i in 0:5:1:
-	int x: i
-bool a: x = 5
+slice x: 0:10:2
+int a: x[0:2:2, 1]
+bool b: true if a != 0 else false
 
-int y: 0
-for i in 0:5:1:
-	int x: i
-	continue
-	int y: i
-bool b: x = 5 and y = 0
-
-int y: 0
-for i in 0:5:1:
-	int x: i
-	break
-	int y: i
-else:
-	int x: -1
-bool c: x = -1 and y = 0
-
-return a and b and c
+return [a, b]

@@ -194,13 +194,13 @@ def index_record_slice(task, sequence, index):
 
 def index_slice_integer(task, sequence, index):
 
-	length = len(sequence)
+	length = length_slice(task, sequence)
 	if -length <= index < length:
 		return sequence[int(index)]
 
 def index_slice_slice(task, sequence, index):
-
-	length = len(sequence)
+	
+	length = length_slice(task, sequence)
 	if (-length <= index.indices[0] < length) and (-length <= index.indices[1] < length):
 		return tuple(sequence[int(n)] for n in iter(index))
 
@@ -321,6 +321,15 @@ f_sequence.register(sequence_untyped,
 f_sequence.register(sequence_slice,
 					'list',
 					('slice',))
+
+def set_untyped(task, value):
+
+	return value
+
+f_set = method('.set')
+f_set.register(set_untyped,
+			   '*',
+			   ('untyped',))
 
 # Built-in I/O functions
 
