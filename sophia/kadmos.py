@@ -459,11 +459,18 @@ class keyword(identifier): # Adds keyword behaviours to a node
 	def __init__(self, tokens):
 
 		super().__init__(tokens)
-		self.active = 0
 
 	def nud(self, lex): return self
 
-	def execute(self): return ('!' + self.value, 0),
+	def execute(self):
+
+		loop = self
+		while not isinstance(loop, (while_statement, for_statement)):
+			loop = loop.head
+		if self.value == 'continue':
+			return '.loop 0', '; {0} .continue'.format(loop.scope)
+		elif self.value == 'break':
+			return '.break 0', '; {0} .break'.format(loop.scope)
 
 class operator(node): # Generic operator node
 

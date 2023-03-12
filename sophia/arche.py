@@ -103,6 +103,20 @@ f_branch.register(branch_boolean,
 				  'null',
 				  ('boolean',))
 
+def break_null(task):
+
+	scope = int(task.instructions[task.path].split(' ')[1])
+	while True:
+		label = task.instructions[task.path].split(' ')
+		if label[0] == ';' and int(label[1]) <= scope and label[2] == '.end':
+			return
+		task.path = task.path + 1
+
+f_break = method('.break')
+f_break.register(break_null,
+				 'null',
+				 ())
+
 def concatenate_untyped(task, value):
 	
 	return [value]
@@ -532,32 +546,6 @@ def infer(value): # Infers type of value
 #	def execute(self, routine):
 
 #		routine.node = None
-
-#class keyword(identifier): # Adds keyword behaviours to a node
-
-#	def start(self, routine):
-
-#		loop = routine.node
-#		while not isinstance(loop, (while_statement, for_statement)): # Traverses up to closest enclosing loop
-#			loop = loop.head
-#			routine.path.pop()
-#		routine.node = loop
-#		if self.value == 'continue':
-#			if loop.value: # For loop
-#				loop.execute(routine) if '.index' in routine.type_data else routine.branch(loop.length) # Tests if loop is unbound
-#			else:
-#				routine.branch(0)
-#		elif self.value == 'break':
-#			routine.branch()
-#			if loop.value: # End for loop correctly
-#				routine.data.pop() # Don't check for type
-#				type_name = routine.type_data.pop()
-#				while type_name != '.index':
-#					routine.data.pop()
-#					type_name = routine.type_data.pop()
-#				routine.unbind(loop.value.value)
-
-#	def execute(self, routine): return # Shouldn't ever be called anyway
 
 #class bind(prefix): # Defines the bind operator
 
