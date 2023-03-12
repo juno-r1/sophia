@@ -12,8 +12,8 @@ structure_tokens = ('if', 'while', 'for', 'else', 'assert', 'return', 'link', 's
 keyword_tokens = ('continue', 'break', 'is', 'with', 'extends', 'awaits')
 keyword_operators = ('not', 'or', 'and', 'xor', 'in')
 trailing = (';', ',')
-sub_types = {'bool': 'boolean',
-			 'int': 'integer', # Lookup table for type names
+sub_types = {'bool': 'boolean', # Lookup table for type names
+			 'int': 'integer',
 			 'num': 'number',
 			 'str': 'string'}
 sub_values = {'true': True, # Lookup table for special values
@@ -52,6 +52,8 @@ class translator:
 		self.node.length = len(self.node.nodes)
 		while self.node: # Pre-runtime generation of instructions
 			if self.path[-1] == self.node.length: # Walk up
+				if isinstance(self.node.head, assert_statement) and self.path[-2] < self.node.head.active: # Insert assertion
+					self.instructions.extend(('.assert 0 {0}'.format(self.node.register), '; {0} .assert'.format(self.node.head.scope)))
 				self.node = self.node.head # Walk upward
 				if self.node:
 					self.path.pop()
@@ -80,13 +82,19 @@ class translator:
 	def register(self):
 		
 		if self.node.nodes: # Temporary register
-			index = str(sum(self.path) + 1) # Sum of path is a pretty good way to minimise registers
-			self.values[index] = None
-			self.types[index] = 'untyped'
-			return index
+			if isinstance(self.node.head, assert_statement):
+				return '0' # 0 is the return register and is assumed to be nullable
+			else:
+				index = str(sum(self.path) + 1) # Sum of path is a pretty good way to minimise registers
+				self.values[index] = None
+				self.types[index] = 'untyped'
+				return index
 		else:
 			if isinstance(self.node, name): # Variable register
-				return self.node.value
+				if isinstance(self.node.head, assert_statement): # For casts
+					return '0'
+				else:
+					return self.node.value
 			elif self.node.value is None: # Null value is interned so that instructions can reliably take null as an operand
 				return '&0'
 			else: # Constant register
@@ -330,9 +338,9 @@ class if_statement(statement):
 		self.label = '; {0} .start'
 		self.active = 1
 
-	def start(self): return '.branch 0 {0}'.format(self.nodes[0].register), '; {0} .branch'.format(self.scope)
+	def start(self): return '.branch {0} {1}'.format(self.register, self.nodes[0].register), '; {0} .branch'.format(self.scope)
 
-	def execute(self): return '.branch 0', '; {0} .end'.format(self.scope)
+	def execute(self): return '.branch {0}'.format(self.register), '; {0} .end'.format(self.scope)
 
 class while_statement(statement):
 
@@ -343,9 +351,9 @@ class while_statement(statement):
 		self.label = '; {0} .start'
 		self.active = 1
 
-	def start(self): return '.branch 0 {0}'.format(self.nodes[0].register), '; {0} .branch'.format(self.scope)
+	def start(self): return '.branch {0} {1}'.format(self.register, self.nodes[0].register), '; {0} .branch'.format(self.scope)
 
-	def execute(self): return '.loop 0', '; {0} .end'.format(self.scope)
+	def execute(self): return '.loop {0}'.format(self.register), '; {0} .end'.format(self.scope)
 
 class for_statement(statement):
 
@@ -383,9 +391,9 @@ class assert_statement(statement):
 		self.branch = tokens[0].branch
 		self.active = len(nodes)
 
-	def start(self): return ('.assert', self.active),
+	def start(self): return ()
 
-	def execute(self): return ('.end_assert', 0),
+	def execute(self): return '.branch {0}'.format(self.register), '; {0} .end'.format(self.scope)
 
 class return_statement(statement):
 
@@ -421,7 +429,7 @@ class else_statement(statement):
 		super().__init__(None)
 		self.branch = True
 
-	def execute(self): return '.branch 0', '; {0} .end'.format(self.scope)
+	def execute(self): return '.branch {0}'.format(self.register), '; {0} .end'.format(self.scope)
 
 class identifier(node): # Generic identifier class
 
@@ -446,7 +454,12 @@ class name(identifier): # Adds name behaviours to a node
 		else:
 			return self # Gives self as node
 
-	def execute(self): return ()
+	def execute(self):
+		
+		if self.register == '0':
+			return '.check 0 {0}'.format(self.value), '; {0} {1}'.format(self.scope, self.type if self.type else 'untyped')
+		else:
+			return ()
 
 class keyword(identifier): # Adds keyword behaviours to a node
 
@@ -537,7 +550,7 @@ class left_conditional(infix): # Defines the conditional operator
 		self.nodes = [left, n]
 		return self
 
-	def start(self): return '.branch 0 {0}'.format(self.nodes[0].register), '; {0} .branch'.format(self.scope)
+	def start(self): return '.branch {0} {1}'.format(self.register, self.nodes[0].register), '; {0} .branch'.format(self.scope)
 
 	def execute(self): return ()
 
@@ -549,7 +562,7 @@ class right_conditional(infix): # Defines the conditional operator
 		self.active = 1
 
 	def start(self): return ('.set {0} {1}'.format(self.head.register, self.nodes[0].register),
-							 '.branch 0',
+							 '.branch {0}'.format(self.register),
 							 '; {0} .end'.format(self.head.scope),
 							 '; {0} .else'.format(self.head.scope))
 

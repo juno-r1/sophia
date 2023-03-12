@@ -62,13 +62,32 @@ class event: # Multimethod object
 
 # Internal functions
 
+def assert_null(task, value): # Null assertion
+
+	scope = int(task.instructions[task.path].split(' ')[1])
+	while True:
+		label = task.instructions[task.path].split(' ')
+		if label[0] == ';' and int(label[1]) <= scope and label[2] == '.end':
+			return
+		task.path = task.path + 1
+
+def assert_untyped(task, value): # Non-null assertion
+
+	return value
+
+f_assert = method('.assert')
+f_assert.register(assert_null,
+				  'null',
+				  ('null',))
+f_assert.register(assert_untyped,
+				  'untyped',
+				  ('untyped',))
+
 def bind_untyped(task, value):
 	
 	type_name = task.instructions[task.path].split(' ')[2]
-	instruction = task.instructions[task.path - 1].split(' ')
-	name, known = instruction[1], task.types[instruction[2]]
-	if task.cast(value, type_name, known) is not None:
-		return task.bind(name, value, infer(value) if type_name == 'null' else type_name)
+	if task.cast(value, type_name, task.types[task.registers[0]]) is not None:
+		return task.bind(task.address, value, infer(value) if type_name == 'null' else type_name)
 
 f_bind = method('.bind')
 f_bind.register(bind_untyped,
@@ -117,6 +136,17 @@ f_break.register(break_null,
 				 'null',
 				 ())
 
+def check_untyped(task, value):
+
+	type_name = task.instructions[task.path].split(' ')[2]
+	known = task.check(task.registers[0])
+	return task.cast(value, type_name, known)
+
+f_check = method('.check')
+f_check.register(check_untyped,
+				 '*',
+				 ('untyped'))
+
 def concatenate_untyped(task, value):
 	
 	return [value]
@@ -136,12 +166,10 @@ f_concatenate.register(concatenate_untyped_untyped,
 def for_untyped(task, iterator):
 	
 	type_name = task.instructions[task.path].split(' ')[2]
-	instruction = task.instructions[task.path - 1].split(' ')
-	name, known = instruction[1], task.types[instruction[2]]
 	try:
 		value = next(iterator)
-		if task.cast(value, type_name, known) is not None:
-			return task.bind(name, value, infer(value) if type_name == 'null' else type_name)
+		if task.cast(value, type_name, task.types[task.registers[0]]) is not None:
+			return task.bind(task.address, value, infer(value) if type_name == 'null' else type_name)
 	except StopIteration:
 		scope = int(task.instructions[task.path].split(' ')[1])
 		while True:

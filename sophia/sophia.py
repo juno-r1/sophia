@@ -144,6 +144,7 @@ class task:
 		self.supertypes = aletheia.supertypes
 		self.instructions = instructions
 		self.path = 1 if instructions else 0 # Does not execute if the parser encountered an error
+		self.label, self.address, self.registers = None, None, None
 
 	def execute(self): # Target of run()
 		
@@ -154,27 +155,27 @@ class task:
 			if debug_task:
 				hemera.debug_task(self)
 			instruction = self.instructions[self.path].split(' ')
-			name, address, registers = instruction[0], instruction[1], instruction[2:]
+			self.label, self.address, self.registers = instruction[0], instruction[1], instruction[2:]
 			self.path = self.path + 1
-			if name == ';': # Label
+			if self.label == ';': # Label
 				continue
-			args = [self] + [self.find(register) for register in registers]
-			signature = tuple(self.types[register] for register in registers)
-			method = self.find(name)
+			args = [self] + [self.find(register) for register in self.registers]
+			signature = tuple(self.check(register) for register in self.registers)
+			method = self.find(self.label)
 			try:
 				instance, match = self.dispatch(method, signature)
 			except TypeError:
 				continue
 			value = instance(*args)
-			self.values[address] = value
-			if address[0] in '0123456789':
-				self.types[address] = arche.infer(value) if method.finals[match] == '*' else method.finals[match]
+			self.values[self.address] = value
+			if self.address[0] in '0123456789':
+				self.types[self.address] = arche.infer(value) if method.finals[match] == '*' else method.finals[match]
 		if 'namespace' in self.flags:
 			hemera.debug_namespace(self)
 		#self.calls.send((self.values,
-		#				 self.types,
-		#				 self.supertypes,
-		#				 self.reserved)) # Send mutable namespace to supervisor
+		#				  self.types,
+		#				  self.supertypes,
+		#				  self.reserved)) # Send mutable namespace to supervisor
 		self.message('terminate')
 		return self.values['0']
 
@@ -213,7 +214,7 @@ class task:
 		else:
 			return self.error('FIND', name)
 
-	def check(self, name, default = None): # Internal function to check if a name has a type bound to it
+	def check(self, name, default = 'null'): # Internal function to check if a name has a type bound to it
 
 		if name in self.internal_types:
 			return self.internal_types[name]
@@ -268,7 +269,7 @@ class task:
 
 	def error(self, status, *args): # Error handler
 		
-		if not False: # Suppresses error for assertion
+		if self.address != '0': # Suppresses error for assertions
 			if 'suppress' not in self.flags:
 				hemera.debug_error(self.name, self.path - 1, status, args)
 			self.path = 0 # Immediately end routine
