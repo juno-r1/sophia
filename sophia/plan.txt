@@ -7,13 +7,6 @@ stderr accepts sent strings and returns null
 
 ---
 
-regularisation of routines
-
-allow binding of types, operators
-make bind work for built-ins
-
----
-
 define type system as entity-relationship model
 
 make process subtype of iterable / define iterator protocol for processes using resolution operator
@@ -80,71 +73,7 @@ single-line type syntax
 
 ---
 
-sophia operations
-
-interfaces
-
-actor				bind, send, resolve
-arithmetic			arithmetic operations
-callable			function calls
-equal				equality and inequality comparison
-iterable			iteration
-logic				logical operations
-order				comparison excluding equality
-routine				able to create actors
-sequence			subscription, slicing, length
-set					set operators (union, intersection, difference, membership)
-symbol				operator syntax
-trait				defines type operations
-
-types
-
-name				interfaces
-
-untyped				equal
-
-number				arithmetic, order
-boolean				logic
-
-string				sequence, set, iterable
-list				sequence, set, iterable
-record				sequence, set, iterable
-slice				sequence, set, iterable
-
-function			routine, callable
-event				routine, callable
-operator			routine, symbol
-type				routine, set, order, trait
-
-future				actor
-stream				actor, iterable
-
----
-
-dammit, now i *have* to implement multiple dispatch
-
-the return type of *all* operations - including literals - is known at runtime
-this means that any operands in a call have a known type
-if you know a value's type (which you do), you know what interfaces it implements
-
-this solves a great deal of problems
-type operations can be applied to *any* expressions, not just names
-operations can request interfaces, not just types
-
-some manner of algorithm required to resolve multiple dispatch
-resolve types of operands left-to-right
-subtype takes precedence over supertype
-
-actually, *every* operation in sophia can be modelled this way
-consider remodelling the execution loop to facilitate this?
-
----
-
 refactor runtime to instruction execution instead of tree traversal
-
-sophia file
-parse tree
-dispatch instructions
 
 allocate memory by creating list of registers using sethi-ullman algorithm
 no need to worry about call stack or absolute jumps because calls spawn new tasks
@@ -165,9 +94,37 @@ register 0 is the null address and the return value
 if an instruction returns to register 0, assertion behaviour is assumed
 instructions can also return to register 0 if the operation's return doesn't matter
 
----
+; 0 .start
+; 1 .start
+.branch 0 &1
+; 1 .branch
+.bind a &2
+; 2 null
+.end 0
+; 1 .end
+; 1 .else
+.bind a &3
+; 2 null
+.end 0
+; 1 .end
+.return 0 a
+.return 0 &0
+; 0 .end
 
-instruction architecture
+.branch (conditional branch)
 
-:<label> <scope>
-<.><instruction> <return register> <input registers>
+if condition is false:
+branch to the next statement in the same or higher scope, past else statements
+
+iterate through instructions until reaching an .end label
+if the scope is equal to or less than the current scope,
+and the next instruction is not an .else label:
+continue execution from there
+
+.else (unconditional branch)
+
+branch to the next statement in the same or higher scope, including else statements
+
+iterate through instructions until reaching an .end label
+if the scope is equal to or less than the current scope:
+continue execution from there

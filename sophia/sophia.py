@@ -156,18 +156,16 @@ class task:
 			instruction = self.instructions[self.path].split(' ')
 			name, address, registers = instruction[0], instruction[1], instruction[2:]
 			self.path = self.path + 1
-			if name[0] == ';': # Label
+			if name == ';': # Label
 				continue
-			args = [self.find(register) for register in registers]
+			args = [self] + [self.find(register) for register in registers]
 			signature = tuple(self.types[register] for register in registers)
 			method = self.find(name)
-			instance, match = self.dispatch(method, signature)
-			if not instance:
+			try:
+				instance, match = self.dispatch(method, signature)
+			except TypeError:
 				continue
-			if method.name[0] == '.': # Internal methods
-				value = instance(self, *args) if args else instance(self)
-			else: # User-accessible methods
-				value = instance(*args) if args else instance()
+			value = instance(*args)
 			self.values[address] = value
 			if address[0] in '0123456789':
 				self.types[address] = arche.infer(value) if method.finals[match] == '*' else method.finals[match]
@@ -244,6 +242,8 @@ class task:
 
 	def dispatch(self, method, args): # Performs multiple dispatch on a function
 		
+		if not method:
+			raise TypeError
 		signatures = []
 		candidates = [x for x in method.methods.keys() if len(x) == len(args)] # Remove candidates with mismatching arity
 		if not candidates: # No candidate with matching arity
@@ -262,7 +262,7 @@ class task:
 				return (method.methods[candidates[0]], candidates[0])
 			else:
 				self.error('DISP', method.name, str(args))
-				return (None, None)
+				raise TypeError
 
 	# https://github.com/JeffBezanson/phdthesis
 

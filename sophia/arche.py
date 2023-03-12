@@ -11,9 +11,7 @@ class slice: # Slice object
 
 	def __init__(self, indices):
 		
-		self.indices = indices.copy() # Stores indices for reversal
-		indices[1] = indices[1] + 1 if indices[2] >= 0 else indices[1] - 1 # Correction for inclusive range
-		self.value = range(*indices) # Stores slice iterator
+		self.indices = indices
 
 	def __getitem__(self, index): # Enables O(1) indexing of slices
 		
@@ -21,6 +19,18 @@ class slice: # Slice object
 			return self.indices[0] + self.indices[2] * index
 		else:
 			return self.indices[1] + self.indices[2] * (index + 1)
+
+	def __iter__(self): # Custom range generator for reals
+
+		n = self.indices[0]
+		if self.indices[2] >= 0:
+			while n <= self.indices[1]:
+				yield n
+				n = n + self.indices[2]
+		else:
+			while n >= self.indices[1]:
+				yield n
+				n = n + self.indices[2]
 
 class method: # Multimethod object
 
@@ -54,7 +64,7 @@ class event: # Multimethod object
 
 def bind_untyped(task, value):
 	
-	type_name = task.instructions[task.path - 2].split(' ')[2]
+	type_name = task.instructions[task.path].split(' ')[2]
 	instruction = task.instructions[task.path - 1].split(' ')
 	name, known = instruction[1], task.types[instruction[2]]
 	if task.cast(value, type_name, known) is not None:
@@ -64,6 +74,34 @@ f_bind = method('.bind')
 f_bind.register(bind_untyped,
 				'untyped',
 				('untyped',))
+
+def branch_null(task): # Unconditional branch
+	
+	scope = int(task.instructions[task.path].split(' ')[1])
+	while True:
+		label = task.instructions[task.path].split(' ')
+		peek = task.instructions[task.path + 1]
+		if label[0] == ';' and int(label[1]) <= scope and label[2] == '.end' and '.else' not in peek:
+			return
+		task.path = task.path + 1
+
+def branch_boolean(task, condition): # Conditional branch
+
+	if not condition:
+		scope = int(task.instructions[task.path].split(' ')[1])
+		while True:
+			label = task.instructions[task.path].split(' ')
+			if label[0] == ';' and int(label[1]) <= scope and label[2] == '.end':
+				return
+			task.path = task.path + 1
+
+f_branch = method('.branch')
+f_branch.register(branch_null,
+				  'null',
+				  ())
+f_branch.register(branch_boolean,
+				  'null',
+				  ('boolean',))
 
 def concatenate_untyped(task, value):
 	
@@ -91,7 +129,7 @@ def index_string_slice(task, sequence, index):
 
 	length = len(sequence)
 	if (-length <= index.indices[0] < length) and (-length <= index.indices[1] < length):
-		return ''.join(sequence[n] for n in index) # Constructs slice of string using range
+		return ''.join(sequence[int(n)] for n in iter(index)) # Constructs slice of string using range
 
 def index_list_integer(task, sequence, index):
 
@@ -100,10 +138,10 @@ def index_list_integer(task, sequence, index):
 		return sequence[int(index)] # Sophia's integer type is abstract, Python's isn't
 
 def index_list_slice(task, sequence, index):
-
+	
 	length = len(sequence)
 	if (-length <= index.indices[0] < length) and (-length <= index.indices[1] < length):
-		return tuple(sequence[n] for n in index) # Constructs list of list using range
+		return tuple(sequence[int(n)] for n in iter(index)) # Constructs list of list using range
 
 def index_record_untyped(task, sequence, index):
 	
@@ -115,7 +153,7 @@ def index_record_slice(task, sequence, index):
 	length = len(sequence)
 	if (-length <= index.indices[0] < length) and (-length <= index.indices[1] < length):
 		items = tuple(sequence.items())
-		return dict(items[n] for n in index) # Constructs slice of record using range
+		return dict(items[int(n)] for n in iter(index)) # Constructs slice of record using range
 
 def index_slice_integer(task, sequence, index):
 
@@ -127,7 +165,7 @@ def index_slice_slice(task, sequence, index):
 
 	length = len(sequence)
 	if (-length <= index.indices[0] < length) and (-length <= index.indices[1] < length):
-		return tuple(sequence[n] for n in index)
+		return tuple(sequence[int(n)] for n in iter(index))
 
 f_index = method('.index')
 f_index.register(index_string_integer,
@@ -235,7 +273,7 @@ f_sequence.register(sequence_slice,
 
 # Built-in I/O functions
 
-def input_string(value):
+def input_string(task, value):
 
 	return input(value)
 
@@ -244,7 +282,7 @@ f_input.register(input_string,
 				 'string',
 				 ('string',))
 
-def print_string(value):
+def print_string(task, value):
 
 	print(value)
 	return value
@@ -254,7 +292,7 @@ f_print.register(print_string,
 				 'string',
 				 ('string',))
 
-def error_string(status):
+def error_string(task, status):
 	
 	print(status, file = stderr)
 	return None
@@ -266,7 +304,7 @@ f_error.register(error_string,
 
 # Built-in methods
 
-def cast_type_untyped(target, value):
+def cast_type_untyped(task, target, value):
 
 	while target.supertype:
 		target = target.supertype
@@ -277,19 +315,19 @@ f_cast.register(cast_type_untyped,
 				'*', # Signals to infer type
 				('type', 'untyped'))
 
-def length_string(sequence):
+def length_string(task, sequence):
 
 	return len(sequence)
 
-def length_list(sequence):
+def length_list(task, sequence):
 
 	return len(sequence)
 
-def length_record(sequence):
+def length_record(task, sequence):
 
 	return len(sequence)
 
-def length_slice(sequence):
+def length_slice(task, sequence):
 
 	return real(int((sequence.indices[1] - sequence.indices[0]) / sequence.indices[2]))
 
@@ -307,7 +345,7 @@ f_length.register(length_slice,
 				  'integer',
 				  ('slice',))
 
-def reverse_slice(value):
+def reverse_slice(task, value):
 		
 	return slice([value.indices[1], value.indices[0], -value.indices[2]])
 
@@ -316,7 +354,9 @@ f_reverse.register(reverse_slice,
 				   'slice',
 				   ('slice',))
 
-# Namespace composition
+# Namespace composition and internals
+
+functions = {v.name: v for k, v in globals().items() if k.split('_')[0] == 'f'}
 
 names = {
 	'NoneType': 'null', # Internal types
@@ -336,23 +376,16 @@ names = {
 	'stream': 'stream'
 }
 
-functions = {v.name: v for k, v in globals().items() if k.split('_')[0] == 'f'}
-
 def infer(value): # Infers type of value
 
 	name = type(value).__name__
 	if name in names:
-		return names[name]
+		if names[name] == 'number' and value % 1 == 0:
+			return 'integer'
+		else:
+			return names[name]
 	else:
 		return 'untyped'
-
-#class module(coroutine): # Module object is always the top level of a syntax tree
-
-#	def execute(self, routine):
-		
-#		routine.node = self.source
-#		if routine.node:
-#			routine.path.pop() # Handles meta-statement
 
 #class type_statement(coroutine):
 
@@ -379,15 +412,6 @@ def infer(value): # Infers type of value
 		
 #		routine.sentinel = routine.find(self.name) # Returns cast value upon success
 #		routine.node = None
-
-#class interface_statement(coroutine):
-
-#	def start(self, routine): # Initialises type
-		
-#		routine.bind(self.name, self, 'interface')
-#		routine.branch() # Skips body of routine
-
-#	def execute(self, routine): return
 
 #class event_statement(coroutine):
 
@@ -500,14 +524,6 @@ def infer(value): # Infers type of value
 #				routine.node = None
 #				return
 
-#class return_statement(statement):
-
-#	def execute(self, routine):
-		
-#		if self.nodes:
-#			routine.sentinel = routine.get()
-#		routine.node = None
-
 #class link_statement(statement):
 
 #	def execute(self, routine):
@@ -557,14 +573,6 @@ def infer(value): # Infers type of value
 
 #	def execute(self, routine): return # Shouldn't ever be called anyway
 
-#class prefix(operator): # Adds prefix behaviours to a node
-
-#	def execute(self, routine): # Unary operators
-
-#		op = routine.find(self.value) # Gets the operator definition
-#		x = routine.get(op.types[1])
-#		routine.send(op.unary(routine, x), op.types[0]) # Equivalent for all operators
-
 #class bind(prefix): # Defines the bind operator
 
 #	def execute(self, routine):
@@ -604,14 +612,6 @@ def infer(value): # Infers type of value
 #		value = routine.get()
 #		routine.send(value if value else None) # I'm sure someone has a use for this
 
-#class infix(operator): # Adds infix behaviours to a node
-
-#	def execute(self, routine):
-		
-#		op = routine.find(self.value)
-#		x, y = routine.get(op.types[2]), routine.get(op.types[1]) # Operands are received in reverse order
-#		routine.send(op.binary(routine, y, x), op.types[0])
-
 #class left_conditional(infix): # Defines the conditional operator
 
 #	def start(self, routine):
@@ -631,29 +631,6 @@ def infer(value): # Infers type of value
 #		routine.path[-1] = routine.node.length
 
 #	def execute(self, routine): return
-
-#class infix_r(operator): # Adds right-binding infix behaviours to a node
-
-#	def execute(self, routine):
-
-#		if self.value == ':': # Sorts out list slices and key-item pairs by returning them as a slice object or a dictionary
-#			x, y = routine.get(), routine.get()
-#			value = [y] + x if self.nodes and self.nodes[1].value == ':' else [y, x]
-#			if self.head.value == ':':
-#				routine.send(value)
-#			elif len(value) == 2:
-#				if aletheia.sophia_integer(value[0]): # Equalise integer type
-#					value[0] = int(value[0])
-#				routine.send(arche.element(value))
-#			else:
-#				routine.send(arche.slice(value))
-#		elif self.value == ',': # Sorts out comma-separated parameters by returning them as a list
-#			x, y = routine.get(), routine.get()
-#			routine.send([y] + x if self.nodes and self.nodes[1].value == ',' else [y, x])
-#		else: # Binary operators
-#			op = routine.find(self.value) # Gets the operator definition
-#			x, y = routine.get(op.types[2]), routine.get(op.types[1])
-#			routine.send(op.binary(routine, y, x), op.types[0])
 
 #class send(infix_r): # Defines the send operator
 

@@ -64,13 +64,18 @@ class translator:
 				self.node.register = self.register()
 				self.node.length = len(self.node.nodes)
 				self.path.append(0)
+			if self.path[-1] == 0:
+				if self.node.branch:
+					self.instructions.append('; {0} .else'.format(self.node.scope))
+				if self.node.label:
+					self.instructions.append(self.node.label.format(self.node.scope))
 			if self.path[-1] == self.node.active:
 				self.instructions.extend(self.node.start())
 			elif self.path[-1] == self.node.length:
 				self.instructions.extend(self.node.execute())
 		if len(self.instructions) == 1:
 			self.instructions.extend(self.start.execute())
-		[print(i, self.types[i], self.values[i]) for i in self.values]
+		#[print(i, self.types[i], self.values[i]) for i in self.values]
 		return self.instructions, self.values, self.types
 
 	def register(self):
@@ -102,6 +107,7 @@ class node: # Base node object
 		self.head = None # Determined by scope parsing
 		self.nodes = [i for i in nodes] # For operands that should be evaluated
 		self.register = '0' # Register that this node returns to
+		self.label = ''
 		self.length = 0 # Performance optimisation
 		self.scope = 0
 		self.line = 0
@@ -251,9 +257,9 @@ class module(coroutine): # Module object is always the top level of a syntax tre
 
 	def __str__(self): return 'module ' + self.name
 
-	def start(self): return ';{0} 0'.format(self.name),
+	def start(self): return '; 0 .start',
 
-	def execute(self): return '.return 0 &0', # &0 is always null
+	def execute(self): return '.return 0 &0', '; 0 .end' # &0 is always null
 
 class type_statement(coroutine):
 
@@ -312,11 +318,24 @@ class assignment(statement):
 
 		instructions = []
 		for i, item in enumerate(self.value):
-			instructions.append(';type {0} {1}'.format(self.scope, item.type if item.type else 'null'))
 			instructions.append('.bind {0} {1}'.format(item.value, self.nodes[i].register))
+			instructions.append('; {0} {1}'.format(self.scope, item.type if item.type else 'null'))
 		return instructions
 
 class if_statement(statement):
+
+	def __init__(self, tokens):
+
+		super().__init__(None, lexer(tokens[1:-1]).parse())
+		self.branch = tokens[0].branch
+		self.label = '; {0} .start'
+		self.active = 1
+
+	def start(self): return '.branch 0 {0}'.format(self.nodes[0].register), '; {0} .branch'.format(self.scope)
+
+	def execute(self): return '.branch 0', '; {0} .end'.format(self.scope)
+
+class while_statement(statement):
 
 	def __init__(self, tokens):
 
@@ -327,28 +346,11 @@ class if_statement(statement):
 	def start(self):
 		
 		if self.branch:
-			return ('!else', 0), ('!if', 1)
+			return ';else {0}'.format(self.scope), '.branch 0 {0}'.format(self.nodes[0].register)
 		else:
-			return ('!if', 1),
+			return '.branch 0 {0}'.format(self.nodes[0].register),
 
-	def execute(self):
-
-		if self.branch:
-			return ('!end_if', 0), ('!end_else', 0)
-		else:
-			return ('!end_if', 0),
-
-class while_statement(statement):
-
-	def __init__(self, tokens):
-
-		super().__init__(None, lexer(tokens[1:-1]).parse())
-		self.branch = tokens[0].branch
-		self.active = 1
-
-	def start(self): return ('!while', 1),
-
-	def execute(self): return ('!end_while', 0),
+	def execute(self): return '.loop 0 {0}'.format(self.nodes[0].register), '.branch 0'
 
 class for_statement(statement):
 
@@ -425,11 +427,8 @@ class else_statement(statement):
 
 		super().__init__(None)
 		self.branch = True
-		self.active = 0
 
-	def start(self): return ('!else', 0),
-
-	def execute(self): return ('!end_else', 0),
+	def execute(self): return '.branch 0', '; {0} .end'.format(self.scope)
 
 class identifier(node): # Generic identifier class
 
@@ -596,9 +595,14 @@ class left_bracket(operator): # Adds left-bracket behaviours to a node
 
 class function_call(left_bracket):
 
-	def execute(self): return '{0} {1} {2}'.format(self.value.value,
-												   self.register,
-												   ' '.join(item.register for item in self.nodes))
+	def execute(self):
+		
+		if self.nodes:
+			return '{0} {1} {2}'.format(self.nodes[0].value,
+										self.register,
+										' '.join(item.register for item in self.nodes[1:])),
+		else:
+			return '{0} {1}'.format(self.nodes[0].value, self.register),
 
 class parenthesis(left_bracket):
 
@@ -606,9 +610,23 @@ class parenthesis(left_bracket):
 
 class sequence_index(left_bracket):
 
-	def execute(self): return '.index {0} {1} {2}'.format(self.register,
-														  self.nodes[0].register,
-														  self.nodes[1].register),
+	def led(self, lex, left): # Remove comma operator
+		
+		if isinstance(lex.peek, right_bracket): # Accounts for empty brackets
+			self.nodes = [left]
+		else:
+			self.nodes = [left, lex.parse(self.lbp)]
+			if self.nodes[1].value == ',':
+				self.nodes = [left] + [i for i in self.nodes[1].nodes] # Unpack concatenator
+		lex.use()
+		return self
+
+	def execute(self): 
+		
+		instructions = ['.index {0} {1} {2}'.format(self.register, self.nodes[0].register, self.nodes[1].register)]
+		for item in self.nodes[2:]: # Iteratively access sequence
+			instructions.append('.index {0} {1} {2}'.format(self.register, self.register, item.register))
+		return instructions
 
 class sequence_literal(left_bracket):
 
