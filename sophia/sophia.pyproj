@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>77ea40b1-1af6-4971-ad30-ff261d0da3cb</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>run.py</StartupFile>
+    <StartupFile>harmonia.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -59,7 +59,6 @@
     <Content Include="harmonia\test20.sophia" />
     <Content Include="harmonia\test21.sophia" />
     <Content Include="harmonia\test22.sophia" />
-    <Content Include="harmonia\test23.sophia" />
     <Content Include="sophia\main.sph" />
     <Content Include="plan.txt" />
     <Content Include="sophia\test.sph" />
