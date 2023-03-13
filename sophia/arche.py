@@ -544,16 +544,6 @@ def infer(value): # Infers type of value
 #	def execute(self, routine):
 		
 #		routine.node = None
-
-#class assert_statement(statement):
-
-#	def start(self, routine):
-		
-#		for i in range(self.active):
-#			if routine.get(self.nodes[i].type if self.nodes[i].type else 'untyped') is None:
-#				return routine.branch()
-
-#	def execute(self, routine): return
 	
 #class constraint_statement(statement):
 
@@ -607,41 +597,6 @@ def infer(value): # Infers type of value
 #		reference = routine.get('channel')
 #		routine.message('resolve', reference)
 #		routine.send(routine.cast(routine.calls.recv(), reference.type), reference.type)
-
-#class safe(prefix): # Defines the safety operator
-
-#	def execute(self, routine):
-
-#		value = routine.data.pop() # Bypass type checking
-#		routine.type_data.pop()
-#		routine.send(True if value is not None else False, 'boolean')
-
-#class unsafe(prefix): # Defines the unsafety operator
-
-#	def execute(self, routine):
-
-#		value = routine.get()
-#		routine.send(value if value else None) # I'm sure someone has a use for this
-
-#class left_conditional(infix): # Defines the conditional operator
-
-#	def start(self, routine):
-
-#		condition = routine.get('boolean')
-#		routine.node = self.nodes[1]
-#		routine.path.append(0 if condition else 1)
-
-#	def execute(self, routine): return
-
-#class right_conditional(infix): # Defines the conditional operator
-
-#	def start(self, routine):
-		
-#		routine.node = self.head
-#		routine.path.pop()
-#		routine.path[-1] = routine.node.length
-
-#	def execute(self, routine): return
 
 #class send(infix_r): # Defines the send operator
 

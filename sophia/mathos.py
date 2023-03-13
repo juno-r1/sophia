@@ -269,6 +269,31 @@ op_slc.register(t_slc,
 				'slice',
 				('integer', 'integer', 'integer'))
 
+def u_sfe_null(_, x):
+
+	return False
+
+def u_sfe_untyped(_, x):
+	
+	return True
+
+op_sfe = method('?')
+op_sfe.register(u_sfe_null,
+				'boolean',
+				('null',))
+op_sfe.register(u_sfe_untyped,
+				'boolean',
+				('untyped',))
+
+def u_usf(_, x):
+
+	return x if x else None
+
+op_usf = method('!')
+op_usf.register(u_usf,
+				'*',
+				('untyped',))
+
 # Namespace composition
 
 operators = {v.name: v for k, v in globals().items() if k.split('_')[0] == 'op'}

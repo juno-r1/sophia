@@ -7,7 +7,7 @@ assert true: // Non-null value
 else:
 	bool a: false
 
-assert null: // Null value
+assert true, null: // Null value, multiple assertion
 	bool b: false
 else:
 	bool b: true
