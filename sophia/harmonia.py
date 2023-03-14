@@ -5,7 +5,7 @@ Users can use this tool to verify the integrity of their installation.
 '''
 
 import sophia, os
-from fractions import Fraction as real
+from rationals import Rational as real
 
 if __name__ == '__main__':
 

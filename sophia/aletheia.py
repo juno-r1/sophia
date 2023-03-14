@@ -3,7 +3,7 @@ The Aletheia module defines built-in types and type operations.
 '''
 
 import arche, kleio
-from fractions import Fraction as real
+from rationals import Rational as real
 
 # Built-in types
 
@@ -53,12 +53,7 @@ class sophia_untyped: # Non-abstract base class
 class sophia_type(sophia_untyped): # Type type
 	
 	name = 'type'
-	types = type, arche.event
-
-class sophia_event(sophia_untyped): # Event type
-
-	name = 'event'
-	types = arche.event
+	types = type
 
 class sophia_function(sophia_untyped): # Function type
 

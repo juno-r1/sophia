@@ -2,7 +2,7 @@
 The Arche module defines the standard library and internal data types.
 '''
 
-from fractions import Fraction as real
+from rationals import Rational as real
 from sys import stderr
 
 class element(tuple): pass # Stupid hack to make record construction work
@@ -39,34 +39,27 @@ class method: # Multimethod object
 		self.name = name
 		self.finals = {}
 		self.methods = {}
+		self.lengths = {}
 
 	def register(self, method, final, signature): # Overwrites duplicate signatures
 		
 		self.finals[signature] = final # Return type
 		self.methods[signature] = method # Function
+		self.lengths[signature] = len(signature) # Pre-evaluated length of signature
 
-class event: # Multimethod object
+class function_definition: # User-defined function
 
-	def __init__(self, name):
+	def __init__(self): pass
 
-		self.name = name
-		self.finals = {}
-		self.sends = {}
-		self.methods = {}
-
-	def register(self, method, final, send, signature): # Overwrites duplicate signatures
-		
-		self.finals[signature] = final # Return type
-		self.sends[signature] = send # Send type
-		self.methods[signature] = method # Function
+	def __call__(self, *args): return
 
 # Internal functions
 
 def assert_null(task, value): # Null assertion
 
-	scope = int(task.instructions[task.path].split(' ')[1])
+	scope = int(task.instructions[task.path][1])
 	while True:
-		label = task.instructions[task.path].split(' ')
+		label = task.instructions[task.path]
 		if label[0] == ';' and int(label[1]) <= scope and label[2] == '.end':
 			return
 		task.path = task.path + 1
@@ -85,7 +78,7 @@ f_assert.register(assert_untyped,
 
 def bind_untyped(task, value):
 	
-	type_name = task.instructions[task.path].split(' ')[2]
+	type_name = task.instructions[task.path][2]
 	if task.cast(value, type_name, task.types[task.registers[0]]) is not None:
 		return task.bind(task.address, value, infer(value) if type_name == 'null' else type_name)
 
@@ -96,9 +89,9 @@ f_bind.register(bind_untyped,
 
 def branch_null(task): # Unconditional branch
 	
-	scope = int(task.instructions[task.path].split(' ')[1])
+	scope = int(task.instructions[task.path][1])
 	while True:
-		label = task.instructions[task.path].split(' ')
+		label = task.instructions[task.path]
 		peek = task.instructions[task.path + 1]
 		if label[0] == ';' and int(label[1]) <= scope and label[2] == '.end' and '.else' not in peek:
 			return
@@ -107,9 +100,9 @@ def branch_null(task): # Unconditional branch
 def branch_boolean(task, condition): # Conditional branch
 
 	if not condition:
-		scope = int(task.instructions[task.path].split(' ')[1])
+		scope = int(task.instructions[task.path][1])
 		while True:
-			label = task.instructions[task.path].split(' ')
+			label = task.instructions[task.path]
 			if label[0] == ';' and int(label[1]) <= scope and label[2] == '.end':
 				return
 			task.path = task.path + 1
@@ -124,9 +117,9 @@ f_branch.register(branch_boolean,
 
 def break_null(task):
 
-	scope = int(task.instructions[task.path].split(' ')[1])
+	scope = int(task.instructions[task.path][1])
 	while True:
-		label = task.instructions[task.path].split(' ')
+		label = task.instructions[task.path]
 		if label[0] == ';' and int(label[1]) <= scope and label[2] == '.end':
 			return
 		task.path = task.path + 1
@@ -138,7 +131,7 @@ f_break.register(break_null,
 
 def check_untyped(task, value):
 
-	type_name = task.instructions[task.path].split(' ')[2]
+	type_name = task.instructions[task.path][2]
 	known = task.check(task.registers[0])
 	return task.cast(value, type_name, known)
 
@@ -165,15 +158,15 @@ f_concatenate.register(concatenate_untyped_untyped,
 
 def for_untyped(task, iterator):
 	
-	type_name = task.instructions[task.path].split(' ')[2]
+	type_name = task.instructions[task.path][2]
 	try:
 		value = next(iterator)
 		if task.cast(value, type_name, task.types[task.registers[0]]) is not None:
 			return task.bind(task.address, value, infer(value) if type_name == 'null' else type_name)
 	except StopIteration:
-		scope = int(task.instructions[task.path].split(' ')[1])
+		scope = int(task.instructions[task.path][1])
 		while True:
-			label = task.instructions[task.path].split(' ')
+			label = task.instructions[task.path]
 			peek = task.instructions[task.path + 1]
 			if label[0] == ';' and int(label[1]) <= scope and label[2] == '.end' and '.else' not in peek:
 				return
@@ -297,9 +290,9 @@ f_iterator.register(iterator_stream,
 
 def loop_null(task):
 
-	scope = int(task.instructions[task.path].split(' ')[1])
+	scope = int(task.instructions[task.path][1])
 	while True:
-		label = task.instructions[task.path].split(' ')
+		label = task.instructions[task.path]
 		if label[0] == ';' and int(label[1]) <= scope and label[2] == '.start':
 			return
 		task.path = task.path - 1
@@ -449,10 +442,9 @@ functions = {v.name: v for k, v in globals().items() if k.split('_')[0] == 'f'}
 names = {
 	'NoneType': 'null',
 	'type': 'type',
-	'event': 'event',
 	'method': 'function',
 	'bool': 'boolean',
-	'Fraction': 'number',
+	'Rational': 'number',
 	'int': 'integer',
 	'str': 'string',
 	'tuple': 'list',

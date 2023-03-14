@@ -105,10 +105,10 @@ class runtime: # Base runtime object
 
 	def run(self): # Supervisor process and pool management
 
-		if 'profile' in self.flags:
-			from cProfile import Profile
-			pr = Profile()
-			pr.enable()
+		#if 'profile' in self.flags:
+		#	from cProfile import Profile
+		#	pr = Profile()
+		#	pr.enable()
 		message = True
 		interval = 10 if 'timeout' in self.flags or self.root == 'harmonia' else None # Timeout interval
 		self.tasks[self.main.pid].result = self.pool.apply_async(self.main.execute) # Start execution of initial module
@@ -125,9 +125,9 @@ class runtime: # Base runtime object
 				hemera.debug_error('sophia', 0, 'TIME', ()) # Prints timeout warning but continues
 		self.pool.close()
 		self.pool.join()
-		if 'profile' in self.flags:
-			pr.disable()
-			pr.print_stats(sort = 'tottime')
+		#if 'profile' in self.flags:
+		#	pr.disable()
+		#	pr.print_stats(sort = 'tottime')
 		return self.tasks[self.main.pid].result.get()
 
 class task:
@@ -142,7 +142,8 @@ class task:
 		self.values, self.types = values, types
 		self.reserved = tuple(i for i in values)
 		self.supertypes = aletheia.supertypes
-		self.instructions = instructions
+		self.specificity = {k: len(v) for k, v in aletheia.supertypes.items()} # Length of supertypes is equivalent to specificity of subtype
+		self.instructions = [i.split(' ') for i in instructions]
 		self.path = 1 if instructions else 0 # Does not execute if the parser encountered an error
 		self.label, self.address, self.registers = None, None, None
 
@@ -150,26 +151,57 @@ class task:
 		
 		if 'instructions' in self.flags:
 			hemera.debug_instructions(self)
+		if 'profile' in self.flags:
+			from cProfile import Profile
+			pr = Profile()
+			pr.enable()
 		debug_task = 'task' in self.flags
 		while self.path:
 			if debug_task:
 				hemera.debug_task(self)
-			instruction = self.instructions[self.path].split(' ')
+			"""
+			Prepare instruction, get arguments and type signature
+			"""
+			instruction = self.instructions[self.path]
 			self.label, self.address, self.registers = instruction[0], instruction[1], instruction[2:]
 			self.path = self.path + 1
 			if self.label == ';': # Label
 				continue
 			args = [self] + [self.find(register) for register in self.registers]
 			signature = tuple(self.check(register) for register in self.registers)
-			method = self.find(self.label)
-			try:
-				instance, match = self.dispatch(method, signature)
-			except TypeError:
+			length = len(signature)
+			"""
+			Multiple dispatch algorithm, with help from:
+			https://github.com/JeffBezanson/phdthesis
+			"""
+			if not (method := self.find(self.label)):
 				continue
+			if not (candidates := [x for x in method.methods if method.lengths[x] == length]): # Remove candidates with mismatching arity
+				self.error('DISP', method.name, str(signature))
+				continue
+			for i, name in enumerate(signature):
+				signatures, candidates, max_depth = candidates, [], 0 # Filtering left-to-right search
+				for item in signatures:
+					if item[i] in self.supertypes[name]: # Check that parameter type is a supertype of x
+						candidates.append(item)
+						max_depth = max(max_depth, self.specificity[item[i]]) # Only ever increases
+				else:
+					candidates = [item for item in candidates if self.specificity[item[i]] == max_depth] # Keep only most specific signatures
+			if candidates:
+				instance, match = method.methods[candidates[0]], candidates[0]
+			else:
+				self.error('DISP', method.name, str(signature))
+				continue
+			"""
+			Execute instruction, update return registers with return value and type
+			"""
 			value = instance(*args)
 			self.values[self.address] = value
 			if self.address[0] in '0123456789':
 				self.types[self.address] = arche.infer(value) if method.finals[match] == '*' else method.finals[match]
+		if 'profile' in self.flags:
+			pr.disable()
+			pr.print_stats(sort = 'tottime')
 		if 'namespace' in self.flags:
 			hemera.debug_namespace(self)
 		#self.calls.send((self.values,
@@ -246,7 +278,7 @@ class task:
 		if not method:
 			raise TypeError
 		signatures = []
-		candidates = [x for x in method.methods.keys() if len(x) == len(args)] # Remove candidates with mismatching arity
+		candidates = [x for x in method.methods if len(x) == len(args)] # Remove candidates with mismatching arity
 		if not candidates: # No candidate with matching arity
 			return None
 		for i, name in enumerate(args):
@@ -259,7 +291,7 @@ class task:
 			else:
 				candidates = [x for x in candidates if len(self.supertypes[x[i]]) == max_depth] # Keep only most specific signature 
 		else:
-			if len(candidates) == 1:
+			if candidates:
 				return (method.methods[candidates[0]], candidates[0])
 			else:
 				self.error('DISP', method.name, str(args))

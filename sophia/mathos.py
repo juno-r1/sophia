@@ -3,7 +3,6 @@ The Mathos module defines built-in operators.
 '''
 
 from arche import element, slice, method
-from fractions import Fraction as real
 
 def u_add(_, x): # Pain
 
@@ -58,7 +57,7 @@ op_div.register(b_div,
 
 def b_exp(_, x, y):
 
-	return real(x ** y) # Normalise type (exponentiation can produce irrational numbers)
+	return x ** y
 
 op_exp = method('^')
 op_exp.register(b_exp,
@@ -68,7 +67,7 @@ op_exp.register(b_exp,
 def b_mod(_, x, y):
 
 	if y != 0: # Null return on modulo-by-zero
-		return real(x) % real(y) # Normalise type
+		return x % y
 
 op_mod = method('%')
 op_mod.register(b_mod,
@@ -193,7 +192,7 @@ def b_ins_list(_, x, y):
 
 def b_ins_record(_, x, y):
 
-	return tuple(k for k in x.keys() if k in y)
+	return tuple(k for k in x if k in y)
 
 def b_ins_slice(_, x, y):
 	

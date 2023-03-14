@@ -30,6 +30,7 @@
     <Compile Include="hemera.py" />
     <Compile Include="kleio.py" />
     <Compile Include="mathos.py" />
+    <Compile Include="rationals.py" />
     <Compile Include="sophia.py" />
     <Compile Include="kadmos.py" />
     <Compile Include="run.py" />

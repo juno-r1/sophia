@@ -3,7 +3,7 @@ The Kadmos module handles Sophia file parsing and instruction generation.
 '''
 
 import arche, hemera
-from fractions import Fraction as real
+from rationals import Rational as real
 
 characters = '.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz' # Sorted by position in UTF-8
 parens = '()[]{}'
@@ -617,11 +617,12 @@ class function_call(left_bracket):
 	def execute(self):
 		
 		if self.nodes:
-			return '{0} {1} {2}'.format(self.nodes[0].value,
-										self.register,
-										' '.join(item.register for item in self.nodes[1:])),
+			instructions = ['{0} {1} {2}'.format(self.nodes[0].value, self.register, ' '.join(item.register for item in self.nodes[1:]))]
 		else:
-			return '{0} {1}'.format(self.nodes[0].value, self.register),
+			instructions = ['{0} {1}'.format(self.nodes[0].value, self.register)]
+		if not isinstance(self.head, bind):
+			instructions.append('* {0} {1}'.format(self.register, self.register)) # Overwrite future with resolution
+		return instructions
 
 class parenthesis(left_bracket):
 
