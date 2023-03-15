@@ -187,7 +187,8 @@ class node: # Base node object
 						else:
 							if len(tokens[-1]) == 1 and isinstance(tokens[-1][-1], name) and line[-1] == ':': # Special case for operator definition
 								token = name(symbol)
-								token.type = tokens[-1].pop().value # Sets return type of operator
+								token_type = tokens[-1].pop().value # Sets return type of operator
+								token.type = sub_types[token_type] if token_type in sub_types else token_type
 							else:
 								token = infix(symbol)
 					else:

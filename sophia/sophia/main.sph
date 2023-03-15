@@ -1,14 +1,14 @@
-// 3.2.7, 5.5
+// 5.6
 
-num increment (num n):
+num ++ (num x):
 
-	return n + 1
+	return x + 1
 
-int increment (int n):
+num ++ (num x, num y):
 
-	return n - 1
+	return x + y
 
-bool a: increment(0.5) = 1.5
-bool b: increment(1) = 0
+bool a: ++1 = 2
+bool b: 1 ++ 2 = 3
 
 return a and b
