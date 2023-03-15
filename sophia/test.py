@@ -23,7 +23,7 @@ def fraction_fib(n):
 		a, b = a, a + b
 	return a
 
-n = 1000000
+n = 100000
 
 pr = Profile()
 pr.enable()

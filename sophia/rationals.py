@@ -353,20 +353,16 @@ class Rational(numbers.Rational):
 		return Rational(-(-a.numerator // a.denominator), 1, _normalise = False)
 
 	def __round__(self):
-		"""round(self, ndigits)
-
-		Rounds half toward even.
-		"""
-		floor, remainder = divmod(self.numerator, self.denominator)
-		if remainder * 2 < self.denominator:
-			return Rational(floor, 1, _normalise = False)
-		elif remainder * 2 > self.denominator:
+		"""round(self)"""
+		# Rounds half away from 0.
+		na, da = self.numerator, self.denominator
+		floor, remainder = divmod(na, da)
+		if floor < 0: # Normalise negative Rationals
+			da += 1
+		if remainder * 2 >= da:
 			return Rational(floor + 1, 1, _normalise = False)
-		# Deal with the half case:
-		elif floor % 2 == 0:
-			return Rational(floor, 1, _normalise = False)
 		else:
-			return Rational(floor + 1, 1, _normalise = False)
+			return Rational(floor, 1, _normalise = False)
 
 	def __hash__(self):
 		"""hash(self)"""
@@ -406,38 +402,24 @@ class Rational(numbers.Rational):
 		try:
 			return (a.numerator == b.numerator and
 					a.denominator == b.denominator)
-		except AttributeError:
+		except AttributeError: # Only occurs at parse time
 			return False
-
-	def _richcmp(self, other, op):
-		"""Helper for comparison operators, for internal use only.
-
-		Implement comparison between a Rational instance `self`, and
-		either another Rational instance or a float `other`.  If
-		`other` is not a Rational instance or a float, return
-		NotImplemented. `op` should be one of the six standard
-		comparison operators.
-
-		"""
-		# convert other to a Rational instance where reasonable.
-		return op(self.numerator * other.denominator,
-				  self.denominator * other.numerator)
 
 	def __lt__(a, b):
 		"""a < b"""
-		return a._richcmp(b, operator.lt)
+		return a.numerator * b.denominator < a.denominator * b.numerator
 
 	def __gt__(a, b):
 		"""a > b"""
-		return a._richcmp(b, operator.gt)
+		return a.numerator * b.denominator > a.denominator * b.numerator
 
 	def __le__(a, b):
 		"""a <= b"""
-		return a._richcmp(b, operator.le)
+		return a.numerator * b.denominator <= a.denominator * b.numerator
 
 	def __ge__(a, b):
 		"""a >= b"""
-		return a._richcmp(b, operator.ge)
+		return a.numerator * b.denominator >= a.denominator * b.numerator
 
 	def __bool__(a):
 		"""a != 0"""

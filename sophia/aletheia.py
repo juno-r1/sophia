@@ -205,4 +205,6 @@ supertypes = {
 	'slice': ('slice', 'untyped'),
 	'future': ('future', 'untyped'),
 	'stream': ('stream', 'untyped')
+
 }
+specificity = {k: len(v) for k, v in supertypes.items()} # Length of supertypes is equivalent to specificity of subtype

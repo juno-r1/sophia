@@ -36,16 +36,20 @@ class runtime: # Base runtime object
 	
 		mp.current_process().stream = self.stream
 
-	def call(self, pid, routine, args):
+	def call(self, pid, routine, args, method): # Pass in method for recursion support
 
-		routine = task(routine, args, self.flags)
+		args = self.values | ({routine.name: method} if method else {}) | dict(zip(routine.params, args))
+		types = self.types | ({routine.name: arche.infer(routine)} if method else {}) | dict(zip(routine.params, routine.types))
+		routine = task(routine.instructions, args, types, self.flags)
 		self.tasks[routine.pid] = kleio.proxy(routine)
 		self.tasks[routine.pid].result = self.pool.apply_async(routine.execute)
 		self.tasks[routine.pid].requests.append(pid) # Submit request for return value
 
-	def future(self, pid, routine, args):
+	def future(self, pid, routine, args, method):
 		
-		routine = task(routine, args, self.flags)
+		args = self.values | ({routine.name: method} if method else {}) | dict(zip(routine.params, args))
+		types = self.types | ({routine.name: arche.infer(routine)} if method else {}) | dict(zip(routine.params, routine.types))
+		routine = task(routine.instructions, args, types, self.flags)
 		self.tasks[routine.pid] = kleio.proxy(routine)
 		self.tasks[routine.pid].result = self.pool.apply_async(routine.execute)
 		self.tasks[routine.pid].count = self.tasks[routine.pid].count + 1
@@ -105,10 +109,10 @@ class runtime: # Base runtime object
 
 	def run(self): # Supervisor process and pool management
 
-		#if 'profile' in self.flags:
-		#	from cProfile import Profile
-		#	pr = Profile()
-		#	pr.enable()
+		if 'profile' in self.flags:
+			from cProfile import Profile
+			pr = Profile()
+			pr.enable()
 		message = True
 		interval = 10 if 'timeout' in self.flags or self.root == 'harmonia' else None # Timeout interval
 		self.tasks[self.main.pid].result = self.pool.apply_async(self.main.execute) # Start execution of initial module
@@ -125,16 +129,16 @@ class runtime: # Base runtime object
 				hemera.debug_error('sophia', 0, 'TIME', ()) # Prints timeout warning but continues
 		self.pool.close()
 		self.pool.join()
-		#if 'profile' in self.flags:
-		#	pr.disable()
-		#	pr.print_stats(sort = 'tottime')
+		if 'profile' in self.flags:
+			pr.disable()
+			pr.print_stats(sort = 'tottime')
 		return self.tasks[self.main.pid].result.get()
 
 class task:
 
 	def __init__(self, instructions, values, types, flags): # God objects? What is she objecting to?
 		
-		self.name, self.type = instructions[0].split(' ')[0][1:] if instructions else '', 'untyped'
+		self.name, self.type = instructions[0].split(' ')[2] if instructions else '', 'untyped'
 		self.pid = id(self) # Guaranteed not to collide with other task PIDs; not the same as the PID of the pool process
 		self.flags = flags
 		self.internal_values = aletheia.types | mathos.operators | arche.functions
@@ -142,66 +146,69 @@ class task:
 		self.values, self.types = values, types
 		self.reserved = tuple(i for i in values)
 		self.supertypes = aletheia.supertypes
-		self.specificity = {k: len(v) for k, v in aletheia.supertypes.items()} # Length of supertypes is equivalent to specificity of subtype
+		self.specificity = aletheia.specificity
 		self.instructions = [i.split(' ') for i in instructions]
+		self.arity = [0 if i[0] == ';' else (len(i) - 2) for i in self.instructions]
 		self.path = 1 if instructions else 0 # Does not execute if the parser encountered an error
 		self.label, self.address, self.registers = None, None, None
+		self.unbind = False # Unbind flag
 
 	def execute(self): # Target of run()
 		
+		debug_task = 'task' in self.flags
 		if 'instructions' in self.flags:
 			hemera.debug_instructions(self)
-		if 'profile' in self.flags:
-			from cProfile import Profile
-			pr = Profile()
-			pr.enable()
-		debug_task = 'task' in self.flags
+		#if 'profile' in self.flags:
+		#	from cProfile import Profile
+		#	pr = Profile()
+		#	pr.enable()
 		while self.path:
 			if debug_task:
 				hemera.debug_task(self)
 			"""
-			Prepare instruction, get arguments and type signature
+			Prepare instruction, get arguments and type signature.
 			"""
-			instruction = self.instructions[self.path]
+			instruction, arity = self.instructions[self.path], self.arity[self.path]
 			self.label, self.address, self.registers = instruction[0], instruction[1], instruction[2:]
 			self.path = self.path + 1
 			if self.label == ';': # Label
 				continue
 			args = [self] + [self.find(register) for register in self.registers]
-			signature = tuple(self.check(register) for register in self.registers)
-			length = len(signature)
+			signature = tuple([self.check(register) for register in self.registers])
 			"""
-			Multiple dispatch algorithm, with help from:
+			Multiple dispatch algorithm, with help from Julia:
 			https://github.com/JeffBezanson/phdthesis
+			Now distilled into 3 extremely stupid list comprehensions!
 			"""
 			if not (method := self.find(self.label)):
 				continue
-			if not (candidates := [x for x in method.methods if method.lengths[x] == length]): # Remove candidates with mismatching arity
+			if not (candidates := [x for x in method.methods if method.arity[x] == arity]): # Remove candidates with mismatching arity
 				self.error('DISP', method.name, str(signature))
 				continue
 			for i, name in enumerate(signature):
-				signatures, candidates, max_depth = candidates, [], 0 # Filtering left-to-right search
-				for item in signatures:
-					if item[i] in self.supertypes[name]: # Check that parameter type is a supertype of x
-						candidates.append(item)
-						max_depth = max(max_depth, self.specificity[item[i]]) # Only ever increases
-				else:
-					candidates = [item for item in candidates if self.specificity[item[i]] == max_depth] # Keep only most specific signatures
+				candidates = [item for item in candidates if item[i] in self.supertypes[name]] # Filter for candidates with a matching supertype
+				depth = max([self.specificity[item[i]] for item in candidates], default = 0) # Get the depth of the most specific candidate
+				candidates = [item for item in candidates if self.specificity[item[i]] == depth] # Keep only the most specific signatures
 			if candidates:
-				instance, match = method.methods[candidates[0]], candidates[0]
+				match = candidates[0] # Just take the first match it finds, I don't know
+				instance = method.methods[match]
 			else:
 				self.error('DISP', method.name, str(signature))
 				continue
 			"""
-			Execute instruction, update return registers with return value and type
+			Execute instruction, update or unbind registers.
 			"""
 			value = instance(*args)
-			self.values[self.address] = value
-			if self.address[0] in '0123456789':
-				self.types[self.address] = arche.infer(value) if method.finals[match] == '*' else method.finals[match]
-		if 'profile' in self.flags:
-			pr.disable()
-			pr.print_stats(sort = 'tottime')
+			if self.unbind:
+				del self.values[self.address], self.types[self.address] # Delete binding if it exists in the namespace
+				self.unbind = False
+			else:
+				self.values[self.address] = value
+				if self.address[0] in '0123456789':
+					self.types[self.address] = arche.infer(value) if method.finals[match] == '*' else method.finals[match]
+		#if 'profile' in self.flags:
+		#	pr.disable()
+		#	pr.print_stats(sort = 'tottime')
 		if 'namespace' in self.flags:
 			hemera.debug_namespace(self)
 		#self.calls.send((self.values,
@@ -218,10 +225,6 @@ class task:
 	#	self.values, self.types, self.supertypes, self.reserved = namespace # Update version of task in this process
 	#	self.bind(self.start.message.value, message)
 
-	def message(self, instruction = None, *args):
-		
-		mp.current_process().stream.put([instruction, self.pid] + list(args) if instruction else None)
-
 	def bind(self, name, value, type_name = 'null'): # Creates or updates a name binding in main
 		
 		if name in self.reserved or name in self.internal_values:
@@ -233,10 +236,6 @@ class task:
 			self.types[name] = 'untyped'
 		return value
 
-	def unbind(self, name): # Destroys a name binding in the current namespace
-
-		del self.values[name], self.types[name] # Delete binding if it exists in the namespace
-
 	def find(self, name): # Retrieves a binding's value in the current namespace
 		
 		if name in self.internal_values:
@@ -246,14 +245,14 @@ class task:
 		else:
 			return self.error('FIND', name)
 
-	def check(self, name, default = 'null'): # Internal function to check if a name has a type bound to it
+	def check(self, name, default = None): # Internal function to check if a name has a type bound to it
 
 		if name in self.internal_types:
 			return self.internal_types[name]
 		elif name in self.types:
 			return self.types[name]
 		else:
-			return default
+			return arche.infer(default)
 
 	def cast(self, value, type_name, known = 'null'): # Checks type of value and returns boolean
 		
@@ -273,31 +272,9 @@ class task:
 		else:
 			return value # Return indicates success; cast() raises an exception on failure
 
-	def dispatch(self, method, args): # Performs multiple dispatch on a function
+	def message(self, instruction = None, *args):
 		
-		if not method:
-			raise TypeError
-		signatures = []
-		candidates = [x for x in method.methods if len(x) == len(args)] # Remove candidates with mismatching arity
-		if not candidates: # No candidate with matching arity
-			return None
-		for i, name in enumerate(args):
-			signatures, candidates, max_depth = candidates, [], 0 # Filtering left-to-right search
-			for signature in signatures:
-				if signature[i] in self.supertypes[name]: # Check that parameter type is a supertype of x
-					candidates.append(signature)
-					subtype_depth = len(self.supertypes[signature[i]]) # Length of supertypes is equivalent to specificity of subtype
-					max_depth = subtype_depth if subtype_depth > max_depth else max_depth # Only ever increases
-			else:
-				candidates = [x for x in candidates if len(self.supertypes[x[i]]) == max_depth] # Keep only most specific signature 
-		else:
-			if candidates:
-				return (method.methods[candidates[0]], candidates[0])
-			else:
-				self.error('DISP', method.name, str(args))
-				raise TypeError
-
-	# https://github.com/JeffBezanson/phdthesis
+		mp.current_process().stream.put([instruction, self.pid] + list(args) if instruction else None)
 
 	def error(self, status, *args): # Error handler
 		

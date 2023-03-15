@@ -39,19 +39,30 @@ class method: # Multimethod object
 		self.name = name
 		self.finals = {}
 		self.methods = {}
-		self.lengths = {}
+		self.arity = {}
 
 	def register(self, method, final, signature): # Overwrites duplicate signatures
 		
 		self.finals[signature] = final # Return type
 		self.methods[signature] = method # Function
-		self.lengths[signature] = len(signature) # Pre-evaluated length of signature
+		self.arity[signature] = len(signature) # Pre-evaluated length of signature
 
 class function_definition: # User-defined function
 
-	def __init__(self): pass
+	def __init__(self, instructions, params, types):
 
-	def __call__(self, *args): return
+		self.instructions = [' '.join(i) for i in instructions] # Oh, well
+		self.name, self.params = params[0], params[1:]
+		self.type, self.types = types[0], types[1:]
+
+	def __call__(self, task, *args):
+
+		if task.instructions[task.path][0] == '<-':
+			task.message('future', self, args, task.values[self.name])
+			return task.calls.recv()
+		else:
+			task.message('call', self, args, task.values[self.name])
+			return task.cast(task.calls.recv(), self.type)
 
 # Internal functions
 
@@ -80,7 +91,9 @@ def bind_untyped(task, value):
 	
 	type_name = task.instructions[task.path][2]
 	if task.cast(value, type_name, task.types[task.registers[0]]) is not None:
-		return task.bind(task.address, value, infer(value) if type_name == 'null' else type_name)
+		return task.bind(task.address,
+						 value,
+						 task.check(task.address, value) if type_name == 'null' else type_name)
 
 f_bind = method('.bind')
 f_bind.register(bind_untyped,
@@ -162,8 +175,11 @@ def for_untyped(task, iterator):
 	try:
 		value = next(iterator)
 		if task.cast(value, type_name, task.types[task.registers[0]]) is not None:
-			return task.bind(task.address, value, infer(value) if type_name == 'null' else type_name)
+			return task.bind(task.address,
+							 value,
+							 task.check(task.address, value) if type_name == 'null' else type_name)
 	except StopIteration:
+		task.unbind = True
 		scope = int(task.instructions[task.path][1])
 		while True:
 			label = task.instructions[task.path]
@@ -176,6 +192,35 @@ f_for = method('.for')
 f_for.register(for_untyped,
 			   'untyped',
 			   ('untyped',))
+
+def function_null(task):
+
+	name = task.address
+	scope = int(task.instructions[task.path][1])
+	types = task.instructions[task.path][2:]
+	params = task.instructions[task.path + 1][2:]
+	start = task.path + 1
+	while True: # Collect instructions
+		label = task.instructions[task.path]
+		if label[0] == ';' and int(label[1]) == scope and label[2] == '.end':
+			end = task.path + 1
+			break #return
+		task.path = task.path + 1
+	definition = function_definition(task.instructions[start:end], params, types)
+	if name in task.values and task.types[name] == 'function':
+		routine = task.values[name]
+	else:
+		routine = method(name)
+		task.types[name] = 'function'
+	routine.register(definition,
+					 types[0],
+					 tuple(types[1:]))
+	return routine
+
+f_function = method('.function')
+f_function.register(function_null,
+					'function',
+					())
 
 def index_string_integer(task, sequence, index):
 
@@ -435,6 +480,15 @@ f_reverse.register(reverse_slice,
 				   'slice',
 				   ('slice',))
 
+def round_number(task, value):
+
+	return round(value)
+
+f_round = method('round')
+f_round.register(round_number,
+				 'integer',
+				 ('number',))
+
 # Namespace composition and internals
 
 functions = {v.name: v for k, v in globals().items() if k.split('_')[0] == 'f'}
@@ -451,7 +505,10 @@ names = {
 	'dict': 'record',
 	'slice': 'slice',
 	'future': 'future',
-	'stream': 'stream'
+	'stream': 'stream',
+	'type_definition': 'type',
+	'event_definition': 'event',
+	'function_definition': 'function'
 }
 
 def infer(value): # Infers type of value
@@ -511,31 +568,6 @@ def infer(value): # Infers type of value
 
 #		routine.bind(self.name, self, 'event')
 #		routine.branch()
-
-#class function_statement(coroutine):
-
-#	def __call__(self, args, routine):
-
-#		if len(self.types) - 1 != len(args):
-#			return routine.error('ARGS', len(self.types) - 1, len(args)) # Requires data to be sent to the stack
-#		for i, arg in enumerate(args):
-#			if routine.cast(arg, self.types[i + 1]) is None: # Cast error
-#				return None
-#		if isinstance(routine.node.head, bind):
-#			routine.message('future', self, args)
-#			return routine.calls.recv()
-#		else:
-#			routine.message('call', self, args)
-#			return routine.cast(routine.calls.recv(), self.types[0])
-
-#	def start(self, routine):
-		
-#		routine.bind(self.name, self, 'function')
-#		routine.branch() # Skips body of routine
-
-#	def execute(self, routine):
-		
-#		routine.node = None
 	
 #class constraint_statement(statement):
 
@@ -597,18 +629,6 @@ def infer(value): # Infers type of value
 #		address = routine.get('channel')
 #		routine.message('send', address, routine.get(address.check))
 #		routine.send(address, 'channel')
-
-#class function_call(left_bracket):
-
-#	def execute(self, routine):
-
-#		args = routine.get() if self.length > 1 else []
-#		if not isinstance(args, list): # Type correction
-#			args = [args] # Very tiresome type correction, at that
-#		if self.nodes[0].operation: # Type operation
-#			args = [routine.get()] + args # Shuffle arguments
-#		function = routine.get('callable') # Get actual function
-#		routine.send(function(args, routine), None if isinstance(self.head, bind) else function.types[0])
 
 #class meta_statement(left_bracket):
 

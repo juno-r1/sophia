@@ -1,4 +1,14 @@
-a: 0; b: 1
-for i in 0:10000:1:
-	a: b; b: a + b
-return a
+// 3.2.7, 5.5
+
+num increment (num n):
+
+	return n + 1
+
+int increment (int n):
+
+	return n - 1
+
+bool a: increment(0.5) = 1.5
+bool b: increment(1) = 0
+
+return a and b

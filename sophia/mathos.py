@@ -6,7 +6,7 @@ from arche import element, slice, method
 
 def u_add(_, x): # Pain
 
-	return x
+	return +x
 
 def b_add(_, x, y):
 

@@ -264,7 +264,7 @@ class module(coroutine): # Module object is always the top level of a syntax tre
 
 	def __str__(self): return 'module ' + self.name
 
-	def start(self): return '; 0 .start',
+	def start(self): return '; 0 {0}'.format(self.name),
 
 	def execute(self): return '.return 0 &0', '; 0 .end' # &0 is always null
 
@@ -288,7 +288,7 @@ class event_statement(coroutine):
 		super().__init__([tokens[0]]) # Sets name and message parameter as self.value
 		self.name, self.type = tokens[0].value, tokens[0].type
 		self.message = tokens[2]
-		self.types = [item.type if item.type else 'untyped' for item in self.value]
+		self.types = [item.type if item.type else 'untyped' for item in self.value[1:]]
 
 class function_statement(coroutine):
 
@@ -296,7 +296,20 @@ class function_statement(coroutine):
 
 		super().__init__([token for token in tokens[0:-1:2] if token.value != ')']) # Sets name and a list of parameters as self.value
 		self.name, self.type = tokens[0].value, tokens[0].type
-		self.types = [item.type if item.type else 'untyped' for item in self.value]
+		self.types = [item.type if item.type else 'untyped' for item in self.value[1:]]
+
+	def start(self):
+		
+		if self.types:
+			return ('.function {0}'.format(self.name),
+					'; {0} {1} {2}'.format(self.scope, self.type, ' '.join(self.types)),
+					'; {0} {1}'.format(self.scope, ' '.join(item.value for item in self.value)))
+		else:
+			return ('.function {0}'.format(self.name),
+					'; {0} {1}'.format(self.scope, self.type),
+					'; {0} {1}'.format(self.scope, self.name))
+
+	def execute(self): return '.return 0 &0', '; {0} .end'.format(self.scope)
 
 class assignment(statement):
 
@@ -620,8 +633,6 @@ class function_call(left_bracket):
 			instructions = ['{0} {1} {2}'.format(self.nodes[0].value, self.register, ' '.join(item.register for item in self.nodes[1:]))]
 		else:
 			instructions = ['{0} {1}'.format(self.nodes[0].value, self.register)]
-		if not isinstance(self.head, bind):
-			instructions.append('* {0} {1}'.format(self.register, self.register)) # Overwrite future with resolution
 		return instructions
 
 class parenthesis(left_bracket):
