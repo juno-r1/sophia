@@ -1,14 +1,6 @@
-// 5.6
+num increment (num n):
 
-num ++ (num x):
+	return n + >m
 
-	return x + 1
-
-num ++ (num x, num y):
-
-	return x + y
-
-bool a: ++1 = 2
-bool b: 1 ++ 2 = 3
-
-return a and b
+x <- increment(1)
+return *(1 -> x) = 2

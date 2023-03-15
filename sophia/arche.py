@@ -5,10 +5,12 @@ The Arche module defines the standard library and internal data types.
 from rationals import Rational as real
 from sys import stderr
 
-class element(tuple): pass # Stupid hack to make record construction work
+class element(tuple):
+	"""Key-value pair used in record construction."""
+	pass
 
-class slice: # Slice object
-
+class slice:
+	"""Implements an arithmetic slice with inclusive range."""
 	def __init__(self, indices):
 		
 		self.indices = indices
@@ -32,8 +34,13 @@ class slice: # Slice object
 				yield n
 				n = n + self.indices[2]
 
-class method: # Multimethod object
-
+class method:
+	"""
+	Implements a multimethod.
+	Multimethods enable multiple dispatch on functions. Functions dispatch for
+	the arity and types of their arguments. The precedence for dispatch is
+	left-to-right, then most to least specific type.
+	"""
 	def __init__(self, name):
 
 		self.name = name
@@ -47,8 +54,8 @@ class method: # Multimethod object
 		self.methods[signature] = method # Function
 		self.arity[signature] = len(signature) # Pre-evaluated length of signature
 
-class function_definition: # User-defined function
-
+class function_definition:
+	"""Definition for a user-defined function instance of a multimethod."""
 	def __init__(self, instructions, params, types):
 
 		self.instructions = [' '.join(i) for i in instructions] # Oh, well
@@ -57,8 +64,9 @@ class function_definition: # User-defined function
 
 	def __call__(self, task, *args):
 
-		if task.instructions[task.path][0] == '<-':
+		if task.instructions[task.path][2] == '.bind':
 			task.message('future', self, args, task.values[self.name])
+			task.override = 'future'
 			return task.calls.recv()
 		else:
 			task.message('call', self, args, task.values[self.name])
@@ -97,7 +105,7 @@ def bind_untyped(task, value):
 
 f_bind = method('.bind')
 f_bind.register(bind_untyped,
-				'untyped',
+				'.',
 				('untyped',))
 
 def branch_null(task): # Unconditional branch
@@ -122,10 +130,10 @@ def branch_boolean(task, condition): # Conditional branch
 
 f_branch = method('.branch')
 f_branch.register(branch_null,
-				  'null',
+				  '.',
 				  ())
 f_branch.register(branch_boolean,
-				  'null',
+				  '.',
 				  ('boolean',))
 
 def break_null(task):
@@ -139,7 +147,7 @@ def break_null(task):
 
 f_break = method('.break')
 f_break.register(break_null,
-				 'null',
+				 '.',
 				 ())
 
 def check_untyped(task, value):
@@ -190,7 +198,7 @@ def for_untyped(task, iterator):
 
 f_for = method('.for')
 f_for.register(for_untyped,
-			   'untyped',
+			   '.',
 			   ('untyped',))
 
 def function_null(task):
@@ -312,10 +320,6 @@ def iterator_slice(task, iterable):
 
 	return iter(iterable)
 
-def iterator_stream(task, iterable):
-
-	return None # Not yet implemented
-
 f_iterator = method('.iterator')
 f_iterator.register(iterator_string,
 					'untyped',
@@ -329,9 +333,6 @@ f_iterator.register(iterator_record,
 f_iterator.register(iterator_slice,
 					'untyped',
 					('slice',))
-f_iterator.register(iterator_stream,
-					'untyped',
-					('stream',))
 
 def loop_null(task):
 
@@ -344,7 +345,7 @@ def loop_null(task):
 
 f_loop = method('.loop')
 f_loop.register(loop_null,
-				'null',
+				'.',
 				())
 
 def return_untyped(task, sentinel):
@@ -504,8 +505,7 @@ names = {
 	'tuple': 'list',
 	'dict': 'record',
 	'slice': 'slice',
-	'future': 'future',
-	'stream': 'stream',
+	'reference': 'future',
 	'type_definition': 'type',
 	'event_definition': 'event',
 	'function_definition': 'function'
@@ -597,22 +597,6 @@ def infer(value): # Infers type of value
 #	def execute(self, routine):
 
 #		routine.node = None
-
-#class bind(prefix): # Defines the bind operator
-
-#	def execute(self, routine):
-		
-#		address = routine.get('channel')
-#		routine.bind(self.value, address, self.type) # Binds routine
-#		routine.send(address, 'channel')
-
-#class receive(prefix): # Defines the receive operator
-
-#	def execute(self, routine):
-		
-#		value = routine.messages.recv()
-#		routine.bind(self.value.value, value, self.value.type if self.value.type else None)
-#		routine.send(value, self.value.type if self.value.type else None)
 
 #class resolve(prefix): # Defines the resolution operator
 

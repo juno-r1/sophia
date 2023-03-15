@@ -11,8 +11,13 @@ import multiprocessing as mp
 from os import name as os_name
 from queue import Empty
 
-class runtime: # Base runtime object
-
+class runtime:
+	"""
+	Base runtime environment for Sophia.
+	The runtime environment is the supervisor for the tasks created by a
+	running program. It implements a pool for task scheduling and handles
+	message passing by acting as an intermediary between running tasks.
+	"""
 	def __init__(self, address, *flags, root = 'sophia'):
 		
 		mp.freeze_support()
@@ -54,7 +59,7 @@ class runtime: # Base runtime object
 		self.tasks[routine.pid].result = self.pool.apply_async(routine.execute)
 		self.tasks[routine.pid].count = self.tasks[routine.pid].count + 1
 		self.tasks[pid].references.append(routine.pid) # Mark reference to process
-		self.tasks[pid].calls.send(kleio.future(routine)) # Return reference to process
+		self.tasks[pid].calls.send(kleio.reference(routine)) # Return reference to process
 
 	def stream(self, pid, routine, args):
 		
@@ -66,7 +71,7 @@ class runtime: # Base runtime object
 		self.tasks[routine.pid].result = self.pool.apply_async(routine.execute)
 		self.tasks[routine.pid].count = self.tasks[routine.pid].count + 1
 		self.tasks[pid].references.append(routine.pid) # Mark reference to process
-		self.tasks[pid].calls.send(kleio.stream(routine)) # Return reference to process
+		self.tasks[pid].calls.send(kleio.reference(routine)) # Return reference to process
 
 	def link(self, pid, name, args):
 		
@@ -74,14 +79,14 @@ class runtime: # Base runtime object
 
 	def send(self, pid, reference, message):
 		
-		if isinstance(reference, kleio.stream):
-			self.tasks[reference.pid].result.get() # Wait until routine is done with previous message
-			namespace = self.tasks[reference.pid].calls.recv() # Get namespace from task
-			routine = self.events[reference.pid]
-			routine.prepare(namespace, message) # Mutate this version of the task
-			self.tasks[reference.pid].result = self.pool.apply_async(routine.execute)
-		else:
-			self.tasks[reference.pid].messages.send(message)
+		#if isinstance(reference, kleio.stream):
+		#	self.tasks[reference.pid].result.get() # Wait until routine is done with previous message
+		#	namespace = self.tasks[reference.pid].calls.recv() # Get namespace from task
+		#	routine = self.events[reference.pid]
+		#	routine.prepare(namespace, message) # Mutate this version of the task
+		#	self.tasks[reference.pid].result = self.pool.apply_async(routine.execute)
+		#else:
+		self.tasks[reference.pid].messages.send(message)
 
 	def resolve(self, pid, reference):
 
@@ -135,7 +140,11 @@ class runtime: # Base runtime object
 		return self.tasks[self.main.pid].result.get()
 
 class task:
-
+	"""
+	Base task object for Sophia.
+	A task handles synchronous program execution and passes messages to and
+	from the supervisor.
+	"""
 	def __init__(self, instructions, values, types, flags): # God objects? What is she objecting to?
 		
 		self.name, self.type = instructions[0].split(' ')[2] if instructions else '', 'untyped'
@@ -152,8 +161,9 @@ class task:
 		self.path = 1 if instructions else 0 # Does not execute if the parser encountered an error
 		self.label, self.address, self.registers = None, None, None
 		self.unbind = False # Unbind flag
+		self.override = None # Override flag, for when a method has a different return type to the one declared
 
-	def execute(self): # Target of run()
+	def execute(self): # Target of task.pool.apply_async()
 		
 		debug_task = 'task' in self.flags
 		if 'instructions' in self.flags:
@@ -196,16 +206,18 @@ class task:
 				self.error('DISP', method.name, str(signature))
 				continue
 			"""
-			Execute instruction, update or unbind registers.
+			Execute instruction and update or unbind registers.
 			"""
 			value = instance(*args)
 			if self.unbind:
-				del self.values[self.address], self.types[self.address] # Delete binding if it exists in the namespace
+				del self.values[self.address], self.types[self.address]
 				self.unbind = False
-			else:
+			elif self.override:
 				self.values[self.address] = value
-				if self.address[0] in '0123456789':
-					self.types[self.address] = arche.infer(value) if method.finals[match] == '*' else method.finals[match]
+				self.types[self.address], self.override = self.override, None
+			elif (final := method.finals[match]) != '.':
+				self.values[self.address] = value
+				self.types[self.address] = arche.infer(value) if final == '*' else final
 		#if 'profile' in self.flags:
 		#	pr.disable()
 		#	pr.print_stats(sort = 'tottime')
@@ -262,7 +274,7 @@ class task:
 		stack = [] # Stack of user-defined types, with the requested type at the bottom
 		while type_routine.supertype and type_routine.name != known: # Known type optimises by truncating stack
 			stack.append(type_routine)
-			type_routine = self.find(type_routine.supertype) # Type routine is guaranteed to be a built-in when loop ends, so it checks that before any of the types on the stack
+			type_routine = self.find(type_routine.supertype)
 		if type_routine(value) is None: # Check built-in type
 			return self.error('CAST', type_routine.name, str(value))
 		while stack:
@@ -281,4 +293,4 @@ class task:
 		if self.address != '0': # Suppresses error for assertions
 			if 'suppress' not in self.flags:
 				hemera.debug_error(self.name, self.path - 1, status, args)
-			self.path = 0 # Immediately end routine
+			self.path = 0

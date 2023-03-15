@@ -2,7 +2,7 @@
 The Mathos module defines built-in operators.
 '''
 
-from arche import element, slice, method
+from arche import element, slice, method, infer
 
 def u_add(_, x): # Pain
 
@@ -36,11 +36,19 @@ op_sub.register(b_sub,
 				'number',
 				('number', 'number'))
 
+def u_rsv(task, x):
+	
+	task.message('resolve', x)
+	return task.cast(task.calls.recv(), x.type)
+
 def b_mul(_, x, y):
 
 	return x * y
 
 op_mul = method('*')
+op_mul.register(u_rsv,
+				'*',
+				('future',))
 op_mul.register(b_mul,
 				'number',
 				('number', 'number'))
@@ -101,11 +109,19 @@ op_ltn.register(b_ltn,
 				'boolean',
 				('number', 'number'))
 
+def n_rcv(task):
+	
+	value = task.messages.recv()
+	return task.bind(task.address, value, infer(value))
+
 def b_gtn(_, x, y):
 
 	return x > y
 
 op_gtn = method('>')
+op_gtn.register(n_rcv,
+				'.',
+				())
 op_gtn.register(b_gtn,
 				'boolean',
 				('number', 'number'))
@@ -292,6 +308,17 @@ op_usf = method('!')
 op_usf.register(u_usf,
 				'*',
 				('untyped',))
+
+def b_snd(task, x, y):
+
+	if task.cast(x, y.check):
+		task.message('send', y, x)
+		return y
+
+op_snd = method('->')
+op_snd.register(b_snd,
+				'future',
+				('untyped', 'future'))
 
 # Namespace composition
 

@@ -36,7 +36,7 @@ binding_power = (('(', ')', '[', ']', '{', '}'), # The left-binding power of a b
 				 ('^',))
 
 class translator:
-
+	"""Generates a list of instructions from a syntax tree."""
 	def __init__(self, node):
 		
 		self.start = node
@@ -84,6 +84,8 @@ class translator:
 		if self.node.nodes: # Temporary register
 			if isinstance(self.node.head, assert_statement):
 				return '0' # 0 is the return register and is assumed to be nullable
+			elif isinstance(self.node.head, bind):
+				return self.node.head.value # Sure, I guess
 			else:
 				index = str(sum(self.path) + 1) # Sum of path is a pretty good way to minimise registers
 				self.values[index] = None
@@ -91,10 +93,9 @@ class translator:
 				return index
 		else:
 			if isinstance(self.node, name): # Variable register
-				if isinstance(self.node.head, assert_statement): # For casts
-					return '0'
-				else:
-					return self.node.value
+				return '0' if isinstance(self.node.head, assert_statement) else self.node.value
+			elif isinstance(self.node, receive):
+				return self.node.value.value
 			elif self.node.value is None: # Null value is interned so that instructions can reliably take null as an operand
 				return '&0'
 			else: # Constant register
@@ -105,8 +106,8 @@ class translator:
 				self.types[index] = arche.infer(value)
 				return index
 
-class node: # Base node object
-
+class node:
+	"""Base node object."""
 	def __init__(self, value, *nodes): # Do not store state in nodes
 		
 		self.value = value # For operands that shouldn't be evaluated or that should be handled differently
@@ -239,12 +240,12 @@ class node: # Base node object
 			
 		return self
 
-class statement(node): # Base statement object
-
+class statement(node):
+	"""Base statement node."""
 	def __str__(self): return ('else ' if self.branch else '') + type(self).__name__
 
-class coroutine(statement): # Base coroutine object
-
+class coroutine(statement):
+	"""Base coroutine node."""
 	def __init__(self, value):
 
 		super().__init__(value)
@@ -252,8 +253,8 @@ class coroutine(statement): # Base coroutine object
 
 	def __str__(self): return str(['{0} {1}'.format(item.type, item.value) for item in self.value])
 
-class module(coroutine): # Module object is always the top level of a syntax tree
-
+class module(coroutine):
+	"""Base module node. This is always the top node of a syntax tree."""
 	def __init__(self, file_name, root = 'sophia'):
 
 		super().__init__(None) # Sets initial node to self
@@ -270,7 +271,7 @@ class module(coroutine): # Module object is always the top level of a syntax tre
 	def execute(self): return '.return 0 &0', '; 0 .end' # &0 is always null
 
 class type_statement(coroutine):
-
+	"""Defines a type definition."""
 	def __init__(self, tokens):
 		
 		super().__init__([tokens[0]]) # Type and type parameter
@@ -283,7 +284,7 @@ class type_statement(coroutine):
 		self.namespace = dict() # Persistent namespace of type operations
 
 class event_statement(coroutine):
-
+	"""Defines an event definition."""
 	def __init__(self, tokens):
 
 		super().__init__([tokens[0]]) # Sets name and message parameter as self.value
@@ -292,7 +293,7 @@ class event_statement(coroutine):
 		self.types = [item.type if item.type else 'untyped' for item in self.value[1:]]
 
 class function_statement(coroutine):
-
+	"""Defines a function definition."""
 	def __init__(self, tokens):
 
 		super().__init__([token for token in tokens[0:-1:2] if token.value != ')']) # Sets name and a list of parameters as self.value
@@ -313,7 +314,7 @@ class function_statement(coroutine):
 	def execute(self): return '.return 0 &0', '; {0} .end'.format(self.scope)
 
 class assignment(statement):
-
+	"""Defines an assignment."""
 	def __init__(self, tokens): # Supports multiple assignment
 		
 		tokens = tokens.copy()
@@ -344,7 +345,7 @@ class assignment(statement):
 		return instructions
 
 class if_statement(statement):
-
+	"""Defines an if statement."""
 	def __init__(self, tokens):
 
 		super().__init__(None, lexer(tokens[1:-1]).parse())
@@ -357,7 +358,7 @@ class if_statement(statement):
 	def execute(self): return '.branch {0}'.format(self.register), '; {0} .end'.format(self.scope)
 
 class while_statement(statement):
-
+	"""Defines a while statement."""
 	def __init__(self, tokens):
 
 		super().__init__(None, lexer(tokens[1:-1]).parse())
@@ -370,7 +371,7 @@ class while_statement(statement):
 	def execute(self): return '.loop {0}'.format(self.register), '; {0} .end'.format(self.scope)
 
 class for_statement(statement):
-
+	"""Defines a for statement."""
 	def __init__(self, tokens):
 
 		super().__init__(tokens[1], lexer(tokens[3:-1]).parse())
@@ -385,7 +386,7 @@ class for_statement(statement):
 	def execute(self): return '.loop 0', '; {0} .end'.format(self.scope)
 
 class assert_statement(statement):
-
+	"""Defines an assertion."""
 	def __init__(self, tokens):
 		
 		nodes, sequence, parens = [], [], 0
@@ -410,7 +411,7 @@ class assert_statement(statement):
 	def execute(self): return '.branch {0}'.format(self.register), '; {0} .end'.format(self.scope)
 
 class return_statement(statement):
-
+	"""Defines a return statement."""
 	def __init__(self, tokens):
 		
 		super().__init__(None, lexer(tokens[1:]).parse()) if len(tokens) > 1 else super().__init__(None)
@@ -419,7 +420,7 @@ class return_statement(statement):
 	def execute(self): return '.return 0 {0}'.format(self.nodes[0].register if self.nodes else '&0'),
 
 class link_statement(statement):
-
+	"""Defines a link."""
 	def __init__(self, tokens):
 
 		super().__init__(tokens[1::2]) # Allows multiple links
@@ -428,7 +429,7 @@ class link_statement(statement):
 	def __str__(self): return ('else ' if self.branch else '') + 'link_statement ' + str([item.value for item in self.nodes])
 
 class start_statement(statement):
-
+	"""Defines an initial."""
 	def __init__(self, tokens):
 
 		super().__init__(tokens[2::2])
@@ -437,7 +438,7 @@ class start_statement(statement):
 	def __str__(self): return 'start ' + str([item.value for item in self.value])
 
 class else_statement(statement):
-
+	"""Defines an else statement."""
 	def __init__(self, tokens):
 
 		super().__init__(None)
@@ -445,21 +446,21 @@ class else_statement(statement):
 
 	def execute(self): return '.branch {0}'.format(self.register), '; {0} .end'.format(self.scope)
 
-class identifier(node): # Generic identifier class
-
+class identifier(node):
+	"""Generic identifier node."""
 	def __init__(self, tokens):
 
 		super().__init__(tokens)
 		self.lbp = 0
 
-class literal(identifier): # Adds literal behaviours to a node
-
+class literal(identifier):
+	"""Defines a literal."""
 	def nud(self, lex): return self # Gives self as node
 
 	def execute(self): return ()
 
-class name(identifier): # Adds name behaviours to a node
-
+class name(identifier):
+	"""Defines a name."""
 	def nud(self, lex):
 
 		if isinstance(lex.peek, left_bracket): # If function call:
@@ -475,8 +476,8 @@ class name(identifier): # Adds name behaviours to a node
 		else:
 			return ()
 
-class keyword(identifier): # Adds keyword behaviours to a node
-
+class keyword(identifier):
+	"""Defines a keyword."""
 	def __init__(self, tokens):
 
 		super().__init__(tokens)
@@ -493,15 +494,15 @@ class keyword(identifier): # Adds keyword behaviours to a node
 		elif self.value == 'break':
 			return '.break 0', '; {0} .break'.format(loop.scope)
 
-class operator(node): # Generic operator node
-
+class operator(node):
+	"""Generic operator node."""
 	def __init__(self, value):
 
 		super().__init__(value)
 		self.lbp = bp(value) # Gets binding power of symbol
 
-class prefix(operator): # Adds prefix behaviours to a node
-
+class prefix(operator):
+	"""Defines a prefix."""
 	def __init__(self, tokens):
 
 		super().__init__(tokens)
@@ -516,14 +517,14 @@ class prefix(operator): # Adds prefix behaviours to a node
 												   self.register,
 												   self.nodes[0].register),
 
-class bind(prefix): # Defines the bind operator
-
+class bind(prefix):
+	"""Defines the bind operator."""
 	def __str__(self): return 'bind ' + self.value
 
-	def execute(self): return (self.value, -1), ('<-', 2)
+	def execute(self): return '; {0} .bind'.format(self.scope), '.set {0} {1}'.format(self.register, self.value)
 
-class receive(prefix): # Defines the receive operator
-
+class receive(prefix):
+	"""Defines the receive operator."""
 	def __str__(self): return '>' + self.value.value
 
 	def nud(self, lex):
@@ -531,14 +532,19 @@ class receive(prefix): # Defines the receive operator
 		self.value = lex.parse(self.lbp)
 		return self
 
-	def execute(self): return (self.value.value, -1), ('>', 1)
+	def execute(self):
+		
+		if isinstance(self.head, assert_statement):
+			return '> {0}'.format(self.value.value), '.set 0 {0}'.format(self.value.value)
+		else:
+			return '> {0}'.format(self.value.value),
 
-class resolve(prefix): # Defines the resolution operator
+class resolve(prefix):
+	"""Defines the resolution operator."""
+	def execute(self): return '* {0} {1}'.format(self.register, self.nodes[0].register),
 
-	def execute(self): return ('.resolve', 1),
-
-class infix(operator): # Adds infix behaviours to a node
-
+class infix(operator):
+	"""Defines a left-binding infix."""
 	def led(self, lex, left):
 		
 		self.nodes = [left, lex.parse(self.lbp)]
@@ -549,8 +555,8 @@ class infix(operator): # Adds infix behaviours to a node
 													   self.nodes[0].register,
 													   self.nodes[1].register),
 
-class left_conditional(infix): # Defines the conditional operator
-
+class left_conditional(infix):
+	"""Defines the condition of the conditional operator."""
 	def __init__(self, value):
 
 		super().__init__(value)
@@ -568,8 +574,8 @@ class left_conditional(infix): # Defines the conditional operator
 
 	def execute(self): return ()
 
-class right_conditional(infix): # Defines the conditional operator
-
+class right_conditional(infix):
+	"""Defines the branches of the conditional operator."""
 	def __init__(self, value):
 
 		super().__init__(value)
@@ -582,8 +588,8 @@ class right_conditional(infix): # Defines the conditional operator
 
 	def execute(self): return '.set {0} {1}'.format(self.head.register, self.nodes[1].register), '; {0} .end'.format(self.scope)
 
-class infix_r(operator): # Adds right-binding infix behaviours to a node
-
+class infix_r(operator):
+	"""Defines a right-binding infix."""
 	def led(self, lex, left):
 		
 		self.nodes = [left, lex.parse(self.lbp - 1)]
@@ -594,8 +600,8 @@ class infix_r(operator): # Adds right-binding infix behaviours to a node
 													   self.nodes[0].register,
 													   self.nodes[1].register),
 
-class concatenator(operator): # Adds comma behaviours to a node
-
+class concatenator(operator):
+	"""Defines a concatenator."""
 	def led(self, lex, left):
 
 		n = lex.parse(self.lbp - 1)
@@ -612,8 +618,8 @@ class concatenator(operator): # Adds comma behaviours to a node
 		else:
 			return ['.concatenate {0} {1}'.format(self.register, self.nodes[0].register)] + ['.concatenate {0} {1} {2}'.format(self.register, self.register, item.register) for item in self.nodes[1:]]
 
-class left_bracket(operator): # Adds left-bracket behaviours to a node
-
+class left_bracket(operator):
+	"""Generic bracket node."""
 	def nud(self, lex): # For normal parentheses
 		
 		self.nodes = [] if isinstance(lex.peek, right_bracket) else [lex.parse(self.lbp)] # Accounts for empty brackets
@@ -627,7 +633,7 @@ class left_bracket(operator): # Adds left-bracket behaviours to a node
 		return self
 
 class function_call(left_bracket):
-
+	"""Defines a function call."""
 	def execute(self):
 		
 		if self.nodes:
@@ -637,11 +643,11 @@ class function_call(left_bracket):
 		return instructions
 
 class parenthesis(left_bracket):
-
+	"""Defines a set of parentheses."""
 	def execute(self): return ()
 
 class sequence_index(left_bracket):
-
+	"""Defines a sequence index."""
 	def led(self, lex, left): # Remove comma operator
 		
 		if isinstance(lex.peek, right_bracket): # Accounts for empty brackets
@@ -661,7 +667,7 @@ class sequence_index(left_bracket):
 		return instructions
 
 class sequence_literal(left_bracket):
-
+	"""Defines a sequence constructor."""
 	def execute(self):
 		
 		if self.nodes:
@@ -670,7 +676,7 @@ class sequence_literal(left_bracket):
 			return ()
 
 class meta_statement(left_bracket):
-
+	"""Defines a meta-statement."""
 	def __init__(self, value):
 
 		super().__init__(value)
@@ -678,11 +684,19 @@ class meta_statement(left_bracket):
 
 	def execute(self): return
 
-class right_bracket(operator): # Adds right-bracket behaviours to a node
-
+class right_bracket(operator):
+	"""Defines a right bracket."""
 	def nud(self, lex): return self
 
-class lexer: # Lex object to get around not being able to peek the next value of an iterator
+class lexer:
+	"""
+	Implements a Pratt parser for expressions.
+	"""
+	# These sources helped with expression parsing:
+	# https://eli.thegreenplace.net/2010/01/02/top-down-operator-precedence-parsing
+	# https://abarker.github.io/typped/pratt_parsing_intro.html
+	# https://web.archive.org/web/20150228044653/http://effbot.org/zone/simple-top-down-parsing.htm
+	# https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
 
 	def __init__(self, tokens):
 
@@ -712,13 +726,8 @@ class lexer: # Lex object to get around not being able to peek the next value of
 		else:
 			return left # Preserves state of next_token for higher-level calls
 
-	# https://eli.thegreenplace.net/2010/01/02/top-down-operator-precedence-parsing
-	# https://abarker.github.io/typped/pratt_parsing_intro.html
-	# https://web.archive.org/web/20150228044653/http://effbot.org/zone/simple-top-down-parsing.htm
-	# https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
-
-class eol: # Sentinel object
-
+class eol:
+	"""Sentinel object for the lexer."""
 	def __init__(self): self.lbp = -1
 
 def group(lines): # Groups lines with trailing characters

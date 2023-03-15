@@ -17,13 +17,9 @@ class proxy: # Base proxy object
 
 class reference: # Reference to proxy
 
-	def __init__(self, routine):
-
-		self.pid = routine.pid
+	def __init__(self, routine, check = 'untyped'):
+		
 		self.name = routine.name
 		self.type = routine.type
-		self.check = routine.start.message.type if routine.start.message.type else 'untyped'
-
-class future(reference): pass # Future object
-
-class stream(reference): pass # Stream object
+		self.pid = routine.pid
+		self.check = check

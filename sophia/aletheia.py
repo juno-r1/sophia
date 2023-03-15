@@ -180,12 +180,7 @@ class sophia_slice(sophia_untyped): # Slice type
 class sophia_future(sophia_untyped): # Process type
 	
 	name = 'future'
-	types = kleio.future
-
-class sophia_stream(sophia_untyped): # Process type
-	
-	name = 'stream'
-	types = kleio.stream
+	types = kleio.reference
 
 # Namespace composition
 
@@ -194,7 +189,6 @@ supertypes = {
 	'null': ('null',),
 	'untyped': ('untyped',),
 	'type': ('type', 'untyped'),
-	'event': ('event', 'untyped'),
 	'function': ('function', 'untyped'),
 	'boolean': ('boolean', 'untyped'),
 	'number': ('number', 'untyped'),
@@ -203,8 +197,7 @@ supertypes = {
 	'list': ('list', 'untyped'),
 	'record': ('record', 'untyped'),
 	'slice': ('slice', 'untyped'),
-	'future': ('future', 'untyped'),
-	'stream': ('stream', 'untyped')
+	'future': ('future', 'untyped')
 
 }
 specificity = {k: len(v) for k, v in supertypes.items()} # Length of supertypes is equivalent to specificity of subtype
