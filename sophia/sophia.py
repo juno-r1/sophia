@@ -155,7 +155,7 @@ class task:
 		self.flags = flags
 		self.internal_values = aletheia.types | mathos.operators | arche.functions
 		self.internal_types = {i: 'type' for i in aletheia.types} | {i: 'function' for i in mathos.operators | arche.functions}
-		self.values, self.types = values, types
+		self.values, self.types = values, {k: (v if v in aletheia.supertypes else arche.infer(values[k])) for k, v in types.items()}
 		self.reserved = tuple(i for i in values)
 		self.supertypes = aletheia.supertypes
 		self.specificity = aletheia.specificity
@@ -226,14 +226,11 @@ class task:
 		#	pr.print_stats(sort = 'tottime')
 		if 'namespace' in self.flags:
 			hemera.debug_namespace(self)
-		try:
-			self.calls.send((self.values,
-							 self.types,
-							 self.supertypes,
-							 self.specificity,
-							 self.reserved)) # Send mutable namespace to supervisor
-		except Exception as e:
-			print(e)
+		self.calls.send((self.values,
+						 self.types,
+						 self.supertypes,
+						 self.specificity,
+						 self.reserved)) # Send mutable state to supervisor
 		self.message('terminate')
 		return self.values['0']
 

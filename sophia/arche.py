@@ -54,11 +54,26 @@ class method:
 		self.methods[signature] = method # Function
 		self.arity[signature] = len(signature) # Pre-evaluated length of signature
 
+class type_definition:
+	"""Definition for a user-defined type."""
+	def __init__(self, instructions, params, types):
+
+		self.instructions = [' '.join(i) for i in instructions] # Oh, well
+		self.name, self.params = params[0], params[1:]
+		self.type, self.types = types[0], types[1:]
+		self.supertype = types[1]
+
+	def __call__(self, task, *args):
+
+		task.message('call', self, args, None)
+		value = task.calls.recv()
+		return value
+
 class event_definition:
 	"""Definition for a user-defined event."""
 	def __init__(self, instructions, params, types):
 
-		self.instructions = [' '.join(i) for i in instructions] # Oh, well
+		self.instructions = [' '.join(i) for i in instructions]
 		self.name, self.message, self.params = params[0], params[1], params[2:]
 		self.type, self.check, self.types = types[0], types[1], types[2:]
 
@@ -76,7 +91,7 @@ class function_definition:
 	"""Definition for a user-defined function."""
 	def __init__(self, instructions, params, types):
 
-		self.instructions = [' '.join(i) for i in instructions] # Oh, well
+		self.instructions = [' '.join(i) for i in instructions]
 		self.name, self.params = params[0], params[1:]
 		self.type, self.types = types[0], types[1:]
 
@@ -176,15 +191,21 @@ f_break.register(break_null,
 				 ())
 
 def check_untyped(task, value):
-
+	
+	register = task.address
 	type_name = task.instructions[task.path][2]
 	known = task.check(task.registers[0])
-	return task.cast(value, type_name, known)
+	if task.cast(value, type_name, known):
+		task.values[register] = value
+		task.types[register] = type_name
+	else:
+		task.values[register] = None
+		task.types[register] = 'null'
 
 f_check = method('.check')
 f_check.register(check_untyped,
-				 '*',
-				 ('untyped'))
+				 '.',
+				 ('untyped',))
 
 def concatenate_untyped(task, value):
 	
@@ -201,6 +222,16 @@ f_concatenate.register(concatenate_untyped,
 f_concatenate.register(concatenate_untyped_untyped,
 					   'untyped',
 					   ('untyped', 'untyped'))
+
+def constraint_boolean(task, constraint):
+	
+	if not constraint:
+		task.path = 0
+
+f_constraint = method('.constraint')
+f_constraint.register(constraint_boolean,
+					  'null',
+					  ('boolean',))
 
 def event_null(task):
 
@@ -453,6 +484,29 @@ f_set.register(set_untyped,
 			   '*',
 			   ('untyped',))
 
+def type_null(task):
+	
+	name = task.address
+	scope = int(task.instructions[task.path][1])
+	types = task.instructions[task.path][2:]
+	params = task.instructions[task.path + 1][2:]
+	supertype = types[1]
+	task.supertypes[name] = tuple([name] + list(task.supertypes[supertype]))
+	task.specificity[name] = len(task.supertypes[name])
+	start = task.path + 1
+	while True: # Collect instructions
+		label = task.instructions[task.path]
+		if label[0] == ';' and int(label[1]) == scope and label[2] == '.end':
+			end = task.path + 1
+			break #return
+		task.path = task.path + 1
+	return type_definition(task.instructions[start:end], params, types)
+
+f_type = method('.type')
+f_type.register(type_null,
+				'type',
+				())
+
 # Built-in I/O functions
 
 def input_string(task, value):
@@ -499,19 +553,19 @@ f_cast.register(cast_type_untyped,
 
 def length_string(task, sequence):
 
-	return len(sequence)
+	return real(len(sequence), 1, _normalise = False)
 
 def length_list(task, sequence):
 
-	return len(sequence)
+	return real(len(sequence), 1, _normalise = False)
 
 def length_record(task, sequence):
 
-	return len(sequence)
+	return real(len(sequence), 1, _normalise = False)
 
 def length_slice(task, sequence):
 
-	return real(int((sequence.indices[1] - sequence.indices[0]) / sequence.indices[2]))
+	return real(int((sequence.indices[1] - sequence.indices[0]) / sequence.indices[2]), 1, _normalise = False)
 
 f_length = method('length')
 f_length.register(length_string,
@@ -602,27 +656,6 @@ def infer(value): # Infers type of value
 		
 #		routine.sentinel = routine.find(self.name) # Returns cast value upon success
 #		routine.node = None
-
-#class event_statement(coroutine):
-
-#	def __call__(self, args, routine):
-
-#		if len(self.types) - 1 != len(args):
-#			return routine.error('ARGS', len(self.types) - 1, len(args)) # Requires data to be sent to the stack
-#		for i, arg in enumerate(args):
-#			if routine.cast(arg, self.types[i + 1]) is None: # Cast error
-#				return None
-#		if isinstance(routine.node.head, bind):
-#			routine.message('stream', self, args)
-#			return routine.calls.recv()
-#		else:
-#			routine.message('call', self, args)
-#			return routine.cast(routine.calls.recv(), self.types[0])
-
-#	def start(self, routine):
-
-#		routine.bind(self.name, self, 'event')
-#		routine.branch()
 	
 #class constraint_statement(statement):
 
@@ -642,16 +675,6 @@ def infer(value): # Infers type of value
 #			name = item.value if '.' in item.value else (item.value + '.sophia')
 #			routine.message('link', name, [])
 #			routine.bind(name.split('.')[0], routine.calls.recv(), 'process')
-
-#class start_statement(statement):
-
-#	def start(self, routine):
-
-#		routine.branch()
-
-#	def execute(self, routine):
-
-#		routine.node = None
 
 #class meta_statement(left_bracket):
 

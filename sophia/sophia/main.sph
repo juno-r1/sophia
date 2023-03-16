@@ -1,23 +1,29 @@
-// 4.2, 5.3
+// 3.2.7.1, 5.8
 
-for i in 0:5:1:
-	int x: i
-bool a: x = 5
+type even extends int:
 
-int y: 0
-for i in 0:5:1:
-	int x: i
-	continue
-	int y: i
-bool b: x = 5 and y = 0
+	even % 2 = 0
 
-int y: 0
-for i in 0:5:1:
-	int x: i
-	break
-	int y: i
+int halve (even n):
+
+	return n / 2
+
+int x: 2
+assert even x:
+	even x: x
+	bool a: true
 else:
-	int x: -1
-bool c: x = -1 and y = 0
+	bool a: false
 
-return a and b and c
+bool b: halve(x) = 1
+
+int x: 1
+assert even x:
+	bool c: false
+else:
+	bool c: true
+
+list x: [1, 2, 3]
+bool d: length(x) = 3
+
+return a and b and c and d

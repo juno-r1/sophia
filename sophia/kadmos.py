@@ -54,6 +54,8 @@ class translator:
 			if self.path[-1] == self.node.length: # Walk up
 				if isinstance(self.node.head, assert_statement) and self.path[-2] < self.node.head.active: # Insert assertion
 					self.instructions.extend(('.assert 0 {0}'.format(self.node.register), '; {0} .assert'.format(self.node.head.scope)))
+				elif isinstance(self.node.head, type_statement): # Insert assertion
+					self.instructions.append('.constraint 0 {0}'.format(self.node.register))
 				self.node = self.node.head # Walk upward
 				if self.node:
 					self.path.pop()
@@ -279,11 +281,15 @@ class type_statement(coroutine):
 		super().__init__([tokens[0]]) # Type and type parameter
 		self.name, self.type = tokens[0].value, tokens[0].value
 		self.supertype = tokens[2].value if len(tokens) > 2 else 'untyped'
-		self.interfaces = [token.value for token in tokens[4::2]]
-		param = name(tokens[0].value)
-		param.type = self.supertype
-		self.value.append(param)
-		self.namespace = dict() # Persistent namespace of type operations
+		self.supertype = sub_types[self.supertype] if self.supertype in sub_types else self.supertype
+
+	def start(self):
+		
+		return ('.type {0}'.format(self.name),
+				'; {0} {1} {2}'.format(self.scope, self.type, self.supertype),
+				'; {0} {1} {2}'.format(self.scope, self.name, self.name))
+
+	def execute(self): return '.return 0 {0}'.format(self.name), '; {0} .end'.format(self.scope)
 
 class event_statement(coroutine):
 	"""Defines an event definition."""
