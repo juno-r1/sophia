@@ -66,6 +66,8 @@ class translator:
 				self.node.register = self.register()
 				self.node.length = len(self.node.nodes)
 				self.path.append(0)
+				if isinstance(self.node, event_statement):
+					self.node.value = self.node.value + self.node.nodes[0].value
 			if self.path[-1] == 0:
 				if self.node.branch:
 					self.instructions.append('; {0} .else'.format(self.node.scope))
@@ -290,7 +292,25 @@ class event_statement(coroutine):
 		super().__init__([tokens[0]]) # Sets name and message parameter as self.value
 		self.name, self.type = tokens[0].value, tokens[0].type
 		self.message = tokens[2]
-		self.types = [item.type if item.type else 'untyped' for item in self.value[1:]]
+
+	def start(self):
+		
+		if self.value[1:]:
+			return ('.event {0}'.format(self.name),
+					'; {0} {1} {2} {3}'.format(self.scope,
+											   self.type,
+											   self.message.type,
+											   ' '.join(item.type for item in self.value[1:])),
+					'; {0} {1} {2} {3}'.format(self.scope,
+											   self.name,
+											   self.message.value,
+											   ' '.join(item.value for item in self.value[1:])))
+		else:
+			return ('.event {0}'.format(self.name),
+					'; {0} {1} {2}'.format(self.scope, self.type, self.message.type),
+					'; {0} {1} {2}'.format(self.scope, self.name, self.message.value))
+
+	def execute(self): return '.return 0 &0', '; {0} .end'.format(self.scope)
 
 class function_statement(coroutine):
 	"""Defines a function definition."""
@@ -433,9 +453,11 @@ class start_statement(statement):
 	def __init__(self, tokens):
 
 		super().__init__(tokens[2::2])
-		self.active = 0
+		self.label = '; {0} .start'
 
 	def __str__(self): return 'start ' + str([item.value for item in self.value])
+
+	def execute(self): return '; {0} .end'.format(self.scope),
 
 class else_statement(statement):
 	"""Defines an else statement."""

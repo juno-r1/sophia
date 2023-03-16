@@ -310,10 +310,15 @@ op_usf.register(u_usf,
 				('untyped',))
 
 def b_snd(task, x, y):
-
-	if task.cast(x, y.check):
-		task.message('send', y, x)
-		return y
+	
+	if y.check:
+		if task.cast(x, y.check):
+			task.message('update', y, x)
+			return y
+	else:
+		if task.cast(x, 'untyped'):
+			task.message('send', y, x)
+			return y
 
 op_snd = method('->')
 op_snd.register(b_snd,

@@ -45,7 +45,7 @@ class runtime:
 
 		args = self.values | ({routine.name: method} if method else {}) | dict(zip(routine.params, args))
 		types = self.types | ({routine.name: arche.infer(routine)} if method else {}) | dict(zip(routine.params, routine.types))
-		routine = task(routine.instructions, args, types, self.flags)
+		routine = task(routine.instructions, args, types, self.flags, check = routine.type)
 		self.tasks[routine.pid] = kleio.proxy(routine)
 		self.tasks[routine.pid].result = self.pool.apply_async(routine.execute)
 		self.tasks[routine.pid].requests.append(pid) # Submit request for return value
@@ -54,24 +54,25 @@ class runtime:
 		
 		args = self.values | ({routine.name: method} if method else {}) | dict(zip(routine.params, args))
 		types = self.types | ({routine.name: arche.infer(routine)} if method else {}) | dict(zip(routine.params, routine.types))
-		routine = task(routine.instructions, args, types, self.flags)
+		routine = task(routine.instructions, args, types, self.flags, check = routine.type)
 		self.tasks[routine.pid] = kleio.proxy(routine)
 		self.tasks[routine.pid].result = self.pool.apply_async(routine.execute)
 		self.tasks[routine.pid].count = self.tasks[routine.pid].count + 1
 		self.tasks[pid].references.append(routine.pid) # Mark reference to process
 		self.tasks[pid].calls.send(kleio.reference(routine)) # Return reference to process
 
-	def stream(self, pid, routine, args):
+	def event(self, pid, routine, args, method):
 		
-		routine = task(routine, args, self.flags)
+		args = self.values | ({routine.name: method} if method else {}) | dict(zip(routine.params, args))
+		types = self.types | ({routine.name: arche.infer(routine)} if method else {}) | dict(zip(routine.params, routine.types))
+		type_name = routine.check
+		routine = task(routine.instructions, args, types, self.flags, check = routine.type)
 		self.tasks[routine.pid] = kleio.proxy(routine)
-		routine.node = routine.start.nodes[0]
-		routine.path = [0, 0]
 		self.events[routine.pid] = routine # Persistent reference to event
 		self.tasks[routine.pid].result = self.pool.apply_async(routine.execute)
 		self.tasks[routine.pid].count = self.tasks[routine.pid].count + 1
 		self.tasks[pid].references.append(routine.pid) # Mark reference to process
-		self.tasks[pid].calls.send(kleio.reference(routine)) # Return reference to process
+		self.tasks[pid].calls.send(kleio.reference(routine, check = type_name)) # Return reference to process
 
 	def link(self, pid, name, args):
 		
@@ -79,14 +80,15 @@ class runtime:
 
 	def send(self, pid, reference, message):
 		
-		#if isinstance(reference, kleio.stream):
-		#	self.tasks[reference.pid].result.get() # Wait until routine is done with previous message
-		#	namespace = self.tasks[reference.pid].calls.recv() # Get namespace from task
-		#	routine = self.events[reference.pid]
-		#	routine.prepare(namespace, message) # Mutate this version of the task
-		#	self.tasks[reference.pid].result = self.pool.apply_async(routine.execute)
-		#else:
 		self.tasks[reference.pid].messages.send(message)
+
+	def update(self, pid, reference, message):
+
+		self.tasks[reference.pid].result.get() # Wait until routine is done with previous message
+		namespace = self.tasks[reference.pid].calls.recv() # Get namespace from task
+		routine = self.events[reference.pid]
+		routine.prepare(namespace, message, reference.check) # Mutate this version of the task
+		self.tasks[reference.pid].result = self.pool.apply_async(routine.execute)
 
 	def resolve(self, pid, reference):
 
@@ -145,9 +147,10 @@ class task:
 	A task handles synchronous program execution and passes messages to and
 	from the supervisor.
 	"""
-	def __init__(self, instructions, values, types, flags): # God objects? What is she objecting to?
+	def __init__(self, instructions, values, types, flags, check = 'untyped'): # God objects? What is she objecting to?
 		
-		self.name, self.type = instructions[0].split(' ')[2] if instructions else '', 'untyped'
+		self.name = instructions[0].split(' ')[2] if instructions else ''
+		self.type = check
 		self.pid = id(self) # Guaranteed not to collide with other task PIDs; not the same as the PID of the pool process
 		self.flags = flags
 		self.internal_values = aletheia.types | mathos.operators | arche.functions
@@ -223,19 +226,27 @@ class task:
 		#	pr.print_stats(sort = 'tottime')
 		if 'namespace' in self.flags:
 			hemera.debug_namespace(self)
-		#self.calls.send((self.values,
-		#				  self.types,
-		#				  self.supertypes,
-		#				  self.reserved)) # Send mutable namespace to supervisor
+		try:
+			self.calls.send((self.values,
+							 self.types,
+							 self.supertypes,
+							 self.specificity,
+							 self.reserved)) # Send mutable namespace to supervisor
+		except Exception as e:
+			print(e)
 		self.message('terminate')
 		return self.values['0']
 
-	#def prepare(self, namespace, message): # Sets up task for event execution
+	def prepare(self, namespace, message, check): # Sets up task for event execution
 
-	#	self.node = self.start.nodes[1]
-	#	self.path = [1, 0]
-	#	self.values, self.types, self.supertypes, self.reserved = namespace # Update version of task in this process
-	#	self.bind(self.start.message.value, message)
+		name = self.instructions[0][3]
+		while True: # Skip initial
+			label = self.instructions[self.path]
+			if label[0] == ';' and int(label[1]) <= 2 and label[2] == '.end':
+				break
+			self.path = self.path + 1
+		self.values, self.types, self.supertypes, self.specificity, self.reserved = namespace
+		self.bind(name, message, check)
 
 	def bind(self, name, value, type_name = 'null'): # Creates or updates a name binding in main
 		

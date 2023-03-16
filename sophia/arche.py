@@ -54,8 +54,26 @@ class method:
 		self.methods[signature] = method # Function
 		self.arity[signature] = len(signature) # Pre-evaluated length of signature
 
+class event_definition:
+	"""Definition for a user-defined event."""
+	def __init__(self, instructions, params, types):
+
+		self.instructions = [' '.join(i) for i in instructions] # Oh, well
+		self.name, self.message, self.params = params[0], params[1], params[2:]
+		self.type, self.check, self.types = types[0], types[1], types[2:]
+
+	def __call__(self, task, *args):
+
+		if task.instructions[task.path][2] == '.bind':
+			task.message('event', self, args, task.values[self.name])
+			task.override = 'future'
+			return task.calls.recv()
+		else:
+			task.message('call', self, args, task.values[self.name])
+			return task.cast(task.calls.recv(), self.type)
+
 class function_definition:
-	"""Definition for a user-defined function instance of a multimethod."""
+	"""Definition for a user-defined function."""
 	def __init__(self, instructions, params, types):
 
 		self.instructions = [' '.join(i) for i in instructions] # Oh, well
@@ -141,6 +159,13 @@ def break_null(task):
 	scope = int(task.instructions[task.path][1])
 	while True:
 		label = task.instructions[task.path]
+		if label[0] == ';' and int(label[1]) <= scope and label[2] == '.start':
+			task.path = task.path + 1
+			task.values[task.instructions[task.path][2]] = None # Sanitise register
+			break
+		task.path = task.path - 1
+	while True:
+		label = task.instructions[task.path]
 		if label[0] == ';' and int(label[1]) <= scope and label[2] == '.end':
 			return
 		task.path = task.path + 1
@@ -177,6 +202,35 @@ f_concatenate.register(concatenate_untyped_untyped,
 					   'untyped',
 					   ('untyped', 'untyped'))
 
+def event_null(task):
+
+	name = task.address
+	scope = int(task.instructions[task.path][1])
+	types = task.instructions[task.path][2:]
+	params = task.instructions[task.path + 1][2:]
+	start = task.path + 1
+	while True: # Collect instructions
+		label = task.instructions[task.path]
+		if label[0] == ';' and int(label[1]) == scope and label[2] == '.end':
+			end = task.path + 1
+			break #return
+		task.path = task.path + 1
+	definition = event_definition(task.instructions[start:end], params, types)
+	if name in task.values and task.types[name] == 'function':
+		routine = task.values[name]
+	else:
+		routine = method(name)
+		task.types[name] = 'function'
+	routine.register(definition,
+					 types[0],
+					 tuple(types[2:]))
+	return routine
+
+f_event = method('.event')
+f_event.register(event_null,
+				 'function',
+				 ())
+
 def for_untyped(task, iterator):
 	
 	type_name = task.instructions[task.path][2]
@@ -187,6 +241,7 @@ def for_untyped(task, iterator):
 							 value,
 							 task.check(task.address, value) if type_name == 'null' else type_name)
 	except StopIteration:
+		task.values[task.registers[0]] = None # Sanitise register
 		task.unbind = True
 		scope = int(task.instructions[task.path][1])
 		while True:
@@ -597,22 +652,6 @@ def infer(value): # Infers type of value
 #	def execute(self, routine):
 
 #		routine.node = None
-
-#class resolve(prefix): # Defines the resolution operator
-
-#	def execute(self, routine):
-		
-#		reference = routine.get('channel')
-#		routine.message('resolve', reference)
-#		routine.send(routine.cast(routine.calls.recv(), reference.type), reference.type)
-
-#class send(infix_r): # Defines the send operator
-
-#	def execute(self, routine):
-		
-#		address = routine.get('channel')
-#		routine.message('send', address, routine.get(address.check))
-#		routine.send(address, 'channel')
 
 #class meta_statement(left_bracket):
 

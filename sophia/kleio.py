@@ -17,7 +17,7 @@ class proxy: # Base proxy object
 
 class reference: # Reference to proxy
 
-	def __init__(self, routine, check = 'untyped'):
+	def __init__(self, routine, check = None):
 		
 		self.name = routine.name
 		self.type = routine.type

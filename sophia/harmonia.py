@@ -47,6 +47,7 @@ if __name__ == '__main__':
 		else:
 			failures = failures + 1
 		print(i, 'x' if result else '', '' if result else 'x', sep = '\t')
+
 	else:
 		print('',
 			  '{0} / {1} successes'.format(successes, successes + failures),
