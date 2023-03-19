@@ -39,7 +39,7 @@ op_sub.register(b_sub,
 def u_rsv(task, x):
 	
 	task.message('resolve', x)
-	return task.cast(task.calls.recv(), x.type)
+	return task.calls.recv()
 
 def b_mul(_, x, y):
 
@@ -312,13 +312,11 @@ op_usf.register(u_usf,
 def b_snd(task, x, y):
 	
 	if y.check:
-		if task.cast(x, y.check):
-			task.message('update', y, x)
-			return y
+		task.message('update', y, x)
+		return y
 	else:
-		if task.cast(x, 'untyped'):
-			task.message('send', y, x)
-			return y
+		task.message('send', y, x)
+		return y
 
 op_snd = method('->')
 op_snd.register(b_snd,

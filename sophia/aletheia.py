@@ -13,9 +13,13 @@ class sophia_untyped: # Non-abstract base class
 	types = object
 	supertype = None
 	
-	def __new__(cls, value): # Type check disguised as an object constructor
+	def __new__(cls, task, value): # Type check disguised as an object constructor
 		
-		return value if isinstance(value, cls.types) else None
+		if isinstance(value, cls.types):
+			return value
+		else:
+			task.override = 'null'
+			return task.error('CAST', cls.name, str(value))
 
 	@classmethod
 	def __null__(cls, value): return
@@ -50,15 +54,40 @@ class sophia_untyped: # Non-abstract base class
 	@classmethod
 	def __stream__(cls, value): return
 
+t_untyped = arche.type_method('untyped')
+t_untyped.register(sophia_untyped,
+				   'untyped',
+				   ('untyped',))
+
 class sophia_type(sophia_untyped): # Type type
 	
 	name = 'type'
-	types = type
+	types = arche.type_method
+
+t_type = arche.type_method('type')
+t_type.register(sophia_type,
+				'type',
+				('untyped',))
+
+class sophia_event(sophia_untyped): # Event type
+
+	name = 'event'
+	types = arche.event_method
+
+t_type = arche.type_method('event')
+t_type.register(sophia_event,
+				'event',
+				('untyped',))
 
 class sophia_function(sophia_untyped): # Function type
 
 	name = 'function'
-	types = arche.method
+	types = arche.function_method
+
+t_function = arche.type_method('function')
+t_function.register(sophia_function,
+					'function',
+					('untyped',))
 
 class sophia_boolean(sophia_untyped): # Boolean type
 
@@ -83,6 +112,11 @@ class sophia_boolean(sophia_untyped): # Boolean type
 	@classmethod
 	def __slice__(cls, value): return True if len(value) != 0 else False
 
+t_boolean = arche.type_method('boolean')
+t_boolean.register(sophia_boolean,
+				   'boolean',
+				   ('untyped',))
+
 class sophia_number(sophia_untyped): # Abstract number type
 
 	name = 'number'
@@ -97,14 +131,28 @@ class sophia_number(sophia_untyped): # Abstract number type
 	@classmethod
 	def __string__(cls, value): return real(value)
 
+t_number = arche.type_method('number')
+t_number.register(sophia_number,
+				  'number',
+				  ('untyped',))
+
 class sophia_integer(sophia_number): # Integer type
 
 	name = 'integer'
 	types = real
 
-	def __new__(cls, value):
+	def __new__(cls, task, value):
 		
-		return value if isinstance(value, real) and value % 1 == 0 else None
+		if isinstance(value, cls.types) and value % 1 == 0:
+			return value
+		else:
+			task.override = 'null'
+			return task.error('CAST', cls.name, str(value))
+
+t_integer = arche.type_method('integer')
+t_integer.register(sophia_integer,
+				   'integer',
+				   ('untyped',))
 
 class sophia_string(sophia_untyped): # String type
 
@@ -150,6 +198,11 @@ class sophia_string(sophia_untyped): # String type
 	@classmethod
 	def __stream__(cls, value): return 'stream ' + value.name
 
+t_string = arche.type_method('string')
+t_string.register(sophia_string,
+				  'string',
+				  ('untyped',))
+
 class sophia_list(sophia_untyped): # List type
 
 	name = 'list'
@@ -167,24 +220,44 @@ class sophia_list(sophia_untyped): # List type
 	@classmethod
 	def __slice__(cls, value): return tuple(value.value)
 
+t_list = arche.type_method('list')
+t_list.register(sophia_list,
+				'list',
+				('untyped',))
+
 class sophia_record(sophia_untyped): # Record type
 
 	name = 'record'
 	types = dict
+
+t_record = arche.type_method('record')
+t_record.register(sophia_record,
+				  'record',
+				  ('untyped',))
 
 class sophia_slice(sophia_untyped): # Slice type
 
 	name = 'slice'
 	types = arche.slice
 
+t_slice = arche.type_method('slice')
+t_slice.register(sophia_slice,
+				 'slice',
+				 ('untyped',))
+
 class sophia_future(sophia_untyped): # Process type
 	
 	name = 'future'
 	types = kleio.reference
 
+t_future = arche.type_method('future')
+t_future.register(sophia_future,
+				  'future',
+				  ('untyped'))
+
 # Namespace composition
 
-types = {v.name: v for k, v in globals().items() if k.split('_')[0] == 'sophia'}
+types = {v.name: v for k, v in globals().items() if k.split('_')[0] == 't'}
 supertypes = {
 	'null': ('null',),
 	'untyped': ('untyped',),

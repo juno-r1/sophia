@@ -41,15 +41,6 @@ class runtime:
 	
 		mp.current_process().stream = self.stream
 
-	def call(self, pid, routine, args, method): # Pass in method for recursion support
-
-		args = self.values | ({routine.name: method} if method else {}) | dict(zip(routine.params, args))
-		types = self.types | ({routine.name: arche.infer(routine)} if method else {}) | dict(zip(routine.params, routine.types))
-		routine = task(routine.instructions, args, types, self.flags, check = routine.type)
-		self.tasks[routine.pid] = kleio.proxy(routine)
-		self.tasks[routine.pid].result = self.pool.apply_async(routine.execute)
-		self.tasks[routine.pid].requests.append(pid) # Submit request for return value
-
 	def future(self, pid, routine, args, method):
 		
 		args = self.values | ({routine.name: method} if method else {}) | dict(zip(routine.params, args))
@@ -163,6 +154,7 @@ class task:
 		self.arity = [0 if i[0] == ';' else (len(i) - 2) for i in self.instructions]
 		self.path = 1 if instructions else 0 # Does not execute if the parser encountered an error
 		self.label, self.address, self.registers = None, None, None
+		self.caller = None
 		self.unbind = False # Unbind flag
 		self.override = None # Override flag, for when a method has a different return type to the one declared
 
@@ -226,34 +218,19 @@ class task:
 		#	pr.print_stats(sort = 'tottime')
 		if 'namespace' in self.flags:
 			hemera.debug_namespace(self)
-		self.calls.send((self.values,
-						 self.types,
-						 self.supertypes,
-						 self.specificity,
-						 self.reserved)) # Send mutable state to supervisor
+		self.calls.send(self.state()) # Send mutable state to supervisor
 		self.message('terminate')
 		return self.values['0']
 
-	def prepare(self, namespace, message, check): # Sets up task for event execution
-
-		name = self.instructions[0][3]
-		while True: # Skip initial
-			label = self.instructions[self.path]
-			if label[0] == ';' and int(label[1]) <= 2 and label[2] == '.end':
-				break
-			self.path = self.path + 1
-		self.values, self.types, self.supertypes, self.specificity, self.reserved = namespace
-		self.bind(name, message, check)
-
-	def bind(self, name, value, type_name = 'null'): # Creates or updates a name binding in main
+	def bind(self, name, value, type_name = None): # Creates or updates a name binding in main
 		
 		if name in self.reserved or name in self.internal_values:
 			return self.error('BIND', name)
 		self.values[name] = value
-		if type_name != 'null':
+		if type_name:
 			self.types[name] = type_name
 		elif name not in self.types:
-			self.types[name] = 'untyped'
+			self.types[name] = self.types[self.registers[0]] # Bind with known type of value
 		return value
 
 	def find(self, name): # Retrieves a binding's value in the current namespace
@@ -274,27 +251,37 @@ class task:
 		else:
 			return arche.infer(default)
 
-	def cast(self, value, type_name, known = 'null'): # Checks type of value and returns boolean
-		
-		if type_name == 'null':
-			return value
-		type_routine = self.find(type_name)
-		stack = [] # Stack of user-defined types, with the requested type at the bottom
-		while type_routine.supertype and type_routine.name != known: # Known type optimises by truncating stack
-			stack.append(type_routine)
-			type_routine = self.find(type_routine.supertype)
-		if type_routine(value) is None: # Check built-in type
-			return self.error('CAST', type_routine.name, str(value))
-		while stack:
-			type_routine = stack.pop()
-			if type_routine(self, value) is None:
-				return self.error('CAST', type_routine.name, str(value))
-		else:
-			return value # Return indicates success; cast() raises an exception on failure
-
 	def message(self, instruction = None, *args):
 		
 		mp.current_process().stream.put([instruction, self.pid] + list(args) if instruction else None)
+
+	def state(self): # Get current state of task as subset of __dict__
+
+		return {'name': self.name,
+				'type': self.type,
+				'values': self.values,
+				'types': self.types,
+				'reserved': self.reserved,
+				'instructions': self.instructions,
+				'arity': self.arity,
+				'path': self.path,
+				'caller': self.caller,
+				'address': self.address}
+
+	def restore(self, state): # Restore previous state of task
+
+		self.__dict__.update(state)
+
+	def prepare(self, namespace, message, check): # Sets up task for event execution
+
+		name = self.instructions[0][3]
+		self.restore(namespace)
+		while True: # Skip initial
+			label = self.instructions[self.path]
+			if label[0] == ';' and int(label[1]) <= 2 and label[2] == '.end':
+				break
+			self.path = self.path + 1
+		self.bind(name, message, check)
 
 	def error(self, status, *args): # Error handler
 		

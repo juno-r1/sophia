@@ -87,44 +87,30 @@ stack stored in register self.data
 instruction counter stored in register self.path
 sentinel value stored in register self.sentinel
 all other registers constitute the namespace
-optimise sethi-ullman algorithm by using names as addresses whenever possible
-in fact, constants can be skipped as instructions completely by initialising registers *with constants already in them*
 
 register 0 is the null address and the return value
 if an instruction returns to register 0, assertion behaviour is assumed
 instructions can also return to register 0 if the operation's return doesn't matter
 
-; 0 .start
-; 1 .start
-.branch 0 &1
-; 1 .branch
-.bind a &2
-; 2 null
-.end 0
-; 1 .end
-; 1 .else
-.bind a &3
-; 2 null
-.end 0
-; 1 .end
-.return 0 a
-.return 0 &0
-; 0 .end
+---
 
-.branch (conditional branch)
+cast semantics
 
-if condition is false:
-branch to the next statement in the same or higher scope, past else statements
+cast(value, type, known)
 
-iterate through instructions until reaching an .end label
-if the scope is equal to or less than the current scope,
-and the next instruction is not an .else label:
-continue execution from there
+get the supertypes of type between type and known or value's data type
+for each type:
+	call type on value (function call semantics)
+	(requires support for dispatch on types)
 
-.else (unconditional branch)
+operations that require cast:
+bind
+check
+for (subset of bind)
+return
+resolve
+send
 
-branch to the next statement in the same or higher scope, including else statements
+---
 
-iterate through instructions until reaching an .end label
-if the scope is equal to or less than the current scope:
-continue execution from there
+type checks for return and routine operators currently unimplemented

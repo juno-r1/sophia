@@ -285,7 +285,7 @@ class type_statement(coroutine):
 
 	def start(self):
 		
-		return ('.type {0}'.format(self.name),
+		return ('.type {0} {1}'.format(self.name, self.supertype),
 				'; {0} {1} {2}'.format(self.scope, self.type, self.supertype),
 				'; {0} {1} {2}'.format(self.scope, self.name, self.name))
 
@@ -366,8 +366,14 @@ class assignment(statement):
 
 		instructions = []
 		for i, item in enumerate(self.value):
-			instructions.append('.bind {0} {1}'.format(item.value, self.nodes[i].register))
-			instructions.append('; {0} {1}'.format(self.scope, item.type if item.type else 'null'))
+			if item.type:
+				instructions.extend(('.check {0} {1} {2}'.format(item.value, self.nodes[i].register, item.type),
+									 '; {0} .check'.format(self.scope),
+									 '.bind {0} {1} {2}'.format(item.value, item.value, item.type)))
+			else:
+				instructions.extend(('.check {0} {1}'.format(item.value, self.nodes[i].register),
+									 '; {0} .check'.format(self.scope),
+									 '.bind {0} {1}'.format(item.value, item.value)))
 		return instructions
 
 class if_statement(statement):
@@ -404,12 +410,30 @@ class for_statement(statement):
 		self.branch = tokens[0].branch
 		self.active = 1
 
-	def start(self): return ('.iterator {0} {1}'.format(self.register, self.nodes[0].register,),
-							 '; {0} .start'.format(self.scope),
-							 '.for {0} {1}'.format(self.value.value, self.register),
-							 '; {0} {1}'.format(self.scope, self.value.type if self.value.type else 'null'))
+	def start(self): 
+		
+		if self.value.type:
+			adjacent = str(int(self.register) + 1) # Uses the register of the first enclosed statement
+			return ('.iterator {0} {1}'.format(self.register, self.nodes[0].register),
+					'; {0} .start'.format(self.scope),
+					'.next {0} {1}'.format(adjacent, self.register),
+					'.check {0} {1} {2}'.format(adjacent, adjacent, self.value.type),
+					'; {0} .check'.format(self.scope),
+					'.assert 0 {0}'.format(adjacent),
+					'; {0} .assert'.format(self.scope),
+					'.bind {0} 0 {1}'.format(self.value.value, self.value.type))
+		else:
+			return ('.iterator {0} {1}'.format(self.register, self.nodes[0].register),
+					'; {0} .start'.format(self.scope),
+					'.next 0 {0}'.format(self.register),
+					'.assert 0 0',
+					'; {0} .assert'.format(self.scope),
+					'.bind {0} 0'.format(self.value.value))
 
-	def execute(self): return '.loop 0', '; {0} .end'.format(self.scope)
+	def execute(self): return ('.loop 0',
+							   '; {0} .end'.format(self.scope),
+							   '.unloop {0} {1}'.format(self.value.value, self.register),
+							   '; {0} .unloop'.format(self.scope))
 
 class assert_statement(statement):
 	"""Defines an assertion."""
@@ -499,8 +523,9 @@ class name(identifier):
 
 	def execute(self):
 		
-		if self.register == '0':
-			return '.check 0 {0}'.format(self.value), '; {0} {1}'.format(self.scope, self.type if self.type else 'untyped')
+		if self.type and self.register == '0':
+			return ('.check 0 {0} {1}'.format(self.value, self.type),
+					'; {0} .check'.format(self.scope))
 		else:
 			return ()
 
@@ -520,7 +545,10 @@ class keyword(identifier):
 		if self.value == 'continue':
 			return '.loop 0', '; {0} .continue'.format(loop.scope)
 		elif self.value == 'break':
-			return '.break 0', '; {0} .break'.format(loop.scope)
+			if isinstance(loop, for_statement):
+				return '.break {0} {1}'.format(loop.value.value, loop.register), '; {0} .break'.format(loop.scope)
+			else:
+				return '.break 0', '; {0} .break'.format(loop.scope)
 
 class operator(node):
 	"""Generic operator node."""
@@ -560,12 +588,7 @@ class receive(prefix):
 		self.value = lex.parse(self.lbp)
 		return self
 
-	def execute(self):
-		
-		if isinstance(self.head, assert_statement):
-			return '> {0}'.format(self.value.value), '.set 0 {0}'.format(self.value.value)
-		else:
-			return '> {0}'.format(self.value.value),
+	def execute(self): return '> {0}'.format(self.register),
 
 class resolve(prefix):
 	"""Defines the resolution operator."""
