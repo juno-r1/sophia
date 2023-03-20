@@ -521,8 +521,6 @@ def meta_string(task, string):
 	constants = len([int(item[1:]) for item in task.values if item[0] == '&']) - 1
 	instructions, values, types = translator(meta, constants = constants).generate(offset = offset)
 	instructions = [i.split(' ') for i in instructions]
-	[print(i) for i in instructions]
-	print(values, types)
 	i, label = task.path, task.instructions[task.path]
 	scope = int(label[1])
 	while label[0] == ';' and int(label[1]) <= scope and label[2] == '.end':

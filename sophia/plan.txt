@@ -7,16 +7,6 @@ stderr accepts sent strings and returns null
 
 ---
 
-define type system as entity-relationship model
-
-make process subtype of iterable / define iterator protocol for processes using resolution operator
-above idea implements infinite streams, babey!
-allow type checking to check for interfaces
-code as specification
-multiple dispatch?
-
----
-
 extended type system
 
 union types contain the set of values that conform to any of the types but only support operations shared by all of the types
@@ -73,44 +63,5 @@ single-line type syntax
 
 ---
 
-refactor runtime to instruction execution instead of tree traversal
-
-allocate memory by creating list of registers using sethi-ullman algorithm
-no need to worry about call stack or absolute jumps because calls spawn new tasks
-only necessary to create registers per label
-instructions allow null type but only if explicitly requested
-e.g. assignment can get strings for names
-
-model architecture as a RASP machine
-instructions stored in register self.instructions
-stack stored in register self.data
-instruction counter stored in register self.path
-sentinel value stored in register self.sentinel
-all other registers constitute the namespace
-
-register 0 is the null address and the return value
-if an instruction returns to register 0, assertion behaviour is assumed
-instructions can also return to register 0 if the operation's return doesn't matter
-
----
-
-cast semantics
-
-cast(value, type, known)
-
-get the supertypes of type between type and known or value's data type
-for each type:
-	call type on value (function call semantics)
-	(requires support for dispatch on types)
-
-operations that require cast:
-bind
-check
-for (subset of bind)
-return
-resolve
-send
-
----
-
 type checks for return and routine operators currently unimplemented
+clean-up required for existing code base
