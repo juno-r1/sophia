@@ -65,9 +65,16 @@ class runtime:
 		self.tasks[pid].references.append(routine.pid) # Mark reference to process
 		self.tasks[pid].calls.send(kleio.reference(routine, check = type_name)) # Return reference to process
 
-	def link(self, pid, name, args):
+	def link(self, pid, name):
 		
-		self.future(pid, kadmos.module(name, root = self.root), args)
+		linked = kadmos.module(name, root = self.root)
+		instructions, values, types = kadmos.translator(linked).generate()
+		routine = task(instructions, values, types, self.flags)
+		self.tasks[routine.pid] = kleio.proxy(routine)
+		self.tasks[routine.pid].result = self.pool.apply_async(routine.execute)
+		self.tasks[routine.pid].count = self.tasks[routine.pid].count + 1
+		self.tasks[pid].references.append(routine.pid) # Mark reference to process
+		self.tasks[pid].calls.send(kleio.reference(routine)) # Return reference to process
 
 	def send(self, pid, reference, message):
 		

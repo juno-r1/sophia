@@ -478,6 +478,8 @@ class link_statement(statement):
 
 	def __str__(self): return ('else ' if self.branch else '') + 'link_statement ' + str([item.value for item in self.nodes])
 
+	def execute(self): return ['.link {0}'.format(item.value) for item in self.value] + ['; {0} .end'.format(self.scope)]
+
 class start_statement(statement):
 	"""Defines an initial."""
 	def __init__(self, tokens):

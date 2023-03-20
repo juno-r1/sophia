@@ -488,6 +488,17 @@ f_iterator.register(iterator_slice,
 					'untyped',
 					('slice',))
 
+def link_null(task):
+	
+	name = task.address
+	task.message('link', name if '.' in name else (name + '.sph'))
+	return task.calls.recv()
+
+f_link = function_method('.link')
+f_link.register(link_null,
+				'future',
+				())
+
 def loop_null(task):
 
 	scope = int(task.instructions[task.path][1])
@@ -749,15 +760,6 @@ def infer(value): # Infers type of value
 			return names[name]
 	else:
 		return 'untyped' # Applies to all internal types
-	
-#class link_statement(statement):
-
-#	def execute(self, routine):
-
-#		for item in self.value:
-#			name = item.value if '.' in item.value else (item.value + '.sophia')
-#			routine.message('link', name, [])
-#			routine.bind(name.split('.')[0], routine.calls.recv(), 'process')
 
 #class meta_statement(left_bracket):
 

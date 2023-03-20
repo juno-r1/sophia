@@ -1,29 +1,4 @@
-// 3.2.7.1, 5.8
+// 4.5
 
-type even extends int:
-
-	even % 2 = 0
-
-int halve (even n):
-
-	return n / 2
-
-int x: 2
-assert even x:
-	even x: x
-	bool a: true
-else:
-	bool a: false
-
-bool b: halve(x) = 1
-
-int x: 1
-assert even x:
-	bool c: false
-else:
-	bool c: true
-
-list x: [1, 2, 3]
-bool d: length(x) = 3
-
-return a and b and c and d
+link test
+return *test
