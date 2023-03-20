@@ -2,6 +2,7 @@
 The Arche module defines the standard library and internal data types.
 '''
 
+from kadmos import module, translator
 from rationals import Rational as real
 from sys import stderr
 
@@ -512,6 +513,30 @@ f_loop = function_method('.loop')
 f_loop.register(loop_null,
 				'.',
 				())
+
+def meta_string(task, string):
+
+	meta = module(string, meta = task.name)
+	offset = int(task.address) - 1
+	constants = len([int(item[1:]) for item in task.values if item[0] == '&']) - 1
+	instructions, values, types = translator(meta, constants = constants).generate(offset = offset)
+	instructions = [i.split(' ') for i in instructions]
+	[print(i) for i in instructions]
+	print(values, types)
+	i, label = task.path, task.instructions[task.path]
+	scope = int(label[1])
+	while label[0] == ';' and int(label[1]) <= scope and label[2] == '.end':
+		i = i + 1
+		label = task.instructions[i]
+	task.instructions = task.instructions[:task.path + 1] + instructions + task.instructions[i:]
+	task.arity = task.arity[:task.path + 1] + [len(i) - 2 for i in instructions] + task.arity[i:]
+	task.values.update(values)
+	task.types.update(types)
+
+f_meta = function_method('.meta')
+f_meta.register(meta_string,
+				'*',
+				('string',))
 
 def next_untyped(task, iterator):
 

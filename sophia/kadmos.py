@@ -37,17 +37,17 @@ binding_power = (('(', ')', '[', ']', '{', '}'), # The left-binding power of a b
 
 class translator:
 	"""Generates a list of instructions from a syntax tree."""
-	def __init__(self, node):
+	def __init__(self, node, constants = 0):
 		
 		self.start = node
 		self.node = node
 		self.path = [0]
-		self.constant = 0 # Constant register counter
+		self.constant = constants # Constant register counter
 		self.instructions = list(node.start())
 		self.values = {'0': None, '&0': None} # Register namespace
 		self.types = {'0': 'null', '&0': 'null'} # Register types
 
-	def generate(self):
+	def generate(self, offset = 0):
 		
 		self.node.length = len(self.node.nodes)
 		while self.node: # Pre-runtime generation of instructions
@@ -65,7 +65,7 @@ class translator:
 			else: # Walk down
 				self.node.nodes[self.path[-1]].head = self.node # Set head
 				self.node = self.node.nodes[self.path[-1]] # Set value to child node
-				self.node.register = self.register()
+				self.node.register = self.register(offset)
 				self.node.length = len(self.node.nodes)
 				self.path.append(0)
 				if isinstance(self.node, event_statement):
@@ -83,7 +83,7 @@ class translator:
 			self.instructions.extend(self.start.execute())
 		return self.instructions, self.values, self.types
 
-	def register(self):
+	def register(self, offset):
 		
 		if self.node.nodes: # Temporary register
 			if isinstance(self.node.head, assert_statement):
@@ -91,7 +91,7 @@ class translator:
 			elif isinstance(self.node.head, bind):
 				return self.node.head.value # Sure, I guess
 			else:
-				index = str(sum(self.path) + 1) # Sum of path is a pretty good way to minimise registers
+				index = str(sum(self.path) + offset + 1) # Sum of path is a pretty good way to minimise registers
 				self.values[index] = None
 				self.types[index] = 'untyped'
 				return index
@@ -259,14 +259,19 @@ class coroutine(statement):
 
 class module(coroutine):
 	"""Base module node. This is always the top node of a syntax tree."""
-	def __init__(self, file_name, root = 'sophia'):
+	def __init__(self, file_name, root = 'sophia', meta = ''):
 
 		super().__init__(None) # Sets initial node to self
-		with open('{0}\\{1}'.format(root, file_name), 'r') as f: # Binds file data to runtime object
-			self.file_data = f.read() # node.parse() takes a string containing newlines
-		self.name, self.type = file_name.split('.')[0], 'untyped'
-		self.source = None
-		self.parse(self.file_data) # Here's tree
+		if meta:
+			self.name, self.type = meta, 'untyped'
+			self.source = None
+			self.parse(file_name)
+		else:
+			with open('{0}\\{1}'.format(root, file_name), 'r') as f: # Binds file data to runtime object
+				self.file_data = f.read() # node.parse() takes a string containing newlines
+			self.name, self.type = file_name.split('.')[0], 'untyped'
+			self.source = None
+			self.parse(self.file_data) # Here's tree
 
 	def __str__(self): return 'module ' + self.name
 
@@ -733,9 +738,10 @@ class meta_statement(left_bracket):
 	def __init__(self, value):
 
 		super().__init__(value)
-		self.active = 1
 
-	def execute(self): return
+	def execute(self): return ('.meta {0} {1}'.format(self.register, self.nodes[0].register),
+							   '; {0} .meta'.format(self.scope),
+							   '; {0} .end'.format(self.scope))
 
 class right_bracket(operator):
 	"""Defines a right bracket."""
