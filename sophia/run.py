@@ -2,5 +2,5 @@ import sophia
 
 if __name__ == '__main__':
 	
-	runtime = sophia.runtime('main.sph', 'task', 'instructions', 'namespace')
+	runtime = sophia.runtime('main.sph')
 	print(runtime.run())
