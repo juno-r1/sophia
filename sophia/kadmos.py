@@ -212,7 +212,7 @@ class node:
 				token = globals()[line[0].value + '_statement'](line) # Cheeky little hack that makes a node for whatever structure keyword is specified
 			elif line[0].value in keyword_tokens:
 				token = line[0] # Keywords will get special handling later
-			elif line[-1].value == ':':
+			elif line[-1].value == ':' or '=>' in [token.value for token in line]:
 				if line[0].type == 'type' and '(' not in [token.value for token in line]:
 					token = type_statement(line)
 				elif line[1].value == 'awaits':
@@ -789,7 +789,7 @@ class eol:
 	"""Sentinel object for the lexer."""
 	def __init__(self): self.lbp = -1
 
-def group(lines): # Groups lines with trailing characters
+def group(lines): # Groups lines with trailing characters and splits single-line definitions
 
 	if not lines:
 		return []
