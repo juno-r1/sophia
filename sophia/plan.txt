@@ -1,0 +1,129 @@
+standard streams
+
+streams can be modelled as processes of events:
+stdout accepts sent strings and returns the sent string
+stdin accepts sent strings and returns the input string
+stderr accepts sent strings and returns null
+
+---
+
+set-based type system
+
+types are represented as sets
+types are defined using set-builder notation
+a type has a set of constraints that its members satisfy
+a type check asserts the type's constraints for a value
+
+for example:
+
+type even extends int => even % 2 = 0
+type a_string extends str => 'a' in a_string
+
+types have subtype relations
+a subtype has the constraints of all of its supertypes as well as its own
+a value can be a member of any number of types
+
+---
+
+type operations
+
+types are sets, and therefore support set operations
+
+union types
+
+union types represent the union of the specified types
+union types support all of the values of the specified types
+
+union types create a new type with these properties:
+	the supertype is the mutual supertype of the specified types
+	the constraints are the union of the specified types' constraints
+
+union types are tagged; the tagged type is used in dispatch
+
+for example:
+
+type sequence: str
+			 | list
+			 | record
+			 | slice
+
+intersection types
+
+intersection types represent the intersection of the specified types
+intersection types support only the values in all of the specified types
+
+intersection types create a new type with these properties:
+	the supertype is the mutual supertype of the specified types
+	the constraints are the intersection of the specified types' constraints
+
+for example:
+
+type pos_int: int & positive
+
+member types
+
+member types represent the type of the members of a compound type
+member types create a new type with these properties:
+	the supertype is the compound type
+	the constraints are the constraints of the compound type
+
+for example:
+
+type list_of_int: list[int]
+
+type membership
+
+because types are sets, the in operator also applies to types
+<untyped> in <type> performs a type check and returns a boolean
+
+for example:
+
+bool a: 1 in int // true
+
+---
+
+prototypes
+
+set types are a good model for scalar types, but they can be cumbersome for defining compound types
+prototypes aim to solve this problem
+a prototype is a default value for a type
+
+for example:
+
+type triple extends list with [new str, new int, new int] => true
+type object extends record with ['a': new str, 'b': new str] => true
+
+a new instance of a type's prototype can be created with the new keyword:
+
+triple a: new triple
+a = ['', 0, 0] // true
+
+this allows the creation of data constructors that modify an instance of a prototype, imitating some properties of OOP
+
+this can also be used for subtyping types with prototypes:
+
+type quadruple extends triple with new triple | [new int] => true
+quadruple a: new quadruple
+a = ['', 0, 0, 0] // true
+
+---
+
+single-line function/operator syntax
+
+<name: callable> (<name>, ...) => <expression>
+
+single-line type syntax
+
+<name: type> [extends <name: type> [with <name: interface>, ...]] => <expression: boolean>
+
+=> operator is equivalent to return statement
+
+---
+
+function composition
+
+g.f(x) = g(f(x))
+
+---
+
+type checks for return and routine operators currently unimplemented

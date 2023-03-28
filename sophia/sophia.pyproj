@@ -60,6 +60,7 @@
     <Content Include="harmonia\test20.sph" />
     <Content Include="harmonia\test21.sph" />
     <Content Include="harmonia\test22.sph" />
+    <Content Include="plan.txt" />
     <Content Include="sophia\main.sph" />
     <Content Include="sophia\test.sph" />
   </ItemGroup>
