@@ -44,7 +44,7 @@ class runtime:
 	def future(self, pid, routine, args, method):
 		
 		args = self.values | ({routine.name: method} if method else {}) | dict(zip(routine.params, args))
-		types = self.types | ({routine.name: arche.infer(routine)} if method else {}) | dict(zip(routine.params, routine.types))
+		types = self.types | ({routine.name: aletheia.infer(routine)} if method else {}) | dict(zip(routine.params, routine.types))
 		routine = task(routine.instructions, args, types, self.flags, check = routine.type)
 		self.tasks[routine.pid] = kleio.proxy(routine)
 		self.tasks[routine.pid].result = self.pool.apply_async(routine.execute)
@@ -55,7 +55,7 @@ class runtime:
 	def event(self, pid, routine, args, method):
 		
 		args = self.values | ({routine.name: method} if method else {}) | dict(zip(routine.params, args))
-		types = self.types | ({routine.name: arche.infer(routine)} if method else {}) | dict(zip(routine.params, routine.types))
+		types = self.types | ({routine.name: aletheia.infer(routine)} if method else {}) | dict(zip(routine.params, routine.types))
 		type_name = routine.check
 		routine = task(routine.instructions, args, types, self.flags, check = routine.type)
 		self.tasks[routine.pid] = kleio.proxy(routine)
@@ -147,20 +147,16 @@ class task:
 	"""
 	def __init__(self, instructions, values, types, flags, check = 'untyped'): # God objects? What is she objecting to?
 		
-		self.name = instructions[0].split(' ')[2] if instructions else ''
+		self.name = instructions[0].label[0] if instructions else ''
 		self.type = check
 		self.pid = id(self) # Guaranteed not to collide with other task PIDs; not the same as the PID of the pool process
 		self.flags = flags
-		self.internal_values = aletheia.types | mathos.operators | arche.functions
-		self.internal_types = {i: 'type' for i in aletheia.types} | {i: 'function' for i in mathos.operators | arche.functions}
-		self.values, self.types = values, {k: (v if v in aletheia.supertypes else arche.infer(values[k])) for k, v in types.items()}
-		self.reserved = tuple(i for i in values)
-		self.supertypes = aletheia.supertypes
-		self.specificity = aletheia.specificity
-		self.instructions = [i.split(' ') for i in instructions]
-		self.arity = [0 if i[0] == ';' else (len(i) - 2) for i in self.instructions]
-		self.path = 1 if instructions else 0 # Does not execute if the parser encountered an error
-		self.label, self.address, self.registers = None, None, None
+		self.values = aletheia.types | mathos.operators | arche.functions | values
+		self.types = {i: 'type' for i in aletheia.types} | {i: 'function' for i in mathos.operators | arche.functions} | {k: (v if v else aletheia.infer(values[k])) for k, v in types.items()}
+		self.reserved = tuple(i for i in self.values)
+		self.instructions = instructions
+		self.path = int(bool(instructions)) # Does not execute if the parser encountered an error
+		self.op = instructions[0] # Current instruction
 		self.caller = None
 		self.unbind = False # Unbind flag
 		self.override = None # Override flag, for when a method has a different return type to the one declared
@@ -175,32 +171,31 @@ class task:
 		#	pr = Profile()
 		#	pr.enable()
 		while self.path:
-			if debug_task:
-				hemera.debug_task(self)
 			"""
 			Prepare instruction, get arguments and type signature.
 			"""
-			instruction, arity = self.instructions[self.path], self.arity[self.path]
-			self.label, self.address, self.registers = instruction[0], instruction[1], instruction[2:]
+			self.op = self.instructions[self.path]
 			self.path = self.path + 1
-			if self.label == ';': # Label
-				continue
-			args = [self] + [self.find(register) for register in self.registers]
-			signature = tuple([self.check(register) for register in self.registers])
+			arity = self.op.arity
+			args = [self] + [self.find(arg) for arg in self.op.args]
+			signature = tuple([self.check(arg) for arg in self.op.args])
+			if debug_task:
+				hemera.debug_task(self)
 			"""
 			Multiple dispatch algorithm, with help from Julia:
 			https://github.com/JeffBezanson/phdthesis
 			Now distilled into 3 extremely stupid list comprehensions!
 			"""
-			if not (method := self.find(self.label)):
+			if not (method := self.find(self.op.name)):
 				continue
 			if not (candidates := [x for x in method.methods if method.arity[x] == arity]): # Remove candidates with mismatching arity
 				self.error('DISP', method.name, str(signature))
 				continue
 			for i, name in enumerate(signature):
-				candidates = [item for item in candidates if item[i] in self.supertypes[name]] # Filter for candidates with a matching supertype
-				depth = max([self.specificity[item[i]] for item in candidates], default = 0) # Get the depth of the most specific candidate
-				candidates = [item for item in candidates if self.specificity[item[i]] == depth] # Keep only the most specific signatures
+				supertypes = self.values[name].supertypes
+				candidates = [item for item in candidates if item[i] in supertypes] # Filter for candidates with a matching supertype
+				depth = max([self.values[item[i]].specificity for item in candidates], default = 0) # Get the depth of the most specific candidate
+				candidates = [item for item in candidates if self.values[item[i]].specificity == depth] # Keep only the most specific signatures
 			if candidates:
 				match = candidates[0] # Just take the first match it finds, I don't know
 				instance = method.methods[match]
@@ -212,14 +207,14 @@ class task:
 			"""
 			value = instance(*args)
 			if self.unbind:
-				del self.values[self.address], self.types[self.address]
+				del self.values[self.op.register], self.types[self.op.register]
 				self.unbind = False
 			elif self.override:
-				self.values[self.address] = value
-				self.types[self.address], self.override = self.override, None
+				self.values[self.op.register] = value
+				self.types[self.op.register], self.override = self.override, None
 			elif (final := method.finals[match]) != '.':
-				self.values[self.address] = value
-				self.types[self.address] = arche.infer(value) if final == '*' else final
+				self.values[self.op.register] = value
+				self.types[self.op.register] = aletheia.infer(value) if final == '*' else final
 		#if 'profile' in self.flags:
 		#	pr.disable()
 		#	pr.print_stats(sort = 'tottime')
@@ -229,38 +224,13 @@ class task:
 		self.message('terminate')
 		return self.values['0']
 
-	def bind(self, name, value, type_name = None): # Creates or updates a name binding in main
-		
-		if name in self.reserved or name in self.internal_values:
-			return self.error('BIND', name)
-		self.values[name] = value
-		if type_name:
-			self.types[name] = type_name
-		elif name not in self.types:
-			self.types[name] = self.types[self.registers[0]] # Bind with known type of value
-		return value
-
 	def find(self, name): # Retrieves a binding's value in the current namespace
 		
-		if name in self.internal_values:
-			return self.internal_values[name]
-		elif name in self.values:
-			return self.values[name]
-		else:
-			return self.error('FIND', name)
+		return self.values[name] if name in self.values else self.error('FIND', name)
 
 	def check(self, name, default = None): # Internal function to check if a name has a type bound to it
-
-		if name in self.internal_types:
-			return self.internal_types[name]
-		elif name in self.types:
-			return self.types[name]
-		else:
-			return arche.infer(default)
-
-	def message(self, instruction = None, *args):
 		
-		mp.current_process().stream.put([instruction, self.pid] + list(args) if instruction else None)
+		return self.types[name] if name in self.types else aletheia.infer(default)
 
 	def state(self): # Get current state of task as subset of __dict__
 
@@ -270,10 +240,9 @@ class task:
 				'types': self.types,
 				'reserved': self.reserved,
 				'instructions': self.instructions,
-				'arity': self.arity,
 				'path': self.path,
-				'caller': self.caller,
-				'address': self.address}
+				'op': self.op,
+				'caller': self.caller}
 
 	def restore(self, state): # Restore previous state of task
 
@@ -289,6 +258,10 @@ class task:
 				break
 			self.path = self.path + 1
 		self.bind(name, message, check)
+
+	def message(self, instruction = None, *args):
+		
+		mp.current_process().stream.put([instruction, self.pid] + list(args) if instruction else None)
 
 	def error(self, status, *args): # Error handler
 		

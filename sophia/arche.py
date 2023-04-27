@@ -2,6 +2,7 @@
 The Arche module defines the standard library and internal data types.
 '''
 
+from aletheia import cast
 from kadmos import module, translator
 from rationals import Rational as real
 from sys import stderr
@@ -12,28 +13,30 @@ class element(tuple):
 
 class slice:
 	"""Implements an arithmetic slice with inclusive range."""
+	__slots__ = ('start', 'end', 'step')
+
 	def __init__(self, indices):
 		
-		self.indices = indices
+		self.start, self.end, self.step = indices
 
 	def __getitem__(self, index): # Enables O(1) indexing of slices
 		
 		if index >= 0:
-			return self.indices[0] + self.indices[2] * index
+			return self.start + self.step * index
 		else:
-			return self.indices[1] + self.indices[2] * (index + 1)
+			return self.end + self.step * (index + 1)
 
 	def __iter__(self): # Custom range generator for reals
 
-		n = self.indices[0]
-		if self.indices[2] >= 0:
-			while n <= self.indices[1]:
+		n = self.start
+		if self.step >= 0:
+			while n <= self.end:
 				yield n
-				n = n + self.indices[2]
+				n = n + self.step
 		else:
-			while n >= self.indices[1]:
+			while n >= self.end:
 				yield n
-				n = n + self.indices[2]
+				n = n + self.step
 
 class method:
 	"""
@@ -45,38 +48,35 @@ class method:
 	def __init__(self, name):
 
 		self.name = name
-		self.finals = {}
 		self.methods = {}
+		self.finals = {}
 		self.arity = {}
 
 	def register(self, method, final, signature): # Overwrites duplicate signatures
 		
-		self.finals[signature] = final # Return type
 		self.methods[signature] = method # Function
+		self.finals[signature] = final # Return type
 		self.arity[signature] = len(signature) # Pre-evaluated length of signature
 
 class type_method(method):
 
-	def __init__(self, name, supertype = None):
+	def __init__(self, name, supertypes):
 
-		self.name = name
-		self.supertype = supertype
-		self.finals = {}
-		self.methods = {}
-		self.arity = {}
+		super().__init__(name)
+		self.supertypes = [name] + supertypes
+		self.specificity = len(supertypes) + 1
 
 class event_method(method): pass
 class function_method(method): pass
 
 class type_definition:
 	"""Definition for a user-defined type."""
-	def __init__(self, instructions, name, supertype):
+	def __init__(self, instructions, name):
 
-		self.instructions = [' '.join(i) for i in instructions] # Oh, well
+		self.instructions = instructions
 		self.arity = [0 if i[0] == ';' else (len(i) - 2) for i in instructions]
 		self.name = name
 		self.type = name
-		self.supertype = supertype
 
 	def __call__(self, task, *args):
 
@@ -164,14 +164,16 @@ f_assert.register(assert_untyped,
 
 def bind_untyped(task, value):
 	
-	return task.bind(task.address,
-					 value)
+	name = task.op.register
+	if name in task.reserved:
+		return task.error('BIND', name)
+	task.instructions[task.path].name = task.check(name, default = value)
 
 def bind_untyped_type(task, value, type_routine):
 	
-	return task.bind(task.address,
-					 value,
-					 type_routine.name)
+	name = task.op.register
+	if name in task.reserved:
+		return task.error('BIND', name)
 
 f_bind = function_method('.bind')
 f_bind.register(bind_untyped,
@@ -237,67 +239,6 @@ f_break.register(break_null,
 f_break.register(break_untyped,
 				 '.',
 				 ('untyped',))
-
-def check_untyped(task, value):
-	
-	type_routine = task.find(task.check(task.address, default = value))
-	known = task.check(task.registers[0])
-	types = [] # Stack of user-defined types, with the requested type at the bottom
-	while type_routine.supertype and type_routine.name != known: # Known type optimises by truncating stack
-		types.append(type_routine)
-		type_routine = task.find(type_routine.supertype)
-	instructions = [[item.name, task.address, task.address] for item in [type_routine] + types[::-1]]
-	i = task.path
-	while task.instructions[i][0] != ';':
-		i = i + 1
-	task.instructions = task.instructions[:task.path] + instructions + task.instructions[i:]
-	task.arity = task.arity[:task.path] + [1 for _ in instructions] + task.arity[i:]
-	task.override = known
-	return value
-
-def check_untyped_type(task, value, type_routine):
-	
-	known = task.check(task.registers[0])
-	types = [] # Stack of user-defined types, with the requested type at the bottom
-	while type_routine.supertype and type_routine.name != known: # Known type optimises by truncating stack
-		types.append(type_routine)
-		type_routine = task.find(type_routine.supertype)
-	instructions = [[item.name, task.address, task.address] for item in [type_routine] + types[::-1]]
-	i = task.path
-	while task.instructions[i][0] != ';':
-		i = i + 1
-	task.instructions = task.instructions[:task.path] + instructions + task.instructions[i:]
-	task.arity = task.arity[:task.path] + [1 for _ in instructions] + task.arity[i:]
-	task.override = known
-	return value
-
-def check_untyped_future(task, value, future):
-	
-	type_routine = task.find(future.type)
-	known = task.check(task.registers[0])
-	types = [] # Stack of user-defined types, with the requested type at the bottom
-	while type_routine.supertype and type_routine.name != known: # Known type optimises by truncating stack
-		types.append(type_routine)
-		type_routine = task.find(type_routine.supertype)
-	instructions = [[item.name, task.address, task.address] for item in [type_routine] + types[::-1]]
-	i = task.path
-	while task.instructions[i][0] != ';':
-		i = i + 1
-	task.instructions = task.instructions[:task.path] + instructions + task.instructions[i:]
-	task.arity = task.arity[:task.path] + [1 for _ in instructions] + task.arity[i:]
-	task.override = known
-	return value
-
-f_check = function_method('.check')
-f_check.register(check_untyped,
-				 'null',
-				 ('untyped',))
-f_check.register(check_untyped_type,
-				 'null',
-				 ('untyped', 'type'))
-f_check.register(check_untyped_future,
-				 'null',
-				 ('untyped', 'future'))
 
 def concatenate_untyped(task, value):
 	
@@ -394,7 +335,7 @@ def index_string_integer(task, sequence, index):
 def index_string_slice(task, sequence, index):
 
 	length = len(sequence)
-	if (-length <= index.indices[0] < length) and (-length <= index.indices[1] < length):
+	if (-length <= index.start < length) and (-length <= index.end < length):
 		return ''.join(sequence[int(n)] for n in iter(index)) # Constructs slice of string using range
 
 def index_list_integer(task, sequence, index):
@@ -406,7 +347,7 @@ def index_list_integer(task, sequence, index):
 def index_list_slice(task, sequence, index):
 	
 	length = len(sequence)
-	if (-length <= index.indices[0] < length) and (-length <= index.indices[1] < length):
+	if (-length <= index.start < length) and (-length <= index.end < length):
 		return tuple(sequence[int(n)] for n in iter(index)) # Constructs list of list using range
 
 def index_record_untyped(task, sequence, index):
@@ -417,7 +358,7 @@ def index_record_untyped(task, sequence, index):
 def index_record_slice(task, sequence, index):
 
 	length = len(sequence)
-	if (-length <= index.indices[0] < length) and (-length <= index.indices[1] < length):
+	if (-length <= index.start < length) and (-length <= index.end < length):
 		items = tuple(sequence.items())
 		return dict(items[int(n)] for n in iter(index)) # Constructs slice of record using range
 
@@ -430,7 +371,7 @@ def index_slice_integer(task, sequence, index):
 def index_slice_slice(task, sequence, index):
 	
 	length = length_slice(task, sequence)
-	if (-length <= index.indices[0] < length) and (-length <= index.indices[1] < length):
+	if (-length <= index.start < length) and (-length <= index.end < length):
 		return tuple(sequence[int(n)] for n in iter(index))
 
 f_index = function_method('.index')
@@ -692,14 +633,8 @@ f_error.register(error_string,
 
 # Built-in methods
 
-def cast_type_untyped(task, target, value):
-
-	while target.supertype:
-		target = target.supertype
-	return getattr(target, '__' + names[type(value).__name__] + '__')(value)
-
 f_cast = function_method('cast')
-f_cast.register(cast_type_untyped,
+f_cast.register(cast,
 				'*', # Signals to infer type
 				('type', 'untyped'))
 
@@ -717,7 +652,7 @@ def length_record(task, sequence):
 
 def length_slice(task, sequence):
 
-	return real(int((sequence.indices[1] - sequence.indices[0]) / sequence.indices[2]), 1, _normalise = False)
+	return real(int((sequence.end - sequence.start) / sequence.step), 1, _normalise = False)
 
 f_length = function_method('length')
 f_length.register(length_string,
@@ -735,7 +670,7 @@ f_length.register(length_slice,
 
 def reverse_slice(task, value):
 		
-	return slice([value.indices[1], value.indices[0], -value.indices[2]])
+	return slice([value.end, value.start, -value.step])
 
 f_reverse = function_method('reverse')
 f_reverse.register(reverse_slice,
@@ -754,42 +689,3 @@ f_round.register(round_number,
 # Namespace composition and internals
 
 functions = {v.name: v for k, v in globals().items() if k.split('_')[0] == 'f'}
-
-names = {
-	'NoneType': 'null',
-	'type_method': 'type',
-	'event_method': 'event',
-	'function_method': 'function',
-	'bool': 'boolean',
-	'Rational': 'number',
-	'int': 'integer',
-	'str': 'string',
-	'tuple': 'list',
-	'dict': 'record',
-	'slice': 'slice',
-	'reference': 'future',
-	'type_definition': 'type',
-	'event_definition': 'event',
-	'function_definition': 'function'
-}
-
-def infer(value): # Infers type of value
-
-	name = type(value).__name__
-	if name in names:
-		if names[name] == 'number' and value % 1 == 0:
-			return 'integer'
-		else:
-			return names[name]
-	else:
-		return 'untyped' # Applies to all internal types
-
-#class meta_statement(left_bracket):
-
-#	def start(self, routine):
-		
-#		tree = module(routine.get('string'), source = self, name = routine.name) # Here's tree
-#		routine.node = tree # Redirect control flow to new tree
-#		routine.path.append(0)
-
-#	def execute(self, routine): return

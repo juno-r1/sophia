@@ -114,7 +114,7 @@ single-line function/operator syntax
 
 single-line type syntax
 
-<name: type> [extends <name: type> [with <name: interface>, ...]] => <expression: boolean>
+<name: type> [extends <name: type> [with <untyped>]] => <expression: boolean>
 
 => operator is equivalent to return statement
 
@@ -127,3 +127,44 @@ g.f(x) = g(f(x))
 ---
 
 type checks for return and routine operators currently unimplemented
+
+---
+
+type checking
+
+a type definition contains methods for each of its known supertypes, containing all constraints in a list
+upon creating a type, its constraints are added to the record
+
+type checking works as such:
+	a type check is operationally equivalent to a function call
+	a method of a type checks the constraints up to its supertype
+	these instructions are executed as a function call
+	the returned value indicates the success of the check
+
+this method carries many benefits over the existing implementation:
+	no instruction editing necessary
+	supertypes are encoded in the type instead of the global state with only trivial cost to space
+	all information required to perform a type check is available from the type
+	enables operations on types
+
+---
+
+new instruction format
+
+<command> <return> <args>; <line> <scope> <label>
+
+---
+
+assignment
+
+if type:
+	check value against declared type
+	return value to named register
+	.check <register> <type>
+	<type> <register> <value>
+else:
+	get the stored type of the register and modify the next instruction to be it
+	check value against stored type
+	return value to named register
+	.check <register>
+	<type> <register> <value>

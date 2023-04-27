@@ -1,12 +1,2 @@
-// 3.2.7, 5.5
-
-num increment (num n):
-
-	return n + 1
-
-int increment (int n) => n - 1
-
-bool a: increment(0.5) = 1.5
-bool b: increment(1) = 0
-
-return a and b
+int a: 1; int b: 2
+return a

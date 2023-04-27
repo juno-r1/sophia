@@ -28,9 +28,9 @@ def debug_supervisor(message): # Takes a message
 	print(*message, file = stderr)
 
 def debug_task(task): # Takes a process object
-
+	
 	print(str(task.path),
-		  task.instructions[task.path],
+		  task.op,
 		  sep = '\t',
 		  file = stderr)
 

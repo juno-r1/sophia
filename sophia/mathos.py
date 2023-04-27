@@ -2,7 +2,8 @@
 The Mathos module defines built-in operators.
 '''
 
-from arche import element, slice, method, infer
+from aletheia import infer
+from arche import element, slice, method
 
 def u_add(_, x): # Pain
 

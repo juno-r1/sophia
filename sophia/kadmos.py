@@ -2,7 +2,8 @@
 The Kadmos module handles Sophia file parsing and instruction generation.
 '''
 
-import arche, hemera
+import hemera
+from aletheia import infer
 from rationals import Rational as real
 
 characters = '.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz' # Sorted by position in UTF-8
@@ -35,6 +36,35 @@ binding_power = (('(', ')', '[', ']', '{', '}'), # The left-binding power of a b
 				 ('*', '/', '%'),
 				 ('^',))
 
+class instruction:
+	"""Instruction used in the virtual machine"""
+	__slots__ = ('name', 'register', 'args', 'line', 'scope', 'label', 'arity')
+
+	def __init__(self, name, register, args = (), line = 0, scope = 0, label = ()):
+
+		self.name = name
+		self.register = register
+		self.args = args
+		self.line = line
+		self.scope = scope
+		self.label = label
+		self.arity = len(args)
+
+	def __str__(self):
+
+		command = ' '.join([self.name, self.register] + list(self.args))
+		data = ' '.join([str(self.line), str(self.scope)] + list(self.label))
+		return command + '; ' + data
+
+	@classmethod
+	def read(cls, value):
+
+		command, data = value.split(';')
+		command, data = command.split(' '), data.split(' ')
+		name, register, args = command[0], command[1], tuple(command[2:])
+		line, scope, label = int(data[0]), int(data[1]), tuple(data[2:])
+		return cls(name, register, args, line, scope, label)
+
 class translator:
 	"""Generates a list of instructions from a syntax tree."""
 	def __init__(self, node, constants = 0):
@@ -43,7 +73,7 @@ class translator:
 		self.node = node
 		self.path = [0]
 		self.constant = constants # Constant register counter
-		self.instructions = list(node.start())
+		self.instructions = [instruction('.return', '0', ('&0',), label = (node.name,))]
 		self.values = {'0': None, '&0': None} # Register namespace
 		self.types = {'0': 'null', '&0': 'null'} # Register types
 
@@ -53,9 +83,9 @@ class translator:
 		while self.node: # Pre-runtime generation of instructions
 			if self.path[-1] == self.node.length: # Walk up
 				if isinstance(self.node.head, assert_statement) and self.path[-2] < self.node.head.active: # Insert assertion
-					self.instructions.extend(('.assert 0 {0}'.format(self.node.register), '; {0} .assert'.format(self.node.head.scope)))
+					self.instructions.append(instruction('.assert', '0', (self.node.register,), line = self.node.line, scope = self.node.head.scope))
 				elif isinstance(self.node.head, type_statement): # Insert assertion
-					self.instructions.append('.constraint 0 {0}'.format(self.node.register))
+					self.instructions.append(instruction('.constraint', '0', (self.node.register,), line = self.node.line, scope = self.node.scope))
 				self.node = self.node.head # Walk upward
 				if self.node:
 					self.path.pop()
@@ -70,16 +100,21 @@ class translator:
 				self.path.append(0)
 				if isinstance(self.node, event_statement):
 					self.node.value = self.node.value + self.node.nodes[0].value
-			if self.path[-1] == 0:
-				if self.node.branch:
-					self.instructions.append('; {0} .else'.format(self.node.scope))
-				if self.node.label:
-					self.instructions.append(self.node.label.format(self.node.scope))
+			#if self.path[-1] == 0:
+			#	if self.node.branch:
+			#		self.instructions.append('; {0} .else'.format(self.node.scope))
+			#	if self.node.label:
+			#		self.instructions.append(self.node.label.format(self.node.scope))
 			if self.path[-1] == self.node.active:
-				self.instructions.extend(self.node.start())
+				instructions = self.node.start()
 			elif self.path[-1] == self.node.length:
-				self.instructions.extend(self.node.execute())
-		if len(self.instructions) == 1:
+				instructions = self.node.execute()
+			else:
+				instructions = []
+			for x in instructions:
+				x.line, x.scope = self.node.line, self.node.scope
+			self.instructions.extend(instructions)
+		if len(self.instructions) == 1: # Adds instruction for empty program
 			self.instructions.extend(self.start.execute())
 		return self.instructions, self.values, self.types
 
@@ -107,7 +142,7 @@ class translator:
 				index = '&' + str(self.constant)
 				value = () if isinstance(self.node, sequence_literal) else self.node.value
 				self.values[index] = value
-				self.types[index] = arche.infer(value)
+				self.types[index] = infer(value)
 				return index
 
 class node:
@@ -121,8 +156,8 @@ class node:
 		self.register = '0' # Register that this node returns to
 		self.label = ''
 		self.length = 0 # Performance optimisation
-		self.scope = 0
 		self.line = 0
+		self.scope = 0
 		self.active = -1 # Indicates path index for activation of start()
 		self.branch = False
 
@@ -158,7 +193,7 @@ class node:
 					else:
 						if symbol[0] in '.0123456789': # Terrible way to check for a number without using a try/except block
 							token = literal(real(symbol)) # Type of literals is known at parse time
-							token.type = arche.infer(token.value) # Number or integer
+							token.type = infer(token.value) # Number or integer
 						elif symbol in sub_values:
 							token = literal(sub_values[symbol]) # Interpret booleans and null
 							token.type = 'boolean' if isinstance(token.value, bool) else None # Null is caught by untyped
@@ -262,22 +297,23 @@ class module(coroutine):
 	def __init__(self, file_name, root = 'sophia', meta = ''):
 
 		super().__init__(None) # Sets initial node to self
+		self.type = 'untyped'
+		self.active = -1
 		if meta:
-			self.name, self.type = meta, 'untyped'
+			self.name = meta
 			self.source = None
 			self.parse(file_name)
 		else:
 			with open('{0}\\{1}'.format(root, file_name), 'r') as f: # Binds file data to runtime object
 				self.file_data = f.read() # node.parse() takes a string containing newlines
-			self.name, self.type = file_name.split('.')[0], 'untyped'
+			self.name = file_name.split('.')[0]
 			self.source = None
 			self.parse(self.file_data) # Here's tree
+		self.label = self.name
 
 	def __str__(self): return 'module ' + self.name
 
-	def start(self): return '; 0 {0}'.format(self.name),
-
-	def execute(self): return '.return 0 &0', '; 0 .end' # &0 is always null
+	def execute(self): return instruction('.return', '0', ('&0',), label = ('.end',)), # Default end of module
 
 class type_statement(coroutine):
 	"""Defines a type definition."""
@@ -367,18 +403,12 @@ class assignment(statement):
 
 	def __str__(self): return 'assignment ' + str([item.value for item in self.value])
 
-	def execute(self): # Yeah, I guess this works
+	def execute(self):
 
 		instructions = []
 		for i, item in enumerate(self.value):
-			if item.type:
-				instructions.extend(('.check {0} {1} {2}'.format(item.value, self.nodes[i].register, item.type),
-									 '; {0} .check'.format(self.scope),
-									 '.bind {0} {1} {2}'.format(item.value, item.value, item.type)))
-			else:
-				instructions.extend(('.check {0} {1}'.format(item.value, self.nodes[i].register),
-									 '; {0} .check'.format(self.scope),
-									 '.bind {0} {1}'.format(item.value, item.value)))
+			instructions.append(instruction('.bind', item.value, (self.nodes[i].register, item.type) if item.type else (self.nodes[i].register,)))
+			instructions.append(instruction(item.type if item.type else 'untyped', item.value, (self.nodes[i].register,)))
 		return instructions
 
 class if_statement(statement):
@@ -472,7 +502,9 @@ class return_statement(statement):
 		super().__init__(None, lexer(tokens[1:]).parse()) if len(tokens) > 1 else super().__init__(None)
 		self.branch = tokens[0].branch
 
-	def execute(self): return '.return 0 {0}'.format(self.nodes[0].register if self.nodes else '&0'),
+	def execute(self): return instruction('.return',
+										  '0',
+										  (self.nodes[0].register if self.nodes else '&0',)),
 
 class link_statement(statement):
 	"""Defines a link."""
