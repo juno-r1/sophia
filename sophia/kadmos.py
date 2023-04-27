@@ -563,8 +563,7 @@ class name(identifier):
 	def execute(self):
 		
 		if self.type and self.register == '0':
-			return ('.check 0 {0} {1}'.format(self.value, self.type),
-					'; {0} .check'.format(self.scope))
+			return instruction(self.type, '0', (self.value,)),
 		else:
 			return ()
 
@@ -704,9 +703,10 @@ class concatenator(operator):
 	def execute(self):
 		
 		if self.value == ':':
-			return ': {0} {1}'.format(self.register, ' '.join(item.register for item in self.nodes)),
+			return instruction(':', self.register, ' '.join(item.register for item in self.nodes)),
 		else:
-			return ['.concatenate {0} {1}'.format(self.register, self.nodes[0].register)] + ['.concatenate {0} {1} {2}'.format(self.register, self.register, item.register) for item in self.nodes[1:]]
+			return [instruction('.concatenate', self.register, (self.nodes[0].register,))] + \
+				   [instruction('.concatenate', self.register, (self.register, item.register)) for item in self.nodes[1:]]
 
 class left_bracket(operator):
 	"""Generic bracket node."""
@@ -761,7 +761,7 @@ class sequence_literal(left_bracket):
 	def execute(self):
 		
 		if self.nodes:
-			return '.sequence {0} {1}'.format(self.register, self.nodes[0].register),
+			return instruction('.sequence', self.register, (self.nodes[0].register,)),
 		else:
 			return ()
 
