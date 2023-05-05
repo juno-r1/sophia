@@ -130,8 +130,8 @@ class runtime:
 					hemera.debug_supervisor(message)
 				getattr(self, message[0])(*message[1:]) # Executes event
 			except Empty:
-				message = True
 				hemera.debug_error('sophia', 0, 'TIME', ()) # Prints timeout warning but continues
+				message = True
 		self.pool.close()
 		self.pool.join()
 		if 'profile' in self.flags:
@@ -159,7 +159,7 @@ class task:
 		self.op = instructions[0] # Current instruction
 		self.caller = None
 		self.unbind = False # Unbind flag
-		self.override = None # Override flag, for when a method has a different return type to the one declared
+		#self.override = None # Override flag, for when a method has a different return type to the one declared
 
 	def execute(self): # Target of task.pool.apply_async()
 		
@@ -175,12 +175,14 @@ class task:
 			Prepare instruction, get arguments and type signature.
 			"""
 			self.op = self.instructions[self.path]
+			if debug_task:
+				hemera.debug_task(self)
 			self.path = self.path + 1
+			if not self.op.register: # Labels
+				continue
 			arity = self.op.arity
 			args = [self] + [self.find(arg) for arg in self.op.args]
 			signature = tuple([self.check(arg) for arg in self.op.args])
-			if debug_task:
-				hemera.debug_task(self)
 			"""
 			Multiple dispatch algorithm, with help from Julia:
 			https://github.com/JeffBezanson/phdthesis
@@ -209,9 +211,9 @@ class task:
 			if self.unbind:
 				del self.values[self.op.register], self.types[self.op.register]
 				self.unbind = False
-			elif self.override:
-				self.values[self.op.register] = value
-				self.types[self.op.register], self.override = self.override, None
+			#elif self.override:
+			#	self.values[self.op.register] = value
+			#	self.types[self.op.register], self.override = self.override, None
 			elif (final := method.finals[match]) != '.':
 				self.values[self.op.register] = value
 				self.types[self.op.register] = aletheia.infer(value) if final == '*' else final
@@ -220,7 +222,7 @@ class task:
 		#	pr.print_stats(sort = 'tottime')
 		if 'namespace' in self.flags:
 			hemera.debug_namespace(self)
-		self.calls.send(self.state()) # Send mutable state to supervisor
+		#self.calls.send(self.state()) # Send mutable state to supervisor
 		self.message('terminate')
 		return self.values['0']
 

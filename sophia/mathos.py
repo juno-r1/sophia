@@ -3,7 +3,7 @@ The Mathos module defines built-in operators.
 '''
 
 from aletheia import infer
-from arche import element, slice, method
+from arche import element, slice, function_method
 
 def u_add(_, x): # Pain
 
@@ -13,7 +13,7 @@ def b_add(_, x, y):
 
 	return x + y
 
-op_add = method('+')
+op_add = function_method('+')
 op_add.register(u_add,
 				'number',
 				('number',))
@@ -29,7 +29,7 @@ def b_sub(_, x, y):
 
 	return x - y
 
-op_sub = method('-')
+op_sub = function_method('-')
 op_sub.register(u_sub,
 				'number',
 				('number',))
@@ -46,7 +46,7 @@ def b_mul(_, x, y):
 
 	return x * y
 
-op_mul = method('*')
+op_mul = function_method('*')
 op_mul.register(u_rsv,
 				'*',
 				('future',))
@@ -59,7 +59,7 @@ def b_div(_, x, y):
 	if y != 0: # Null return on division-by-zero
 		return x / y
 
-op_div = method('/')
+op_div = function_method('/')
 op_div.register(b_div,
 				'number',
 				('number', 'number'))
@@ -68,7 +68,7 @@ def b_exp(_, x, y):
 
 	return x ** y
 
-op_exp = method('^')
+op_exp = function_method('^')
 op_exp.register(b_exp,
 				'number',
 				('number', 'number'))
@@ -78,7 +78,7 @@ def b_mod(_, x, y):
 	if y != 0: # Null return on modulo-by-zero
 		return x % y
 
-op_mod = method('%')
+op_mod = function_method('%')
 op_mod.register(b_mod,
 				'number',
 				('number', 'number'))
@@ -87,7 +87,7 @@ def b_eql(_, x, y): # Stricter equality because of that dumb fucker bool
 
 	return type(x) is type(y) and x == y
 
-op_eql = method('=')
+op_eql = function_method('=')
 op_eql.register(b_eql,
 				'boolean',
 				('untyped', 'untyped'))
@@ -96,7 +96,7 @@ def b_neq(_, x, y):
 
 	return type(x) is not type(y) or x != y
 
-op_neq = method('!=')
+op_neq = function_method('!=')
 op_neq.register(b_neq,
 				'boolean',
 				('untyped', 'untyped'))
@@ -105,7 +105,7 @@ def b_ltn(_, x, y):
 	
 	return x < y
 
-op_ltn = method('<')
+op_ltn = function_method('<')
 op_ltn.register(b_ltn,
 				'boolean',
 				('number', 'number'))
@@ -119,7 +119,7 @@ def b_gtn(_, x, y):
 
 	return x > y
 
-op_gtn = method('>')
+op_gtn = function_method('>')
 op_gtn.register(n_rcv,
 				'.',
 				())
@@ -131,7 +131,7 @@ def b_leq(_, x, y):
 
 	return x <= y
 
-op_leq = method('<=')
+op_leq = function_method('<=')
 op_leq.register(b_leq,
 				'boolean',
 				('number', 'number'))
@@ -140,7 +140,7 @@ def b_geq(_, x, y):
 
 	return x >= y
 
-op_geq = method('>=')
+op_geq = function_method('>=')
 op_geq.register(b_geq,
 				'boolean',
 				('number', 'number'))
@@ -149,7 +149,7 @@ def b_sbs(_, x, y):
 	
 	return x in y
 
-op_sbs = method('in')
+op_sbs = function_method('in')
 op_sbs.register(b_sbs,
 				'boolean',
 				('untyped', 'string'))
@@ -167,7 +167,7 @@ def u_lnt(_, x):
 
 	return not x
 
-op_lnt = method('not')
+op_lnt = function_method('not')
 op_lnt.register(u_lnt,
 				'boolean',
 				('boolean',))
@@ -176,7 +176,7 @@ def b_lnd(_, x, y):
 
 	return x and y
 
-op_lnd = method('and')
+op_lnd = function_method('and')
 op_lnd.register(b_lnd,
 				'boolean',
 				('boolean', 'boolean'))
@@ -185,7 +185,7 @@ def b_lor(_, x, y):
 
 	return x or y
 
-op_lor = method('or')
+op_lor = function_method('or')
 op_lor.register(b_lor,
 				'boolean',
 				('boolean', 'boolean'))
@@ -194,7 +194,7 @@ def b_lxr(_, x, y):
 
 	return x != y
 
-op_lxr = method('xor')
+op_lxr = function_method('xor')
 op_lxr.register(b_lxr,
 				'boolean',
 				('boolean', 'boolean'))
@@ -225,7 +225,7 @@ def b_ins_slice(_, x, y):
 	else:
 		return None
 
-op_ins = method('&')
+op_ins = function_method('&')
 op_ins.register(b_ins_string,
 				'string',
 				('string', 'string'))
@@ -255,7 +255,7 @@ def b_uni_slice(_, x, y):
 
 	return tuple((list(x) + list(y)).sort())
 
-op_uni = method('|')
+op_uni = function_method('|')
 op_uni.register(b_uni_string,
 				'string',
 				('string', 'string'))
@@ -277,7 +277,7 @@ def t_slc(_, x, y, z):
 	
 	return slice([x, y, z])
 
-op_slc = method(':')
+op_slc = function_method(':')
 op_slc.register(b_slc,
 				'untyped',
 				('untyped', 'untyped'))
@@ -293,7 +293,7 @@ def u_sfe_untyped(_, x):
 	
 	return True
 
-op_sfe = method('?')
+op_sfe = function_method('?')
 op_sfe.register(u_sfe_null,
 				'boolean',
 				('null',))
@@ -305,7 +305,7 @@ def u_usf(_, x):
 
 	return x if x else None
 
-op_usf = method('!')
+op_usf = function_method('!')
 op_usf.register(u_usf,
 				'*',
 				('untyped',))
@@ -319,7 +319,7 @@ def b_snd(task, x, y):
 		task.message('send', y, x)
 		return y
 
-op_snd = method('->')
+op_snd = function_method('->')
 op_snd.register(b_snd,
 				'future',
 				('untyped', 'future'))

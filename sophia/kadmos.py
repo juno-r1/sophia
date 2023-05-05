@@ -38,32 +38,28 @@ binding_power = (('(', ')', '[', ']', '{', '}'), # The left-binding power of a b
 
 class instruction:
 	"""Instruction used in the virtual machine"""
-	__slots__ = ('name', 'register', 'args', 'line', 'scope', 'label', 'arity')
+	__slots__ = ('name', 'register', 'args', 'line', 'label', 'arity')
 
-	def __init__(self, name, register, args = (), line = 0, scope = 0, label = ()):
+	def __init__(self, name, register, args = (), line = 0, label = []):
 
 		self.name = name
 		self.register = register
 		self.args = args
 		self.line = line
-		self.scope = scope
 		self.label = label
 		self.arity = len(args)
 
-	def __str__(self):
+	def __str__(self): # Convert instruction to string
 
-		command = ' '.join([self.name, self.register] + list(self.args))
-		data = ' '.join([str(self.line), str(self.scope)] + list(self.label))
-		return command + '; ' + data
+		return ' '.join([str(self.line), self.name, self.register] + list(self.args)) + '; ' + ' '.join(self.label)
 
 	@classmethod
-	def read(cls, value):
+	def read(cls, value): # Convert string to instruction
 
-		command, data = value.split(';')
-		command, data = command.split(' '), data.split(' ')
-		name, register, args = command[0], command[1], tuple(command[2:])
-		line, scope, label = int(data[0]), int(data[1]), tuple(data[2:])
-		return cls(name, register, args, line, scope, label)
+		command, label = value.split(';')
+		command, label = command.split(' '), label.split(' ')
+		line, name, register, args = int(command[0]), command[1], command[2], tuple(command[3:])
+		return cls(name, register, args, line, label)
 
 class translator:
 	"""Generates a list of instructions from a syntax tree."""
@@ -73,7 +69,7 @@ class translator:
 		self.node = node
 		self.path = [0]
 		self.constant = constants # Constant register counter
-		self.instructions = [instruction('.return', '0', ('&0',), label = (node.name,))]
+		self.instructions = [instruction('.return', '0', ('&0',), label = [node.name])]
 		self.values = {'0': None, '&0': None} # Register namespace
 		self.types = {'0': 'null', '&0': 'null'} # Register types
 
@@ -82,10 +78,10 @@ class translator:
 		self.node.length = len(self.node.nodes)
 		while self.node: # Pre-runtime generation of instructions
 			if self.path[-1] == self.node.length: # Walk up
-				if isinstance(self.node.head, assert_statement) and self.path[-2] < self.node.head.active: # Insert assertion
-					self.instructions.append(instruction('.assert', '0', (self.node.register,), line = self.node.line, scope = self.node.head.scope))
-				elif isinstance(self.node.head, type_statement): # Insert assertion
-					self.instructions.append(instruction('.constraint', '0', (self.node.register,), line = self.node.line, scope = self.node.scope))
+				#if isinstance(self.node.head, assert_statement) and self.path[-2] < self.node.head.active: # Insert assertion
+				#	self.instructions.append(instruction('.assert', '0', (self.node.register,), line = self.node.line, scope = self.node.head.scope))
+				#elif isinstance(self.node.head, type_statement): # Insert assertion
+				#	self.instructions.append(instruction('.constraint', '0', (self.node.register,), line = self.node.line, scope = self.node.scope))
 				self.node = self.node.head # Walk upward
 				if self.node:
 					self.path.pop()
@@ -97,14 +93,14 @@ class translator:
 				self.node = self.node.nodes[self.path[-1]] # Set value to child node
 				self.node.register = self.register(offset)
 				self.node.length = len(self.node.nodes)
+				self.node.scope = len(self.path)
 				self.path.append(0)
-				if isinstance(self.node, event_statement):
-					self.node.value = self.node.value + self.node.nodes[0].value
-			#if self.path[-1] == 0:
-			#	if self.node.branch:
-			#		self.instructions.append('; {0} .else'.format(self.node.scope))
-			#	if self.node.label:
-			#		self.instructions.append(self.node.label.format(self.node.scope))
+				if self.node.branch:
+					self.instructions.append(instruction('ELSE', ''))
+				elif self.node.block:
+					self.instructions.append(instruction('START', ''))
+				#if isinstance(self.node, event_statement):
+				#	self.node.value = self.node.value + self.node.nodes[0].value
 			if self.path[-1] == self.node.active:
 				instructions = self.node.start()
 			elif self.path[-1] == self.node.length:
@@ -112,8 +108,10 @@ class translator:
 			else:
 				instructions = []
 			for x in instructions:
-				x.line, x.scope = self.node.line, self.node.scope
+				x.line = self.node.line
 			self.instructions.extend(instructions)
+			if self.path[-1] == self.node.length and self.node.block:
+				self.instructions.append(instruction('END', ''))
 		if len(self.instructions) == 1: # Adds instruction for empty program
 			self.instructions.extend(self.start.execute())
 		return self.instructions, self.values, self.types
@@ -154,12 +152,12 @@ class node:
 		self.head = None # Determined by scope parsing
 		self.nodes = [i for i in nodes] # For operands that should be evaluated
 		self.register = '0' # Register that this node returns to
-		self.label = ''
 		self.length = 0 # Performance optimisation
 		self.line = 0
 		self.scope = 0
 		self.active = -1 # Indicates path index for activation of start()
-		self.branch = False
+		self.branch = False # Else statement
+		self.block = False # Generates start and end labels
 
 	def __str__(self): return str(self.value)
 
@@ -309,11 +307,10 @@ class module(coroutine):
 			self.name = file_name.split('.')[0]
 			self.source = None
 			self.parse(self.file_data) # Here's tree
-		self.label = self.name
 
 	def __str__(self): return 'module ' + self.name
 
-	def execute(self): return instruction('.return', '0', ('&0',), label = ('.end',)), # Default end of module
+	def execute(self): return instruction('.return', '0', ('&0',)), # Default end of module
 
 class type_statement(coroutine):
 	"""Defines a type definition."""
@@ -403,35 +400,37 @@ class assignment(statement):
 
 	def __str__(self): return 'assignment ' + str([item.value for item in self.value])
 
-	def execute(self):
-
-		instructions = []
-		for i, item in enumerate(self.value):
-			instructions.append(instruction('.bind', item.value, (self.nodes[i].register, item.type) if item.type else (self.nodes[i].register,)))
-			instructions.append(instruction(item.type if item.type else 'untyped', item.value, (self.nodes[i].register,)))
-		return instructions
+	def execute(self): return [instruction('.bind',
+										   str(int(self.register) + i),
+										   (self.nodes[i].register, item.type) if item.type else (self.nodes[i].register,),
+										   label = [item.value, str(len(self.value) - 1)])
+										   for i, item in enumerate(self.value)] + \
+							  [instruction(item.type if item.type else 'untyped',
+										   item.value,
+										   (str(int(self.register) + i),))
+										   for i, item in enumerate(self.value)] # Single-line function!
 
 class if_statement(statement):
 	"""Defines an if statement."""
 	def __init__(self, tokens):
 
 		super().__init__(None, lexer(tokens[1:-1]).parse())
-		self.branch = tokens[0].branch
-		self.label = '; {0} .start'
 		self.active = 1
+		self.branch = tokens[0].branch
+		self.block = True
 
-	def start(self): return '.branch {0} {1}'.format(self.register, self.nodes[0].register), '; {0} .branch'.format(self.scope)
+	def start(self): return instruction('.branch', self.register, (self.nodes[0].register,)),
 
-	def execute(self): return '.branch {0}'.format(self.register), '; {0} .end'.format(self.scope)
+	def execute(self): return instruction('.branch', self.register),
 
 class while_statement(statement):
 	"""Defines a while statement."""
 	def __init__(self, tokens):
 
 		super().__init__(None, lexer(tokens[1:-1]).parse())
-		self.branch = tokens[0].branch
-		self.label = '; {0} .start'
 		self.active = 1
+		self.branch = tokens[0].branch
+		self.block = True
 
 	def start(self): return '.branch {0} {1}'.format(self.register, self.nodes[0].register), '; {0} .branch'.format(self.scope)
 
@@ -442,8 +441,9 @@ class for_statement(statement):
 	def __init__(self, tokens):
 
 		super().__init__(tokens[1], lexer(tokens[3:-1]).parse())
-		self.branch = tokens[0].branch
 		self.active = 1
+		self.branch = tokens[0].branch
+		self.block = True
 
 	def start(self): 
 		
@@ -488,8 +488,9 @@ class assert_statement(statement):
 		else:
 			nodes.append(lexer(sequence).parse())
 		super().__init__(None, *nodes)
-		self.branch = tokens[0].branch
 		self.active = len(nodes)
+		self.branch = tokens[0].branch
+		self.block = True
 
 	def start(self): return ()
 
@@ -519,10 +520,7 @@ class link_statement(statement):
 
 class start_statement(statement):
 	"""Defines an initial."""
-	def __init__(self, tokens):
-
-		super().__init__(tokens[2::2])
-		self.label = '; {0} .start'
+	def __init__(self, tokens): super().__init__(tokens[2::2])
 
 	def __str__(self): return 'start ' + str([item.value for item in self.value])
 
@@ -534,8 +532,9 @@ class else_statement(statement):
 
 		super().__init__(None)
 		self.branch = True
+		self.block = True
 
-	def execute(self): return '.branch {0}'.format(self.register), '; {0} .end'.format(self.scope)
+	def execute(self): return ()
 
 class identifier(node):
 	"""Generic identifier node."""
@@ -607,15 +606,15 @@ class prefix(operator):
 		self.nodes = [lex.parse(self.lbp)]
 		return self
 
-	def execute(self): return '{0} {1} {2}'.format(self.value,
-												   self.register,
-												   self.nodes[0].register),
+	def execute(self): return instruction(self.value,
+										  self.register,
+										  (self.nodes[0].register,)),
 
 class bind(prefix):
 	"""Defines the bind operator."""
 	def __str__(self): return 'bind ' + self.value
 
-	def execute(self): return '; {0} .bind'.format(self.scope), '.set {0} {1}'.format(self.register, self.value)
+	def execute(self): return '; {0} .bind'.format(self.scope), 'untyped {0} {1}'.format(self.register, self.value)
 
 class receive(prefix):
 	"""Defines the receive operator."""
@@ -639,18 +638,17 @@ class infix(operator):
 		self.nodes = [left, lex.parse(self.lbp)]
 		return self
 
-	def execute(self): return '{0} {1} {2} {3}'.format(self.value,
-													   self.register,
-													   self.nodes[0].register,
-													   self.nodes[1].register),
+	def execute(self): return instruction(self.value,
+										  self.register,
+										  (self.nodes[0].register, self.nodes[1].register)),
 
 class left_conditional(infix):
 	"""Defines the condition of the conditional operator."""
 	def __init__(self, value):
 
 		super().__init__(value)
-		self.label = '; {0} .start'
 		self.active = 1
+		self.block = True
 
 	def led(self, lex, left):
 		
@@ -659,7 +657,7 @@ class left_conditional(infix):
 		self.nodes = [left, n]
 		return self
 
-	def start(self): return '.branch {0} {1}'.format(self.register, self.nodes[0].register), '; {0} .branch'.format(self.scope)
+	def start(self): return instruction('.branch', self.register, (self.nodes[0].register,)),
 
 	def execute(self): return ()
 
@@ -670,12 +668,12 @@ class right_conditional(infix):
 		super().__init__(value)
 		self.active = 1
 
-	def start(self): return ('.set {0} {1}'.format(self.head.register, self.nodes[0].register),
-							 '.branch {0}'.format(self.register),
-							 '; {0} .end'.format(self.head.scope),
-							 '; {0} .else'.format(self.head.scope))
+	def start(self): return (instruction('untyped', self.head.register, (self.nodes[0].register,)),
+						     instruction('.branch', self.register),
+							 instruction('END', ''),
+							 instruction('ELSE', ''))
 
-	def execute(self): return '.set {0} {1}'.format(self.head.register, self.nodes[1].register), '; {0} .end'.format(self.scope)
+	def execute(self): return instruction('untyped', self.head.register, (self.nodes[1].register,)),
 
 class infix_r(operator):
 	"""Defines a right-binding infix."""
@@ -684,29 +682,27 @@ class infix_r(operator):
 		self.nodes = [left, lex.parse(self.lbp - 1)]
 		return self
 
-	def execute(self): return '{0} {1} {2} {3}'.format(self.value,
-													   self.register,
-													   self.nodes[0].register,
-													   self.nodes[1].register),
+	def execute(self): return instruction(self.value,
+										  self.register,
+										  (self.nodes[0].register, self.nodes[1].register)),
 
 class concatenator(operator):
 	"""Defines a concatenator."""
 	def led(self, lex, left):
 
 		n = lex.parse(self.lbp - 1)
-		if n.value == self.value:
-			self.nodes = [left] + n.nodes
-		else:
-			self.nodes = [left, n]
+		self.nodes = [left] + n.nodes if n.value == self.value else [left, n]
 		return self
 
 	def execute(self):
 		
 		if self.value == ':':
-			return instruction(':', self.register, ' '.join(item.register for item in self.nodes)),
+			return instruction(':', self.register, tuple(item.register for item in self.nodes)),
 		else:
-			return [instruction('.concatenate', self.register, (self.nodes[0].register,))] + \
-				   [instruction('.concatenate', self.register, (self.register, item.register)) for item in self.nodes[1:]]
+			return [instruction('.concatenate',
+								self.register,
+								(self.nodes[0].register,) if i == 0 else (self.register, item.register))
+								for i, item in enumerate(self.nodes)]
 
 class left_bracket(operator):
 	"""Generic bracket node."""
@@ -749,12 +745,13 @@ class sequence_index(left_bracket):
 		lex.use()
 		return self
 
-	def execute(self): 
-		
-		instructions = ['.index {0} {1} {2}'.format(self.register, self.nodes[0].register, self.nodes[1].register)]
-		for item in self.nodes[2:]: # Iteratively access sequence
-			instructions.append('.index {0} {1} {2}'.format(self.register, self.register, item.register))
-		return instructions
+	def execute(self): return [instruction('.index', # Own register is not guaranteed to be the same as the register of the first index
+										   self.register,
+										   (self.nodes[0].register, self.nodes[1].register))] + \
+							  [instruction('.index',
+										   self.register,
+										   (self.register, item.register))
+										   for item in self.nodes[2:]]
 
 class sequence_literal(left_bracket):
 	"""Defines a sequence constructor."""
@@ -767,9 +764,7 @@ class sequence_literal(left_bracket):
 
 class meta_statement(left_bracket):
 	"""Defines a meta-statement."""
-	def __init__(self, value):
-
-		super().__init__(value)
+	def __init__(self, value): super().__init__(value)
 
 	def execute(self): return ('.meta {0} {1}'.format(self.register, self.nodes[0].register),
 							   '; {0} .meta'.format(self.scope),

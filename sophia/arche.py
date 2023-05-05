@@ -102,7 +102,7 @@ class event_definition:
 
 		if task.instructions[task.path][2] == '.bind':
 			task.message('event', self, args, task.values[self.name])
-			task.override = 'future'
+			#task.override = 'future'
 			return task.calls.recv()
 		else:
 			task.caller = task.state()
@@ -127,7 +127,7 @@ class function_definition:
 
 		if task.instructions[task.path][2] == '.bind':
 			task.message('future', self, args, task.values[self.name])
-			task.override = 'future'
+			#task.override = 'future'
 			return task.calls.recv()
 		else:
 			task.caller = task.state()
@@ -164,44 +164,43 @@ f_assert.register(assert_untyped,
 
 def bind_untyped(task, value):
 	
-	name = task.op.register
-	if name in task.reserved:
-		return task.error('BIND', name)
-	task.instructions[task.path].name = task.check(name, default = value)
+	name, offset = task.op.label[0], int(task.op.label[1])
+	task.instructions[task.path + offset].name = task.check(name, default = value)
+	return task.error('BIND', name) if name in task.reserved else value
 
 def bind_untyped_type(task, value, type_routine):
 	
-	name = task.op.register
-	if name in task.reserved:
-		return task.error('BIND', name)
+	name = task.op.label[0]
+	return task.error('BIND', name) if name in task.reserved else value
 
 f_bind = function_method('.bind')
 f_bind.register(bind_untyped,
-				'.',
+				'untyped',
 				('untyped',))
 f_bind.register(bind_untyped_type,
-				'.',
+				'untyped',
 				('untyped', 'type'))
 
 def branch_null(task): # Unconditional branch
 	
-	scope = int(task.instructions[task.path][1])
+	scope = 1
 	while True:
-		label = task.instructions[task.path]
-		peek = task.instructions[task.path + 1]
-		if label[0] == ';' and int(label[1]) <= scope and label[2] == '.end' and '.else' not in peek:
-			return
-		task.path = task.path + 1
+		op, task.path = task.instructions[task.path], task.path + 1
+		if not op.register:
+			scope = scope - 1 if op.name == 'END' else scope + 1
+			if scope == 0 and task.instructions[task.path].name != 'ELSE':
+				return
 
 def branch_boolean(task, condition): # Conditional branch
 
 	if not condition:
-		scope = int(task.instructions[task.path][1])
+		scope = 1
 		while True:
-			label = task.instructions[task.path]
-			if label[0] == ';' and int(label[1]) <= scope and label[2] == '.end':
-				return
-			task.path = task.path + 1
+			op, task.path = task.instructions[task.path], task.path + 1
+			if not op.register:
+				scope = scope - 1 if op.name == 'END' else scope + 1
+				if scope == 0:
+					return
 
 f_branch = function_method('.branch')
 f_branch.register(branch_null,
@@ -535,22 +534,6 @@ f_sequence.register(sequence_slice,
 					'list',
 					('slice',))
 
-def set_untyped(task, value):
-
-	return value
-
-def set_untyped_type(task, value, type_routine):
-
-	task.override = type_routine.name
-	return value
-
-f_set = function_method('.set')
-f_set.register(set_untyped,
-			   '*',
-			   ('untyped',))
-f_set.register(set_untyped_type,
-			   'null',
-			   ('untyped', 'type'))
 
 def type_type(task, supertype):
 	

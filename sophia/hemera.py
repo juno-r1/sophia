@@ -5,7 +5,7 @@ The Hemera module defines Sophia's IO interface, error messages, and debug tools
 from sys import stderr
 
 def debug_instructions(task):
-
+	
 	for i, instruction in enumerate(task.instructions):
 		print(i,
 			  instruction,
