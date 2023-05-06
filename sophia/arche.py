@@ -143,15 +143,16 @@ class function_definition:
 
 def assert_null(task, value): # Null assertion
 
-	scope = int(task.instructions[task.path][1])
+	scope = 1
 	while True:
-		label = task.instructions[task.path]
-		if label[0] == ';' and int(label[1]) <= scope and label[2] == '.end':
-			return
-		task.path = task.path + 1
+		op, task.path = task.instructions[task.path], task.path + 1
+		if not op.register:
+			scope = scope - 1 if op.name == 'END' else scope + 1
+			if scope == 0:
+				return
 
 def assert_untyped(task, value): # Non-null assertion
-
+	
 	return value
 
 f_assert = function_method('.assert')
@@ -164,7 +165,9 @@ f_assert.register(assert_untyped,
 
 def bind_untyped(task, value):
 	
-	name, offset = task.op.label[0], int(task.op.label[1])
+	name, offset = task.op.label[0], 0
+	while task.instructions[task.path + offset].register != name:
+		offset = offset + 1
 	task.instructions[task.path + offset].name = task.check(name, default = value)
 	return task.error('BIND', name) if name in task.reserved else value
 
@@ -210,26 +213,21 @@ f_branch.register(branch_boolean,
 				  '.',
 				  ('boolean',))
 
-def break_null(task):
-
-	scope = int(task.instructions[task.path][1])
+def break_null(task): # While loop break
+	
 	while True:
-		label = task.instructions[task.path]
-		if label[0] == ';' and int(label[1]) <= scope and label[2] == '.end':
+		op, task.path = task.instructions[task.path], task.path + 1
+		if op.name == '.loop':
 			return
-		task.path = task.path + 1
 
-def break_untyped(task, value):
+def break_untyped(task, value): # For loop break
 
-	task.values[task.registers[0]] = None # Sanitise register
+	task.values[task.op.args[0]] = None # Sanitise register
 	task.unbind = True
-	scope = int(task.instructions[task.path][1])
 	while True:
-		label = task.instructions[task.path]
-		if label[0] == ';' and int(label[1]) <= scope and label[2] == '.end':
-			task.path = task.path + 2
+		op, task.path = task.instructions[task.path], task.path + 1
+		if op.name == '.loop':
 			return
-		task.path = task.path + 1
 
 f_break = function_method('.break')
 f_break.register(break_null,
@@ -330,29 +328,39 @@ def index_string_integer(task, sequence, index):
 	length = len(sequence)
 	if -length <= index < length:
 		return sequence[int(index)] # Sophia's integer type is abstract, Python's isn't
+	else:
+		return task.error('INDX', index)
 
 def index_string_slice(task, sequence, index):
 
 	length = len(sequence)
 	if (-length <= index.start < length) and (-length <= index.end < length):
 		return ''.join(sequence[int(n)] for n in iter(index)) # Constructs slice of string using range
+	else:
+		return task.error('INDX', index)
 
 def index_list_integer(task, sequence, index):
 
 	length = len(sequence)
 	if -length <= index < length:
 		return sequence[int(index)] # Sophia's integer type is abstract, Python's isn't
+	else:
+		return task.error('INDX', index)
 
 def index_list_slice(task, sequence, index):
 	
 	length = len(sequence)
 	if (-length <= index.start < length) and (-length <= index.end < length):
 		return tuple(sequence[int(n)] for n in iter(index)) # Constructs list of list using range
+	else:
+		return task.error('INDX', index)
 
 def index_record_untyped(task, sequence, index):
 	
 	if index in sequence:
 		return sequence[index]
+	else:
+		return task.error('INDX', index)
 
 def index_record_slice(task, sequence, index):
 
@@ -360,18 +368,24 @@ def index_record_slice(task, sequence, index):
 	if (-length <= index.start < length) and (-length <= index.end < length):
 		items = tuple(sequence.items())
 		return dict(items[int(n)] for n in iter(index)) # Constructs slice of record using range
+	else:
+		return task.error('INDX', index)
 
 def index_slice_integer(task, sequence, index):
 
 	length = length_slice(task, sequence)
 	if -length <= index < length:
 		return sequence[int(index)]
+	else:
+		return task.error('INDX', index)
 
 def index_slice_slice(task, sequence, index):
 	
 	length = length_slice(task, sequence)
 	if (-length <= index.start < length) and (-length <= index.end < length):
 		return tuple(sequence[int(n)] for n in iter(index))
+	else:
+		return task.error('INDX', index)
 
 f_index = function_method('.index')
 f_index.register(index_string_integer,
@@ -440,14 +454,16 @@ f_link.register(link_null,
 				'future',
 				())
 
-def loop_null(task):
+def loop_null(task): # Reverse branch
 
-	scope = int(task.instructions[task.path][1])
+	scope = 1
 	while True:
-		label = task.instructions[task.path]
-		if label[0] == ';' and int(label[1]) <= scope and label[2] == '.start':
-			return
 		task.path = task.path - 1
+		op = task.instructions[task.path]
+		if not op.register:
+			scope = scope + 1 if op.name == 'END' else scope - 1
+			if scope == 0:
+				return
 
 f_loop = function_method('.loop')
 f_loop.register(loop_null,
@@ -481,8 +497,6 @@ def next_untyped(task, iterator):
 	try:
 		return next(iterator)
 	except StopIteration:
-		while task.instructions[task.path][0] != '.assert': # Skip type check
-			task.path = task.path + 1
 		return None
 
 f_next = function_method('.next')
@@ -565,22 +579,28 @@ f_type.register(type_type,
 				'type',
 				('type',))
 
+def unloop_null(task, value):
+	
+	task.values[task.op.args[0]] = None # Sanitise register
+	task.unbind = True
+	scope = 1
+	while True:
+		op, task.path = task.instructions[task.path], task.path + 1
+		if not op.register:
+			scope = scope - 1 if op.name == 'END' else scope + 1
+			if scope == 0 and task.instructions[task.path].name != 'ELSE':
+				return
+
 def unloop_untyped(task, value):
 	
-	task.values[task.registers[0]] = None # Sanitise register
-	task.unbind = True
-	if task.instructions[task.path][2] == '.else':
-		scope = int(task.instructions[task.path][1])
-		while True:
-			label = task.instructions[task.path]
-			peek = task.instructions[task.path + 1]
-			if label[0] == ';' and int(label[1]) <= scope and label[2] == '.end' and '.else' not in peek:
-				return
-			task.path = task.path + 1
+	return value
 
 f_unloop = function_method('.unloop')
+f_unloop.register(unloop_null,
+				  'null',
+				  ('null',))
 f_unloop.register(unloop_untyped,
-				  '.',
+				  '*',
 				  ('untyped',))
 
 # Built-in I/O functions

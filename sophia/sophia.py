@@ -159,7 +159,7 @@ class task:
 		self.op = instructions[0] # Current instruction
 		self.caller = None
 		self.unbind = False # Unbind flag
-		#self.override = None # Override flag, for when a method has a different return type to the one declared
+		self.override = None # Override flag, for when a method has a different return type to the one declared
 
 	def execute(self): # Target of task.pool.apply_async()
 		
@@ -211,9 +211,9 @@ class task:
 			if self.unbind:
 				del self.values[self.op.register], self.types[self.op.register]
 				self.unbind = False
-			#elif self.override:
-			#	self.values[self.op.register] = value
-			#	self.types[self.op.register], self.override = self.override, None
+			elif self.override:
+				self.values[self.op.register] = value
+				self.types[self.op.register], self.override = self.override, None
 			elif (final := method.finals[match]) != '.':
 				self.values[self.op.register] = value
 				self.types[self.op.register] = aletheia.infer(value) if final == '*' else final
@@ -267,7 +267,7 @@ class task:
 
 	def error(self, status, *args): # Error handler
 		
-		if self.address != '0': # Suppresses error for assertions
+		if self.op.register != '0': # Suppresses error for assertions
 			if 'suppress' not in self.flags:
 				hemera.debug_error(self.name, self.path - 1, status, args)
 			self.path = 0
