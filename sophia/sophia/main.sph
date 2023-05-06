@@ -1,40 +1,17 @@
-// 5.4
+// 5.7
 
-list x: [1, 2, 3]
+num increment awaits num x:
 
-assert true: // Non-null value
-	bool a: true
-else:
-	bool a: false
+	start with num y:
 
-assert true, null: // Null value, multiple assertion
-	bool b: false
-else:
-	bool b: true
+		num z: y
+		return y
 
-assert unbound: // Unbound name
-	bool c: false
-else:
-	bool c: true
+	num z: z + x
+	return z
 
-assert str x: // Invalid type
-	bool d: false
-else:
-	bool d: true
-
-assert x[3]: // Index out of bounds
-	bool e: false
-else:
-	bool e: true
-
-assert print(1): // Invalid input type
-	bool f: false
-else:
-	bool f: true
-
-assert print('1', '2'): // Incorrect number of arguments
-	bool g: false
-else:
-	bool g: true
-
-return a and b and c and d and e and f and g
+x <- increment(1)
+bool a: *x = 1
+bool b: *(2 -> x) = 3
+bool c: *(3 -> x) = 6
+return a and b and c

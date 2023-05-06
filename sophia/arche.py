@@ -74,7 +74,6 @@ class type_definition:
 	def __init__(self, instructions, name):
 
 		self.instructions = instructions
-		self.arity = [0 if i[0] == ';' else (len(i) - 2) for i in instructions]
 		self.name = name
 		self.type = name
 
@@ -93,50 +92,52 @@ class event_definition:
 	"""Definition for a user-defined event."""
 	def __init__(self, instructions, params, types):
 
-		self.instructions = [' '.join(i) for i in instructions]
-		self.arity = [0 if i[0] == ';' else (len(i) - 2) for i in instructions]
-		self.name, self.message, self.params = params[0], params[1], params[2:]
-		self.type, self.check, self.types = types[0], types[1], types[2:]
+		self.instructions = instructions
+		self.name, self.params, self.message = params[0], params[1:-1], params[-1]
+		self.type, self.types, self.check = types[0], types[1:-1], types[-1]
 
 	def __call__(self, task, *args):
 
-		if task.instructions[task.path][2] == '.bind':
-			task.message('event', self, args, task.values[self.name])
-			#task.override = 'future'
-			return task.calls.recv()
-		else:
-			task.caller = task.state()
-			task.type = self.type
-			task.values = task.values | dict(zip(self.params, args))
-			task.types = task.types | dict(zip(self.params, self.types))
-			task.reserved = tuple(i for i in task.values)
-			task.instructions = [i.split(' ') for i in self.instructions]
-			task.arity = self.arity
-			task.path = 1
-
-class function_definition:
-	"""Definition for a user-defined function."""
-	def __init__(self, instructions, params, types):
-
-		self.instructions = [' '.join(i) for i in instructions]
-		self.arity = [0 if i[0] == ';' else (len(i) - 2) for i in instructions]
-		self.name, self.params = params[0], params[1:]
-		self.type, self.types = types[0], types[1:]
-
-	def __call__(self, task, *args):
-
-		if task.instructions[task.path][2] == '.bind':
-			task.message('future', self, args, task.values[self.name])
-			#task.override = 'future'
-			return task.calls.recv()
+		if '.bind' in task.op.label:
+			name = task.op.label[1]
+			task.message('future', self, args, task.values[self.name], self.check)
+			task.override = 'future'
+			future = task.calls.recv()
+			task.values[name], task.types[name] = future, 'future'
+			return future
 		else:
 			task.caller = task.state()
 			task.type = 'null'
 			task.values = task.values | dict(zip(self.params, args))
 			task.types = task.types | dict(zip(self.params, self.types))
 			task.reserved = tuple(i for i in task.values)
-			task.instructions = [i.split(' ') for i in self.instructions]
-			task.arity = self.arity
+			task.instructions = self.instructions
+			task.path = 1
+
+class function_definition:
+	"""Definition for a user-defined function."""
+	def __init__(self, instructions, params, types):
+
+		self.instructions = instructions
+		self.name, self.params = params[0], params[1:]
+		self.type, self.types = types[0], types[1:]
+
+	def __call__(self, task, *args):
+
+		if '.bind' in task.op.label:
+			name = task.op.label[1]
+			task.message('future', self, args, task.values[self.name], None)
+			task.override = 'future'
+			future = task.calls.recv()
+			task.values[name], task.types[name] = future, 'future'
+			return future
+		else:
+			task.caller = task.state()
+			task.type = 'null'
+			task.values = task.values | dict(zip(self.params, args))
+			task.types = task.types | dict(zip(self.params, self.types))
+			task.reserved = tuple(i for i in task.values)
+			task.instructions = self.instructions
 			task.path = 1
 
 # Internal functions
@@ -267,26 +268,32 @@ f_constraint.register(constraint_boolean,
 
 def event_null(task):
 
-	name = task.address
-	scope = int(task.instructions[task.path][1])
-	types = task.instructions[task.path][2:]
-	params = task.instructions[task.path + 1][2:]
-	start = task.path + 1
+	name = task.op.register
+	types, params = task.op.label[0::2], task.op.label[1::2]
+	start, scope = task.path, 0
 	while True: # Collect instructions
-		label = task.instructions[task.path]
-		if label[0] == ';' and int(label[1]) == scope and label[2] == '.end':
-			end = task.path + 1
-			break #return
-		task.path = task.path + 1
+		op, task.path = task.instructions[task.path], task.path + 1
+		if not op.register:
+			scope = scope - 1 if op.name == 'END' else scope + 1
+			if scope == 0:
+				end = task.path
+				break
+	while True: # ...Twice
+		op, task.path = task.instructions[task.path], task.path + 1
+		if not op.register:
+			scope = scope - 1 if op.name == 'END' else scope + 1
+			if scope == 0:
+				end = task.path
+				break
 	definition = event_definition(task.instructions[start:end], params, types)
-	if name in task.values and task.types[name] == 'function':
+	if name in task.values and task.types[name] == 'event':
 		routine = task.values[name]
 	else:
 		routine = event_method(name)
-		task.types[name] = 'function'
+		task.types[name] = 'event'
 	routine.register(definition,
 					 types[0],
-					 tuple(types[2:]))
+					 tuple(types[1:-1]))
 	return routine
 
 f_event = function_method('.event')
@@ -296,17 +303,16 @@ f_event.register(event_null,
 
 def function_null(task):
 
-	name = task.address
-	scope = int(task.instructions[task.path][1])
-	types = task.instructions[task.path][2:]
-	params = task.instructions[task.path + 1][2:]
-	start = task.path + 1
+	name = task.op.register
+	types, params = task.op.label[0::2], task.op.label[1::2]
+	start, scope = task.path, 0
 	while True: # Collect instructions
-		label = task.instructions[task.path]
-		if label[0] == ';' and int(label[1]) == scope and label[2] == '.end':
-			end = task.path + 1
-			break #return
-		task.path = task.path + 1
+		op, task.path = task.instructions[task.path], task.path + 1
+		if not op.register:
+			scope = scope - 1 if op.name == 'END' else scope + 1
+			if scope == 0:
+				end = task.path
+				break
 	definition = function_definition(task.instructions[start:end], params, types)
 	if name in task.values and task.types[name] == 'function':
 		routine = task.values[name]

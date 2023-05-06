@@ -41,47 +41,23 @@ class runtime:
 	
 		mp.current_process().stream = self.stream
 
-	def future(self, pid, routine, args, method):
+	def future(self, pid, routine, args, method, check):
 		
-		args = self.values | ({routine.name: method} if method else {}) | dict(zip(routine.params, args))
-		types = self.types | ({routine.name: aletheia.infer(routine)} if method else {}) | dict(zip(routine.params, routine.types))
-		routine = task(routine.instructions, args, types, self.flags, check = routine.type)
-		self.tasks[routine.pid] = kleio.proxy(routine)
-		self.tasks[routine.pid].result = self.pool.apply_async(routine.execute)
-		self.tasks[routine.pid].count = self.tasks[routine.pid].count + 1
-		self.tasks[pid].references.append(routine.pid) # Mark reference to process
-		self.tasks[pid].calls.send(kleio.reference(routine)) # Return reference to process
-
-	def event(self, pid, routine, args, method):
-		
-		args = self.values | ({routine.name: method} if method else {}) | dict(zip(routine.params, args))
-		types = self.types | ({routine.name: aletheia.infer(routine)} if method else {}) | dict(zip(routine.params, routine.types))
-		type_name = routine.check
-		routine = task(routine.instructions, args, types, self.flags, check = routine.type)
-		self.tasks[routine.pid] = kleio.proxy(routine)
-		self.events[routine.pid] = routine # Persistent reference to event
-		self.tasks[routine.pid].result = self.pool.apply_async(routine.execute)
-		self.tasks[routine.pid].count = self.tasks[routine.pid].count + 1
-		self.tasks[pid].references.append(routine.pid) # Mark reference to process
-		self.tasks[pid].calls.send(kleio.reference(routine, check = type_name)) # Return reference to process
-
-	def link(self, pid, name):
-		
-		linked = kadmos.module(name, root = self.root)
-		instructions, values, types = kadmos.translator(linked).generate()
-		routine = task(instructions, values, types, self.flags)
-		self.tasks[routine.pid] = kleio.proxy(routine)
-		self.tasks[routine.pid].result = self.pool.apply_async(routine.execute)
-		self.tasks[routine.pid].count = self.tasks[routine.pid].count + 1
-		self.tasks[pid].references.append(routine.pid) # Mark reference to process
-		self.tasks[pid].calls.send(kleio.reference(routine)) # Return reference to process
+		args = self.values | {routine.name: method} | dict(zip(routine.params, args))
+		types = self.types | {routine.name: aletheia.infer(routine)} | dict(zip(routine.params, routine.types))
+		new = task(routine.instructions, args, types, self.flags, check = routine.type)
+		self.tasks[new.pid] = kleio.proxy(new)
+		self.tasks[new.pid].result = self.pool.apply_async(new.execute)
+		self.tasks[new.pid].count = self.tasks[new.pid].count + 1
+		self.tasks[pid].references.append(new.pid) # Mark reference to process
+		self.tasks[pid].calls.send(kleio.reference(new, check = check)) # Return reference to process
 
 	def send(self, pid, reference, message):
 		
 		self.tasks[reference.pid].messages.send(message)
 
 	def update(self, pid, reference, message):
-
+		
 		self.tasks[reference.pid].result.get() # Wait until routine is done with previous message
 		namespace = self.tasks[reference.pid].calls.recv() # Get namespace from task
 		routine = self.events[reference.pid]
@@ -94,6 +70,17 @@ class runtime:
 			self.tasks[pid].calls.send(self.tasks[reference.pid].result.get())
 		else:
 			self.tasks[reference.pid].requests.append(pid) # Submit request for return value
+
+	def link(self, pid, name):
+		
+		linked = kadmos.module(name, root = self.root)
+		instructions, values, types = kadmos.translator(linked).generate()
+		routine = task(instructions, values, types, self.flags)
+		self.tasks[routine.pid] = kleio.proxy(routine)
+		self.tasks[routine.pid].result = self.pool.apply_async(routine.execute)
+		self.tasks[routine.pid].count = self.tasks[routine.pid].count + 1
+		self.tasks[pid].references.append(routine.pid) # Mark reference to process
+		self.tasks[pid].calls.send(kleio.reference(routine)) # Return reference to process
 
 	def terminate(self, pid):
 
@@ -269,5 +256,5 @@ class task:
 		
 		if self.op.register != '0': # Suppresses error for assertions
 			if 'suppress' not in self.flags:
-				hemera.debug_error(self.name, self.path - 1, status, args)
+				hemera.debug_error(self.name, self.op.line, status, args)
 			self.path = 0

@@ -69,7 +69,7 @@ class translator:
 		self.node = node
 		self.path = [0]
 		self.constant = constants # Constant register counter
-		self.instructions = [instruction('.return', '0', ('&0',), label = [node.name])]
+		self.instructions = [instruction('START', '', label = [node.name])]
 		self.values = {'0': None, '&0': None} # Register namespace
 		self.types = {'0': 'null', '&0': 'null'} # Register types
 
@@ -95,12 +95,13 @@ class translator:
 				self.node.length = len(self.node.nodes)
 				self.node.scope = len(self.path)
 				self.path.append(0)
-				if self.node.branch:
-					self.instructions.append(instruction('ELSE', '', line = self.node.line))
-				elif self.node.block and not isinstance(self.node, for_statement):
-					self.instructions.append(instruction('START', '', line = self.node.line))
-				#if isinstance(self.node, event_statement):
-				#	self.node.value = self.node.value + self.node.nodes[0].value
+				if not isinstance(self.node, for_statement):
+					if self.node.branch:
+						self.instructions.append(instruction('ELSE', '', line = self.node.line))
+					elif self.node.block:
+						self.instructions.append(instruction('START', '', line = self.node.line))
+				if isinstance(self.node, event_statement):
+					self.node.value = self.node.value + self.node.nodes[0].value
 			if self.path[-1] == self.node.active:
 				instructions = self.node.start()
 			elif self.path[-1] == self.node.length:
@@ -114,6 +115,7 @@ class translator:
 				self.instructions.append(instruction('END', '', line = self.node.line))
 		if len(self.instructions) == 1: # Adds instruction for empty program
 			self.instructions.extend(self.start.execute())
+		self.instructions.append(instruction('END', ''))
 		return self.instructions, self.values, self.types
 
 	def register(self, offset):
@@ -327,7 +329,8 @@ class type_statement(coroutine):
 				'; {0} {1} {2}'.format(self.scope, self.type, self.supertype),
 				'; {0} {1} {2}'.format(self.scope, self.name, self.name))
 
-	def execute(self): return '.return 0 {0}'.format(self.name), '; {0} .end'.format(self.scope)
+	def execute(self): return (instruction('.return', '0', (self.name,)),
+							   instruction('END', ''))
 
 class event_statement(coroutine):
 	"""Defines an event definition."""
@@ -338,44 +341,36 @@ class event_statement(coroutine):
 		self.message = tokens[2]
 
 	def start(self):
-		
-		if self.value[1:]:
-			return ('.event {0}'.format(self.name),
-					'; {0} {1} {2} {3}'.format(self.scope,
-											   self.type,
-											   self.message.type,
-											   ' '.join(item.type for item in self.value[1:])),
-					'; {0} {1} {2} {3}'.format(self.scope,
-											   self.name,
-											   self.message.value,
-											   ' '.join(item.value for item in self.value[1:])))
-		else:
-			return ('.event {0}'.format(self.name),
-					'; {0} {1} {2}'.format(self.scope, self.type, self.message.type),
-					'; {0} {1} {2}'.format(self.scope, self.name, self.message.value))
 
-	def execute(self): return '.return 0 &0', '; {0} .end'.format(self.scope)
+		names = [item.value for item in self.value]
+		types = [item.type if item.type else 'untyped' for item in self.value]
+		return (instruction('.event', self.name, label = [i for pair in zip(types, names) for i in pair] + [self.message.type, self.message.value]),
+				instruction('START', '', label = [self.name]))
+
+	def execute(self): return (instruction('.return', '0', ('&0',)),
+							   instruction('END', ''))
 
 class function_statement(coroutine):
 	"""Defines a function definition."""
 	def __init__(self, tokens):
 
-		super().__init__([token for token in tokens[0:-1:2] if token.value != ')']) # Sets name and a list of parameters as self.value
+		try: # Single-line function definition
+			i = [token.value for token in tokens].index('=>')
+			super().__init__([token for token in tokens[0:i:2] if token.value != ')'])
+			self.nodes = [return_statement(tokens[i::])]
+		except ValueError:
+			super().__init__([token for token in tokens[0:-1:2] if token.value != ')']) # Sets name and a list of parameters as self.value
 		self.name, self.type = tokens[0].value, tokens[0].type
-		self.types = [item.type if item.type else 'untyped' for item in self.value[1:]]
 
 	def start(self):
 		
-		if self.types:
-			return ('.function {0}'.format(self.name),
-					'; {0} {1} {2}'.format(self.scope, self.type, ' '.join(self.types)),
-					'; {0} {1}'.format(self.scope, ' '.join(item.value for item in self.value)))
-		else:
-			return ('.function {0}'.format(self.name),
-					'; {0} {1}'.format(self.scope, self.type),
-					'; {0} {1}'.format(self.scope, self.name))
+		names = [item.value for item in self.value]
+		types = [item.type if item.type else 'untyped' for item in self.value]
+		return (instruction('.function', self.name, label = [i for pair in zip(types, names) for i in pair]),
+				instruction('START', '', label = [self.name]))
 
-	def execute(self): return '.return 0 &0', '; {0} .end'.format(self.scope)
+	def execute(self): return (instruction('.return', '0', ('&0',)),
+							   instruction('END', ''))
 
 class assignment(statement):
 	"""Defines an assignment."""
@@ -449,9 +444,9 @@ class for_statement(statement):
 		
 		adjacent = str(int(self.register) + 1) # Uses the register of the first enclosed statement
 		return (instruction('.iterator', self.register, (self.nodes[0].register,)),
-				instruction('ELSE' if self.branch else 'START', '', line = self.node.line),
+				instruction('ELSE' if self.branch else 'START', '', line = self.line),
 				instruction('.next', adjacent, (self.register,)),
-				instruction('.unloop', '0', (adjacent,)),
+				instruction('.unloop', '0', (adjacent,)), # Equivalent to Python's StopIteration check
 				instruction('.bind', self.value.value, ('0', self.value.type) if self.value.type else ('0',), label = [self.value.value]),
 				instruction(self.value.type if self.value.type else 'untyped', self.value.value, (self.value.value,)))
 
@@ -511,7 +506,9 @@ class start_statement(statement):
 
 	def __str__(self): return 'start ' + str([item.value for item in self.value])
 
-	def execute(self): return '; {0} .end'.format(self.scope),
+	def execute(self): return (instruction('.return', '0', ('&0',)),
+							   instruction('END', ''),
+							   instruction('EVENT', '', label = [self.head.name]))
 
 class else_statement(statement):
 	"""Defines an else statement."""
@@ -601,7 +598,7 @@ class bind(prefix):
 	"""Defines the bind operator."""
 	def __str__(self): return 'bind ' + self.value
 
-	def execute(self): return '; {0} .bind'.format(self.scope), 'untyped {0} {1}'.format(self.register, self.value)
+	def execute(self): return ()
 
 class receive(prefix):
 	"""Defines the receive operator."""
@@ -612,11 +609,11 @@ class receive(prefix):
 		self.value = lex.parse(self.lbp)
 		return self
 
-	def execute(self): return '> {0}'.format(self.register),
+	def execute(self): return instruction('>', self.register),
 
 class resolve(prefix):
 	"""Defines the resolution operator."""
-	def execute(self): return '* {0} {1}'.format(self.register, self.nodes[0].register),
+	def execute(self): return instruction('*', self.register, (self.nodes[0].register,)),
 
 class infix(operator):
 	"""Defines a left-binding infix."""
@@ -657,8 +654,8 @@ class right_conditional(infix):
 
 	def start(self): return (instruction('untyped', self.head.register, (self.nodes[0].register,)),
 						     instruction('.branch', self.register),
-							 instruction('END', '', line = self.node.line),
-							 instruction('ELSE', '', line = self.node.line)) # Enclosed by labels of left conditional
+							 instruction('END', '', line = self.line),
+							 instruction('ELSE', '', line = self.line)) # Enclosed by labels of left conditional
 
 	def execute(self): return instruction('untyped', self.head.register, (self.nodes[1].register,)),
 
@@ -711,7 +708,15 @@ class function_call(left_bracket):
 		
 		if isinstance(self.nodes[1], concatenator): # Unpack concatenator
 			self.nodes = [self.nodes[0]] + self.nodes[1].nodes
-		return instruction(self.nodes[0].value, self.register, tuple(item.register for item in self.nodes[1:])),
+		if isinstance(self.head, bind):
+			return instruction(self.nodes[0].value,
+							   self.register,
+							   tuple(item.register for item in self.nodes[1:]),
+							   label = ['.bind', self.head.value]),
+		else:
+			return instruction(self.nodes[0].value,
+							   self.register,
+							   tuple(item.register for item in self.nodes[1:])),
 
 class parenthesis(left_bracket):
 	"""Defines a set of parentheses."""

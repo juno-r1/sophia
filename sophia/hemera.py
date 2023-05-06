@@ -47,7 +47,7 @@ def debug_tree(node, level = 0): # Takes a parse tree
 def debug_error(name, line, status, args): # Prints error information
 
 	print('===',
-	      '{0} (instruction {1})'.format(name, line),
+	      '{0} (line {1})'.format(name, line),
 		  errors[status].format(*args) if args else errors[status],
 		  '===',
 		  sep = '\n',

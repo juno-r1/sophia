@@ -2,7 +2,6 @@
 The Mathos module defines built-in operators.
 '''
 
-from aletheia import infer
 from arche import element, slice, function_method
 
 def u_add(_, x): # Pain
@@ -112,8 +111,7 @@ op_ltn.register(b_ltn,
 
 def n_rcv(task):
 	
-	value = task.messages.recv()
-	return task.bind(task.address, value, infer(value))
+	return task.messages.recv()
 
 def b_gtn(_, x, y):
 
@@ -121,7 +119,7 @@ def b_gtn(_, x, y):
 
 op_gtn = function_method('>')
 op_gtn.register(n_rcv,
-				'.',
+				'*',
 				())
 op_gtn.register(b_gtn,
 				'boolean',
@@ -312,12 +310,8 @@ op_usf.register(u_usf,
 
 def b_snd(task, x, y):
 	
-	if y.check:
-		task.message('update', y, x)
-		return y
-	else:
-		task.message('send', y, x)
-		return y
+	task.message('update' if y.check else 'send', y, x)
+	return y
 
 op_snd = function_method('->')
 op_snd.register(b_snd,

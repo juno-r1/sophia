@@ -4,5 +4,5 @@ num increment (num n):
 
 	return n + >m
 
-process x <- increment(1)
+x <- increment(1)
 return *(1 -> x) = 2

@@ -20,7 +20,7 @@ def cast(task, target, value):
 
 	while target.supertype:
 		target = target.supertype
-	return getattr(target, '__' + names[type(value).__name__] + '__')(value)
+	return getattr(target, '__{0}__'.format(names[type(value).__name__]))(value)
 
 def infer(value): # Infers type of value
 
