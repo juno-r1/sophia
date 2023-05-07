@@ -446,7 +446,7 @@ class for_statement(statement):
 		return (instruction('.iterator', self.register, (self.nodes[0].register,)),
 				instruction('ELSE' if self.branch else 'START', '', line = self.line),
 				instruction('.next', adjacent, (self.register,)),
-				instruction('.unloop', '0', (adjacent,)), # Equivalent to Python's StopIteration check
+				instruction('.unloop', '0', (adjacent,), label = [self.value.value]), # Equivalent to Python's StopIteration check
 				instruction('.bind', self.value.value, ('0', self.value.type) if self.value.type else ('0',), label = [self.value.value]),
 				instruction(self.value.type if self.value.type else 'untyped', self.value.value, (self.value.value,)))
 
@@ -508,7 +508,7 @@ class start_statement(statement):
 
 	def execute(self): return (instruction('.return', '0', ('&0',)),
 							   instruction('END', ''),
-							   instruction('EVENT', '', label = [self.head.name]))
+							   instruction('EVENT', '', label = [self.head.message.value]))
 
 class else_statement(statement):
 	"""Defines an else statement."""
@@ -566,10 +566,7 @@ class keyword(identifier):
 		if self.value == 'continue':
 			return instruction('.loop', '0'),
 		elif self.value == 'break':
-			if isinstance(loop, for_statement):
-				return instruction('.break', loop.value.value, (loop.register,)),
-			else:
-				return instruction('.break', '0'),
+			return instruction('.break', loop.value.value if isinstance(loop, for_statement) else '0', (loop.register,)),
 
 class operator(node):
 	"""Generic operator node."""

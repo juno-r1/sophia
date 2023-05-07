@@ -47,6 +47,8 @@ class runtime:
 		types = self.types | {routine.name: aletheia.infer(routine)} | dict(zip(routine.params, routine.types))
 		new = task(routine.instructions, args, types, self.flags, check = routine.type)
 		self.tasks[new.pid] = kleio.proxy(new)
+		if check:
+			self.events[new.pid] = new # Persistent reference to event
 		self.tasks[new.pid].result = self.pool.apply_async(new.execute)
 		self.tasks[new.pid].count = self.tasks[new.pid].count + 1
 		self.tasks[pid].references.append(new.pid) # Mark reference to process
@@ -59,9 +61,8 @@ class runtime:
 	def update(self, pid, reference, message):
 		
 		self.tasks[reference.pid].result.get() # Wait until routine is done with previous message
-		namespace = self.tasks[reference.pid].calls.recv() # Get namespace from task
 		routine = self.events[reference.pid]
-		routine.prepare(namespace, message, reference.check) # Mutate this version of the task
+		routine.prepare(self.tasks[reference.pid].state, message, reference.check) # Mutate this version of the task
 		self.tasks[reference.pid].result = self.pool.apply_async(routine.execute)
 
 	def resolve(self, pid, reference):
@@ -83,8 +84,10 @@ class runtime:
 		self.tasks[pid].calls.send(kleio.reference(routine)) # Return reference to process
 
 	def terminate(self, pid):
-
-		value = self.tasks[pid].result.get()
+		
+		state = self.tasks[pid].result.get() # Get return state of task
+		self.tasks[pid].state = state # Store persistent state in supervisor
+		value = state['values']['0'] # Get return value from state
 		for process in self.tasks[pid].requests:
 			self.tasks[process].calls.send(value)
 		self.tasks[pid].requests = []
@@ -124,7 +127,7 @@ class runtime:
 		if 'profile' in self.flags:
 			pr.disable()
 			pr.print_stats(sort = 'tottime')
-		return self.tasks[self.main.pid].result.get()
+		return self.tasks[self.main.pid].result.get()['values']['0']
 
 class task:
 	"""
@@ -209,9 +212,8 @@ class task:
 		#	pr.print_stats(sort = 'tottime')
 		if 'namespace' in self.flags:
 			hemera.debug_namespace(self)
-		#self.calls.send(self.state()) # Send mutable state to supervisor
 		self.message('terminate')
-		return self.values['0']
+		return self.state() # Return mutable state to supervisor
 
 	def find(self, name): # Retrieves a binding's value in the current namespace
 		
@@ -238,15 +240,18 @@ class task:
 		self.__dict__.update(state)
 
 	def prepare(self, namespace, message, check): # Sets up task for event execution
-
-		name = self.instructions[0][3]
+		
 		self.restore(namespace)
-		while True: # Skip initial
-			label = self.instructions[self.path]
-			if label[0] == ';' and int(label[1]) <= 2 and label[2] == '.end':
-				break
-			self.path = self.path + 1
-		self.bind(name, message, check)
+		self.path = 0
+		scope = 0
+		while True:
+			op, self.path = self.instructions[self.path], self.path + 1
+			if not op.register:
+				scope = scope - 1 if op.name == 'END' else scope + 1
+				if scope == 1 and op.name == 'EVENT':
+					name = op.label[0]
+					break
+		self.values[name], self.types[name] = message, check
 
 	def message(self, instruction = None, *args):
 		

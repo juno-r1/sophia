@@ -214,26 +214,15 @@ f_branch.register(branch_boolean,
 				  '.',
 				  ('boolean',))
 
-def break_null(task): # While loop break
-	
-	while True:
-		op, task.path = task.instructions[task.path], task.path + 1
-		if op.name == '.loop':
-			return
-
 def break_untyped(task, value): # For loop break
 
-	task.values[task.op.args[0]] = None # Sanitise register
-	task.unbind = True
+	task.values[task.op.register], task.values[task.op.args[0]] = None, None # Sanitise registers
 	while True:
 		op, task.path = task.instructions[task.path], task.path + 1
 		if op.name == '.loop':
 			return
 
 f_break = function_method('.break')
-f_break.register(break_null,
-				 '.',
-				 ())
 f_break.register(break_untyped,
 				 '.',
 				 ('untyped',))
@@ -586,9 +575,10 @@ f_type.register(type_type,
 				('type',))
 
 def unloop_null(task, value):
-	
-	task.values[task.op.args[0]] = None # Sanitise register
-	task.unbind = True
+
+	iterator, name = str(int(task.op.args[0]) - 1), task.op.label[0]
+	task.values[iterator] = None # Sanitise registers
+	del task.values[name], task.types[name]
 	scope = 1
 	while True:
 		op, task.path = task.instructions[task.path], task.path + 1
@@ -598,7 +588,7 @@ def unloop_null(task, value):
 				return
 
 def unloop_untyped(task, value):
-	
+
 	return value
 
 f_unloop = function_method('.unloop')
