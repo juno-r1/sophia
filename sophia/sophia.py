@@ -45,7 +45,7 @@ class runtime:
 		
 		args = self.values | {routine.name: method} | dict(zip(routine.params, args))
 		types = self.types | {routine.name: aletheia.infer(routine)} | dict(zip(routine.params, routine.types))
-		new = task(routine.instructions, args, types, self.flags, check = routine.type)
+		new = task(routine.instructions, args, types, self.flags)
 		self.tasks[new.pid] = kleio.proxy(new)
 		if check:
 			self.events[new.pid] = new # Persistent reference to event
@@ -135,7 +135,7 @@ class task:
 	A task handles synchronous program execution and passes messages to and
 	from the supervisor.
 	"""
-	def __init__(self, instructions, values, types, flags, check = 'untyped'): # God objects? What is she objecting to?
+	def __init__(self, instructions, values, types, flags): # God objects? What is she objecting to?
 		
 		self.name = instructions[0].label[0] if instructions else ''
 		self.pid = id(self) # Guaranteed not to collide with other task PIDs; not the same as the PID of the pool process
@@ -146,7 +146,7 @@ class task:
 		self.instructions = instructions
 		self.path = int(bool(instructions)) # Does not execute if the parser encountered an error
 		self.op = instructions[0] # Current instruction
-		self.caller = None
+		self.caller = None # Stores the state of the calling routine
 		self.override = None # Override flag, for when a method has a different return type to the one declared
 
 	def execute(self): # Target of task.pool.apply_async()

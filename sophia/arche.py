@@ -65,6 +65,9 @@ class type_method(method):
 		super().__init__(name)
 		self.supertypes = [name] + supertypes
 		self.specificity = len(supertypes) + 1
+		self.register(self.subtype, name, (name,)) # Subtype check
+
+	def subtype(self, task, value): return value # Type already known
 
 class event_method(method): pass
 class function_method(method): pass
@@ -167,12 +170,14 @@ def bind_untyped(task, value):
 	name, offset = task.op.label[0], 0
 	while task.instructions[task.path + offset].register != name:
 		offset = offset + 1
+	task.override = task.types[task.op.args[0]]
 	task.instructions[task.path + offset].name = task.check(name, default = value)
 	return task.error('BIND', name) if name in task.reserved else value
 
 def bind_untyped_type(task, value, type_routine):
 	
 	name = task.op.label[0]
+	task.override = task.types[task.op.args[0]]
 	return task.error('BIND', name) if name in task.reserved else value
 
 f_bind = function_method('.bind')
