@@ -3,7 +3,7 @@ The Arche module defines the standard library and internal data types.
 '''
 
 from aletheia import cast
-from kadmos import module, translator
+from kadmos import instruction, module, translator
 from rationals import Rational as real
 from sys import stderr
 
@@ -71,21 +71,19 @@ class function_method(method): pass
 
 class type_definition:
 	"""Definition for a user-defined type."""
-	def __init__(self, instructions, name):
+	def __init__(self, instructions, name, supertype):
 
 		self.instructions = instructions
 		self.name = name
-		self.type = name
+		self.type = supertype
 
-	def __call__(self, task, *args):
-
+	def __call__(self, task, value):
+		
 		task.caller = task.state()
-		task.type = self.type
-		task.values = task.values | {self.name: args[0]}
-		task.types = task.types | {self.name: self.supertype}
+		task.type = self.name
+		task.values[self.name], task.types[self.name] = value, self.type
 		task.reserved = tuple(i for i in task.values)
-		task.instructions = [i.split(' ') for i in self.instructions]
-		task.arity = self.arity
+		task.instructions = self.instructions
 		task.path = 1
 
 class event_definition:
@@ -107,7 +105,7 @@ class event_definition:
 			return future
 		else:
 			task.caller = task.state()
-			task.type = 'null'
+			task.type = self.type
 			task.values = task.values | dict(zip(self.params, args))
 			task.types = task.types | dict(zip(self.params, self.types))
 			task.reserved = tuple(i for i in task.values)
@@ -133,7 +131,7 @@ class function_definition:
 			return future
 		else:
 			task.caller = task.state()
-			task.type = 'null'
+			task.type = self.type
 			task.values = task.values | dict(zip(self.params, args))
 			task.types = task.types | dict(zip(self.params, self.types))
 			task.reserved = tuple(i for i in task.values)
@@ -503,6 +501,8 @@ def return_untyped(task, sentinel):
 	
 	if task.caller:
 		task.restore(task.caller) # Restore namespace of calling routine
+		if task.types[task.op.name] == 'type':
+			task.override = task.op.name # Allow type checks to return their own type
 	else:
 		task.path = 0 # End task
 	return sentinel
@@ -546,27 +546,23 @@ f_sequence.register(sequence_slice,
 
 def type_type(task, supertype):
 	
-	name = task.address
-	supertype = supertype.name
-	scope = int(task.instructions[task.path][1])
-	task.supertypes[name] = tuple([name] + list(task.supertypes[supertype]))
-	task.specificity[name] = len(task.supertypes[name])
-	start = task.path + 1
+	name, supername = task.op.register, supertype.name
+	start, scope = task.path, 0
 	while True: # Collect instructions
-		label = task.instructions[task.path]
-		if label[0] == ';' and int(label[1]) == scope and label[2] == '.end':
-			end = task.path + 1
-			break #return
-		task.path = task.path + 1
-	definition = type_definition(task.instructions[start:end], name, supertype)
-	if name in task.values and task.types[name] == 'type':
-		routine = task.values[name]
+		op, task.path = task.instructions[task.path], task.path + 1
+		if not op.register:
+			scope = scope - 1 if op.name == 'END' else scope + 1
+			if scope == 0:
+				break
+	end = task.path
+	instructions = task.instructions[start:end]
+	routine = type_method(name, supertype.supertypes)
+	if isinstance(supertype.methods[('untyped',)], type): # Built-in supertype
+		check = [instruction(supername, '0', (name,)), instruction('.constraint', '0', ('0',))]
+		routine.register(type_definition([instructions[0]] + check + instructions[1:], name, supername), name, ('untyped',))
+		routine.register(type_definition(instructions, name, supername), name, ('integer',))
 	else:
-		routine = type_method(name)
-		task.types[name] = 'type'
-	routine.register(definition,
-					 name,
-					 (supertype,))
+		return print('Unimplemented feature') # Do later
 	return routine
 
 f_type = function_method('.type')

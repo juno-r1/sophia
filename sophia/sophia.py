@@ -138,7 +138,6 @@ class task:
 	def __init__(self, instructions, values, types, flags, check = 'untyped'): # God objects? What is she objecting to?
 		
 		self.name = instructions[0].label[0] if instructions else ''
-		self.type = check
 		self.pid = id(self) # Guaranteed not to collide with other task PIDs; not the same as the PID of the pool process
 		self.flags = flags
 		self.values = aletheia.types | mathos.operators | arche.functions | values
@@ -148,7 +147,6 @@ class task:
 		self.path = int(bool(instructions)) # Does not execute if the parser encountered an error
 		self.op = instructions[0] # Current instruction
 		self.caller = None
-		self.unbind = False # Unbind flag
 		self.override = None # Override flag, for when a method has a different return type to the one declared
 
 	def execute(self): # Target of task.pool.apply_async()
@@ -198,10 +196,7 @@ class task:
 			Execute instruction and update or unbind registers.
 			"""
 			value = instance(*args)
-			if self.unbind:
-				del self.values[self.op.register], self.types[self.op.register]
-				self.unbind = False
-			elif self.override:
+			if self.override:
 				self.values[self.op.register] = value
 				self.types[self.op.register], self.override = self.override, None
 			elif (final := method.finals[match]) != '.':
@@ -226,9 +221,8 @@ class task:
 	def state(self): # Get current state of task as subset of __dict__
 
 		return {'name': self.name,
-				'type': self.type,
-				'values': self.values,
-				'types': self.types,
+				'values': self.values.copy(),
+				'types': self.types.copy(),
 				'reserved': self.reserved,
 				'instructions': self.instructions,
 				'path': self.path,

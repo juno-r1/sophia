@@ -80,8 +80,8 @@ class translator:
 			if self.path[-1] == self.node.length: # Walk up
 				if isinstance(self.node.head, assert_statement) and self.path[-2] < self.node.head.active: # Insert assertion
 					self.instructions.append(instruction('.assert', '0', (self.node.register,), line = self.node.line))
-				#elif isinstance(self.node.head, type_statement): # Insert assertion
-				#	self.instructions.append(instruction('.constraint', '0', (self.node.register,), line = self.node.line, scope = self.node.scope))
+				elif isinstance(self.node.head, type_statement): # Insert constraint
+					self.instructions.append(instruction('.constraint', '0', (self.node.register,), line = self.node.line))
 				self.node = self.node.head # Walk upward
 				if self.node:
 					self.path.pop()
@@ -317,17 +317,19 @@ class module(coroutine):
 class type_statement(coroutine):
 	"""Defines a type definition."""
 	def __init__(self, tokens):
-		
-		super().__init__([tokens[0]]) # Type and type parameter
+
+		try: # Single-line type definition
+			i = [token.value for token in tokens].index('=>') + 1
+			super().__init__([tokens[0]])
+			self.nodes = [lexer(tokens[i::]).parse()]
+		except ValueError:
+			super().__init__([tokens[0]]) # Sets name as self.value
 		self.name, self.type = tokens[0].value, tokens[0].value
 		self.supertype = tokens[2].value if len(tokens) > 2 else 'untyped'
 		self.supertype = sub_types[self.supertype] if self.supertype in sub_types else self.supertype
 
-	def start(self):
-		
-		return ('.type {0} {1}'.format(self.name, self.supertype),
-				'; {0} {1} {2}'.format(self.scope, self.type, self.supertype),
-				'; {0} {1} {2}'.format(self.scope, self.name, self.name))
+	def start(self): return (instruction('.type', self.name, (self.supertype,)),
+							 instruction('START', ''))
 
 	def execute(self): return (instruction('.return', '0', (self.name,)),
 							   instruction('END', ''))
