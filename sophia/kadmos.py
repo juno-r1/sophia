@@ -500,7 +500,7 @@ class link_statement(statement):
 
 	def __str__(self): return ('else ' if self.branch else '') + 'link_statement ' + str([item.value for item in self.nodes])
 
-	def execute(self): return ['.link {0}'.format(item.value) for item in self.value] + ['; {0} .end'.format(self.scope)]
+	def execute(self): return [instruction('.link', item.value) for item in self.value]
 
 class start_statement(statement):
 	"""Defines an initial."""
@@ -755,9 +755,9 @@ class meta_statement(left_bracket):
 	"""Defines a meta-statement."""
 	def __init__(self, value): super().__init__(value)
 
-	def execute(self): return ('.meta {0} {1}'.format(self.register, self.nodes[0].register),
-							   '; {0} .meta'.format(self.scope),
-							   '; {0} .end'.format(self.scope))
+	def execute(self): return (instruction('.meta', self.register, (self.nodes[0].register)),
+							   instruction('START', '', label = ['.meta']),
+							   instruction('END', ''))
 
 class right_bracket(operator):
 	"""Defines a right bracket."""

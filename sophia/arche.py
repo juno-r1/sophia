@@ -438,7 +438,7 @@ f_iterator.register(iterator_slice,
 
 def link_null(task):
 	
-	name = task.address
+	name = task.op.register
 	task.message('link', name if '.' in name else (name + '.sph'))
 	return task.calls.recv()
 
@@ -466,17 +466,18 @@ f_loop.register(loop_null,
 def meta_string(task, string):
 
 	meta = module(string, meta = task.name)
-	offset = int(task.address) - 1
-	constants = len([int(item[1:]) for item in task.values if item[0] == '&']) - 1
+	offset = int(task.op.register) - 1
+	constants = len([item for item in task.values if item[0] == '&']) - 1
 	instructions, values, types = translator(meta, constants = constants).generate(offset = offset)
-	instructions = [i.split(' ') for i in instructions]
-	i, label = task.path, task.instructions[task.path]
-	scope = int(label[1])
-	while label[0] == ';' and int(label[1]) <= scope and label[2] == '.end':
-		i = i + 1
-		label = task.instructions[i]
-	task.instructions = task.instructions[:task.path + 1] + instructions + task.instructions[i:]
-	task.arity = task.arity[:task.path + 1] + [len(i) - 2 for i in instructions] + task.arity[i:]
+	start, path, scope = task.path, task.path, 0
+	while True: # Collect instructions
+		op, path = task.instructions[path], path + 1
+		if not op.register:
+			scope = scope - 1 if op.name == 'END' else scope + 1
+			if scope == 0:
+				end = path
+				break
+	task.instructions = task.instructions[:start + 1] + instructions + task.instructions[end:]
 	task.values.update(values)
 	task.types.update(types)
 
