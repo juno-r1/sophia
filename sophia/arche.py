@@ -83,7 +83,6 @@ class type_definition:
 	def __call__(self, task, value):
 		
 		task.caller = task.state()
-		task.type = self.name
 		task.values[self.name], task.types[self.name] = value, self.type
 		task.reserved = tuple(i for i in task.values)
 		task.instructions = self.instructions
@@ -108,7 +107,6 @@ class event_definition:
 			return future
 		else:
 			task.caller = task.state()
-			task.type = self.type
 			task.values = task.values | dict(zip(self.params, args))
 			task.types = task.types | dict(zip(self.params, self.types))
 			task.reserved = tuple(i for i in task.values)
@@ -134,7 +132,6 @@ class function_definition:
 			return future
 		else:
 			task.caller = task.state()
-			task.type = self.type
 			task.values = task.values | dict(zip(self.params, args))
 			task.types = task.types | dict(zip(self.params, self.types))
 			task.reserved = tuple(i for i in task.values)
@@ -249,7 +246,8 @@ f_concatenate.register(concatenate_untyped_untyped,
 def constraint_boolean(task, constraint):
 	
 	if not constraint:
-		name, value = task.type, task.values[task.type]
+		name = task.instructions[0].label[0]
+		value = task.values[name]
 		task.restore(task.caller)
 		return task.error('CAST', name, str(value))
 

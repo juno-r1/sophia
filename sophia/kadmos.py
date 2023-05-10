@@ -329,7 +329,7 @@ class type_statement(coroutine):
 		self.supertype = sub_types[self.supertype] if self.supertype in sub_types else self.supertype
 
 	def start(self): return (instruction('.type', self.name, (self.supertype,)),
-							 instruction('START', ''))
+							 instruction('START', '', label = [self.name]))
 
 	def execute(self): return (instruction('.return', '0', (self.name,)),
 							   instruction('END', ''))
