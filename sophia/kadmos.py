@@ -61,6 +61,13 @@ class instruction:
 		line, name, register, args = int(command[0]), command[1], command[2], tuple(command[3:])
 		return cls(name, register, args, line, label)
 
+	@classmethod
+	def rewrite(cls, ins, old, new): # Rewrite instruction for subtypes
+
+		args = tuple(new if i == old else i for i in ins.args)
+		label = [new if i == old else i for i in ins.label]
+		return cls(ins.name, ins.register, args, line = ins.line, label = label)
+
 class translator:
 	"""Generates a list of instructions from a syntax tree."""
 	def __init__(self, node, constants = 0):
@@ -79,9 +86,16 @@ class translator:
 		while self.node: # Pre-runtime generation of instructions
 			if self.path[-1] == self.node.length: # Walk up
 				if isinstance(self.node.head, assert_statement) and self.path[-2] < self.node.head.active: # Insert assertion
-					self.instructions.append(instruction('.assert', '0', (self.node.register,), line = self.node.line))
+					self.instructions.append(instruction('.assert',
+														 '0',
+														 (self.node.register,),
+														 line = self.node.line))
 				elif isinstance(self.node.head, type_statement): # Insert constraint
-					self.instructions.append(instruction('.constraint', '0', (self.node.register,), line = self.node.line))
+					self.instructions.append(instruction('.constraint',
+														 '0',
+														 (self.node.register,),
+														 line = self.node.line,
+														 label = [self.node.head.value[0].value] if self.path[-2] == self.node.head.length - 1 else []))
 				self.node = self.node.head # Walk upward
 				if self.node:
 					self.path.pop()

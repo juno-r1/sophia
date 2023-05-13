@@ -11,7 +11,6 @@ int halve (even n):
 int x: 2
 assert even x:
 	even x: x
-	even y: x
 	bool a: true
 else:
 	bool a: false
@@ -24,7 +23,14 @@ assert even x:
 else:
 	bool c: true
 
-list x: [1, 2, 3]
-bool d: length(x) = 3
+type quadruple extends even:
+
+	quadruple % 4 = 0
+
+int x: 4
+assert quadruple x:
+	bool d: true
+else:
+	bool d: false
 
 return a and b and c and d

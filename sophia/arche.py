@@ -74,11 +74,11 @@ class function_method(method): pass
 
 class type_definition:
 	"""Definition for a user-defined type."""
-	def __init__(self, instructions, name, supertype):
+	def __init__(self, instructions, name, known):
 
 		self.instructions = instructions
 		self.name = name
-		self.type = supertype
+		self.type = known
 
 	def __call__(self, task, value):
 		
@@ -245,11 +245,13 @@ f_concatenate.register(concatenate_untyped_untyped,
 
 def constraint_boolean(task, constraint):
 	
+	name = task.instructions[0].label[0]
 	if not constraint:
-		name = task.instructions[0].label[0]
 		value = task.values[name]
 		task.restore(task.caller)
 		return task.error('CAST', name, str(value))
+	elif task.op.label and task.op.label[0] != name:
+		task.types[name] = task.op.label[0]
 
 f_constraint = function_method('.constraint')
 f_constraint.register(constraint_boolean,
@@ -562,11 +564,17 @@ def type_type(task, supertype):
 	instructions = task.instructions[start:end]
 	routine = type_method(name, supertype.supertypes)
 	if isinstance(supertype.methods[('untyped',)], type): # Built-in supertype
-		check = [instruction(supername, '0', (name,)), instruction('.constraint', '0', ('0',))]
+		check = [instruction(supername, '0', (name,)), 
+				 instruction('?', '0', ('0',)), # Convert to boolean
+				 instruction('.constraint', '0', ('0',), label = [supername])]
 		routine.register(type_definition([instructions[0]] + check + instructions[1:], name, supername), name, ('untyped',))
-		routine.register(type_definition(instructions, name, supername), name, ('integer',))
+		routine.register(type_definition(instructions, name, supername), name, (supername,))
 	else:
-		return print('Unimplemented feature') # Do later
+		for key, value in list(supertype.methods.items())[1:]: # Rewrite methods with own type name
+			definition = [instruction.rewrite(i, supername, name) for i in value.instructions]
+			definition = definition[:-2] + instructions[1:-2] + definition[-2:] # Add user constraints to instructions
+			routine.register(type_definition(definition, name, key[0]), name, key)
+		routine.register(type_definition(instructions, name, supername), name, (supername,))
 	return routine
 
 f_type = function_method('.type')
