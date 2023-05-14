@@ -11,7 +11,7 @@ parens = '()[]{}'
 comment = '//'
 structure_tokens = ('if', 'while', 'for', 'else', 'assert', 'return', 'link', 'start')
 keyword_tokens = ('continue', 'break', 'is', 'with', 'extends', 'awaits')
-keyword_operators = ('not', 'or', 'and', 'xor', 'in')
+keyword_operators = ('not', 'or', 'and', 'xor', 'in', 'new')
 trailing = (';', ',')
 sub_types = {'bool': 'boolean', # Lookup table for type names
 			 'int': 'integer',
@@ -90,7 +90,7 @@ class translator:
 														 '0',
 														 (self.node.register,),
 														 line = self.node.line))
-				elif isinstance(self.node.head, type_statement): # Insert constraint
+				elif isinstance(self.node.head, type_statement) and self.path[-2] >= self.node.head.active: # Insert constraint
 					self.instructions.append(instruction('.constraint',
 														 '0',
 														 (self.node.register,),
@@ -331,19 +331,31 @@ class module(coroutine):
 class type_statement(coroutine):
 	"""Defines a type definition."""
 	def __init__(self, tokens):
-
-		try: # Single-line type definition
-			i = [token.value for token in tokens].index('=>') + 1
-			super().__init__([tokens[0]])
-			self.nodes = [lexer(tokens[i::]).parse()]
-		except ValueError:
-			super().__init__([tokens[0]]) # Sets name as self.value
+		
+		super().__init__([tokens[0]]) # Sets name as value
 		self.name, self.type = tokens[0].value, tokens[0].value
-		self.supertype = tokens[2].value if len(tokens) > 2 else 'untyped'
-		self.supertype = sub_types[self.supertype] if self.supertype in sub_types else self.supertype
+		values = [token.value for token in tokens]
+		i, supertype, prototype = 1, None, False
+		if i < len(tokens) and values[i] == 'extends':
+			supertype = values[i + 1]
+			supertype, i = sub_types[supertype] if supertype in sub_types else supertype, i + 2
+		if i < len(tokens) and values[i] == 'with':
+			j = values.index('=>') if '=>' in values else len(tokens)
+			self.nodes, i = [lexer(tokens[i + 1:j]).parse()], j
+			prototype = True
+		if i < len(tokens) and values[i] == '=>':
+			self.nodes, i = self.nodes + [lexer(tokens[i + 1:]).parse()], len(tokens)
+		self.supertype, self.active = supertype, int(prototype)
 
-	def start(self): return (instruction('.type', self.name, (self.supertype,)),
-							 instruction('START', '', label = [self.name]))
+	def start(self):
+
+		if self.active: # Necessary to check type of prototype
+			return (instruction(self.supertype, self.register, (self.nodes[0].register,)),
+					instruction('.type', self.name, (self.supertype, self.register)),
+					instruction('START', '', label = [self.name]))
+		else:
+			return (instruction('.type', self.name, (self.supertype,)),
+					instruction('START', '', label = [self.name]))
 
 	def execute(self): return (instruction('.return', '0', (self.name,)),
 							   instruction('END', ''))
@@ -539,7 +551,7 @@ class else_statement(statement):
 class identifier(node):
 	"""Generic identifier node."""
 	def __init__(self, tokens):
-
+		
 		super().__init__(tokens)
 		self.lbp = 0
 
@@ -551,6 +563,10 @@ class literal(identifier):
 
 class name(identifier):
 	"""Defines a name."""
+	def __init__(self, tokens):
+		
+		super().__init__(sub_types[tokens] if tokens in sub_types else tokens)
+
 	def nud(self, lex):
 
 		if isinstance(lex.peek, left_bracket): # If function call:

@@ -23,7 +23,14 @@ assert even x:
 else:
 	bool c: true
 
-list x: [1, 2, 3]
-bool d: length(x) = 3
+type quadruple extends even:
+
+	quadruple % 4 = 0
+
+int x: 4
+assert quadruple x:
+	bool d: true
+else:
+	bool d: false
 
 return a and b and c and d

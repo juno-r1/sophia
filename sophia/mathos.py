@@ -318,6 +318,16 @@ op_snd.register(b_snd,
 				'future',
 				('untyped', 'future'))
 
+def u_new(task, x):
+
+	task.override = x.name
+	return x.prototype
+
+op_new = function_method('new')
+op_new.register(u_new,
+				'*',
+				('type',))
+
 # Namespace composition
 
 operators = {v.name: v for k, v in globals().items() if k.split('_')[0] == 'op'}

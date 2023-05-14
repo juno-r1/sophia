@@ -60,10 +60,11 @@ class method:
 
 class type_method(method):
 
-	def __init__(self, name, supertypes):
+	def __init__(self, name, supertypes, prototype):
 
 		super().__init__(name)
 		self.supertypes = [name] + supertypes
+		self.prototype = prototype
 		self.specificity = len(supertypes) + 1
 		self.register(self.subtype, name, (name,)) # Subtype check
 
@@ -168,7 +169,7 @@ def bind_untyped(task, value):
 	while task.instructions[task.path + offset].register != name:
 		offset = offset + 1
 	task.override = task.types[task.op.args[0]]
-	task.instructions[task.path + offset].name = task.check(name, default = value)
+	task.instructions[task.path + offset].name = task.check(name, default = value) if name in task.values else task.override
 	return task.error('BIND', name) if name in task.reserved else value
 
 def bind_untyped_type(task, value, type_routine):
@@ -562,7 +563,34 @@ def type_type(task, supertype):
 				break
 	end = task.path
 	instructions = task.instructions[start:end]
-	routine = type_method(name, supertype.supertypes)
+	routine = type_method(name, supertype.supertypes, supertype.prototype)
+	if isinstance(supertype.methods[('untyped',)], type): # Built-in supertype
+		check = [instruction(supername, '0', (name,)), 
+				 instruction('?', '0', ('0',)), # Convert to boolean
+				 instruction('.constraint', '0', ('0',), label = [supername])]
+		routine.register(type_definition([instructions[0]] + check + instructions[1:], name, supername), name, ('untyped',))
+		routine.register(type_definition(instructions, name, supername), name, (supername,))
+	else:
+		for key, value in list(supertype.methods.items())[1:]: # Rewrite methods with own type name
+			definition = [instruction.rewrite(i, supername, name) for i in value.instructions]
+			definition = definition[:-2] + instructions[1:-2] + definition[-2:] # Add user constraints to instructions
+			routine.register(type_definition(definition, name, key[0]), name, key)
+		routine.register(type_definition(instructions, name, supername), name, (supername,))
+	return routine
+
+def type_type_untyped(task, supertype, prototype):
+	
+	name, supername = task.op.register, supertype.name
+	start, scope = task.path, 0
+	while True: # Collect instructions
+		op, task.path = task.instructions[task.path], task.path + 1
+		if not op.register:
+			scope = scope - 1 if op.name == 'END' else scope + 1
+			if scope == 0:
+				break
+	end = task.path
+	instructions = task.instructions[start:end]
+	routine = type_method(name, supertype.supertypes, prototype)
 	if isinstance(supertype.methods[('untyped',)], type): # Built-in supertype
 		check = [instruction(supername, '0', (name,)), 
 				 instruction('?', '0', ('0',)), # Convert to boolean
@@ -581,6 +609,9 @@ f_type = function_method('.type')
 f_type.register(type_type,
 				'type',
 				('type',))
+f_type.register(type_type_untyped,
+				'type',
+				('type', 'untyped'))
 
 def unloop_null(task, value):
 

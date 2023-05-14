@@ -256,4 +256,5 @@ class task:
 		if self.op.register != '0': # Suppresses error for assertions
 			if 'suppress' not in self.flags:
 				hemera.debug_error(self.name, self.op.line, status, args)
+			self.values['0'] = None
 			self.path = 0

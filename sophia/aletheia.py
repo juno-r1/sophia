@@ -46,7 +46,7 @@ class sophia_null: # Null type
 
 	def __new__(cls, task, value): return
 
-t_null = arche.type_method('null', [])
+t_null = arche.type_method('null', [], None)
 t_null.register(sophia_null,
 				'null',
 				('null',))
@@ -98,7 +98,7 @@ class sophia_untyped: # Non-abstract base class
 	@classmethod
 	def __stream__(cls, value): return
 
-t_untyped = arche.type_method('untyped', [])
+t_untyped = arche.type_method('untyped', [], None)
 t_untyped.register(sophia_untyped,
 				   'untyped',
 				   ('untyped',))
@@ -108,7 +108,7 @@ class sophia_type(sophia_untyped): # Type type
 	name = 'type'
 	types = arche.type_method
 
-t_type = arche.type_method('type', ['untyped'])
+t_type = arche.type_method('type', ['untyped'], None)
 t_type.register(sophia_type,
 				'type',
 				('untyped',))
@@ -118,7 +118,7 @@ class sophia_event(sophia_untyped): # Event type
 	name = 'event'
 	types = arche.event_method
 
-t_event = arche.type_method('event', ['untyped'])
+t_event = arche.type_method('event', ['untyped'], None)
 t_event.register(sophia_event,
 				 'event',
 				 ('untyped',))
@@ -128,7 +128,7 @@ class sophia_function(sophia_untyped): # Function type
 	name = 'function'
 	types = arche.function_method
 
-t_function = arche.type_method('function', ['untyped'])
+t_function = arche.type_method('function', ['untyped'], None)
 t_function.register(sophia_function,
 					'function',
 					('untyped',))
@@ -156,7 +156,7 @@ class sophia_boolean(sophia_untyped): # Boolean type
 	@classmethod
 	def __slice__(cls, value): return True if len(value) != 0 else False
 
-t_boolean = arche.type_method('boolean', ['untyped'])
+t_boolean = arche.type_method('boolean', ['untyped'], False)
 t_boolean.register(sophia_boolean,
 				   'boolean',
 				   ('untyped',))
@@ -175,7 +175,7 @@ class sophia_number(sophia_untyped): # Abstract number type
 	@classmethod
 	def __string__(cls, value): return real(value)
 
-t_number = arche.type_method('number', ['untyped'])
+t_number = arche.type_method('number', ['untyped'], real('0'))
 t_number.register(sophia_number,
 				  'number',
 				  ('untyped',))
@@ -193,7 +193,7 @@ class sophia_integer(sophia_number): # Integer type
 			task.override = 'null'
 			return task.error('CAST', cls.name, str(value))
 
-t_integer = arche.type_method('integer', ['number', 'untyped'])
+t_integer = arche.type_method('integer', ['number', 'untyped'], real('0'))
 t_integer.register(sophia_integer,
 				   'integer',
 				   ('untyped',))
@@ -242,7 +242,7 @@ class sophia_string(sophia_untyped): # String type
 	@classmethod
 	def __stream__(cls, value): return 'stream ' + value.name
 
-t_string = arche.type_method('string', ['untyped'])
+t_string = arche.type_method('string', ['untyped'], '')
 t_string.register(sophia_string,
 				  'string',
 				  ('untyped',))
@@ -264,7 +264,7 @@ class sophia_list(sophia_untyped): # List type
 	@classmethod
 	def __slice__(cls, value): return tuple(value.value)
 
-t_list = arche.type_method('list', ['untyped'])
+t_list = arche.type_method('list', ['untyped'], [])
 t_list.register(sophia_list,
 				'list',
 				('untyped',))
@@ -274,7 +274,7 @@ class sophia_record(sophia_untyped): # Record type
 	name = 'record'
 	types = dict
 
-t_record = arche.type_method('record', ['untyped'])
+t_record = arche.type_method('record', ['untyped'], {})
 t_record.register(sophia_record,
 				  'record',
 				  ('untyped',))
@@ -284,7 +284,7 @@ class sophia_slice(sophia_untyped): # Slice type
 	name = 'slice'
 	types = arche.slice
 
-t_slice = arche.type_method('slice', ['untyped'])
+t_slice = arche.type_method('slice', ['untyped'], slice(real('0'), real('0'), real('1')))
 t_slice.register(sophia_slice,
 				 'slice',
 				 ('untyped',))
@@ -294,7 +294,7 @@ class sophia_future(sophia_untyped): # Process type
 	name = 'future'
 	types = kleio.reference
 
-t_future = arche.type_method('future', ['untyped'])
+t_future = arche.type_method('future', ['untyped'], None)
 t_future.register(sophia_future,
 				  'future',
 				  ('untyped'))
