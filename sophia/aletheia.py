@@ -20,7 +20,10 @@ def cast(task, target, value):
 
 	while target.supertype:
 		target = target.supertype
-	return getattr(target, '__{0}__'.format(names[type(value).__name__]))(value)
+	value = getattr(target, '__{0}__'.format(names[type(value).__name__]))(value)
+	if value is not None:
+		task.override = target.name
+		return value
 
 def infer(value): # Infers type of value
 
@@ -187,9 +190,13 @@ class sophia_integer(sophia_number): # Integer type
 
 	def __new__(cls, task, value):
 		
-		if isinstance(value, cls.types) and value % 1 == 0:
-			return value
-		else:
+		try: # Faster than isinstance(), I think
+			if value % 1 == 0:
+				return value
+			else:
+				task.override = 'null'
+				return task.error('CAST', cls.name, str(value))
+		except TypeError:
 			task.override = 'null'
 			return task.error('CAST', cls.name, str(value))
 

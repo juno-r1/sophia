@@ -251,7 +251,7 @@ def constraint_boolean(task, constraint):
 		value = task.values[name]
 		task.restore(task.caller)
 		return task.error('CAST', name, str(value))
-	elif task.op.label and task.op.label[0] != name:
+	elif task.op.label and task.op.label[0] != name: # Update type of checked value for subsequent constraints
 		task.types[name] = task.op.label[0]
 
 f_constraint = function_method('.constraint')
@@ -284,9 +284,7 @@ def event_null(task):
 	else:
 		routine = event_method(name)
 		task.types[name] = 'event'
-	routine.register(definition,
-					 types[0],
-					 tuple(types[1:-1]))
+	routine.register(definition, types[0], tuple(types[1:-1]))
 	return routine
 
 f_event = function_method('.event')
@@ -312,9 +310,7 @@ def function_null(task):
 	else:
 		routine = function_method(name)
 		task.types[name] = 'function'
-	routine.register(definition,
-					 types[0],
-					 tuple(types[1:]))
+	routine.register(definition, types[0], tuple(types[1:]))
 	return routine
 
 f_function = function_method('.function')
@@ -445,7 +441,7 @@ f_iterator.register(iterator_slice,
 def link_null(task):
 	
 	name = task.op.register
-	task.message('link', name if '.' in name else (name + '.sph'))
+	task.message('link', name + '.sph')
 	return task.calls.recv()
 
 f_link = function_method('.link')
@@ -483,13 +479,13 @@ def meta_string(task, string):
 			if scope == 0:
 				end = path
 				break
-	task.instructions = task.instructions[:start + 1] + instructions + task.instructions[end:]
+	task.instructions[start + 1:end] = instructions
 	task.values.update(values)
 	task.types.update(types)
 
 f_meta = function_method('.meta')
 f_meta.register(meta_string,
-				'*',
+				'.',
 				('string',))
 
 def next_untyped(task, iterator):
@@ -568,12 +564,13 @@ def type_type(task, supertype):
 		check = [instruction(supername, '0', (name,)), 
 				 instruction('?', '0', ('0',)), # Convert to boolean
 				 instruction('.constraint', '0', ('0',), label = [supername])]
-		routine.register(type_definition([instructions[0]] + check + instructions[1:], name, supername), name, ('untyped',))
 		routine.register(type_definition(instructions, name, supername), name, (supername,))
+		instructions[1:1] = check
+		routine.register(type_definition(instructions, name, supername), name, ('untyped',))
 	else:
 		for key, value in list(supertype.methods.items())[1:]: # Rewrite methods with own type name
 			definition = [instruction.rewrite(i, supername, name) for i in value.instructions]
-			definition = definition[:-2] + instructions[1:-2] + definition[-2:] # Add user constraints to instructions
+			definition[-2:-2] = instructions[1:-2] # Add user constraints to instructions
 			routine.register(type_definition(definition, name, key[0]), name, key)
 		routine.register(type_definition(instructions, name, supername), name, (supername,))
 	return routine
@@ -595,12 +592,13 @@ def type_type_untyped(task, supertype, prototype):
 		check = [instruction(supername, '0', (name,)), 
 				 instruction('?', '0', ('0',)), # Convert to boolean
 				 instruction('.constraint', '0', ('0',), label = [supername])]
-		routine.register(type_definition([instructions[0]] + check + instructions[1:], name, supername), name, ('untyped',))
 		routine.register(type_definition(instructions, name, supername), name, (supername,))
+		instructions[1:1] = check
+		routine.register(type_definition(instructions, name, supername), name, ('untyped',))
 	else:
 		for key, value in list(supertype.methods.items())[1:]: # Rewrite methods with own type name
 			definition = [instruction.rewrite(i, supername, name) for i in value.instructions]
-			definition = definition[:-2] + instructions[1:-2] + definition[-2:] # Add user constraints to instructions
+			definition[-2:-2] = instructions[1:-2] # Add user constraints to instructions
 			routine.register(type_definition(definition, name, key[0]), name, key)
 		routine.register(type_definition(instructions, name, supername), name, (supername,))
 	return routine
@@ -635,7 +633,7 @@ f_unloop.register(unloop_null,
 				  'null',
 				  ('null',))
 f_unloop.register(unloop_untyped,
-				  '*',
+				  'untyped',
 				  ('untyped',))
 
 # Built-in I/O functions

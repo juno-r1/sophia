@@ -154,10 +154,10 @@ class task:
 		debug_task = 'task' in self.flags
 		if 'instructions' in self.flags:
 			hemera.debug_instructions(self)
-		#if 'profile' in self.flags:
-		#	from cProfile import Profile
-		#	pr = Profile()
-		#	pr.enable()
+		if 'profile' in self.flags:
+			from cProfile import Profile
+			pr = Profile()
+			pr.enable()
 		while self.path:
 			"""
 			Prepare instruction, get arguments and type signature.
@@ -202,9 +202,9 @@ class task:
 			elif (final := method.finals[match]) != '.':
 				self.values[self.op.register] = value
 				self.types[self.op.register] = aletheia.infer(value) if final == '*' else final
-		#if 'profile' in self.flags:
-		#	pr.disable()
-		#	pr.print_stats(sort = 'tottime')
+		if 'profile' in self.flags:
+			pr.disable()
+			pr.print_stats(sort = 'tottime')
 		if 'namespace' in self.flags:
 			hemera.debug_namespace(self)
 		self.message('terminate')

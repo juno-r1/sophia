@@ -776,10 +776,7 @@ class sequence_literal(left_bracket):
 	"""Defines a sequence constructor."""
 	def execute(self):
 		
-		if self.nodes:
-			return instruction('.sequence', self.register, (self.nodes[0].register,)),
-		else:
-			return ()
+		return (instruction('.sequence', self.register, (self.nodes[0].register,)),) if self.nodes else ()
 
 class meta_statement(left_bracket):
 	"""Defines a meta-statement."""
@@ -885,11 +882,8 @@ def split(line): # Takes a line from the file data and splits it into tokens
 
 def balanced(tokens): # Takes a string and checks if its parentheses are balanced
 	
-	opening = parens[0::2] # Gets all opening parentheses from string
-	closing = parens[1::2] # Gets all closing parentheses from string
-	string = ''
-	stack = [] # Guess
-
+	opening, closing = parens[0::2], parens[1::2] # Gets all opening parentheses from string
+	string, stack = '', []
 	for token in tokens:
 		if string:
 			if token == string:

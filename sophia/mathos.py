@@ -220,8 +220,6 @@ def b_ins_slice(_, x, y):
 		lower = ranges[1] - (ranges[1] % step) + step # Gets highest lower bound
 		upper = ranges[2] - (ranges[2] % step) # Gets lowest upper bound
 		return slice((lower, upper, m))
-	else:
-		return None
 
 op_ins = function_method('&')
 op_ins.register(b_ins_string,
@@ -321,6 +319,8 @@ op_snd.register(b_snd,
 def u_new(task, x):
 
 	task.override = x.name
+	if x.prototype is None:
+		return task.error('PROT', x.name)
 	return x.prototype
 
 op_new = function_method('new')

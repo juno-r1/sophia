@@ -60,6 +60,7 @@ errors = {
 	'EVNT': 'Event has no initial',
 	'FIND': 'Undefined name: {0}',
 	'INDX': 'Invalid index: {0}',
+	'PROT': 'Type {0} has no prototype',
 	'TIME': 'Timeout warning' '\n' 'Enter Ctrl+C to interrupt program',
 	'UPRN': 'Unmatched parentheses',
 	'UQTE': 'Unmatched quotes'
