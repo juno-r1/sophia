@@ -85,6 +85,8 @@ class runtime:
 
 	def terminate(self, pid):
 		
+		if pid not in self.tasks:
+			raise RuntimeError
 		state = self.tasks[pid].result.get() # Get return state of task
 		self.tasks[pid].state = state # Store persistent state in supervisor
 		value = state['values']['0'] # Get return value from state
@@ -118,7 +120,10 @@ class runtime:
 					break
 				if 'supervisor' in self.flags:
 					hemera.debug_supervisor(message)
-				getattr(self, message[0])(*message[1:]) # Executes event
+				try:
+					getattr(self, message[0])(*message[1:]) # Executes event
+				except RuntimeError:
+					hemera.debug_error('sophia', 0, 'TASK', ())
 			except Empty:
 				hemera.debug_error('sophia', 0, 'TIME', ()) # Prints timeout warning but continues
 				message = True

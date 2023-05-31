@@ -2,25 +2,12 @@
 The Aletheia module defines built-in types and type operations.
 '''
 
-names = {
-	'NoneType': 'null',
-	'type_method': 'type',
-	'event_method': 'event',
-	'function_method': 'function',
-	'bool': 'boolean',
-	'Rational': 'number',
-	'str': 'string',
-	'tuple': 'list',
-	'dict': 'record',
-	'slice': 'slice',
-	'reference': 'future'
-}
-
 def cast(task, target, value):
-
-	while target.supertype:
-		target = target.supertype
-	value = getattr(target, '__{0}__'.format(names[type(value).__name__]))(value)
+	
+	try:
+		value = getattr(builtins['sophia_' + target.name], '__{0}__'.format(names[type(value).__name__].name), None)(value)
+	except KeyError:
+		return None
 	if value is not None:
 		task.override = target.name
 		return value
@@ -29,10 +16,7 @@ def infer(value): # Infers type of value
 
 	name = type(value).__name__
 	if name in names:
-		if name == 'Rational' and value % 1 == 0:
-			return 'integer'
-		else:
-			return names[name]
+		return 'integer' if name == 'Rational' and value % 1 == 0 else names[name].name
 	else:
 		return 'untyped' # Applies to all internal types
 
@@ -178,6 +162,9 @@ class sophia_number(sophia_untyped): # Abstract number type
 	@classmethod
 	def __string__(cls, value): return real(value)
 
+	@classmethod
+	def __future__(cls, value): return real(value.pid)
+
 t_number = arche.type_method('number', ['untyped'], real('0'))
 t_number.register(sophia_number,
 				  'number',
@@ -244,10 +231,7 @@ class sophia_string(sophia_untyped): # String type
 	def __slice__(cls, value): return '{0}:{1}:{2}'.format(value.start, value.stop, value.step)
 
 	@classmethod
-	def __future__(cls, value): return 'future ' + value.name
-
-	@classmethod
-	def __stream__(cls, value): return 'stream ' + value.name
+	def __future__(cls, value): return value.name
 
 t_string = arche.type_method('string', ['untyped'], '')
 t_string.register(sophia_string,
@@ -308,4 +292,18 @@ t_future.register(sophia_future,
 
 # Namespace composition
 
+names = {
+	'NoneType': sophia_null,
+	'type_method': sophia_type,
+	'event_method': sophia_event,
+	'function_method': sophia_function,
+	'bool': sophia_boolean,
+	'Rational': sophia_number,
+	'str': sophia_string,
+	'tuple': sophia_list,
+	'dict': sophia_record,
+	'slice': sophia_slice,
+	'reference': sophia_future
+}
+builtins = {k: v for k, v in globals().items() if 'sophia' in k}
 types = {v.name: v for k, v in globals().items() if k.split('_')[0] == 't'}

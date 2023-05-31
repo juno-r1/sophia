@@ -139,7 +139,10 @@ class function_definition:
 			task.instructions = self.instructions
 			task.path = 1
 
-# Internal functions
+"""
+Internal functions. The names of these functions are prefixed with "." to make
+them inaccessible to the user.
+"""
 
 def assert_null(task, value): # Null assertion
 
@@ -636,7 +639,9 @@ f_unloop.register(unloop_untyped,
 				  'untyped',
 				  ('untyped',))
 
-# Built-in I/O functions
+"""
+Built-in I/O operations.
+"""
 
 def input_string(task, value):
 
@@ -667,11 +672,13 @@ f_error.register(error_string,
 				 'untyped', # Fails own type check on purpose
 				 ('string',))
 
-# Built-in methods
+"""
+Built-in functions.
+"""
 
 f_cast = function_method('cast')
 f_cast.register(cast,
-				'*', # Signals to infer type
+				'*',
 				('type', 'untyped'))
 
 def length_string(task, sequence):
@@ -722,6 +729,8 @@ f_round.register(round_number,
 				 'integer',
 				 ('number',))
 
-# Namespace composition and internals
+"""
+Namespace composition and internals.
+"""
 
 functions = {v.name: v for k, v in globals().items() if k.split('_')[0] == 'f'}
