@@ -1,12 +1,3 @@
-standard streams
-
-streams can be modelled as processes of events:
-stdout accepts sent strings and returns the sent string
-stdin accepts sent strings and returns the input string
-stderr accepts sent strings and returns null
-
----
-
 set-based type system
 
 types are represented as sets
@@ -79,32 +70,6 @@ because types are sets, the in operator also applies to types
 for example:
 
 bool a: 1 in int // true
-
----
-
-prototypes
-
-set types are a good model for scalar types, but they can be cumbersome for defining compound types
-prototypes aim to solve this problem
-a prototype is a default value for a type
-
-for example:
-
-type triple extends list with [new str, new int, new int] => true
-type object extends record with ['a': new str, 'b': new str] => true
-
-a new instance of a type's prototype can be created with the new keyword:
-
-triple a: new triple
-a = ['', 0, 0] // true
-
-this allows the creation of data constructors that modify an instance of a prototype, imitating some properties of OOP
-
-this can also be used for subtyping types with prototypes:
-
-type quadruple extends triple with new triple | [new int] => true
-quadruple a: new quadruple
-a = ['', 0, 0, 0] // true
 
 ---
 

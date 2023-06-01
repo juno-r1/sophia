@@ -232,14 +232,14 @@ class node:
 					elif tokens[-1] and isinstance(tokens[-1][-1], (literal, name, right_bracket)): # If the preceding token is a literal (if the current token is an infix):
 						if symbol in (':', ','):
 							token = concatenator(symbol)
-						elif symbol in ('^', '->'):
+						elif symbol in ('^', '->', '=>'):
 							token = infix_r(symbol)
 						elif symbol == '<-':
 							bind_name = tokens[-1].pop()
 							token = bind(bind_name.value)
 							token.type = bind_name.type
 						else:
-							if len(tokens[-1]) == 1 and isinstance(tokens[-1][-1], name) and line[-1] == ':': # Special case for operator definition
+							if len(tokens[-1]) == 1 and isinstance(tokens[-1][-1], name) and ('=>' in line or line[-1] == ':'): # Special case for operator definition
 								token = name(symbol)
 								token_type = tokens[-1].pop().value # Sets return type of operator
 								token.type = sub_types[token_type] if token_type in sub_types else token_type
@@ -251,7 +251,10 @@ class node:
 						elif symbol == '*':
 							token = resolve(symbol)
 						else:
-							token = prefix(symbol) # NEGATION TAKES PRECEDENCE OVER EXPONENTIATION - All unary operators have the highest possible left-binding power
+							if len(tokens[-1]) == 1 and isinstance(tokens[-1][-1], name) and ('=>' in line or line[-1] == ':'): # Special case for operator definition
+								token = name(symbol)
+							else:
+								token = prefix(symbol) # NEGATION TAKES PRECEDENCE OVER EXPONENTIATION - All unary operators have the highest possible left-binding power
 				token.line = i
 				tokens[-1].append(token)
 				
@@ -262,7 +265,7 @@ class node:
 			elif line[0].value in keyword_tokens:
 				token = line[0] # Keywords will get special handling later
 			elif line[-1].value == ':' or '=>' in [token.value for token in line]:
-				if line[0].type == 'type' and '(' not in [token.value for token in line]:
+				if line[0].type == 'type' and '(' not in [token.value for token in line[:line.index('=>') if '=>' in line else -1]]:
 					token = type_statement(line)
 				elif line[1].value == 'awaits':
 					token = event_statement(line)
@@ -345,7 +348,7 @@ class type_statement(coroutine):
 			prototype = True
 		if i < len(tokens) and values[i] == '=>':
 			self.nodes, i = self.nodes + [lexer(tokens[i + 1:]).parse()], len(tokens)
-		self.supertype, self.active = supertype, int(prototype)
+		self.supertype, self.active = supertype if supertype else 'untyped', int(prototype)
 
 	def start(self):
 

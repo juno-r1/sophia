@@ -56,11 +56,11 @@ class runtime:
 
 	def send(self, pid, reference, message):
 		
-		if reference.pid == 0:
+		if reference.name == 'stdin':
 			hemera.debug_error('sophia', 0, 'WRIT', ())
-		elif reference.pid == 1:
+		elif reference.name == 'stdout':
 			hemera.stream_out(message)
-		elif reference.pid == 2:
+		elif reference.name == 'stderr':
 			hemera.stream_err(message)
 		else:
 			self.tasks[reference.pid].messages.send(message)
@@ -74,9 +74,9 @@ class runtime:
 
 	def resolve(self, pid, reference):
 
-		if reference.pid == 0:
+		if reference.name == 'stdin':
 			self.tasks[pid].calls.send(hemera.stream_in())
-		elif reference.pid == 1 or reference.pid == 2:
+		elif reference.name == 'stdout' or reference.name == 'stderr':
 			self.tasks[pid].calls.send(hemera.debug_error('sophia', 0, 'READ', ()))
 		elif self.tasks[reference.pid].result.ready():
 			self.tasks[pid].calls.send(self.tasks[reference.pid].result.get())
