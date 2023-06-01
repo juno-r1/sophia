@@ -6,6 +6,7 @@ from sys import stderr
 
 def debug_instructions(task):
 	
+	print('===', file = stderr)
 	for i, instruction in enumerate(task.instructions):
 		print(i,
 			  instruction,

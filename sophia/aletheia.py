@@ -5,12 +5,14 @@ The Aletheia module defines built-in types and type operations.
 def cast(task, target, value):
 	
 	try:
-		value = getattr(builtins['sophia_' + target.name], '__{0}__'.format(names[type(value).__name__].name), None)(value)
+		result = getattr(builtins['sophia_' + target.name], '__{0}__'.format(names[type(value).__name__].name), None)(value)
 	except KeyError:
-		return None
-	if value is not None:
+		return task.error('CAST', target.name, value)
+	if result is None:
+		return task.error('CAST', target.name, value)
+	else:
 		task.override = target.name
-		return value
+		return result
 
 def infer(value): # Infers type of value
 

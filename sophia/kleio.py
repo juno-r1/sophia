@@ -25,3 +25,5 @@ class reference:
 		self.name = routine.name
 		self.pid = routine.pid
 		self.check = check
+
+	def __str__(self): return self.name
