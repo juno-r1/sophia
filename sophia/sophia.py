@@ -56,7 +56,14 @@ class runtime:
 
 	def send(self, pid, reference, message):
 		
-		self.tasks[reference.pid].messages.send(message)
+		if reference.pid == 0:
+			hemera.debug_error('sophia', 0, 'WRIT', ())
+		elif reference.pid == 1:
+			hemera.stream_out(message)
+		elif reference.pid == 2:
+			hemera.stream_err(message)
+		else:
+			self.tasks[reference.pid].messages.send(message)
 
 	def update(self, pid, reference, message):
 		
@@ -67,7 +74,11 @@ class runtime:
 
 	def resolve(self, pid, reference):
 
-		if self.tasks[reference.pid].result.ready():
+		if reference.pid == 0:
+			self.tasks[pid].calls.send(hemera.stream_in())
+		elif reference.pid == 1 or reference.pid == 2:
+			self.tasks[pid].calls.send(hemera.debug_error('sophia', 0, 'READ', ()))
+		elif self.tasks[reference.pid].result.ready():
 			self.tasks[pid].calls.send(self.tasks[reference.pid].result.get())
 		else:
 			self.tasks[reference.pid].requests.append(pid) # Submit request for return value
@@ -145,14 +156,21 @@ class task:
 		self.name = instructions[0].label[0] if instructions else ''
 		self.pid = id(self) # Guaranteed not to collide with other task PIDs; not the same as the PID of the pool process
 		self.flags = flags
-		self.values = aletheia.types | mathos.operators | arche.functions | values
-		self.types = {i: 'type' for i in aletheia.types} | {i: 'function' for i in mathos.operators | arche.functions} | {k: (v if v else aletheia.infer(values[k])) for k, v in types.items()}
-		self.reserved = tuple(i for i in self.values)
 		self.instructions = instructions
 		self.path = int(bool(instructions)) # Does not execute if the parser encountered an error
 		self.op = instructions[0] # Current instruction
 		self.caller = None # Stores the state of the calling routine
 		self.override = None # Override flag, for when a method has a different return type to the one declared
+		self.values = aletheia.types | \
+					  mathos.operators | \
+					  arche.functions | \
+					  kleio.streams | \
+					  values
+		self.types = {i: 'type' for i in aletheia.types} | \
+					 {i: 'function' for i in mathos.operators | arche.functions} | \
+					 {i: 'future' for i in kleio.streams} | \
+					 {k: (v if v else aletheia.infer(values[k])) for k, v in types.items()}
+		self.reserved = tuple(i for i in self.values)
 
 	def execute(self): # Target of task.pool.apply_async()
 		

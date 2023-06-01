@@ -2,7 +2,13 @@
 The Hemera module defines Sophia's IO interface, error messages, and debug tools.
 '''
 
-from sys import stderr
+from sys import stdin, stdout, stderr
+
+def stream_in(): return input()
+
+def stream_out(value): print(value, sep = '', file = stdout)
+
+def stream_err(value): print(value, sep = '', file = stderr)
 
 def debug_instructions(task):
 	
@@ -62,8 +68,10 @@ errors = {
 	'FIND': 'Undefined name: {0}',
 	'INDX': 'Invalid index: {0}',
 	'PROT': 'Type {0} has no prototype',
+	'READ': 'Stream not readable',
 	'TASK': 'Task expired',
 	'TIME': 'Timeout warning' '\n' 'Enter Ctrl+C to interrupt program',
 	'UPRN': 'Unmatched parentheses',
-	'UQTE': 'Unmatched quotes'
+	'UQTE': 'Unmatched quotes',
+	'WRIT': 'Stream not writeable'
 }
