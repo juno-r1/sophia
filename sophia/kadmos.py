@@ -378,8 +378,15 @@ class event_statement(coroutine):
 		return (instruction('.event', self.name, label = [i for pair in zip(types, names) for i in pair] + [self.message.type, self.message.value]),
 				instruction('START', '', label = [self.name]))
 
-	def execute(self): return (instruction('.return', '0', ('&0',)),
-							   instruction('END', ''))
+	def execute(self):
+
+		if self.type:
+			return (instruction(self.type, self.register, ('&0',)),
+					instruction('.return', '0', ('&0',)),
+					instruction('END', ''))
+		else:
+			return (instruction('.return', '0', ('&0',)),
+					instruction('END', ''))
 
 class function_statement(coroutine):
 	"""Defines a function definition."""
@@ -400,8 +407,15 @@ class function_statement(coroutine):
 		return (instruction('.function', self.name, label = [i for pair in zip(types, names) for i in pair]),
 				instruction('START', '', label = [self.name]))
 
-	def execute(self): return (instruction('.return', '0', ('&0',)),
-							   instruction('END', ''))
+	def execute(self): 
+		
+		if self.type:
+			return (instruction(self.type, self.register, ('&0',)),
+					instruction('.return', '0', ('&0',)),
+					instruction('END', ''))
+		else:
+			return (instruction('.return', '0', ('&0',)),
+					instruction('END', ''))
 
 class assignment(statement):
 	"""Defines an assignment."""
