@@ -40,7 +40,8 @@ op_sub.register(b_sub,
 def u_rsv(task, x):
 	
 	task.message('resolve', x)
-	return task.calls.recv()
+	value, task.override = task.calls.recv(), x.check
+	return value
 
 def b_mul(_, x, y):
 

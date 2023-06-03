@@ -18,9 +18,9 @@ class proxy:
 
 class reference:
 	"""Reference object for a proxy. Represents the state of a task in another task."""
-	__slots__ = ('name', 'pid')
+	__slots__ = ('name', 'pid', 'check')
 
-	def __init__(self, routine = None):
+	def __init__(self, routine, check = None):
 		
 		if routine:
 			self.name = routine.name
@@ -28,6 +28,7 @@ class reference:
 		else:
 			self.name = ''
 			self.pid = 0
+		self.check = check if check else 'untyped'
 
 	def __str__(self): return self.name
 
@@ -35,11 +36,11 @@ class reference:
 Standard streams. These futures are abstract interfaces with stdin, stdout, and stderr.
 """
 
-stdin = reference()
+stdin = reference(None)
 stdin.name, stdin.pid = 'stdin', 0
-stdout = reference()
+stdout = reference(None)
 stdout.name, stdout.pid = 'stdout', 1
-stderr = reference()
+stderr = reference(None)
 stderr.name, stderr.pid = 'stderr', 2
 
 streams = {'stdin': stdin,

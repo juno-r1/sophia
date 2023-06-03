@@ -42,7 +42,7 @@ class runtime:
 		mp.current_process().stream = self.stream
 
 	def future(self, pid, routine, args, method):
-		
+
 		args = self.values | {routine.name: method} | dict(zip(routine.params, args))
 		types = self.types | {routine.name: aletheia.infer(method)} | dict(zip(routine.params, routine.types))
 		new = task(routine.instructions, args, types, self.flags)
@@ -52,7 +52,7 @@ class runtime:
 		self.tasks[new.pid].result = self.pool.apply_async(new.execute)
 		self.tasks[new.pid].count = self.tasks[new.pid].count + 1
 		self.tasks[pid].references.append(new.pid) # Mark reference to process
-		self.tasks[pid].calls.send(kleio.reference(new)) # Return reference to process
+		self.tasks[pid].calls.send(kleio.reference(new, routine.type)) # Return reference to process
 
 	def send(self, pid, reference, message):
 		
@@ -90,7 +90,7 @@ class runtime:
 		self.tasks[routine.pid].result = self.pool.apply_async(routine.execute)
 		self.tasks[routine.pid].count = self.tasks[routine.pid].count + 1
 		self.tasks[pid].references.append(routine.pid) # Mark reference to process
-		self.tasks[pid].calls.send(kleio.reference(routine)) # Return reference to process
+		self.tasks[pid].calls.send(kleio.reference(routine, 'untyped')) # Return reference to process
 
 	def terminate(self, pid):
 		
