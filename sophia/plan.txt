@@ -1,5 +1,0 @@
-type aliasing
-
-x is y
-
-creates a binding for a type, renaming the input type

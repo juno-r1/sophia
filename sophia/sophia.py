@@ -4,7 +4,7 @@ The module defines the runtime environment and task operations.
 This is the root module and the only module that the user should need to access.
 '''
 
-# ☉ 0.5 20-03-2023
+# ☉ 0.6 04-06-2023
 
 import aletheia, arche, hemera, kadmos, kleio, mathos
 import multiprocessing as mp
