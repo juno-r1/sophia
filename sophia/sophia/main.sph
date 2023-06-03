@@ -1,5 +1,5 @@
-type pos extends int => pos > 0
-type even extends int => even % 2 = 0
+int x (int n):
 
-a: pos & even
-return a(1)
+	return cast(str, n)
+
+return x(1)

@@ -516,9 +516,17 @@ class return_statement(statement):
 		super().__init__(None, lexer(tokens[1:]).parse()) if len(tokens) > 1 else super().__init__(None)
 		self.branch = tokens[0].branch
 
-	def execute(self): return instruction('.return',
-										  '0',
-										  (self.nodes[0].register if self.nodes else '&0',)),
+	def execute(self): 
+		
+		routine = self
+		while routine and not isinstance(routine, coroutine):
+			routine = routine.head
+		type_name = routine.type if routine else None
+		if type_name:
+			return (instruction(type_name, self.register, (self.nodes[0].register,)),
+					instruction('.return', '0', (self.nodes[0].register if self.nodes else '&0',)))
+		else:
+			return instruction('.return', '0', (self.nodes[0].register if self.nodes else '&0',)),
 
 class link_statement(statement):
 	"""Defines a link."""
