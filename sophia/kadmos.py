@@ -762,15 +762,13 @@ class function_call(left_bracket):
 		
 		if isinstance(self.nodes[1], concatenator): # Unpack concatenator
 			self.nodes = [self.nodes[0]] + self.nodes[1].nodes
+		args = tuple(item.register for item in self.nodes[1:])
 		if isinstance(self.head, bind):
-			return instruction(self.nodes[0].value,
-							   self.register,
-							   tuple(item.register for item in self.nodes[1:]),
-							   label = ['.bind', self.head.value]),
+			return instruction(self.nodes[0].value, self.register, args, label = ['.bind', self.head.value]),
 		else:
-			return instruction(self.nodes[0].value,
-							   self.register,
-							   tuple(item.register for item in self.nodes[1:])),
+			names = self.nodes[0].value.split('.')[::-1]
+			return [instruction(names[0], self.register, args)] + \
+				   [instruction(item, self.register, (self.register,)) for item in names[1:]]
 
 class parenthesis(left_bracket):
 	"""Defines a set of parentheses."""

@@ -64,10 +64,4 @@ type list_of_int: list[int]
 
 ---
 
-function composition
-
-g.f(x) = g(f(x))
-
----
-
 type checks for routine operators currently unimplemented
