@@ -41,18 +41,18 @@ class runtime:
 	
 		mp.current_process().stream = self.stream
 
-	def future(self, pid, routine, args, method, check):
+	def future(self, pid, routine, args, method):
 		
 		args = self.values | {routine.name: method} | dict(zip(routine.params, args))
-		types = self.types | {routine.name: aletheia.infer(routine)} | dict(zip(routine.params, routine.types))
+		types = self.types | {routine.name: aletheia.infer(method)} | dict(zip(routine.params, routine.types))
 		new = task(routine.instructions, args, types, self.flags)
 		self.tasks[new.pid] = kleio.proxy(new)
-		if check:
+		if types[routine.name] == 'event':
 			self.events[new.pid] = new # Persistent reference to event
 		self.tasks[new.pid].result = self.pool.apply_async(new.execute)
 		self.tasks[new.pid].count = self.tasks[new.pid].count + 1
 		self.tasks[pid].references.append(new.pid) # Mark reference to process
-		self.tasks[pid].calls.send(kleio.reference(new, check = check)) # Return reference to process
+		self.tasks[pid].calls.send(kleio.reference(new)) # Return reference to process
 
 	def send(self, pid, reference, message):
 		
@@ -62,15 +62,13 @@ class runtime:
 			hemera.stream_out(message)
 		elif reference.name == 'stderr':
 			hemera.stream_err(message)
+		elif reference.pid in self.events: # Update event
+			self.tasks[reference.pid].result.get() # Wait until routine is done with previous message
+			routine = self.events[reference.pid]
+			routine.prepare(self.tasks[reference.pid].state, message) # Mutate this version of the task
+			self.tasks[reference.pid].result = self.pool.apply_async(routine.execute)
 		else:
 			self.tasks[reference.pid].messages.send(message)
-
-	def update(self, pid, reference, message):
-		
-		self.tasks[reference.pid].result.get() # Wait until routine is done with previous message
-		routine = self.events[reference.pid]
-		routine.prepare(self.tasks[reference.pid].state, message, reference.check) # Mutate this version of the task
-		self.tasks[reference.pid].result = self.pool.apply_async(routine.execute)
 
 	def resolve(self, pid, reference):
 
@@ -257,7 +255,7 @@ class task:
 
 		self.__dict__.update(state)
 
-	def prepare(self, namespace, message, check): # Sets up task for event execution
+	def prepare(self, namespace, message): # Sets up task for event execution
 		
 		self.restore(namespace)
 		self.path = 0
@@ -269,7 +267,7 @@ class task:
 				if scope == 1 and op.name == 'EVENT':
 					name = op.label[0]
 					break
-		self.values[name], self.types[name] = message, check
+		self.values[name], self.types[name] = message, 'untyped'
 
 	def message(self, instruction = None, *args):
 		

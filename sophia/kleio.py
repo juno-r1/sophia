@@ -18,9 +18,9 @@ class proxy:
 
 class reference:
 	"""Reference object for a proxy. Represents the state of a task in another task."""
-	__slots__ = ('name', 'pid', 'check')
+	__slots__ = ('name', 'pid')
 
-	def __init__(self, routine = None, check = None):
+	def __init__(self, routine = None):
 		
 		if routine:
 			self.name = routine.name
@@ -28,7 +28,6 @@ class reference:
 		else:
 			self.name = ''
 			self.pid = 0
-		self.check = check
 
 	def __str__(self): return self.name
 

@@ -1,3 +1,17 @@
-int x (int n) => n
-x(1)
-return x.x(1)
+// 5.7
+
+num increment awaits num x:
+
+	start with num y:
+
+		num z: y
+		return y
+
+	num z: z + x
+	return z
+
+x <- increment(1)
+bool a: *x = 1
+bool b: *(2 -> x) = 3
+bool c: *(3 -> x) = 6
+return a and b and c

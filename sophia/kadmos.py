@@ -561,7 +561,8 @@ class start_statement(statement):
 
 	def execute(self): return (instruction('.return', '0', ('&0',)),
 							   instruction('END', ''),
-							   instruction('EVENT', '', label = [self.head.message.value]))
+							   instruction('EVENT', '', label = [self.head.message.value]),
+							   instruction(self.head.message.type, self.head.message.value, (self.head.message.value,)))
 
 class else_statement(statement):
 	"""Defines an else statement."""

@@ -102,7 +102,7 @@ class event_definition:
 
 		if '.bind' in task.op.label:
 			name = task.op.label[1]
-			task.message('future', self, args, task.values[self.name], self.check)
+			task.message('future', self, args, task.values[self.name])
 			task.override = 'future'
 			future = task.calls.recv()
 			task.values[name], task.types[name] = future, 'future'
@@ -128,7 +128,7 @@ class function_definition:
 
 		if '.bind' in task.op.label:
 			name = task.op.label[1]
-			task.message('future', self, args, task.values[self.name], None)
+			task.message('future', self, args, task.values[self.name])
 			task.override = 'future'
 			future = task.calls.recv()
 			task.values[name], task.types[name] = future, 'future'

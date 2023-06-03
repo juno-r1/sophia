@@ -65,3 +65,18 @@ type list_of_int: list[int]
 ---
 
 type checks for routine operators currently unimplemented
+
+bind
+
+no check necessary
+
+send & receive
+
+events specify the type of values that can be sent to them
+sending needs to check for the type defined in the reference's check
+this check is only possible on the receiving end
+the *receive* operator needs to check type
+
+resolve
+
+resolving should override for the return type of the resolved task

@@ -362,7 +362,7 @@ op_usf.register(u_usf,
 
 def b_snd(task, x, y):
 	
-	task.message('update' if y.check else 'send', y, x)
+	task.message('send', y, x)
 	return y
 
 op_snd = function_method('->')
