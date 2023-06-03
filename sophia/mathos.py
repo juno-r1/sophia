@@ -239,12 +239,12 @@ def b_ins_type(task, x, y):
 	routine.register(type_definition(start + rhs + end, name, supername), name, (x.name,))
 	routine.register(type_definition(start + lhs + end, name, supername), name, (y.name,))
 	for key, value in supertype.methods.items(): # Rewrite methods with own type name
-		if isinstance(value, type) or type(value).__name__ == 'method': # Built-in supertype
-			routine.register(type_definition(start + check + end, name, key[0]), name, key)
-		else:
+		if isinstance(value, type_definition):
 			definition = [instruction.rewrite(i, supername, name) for i in value.instructions]
 			definition[-2:-2] = check # Add user constraints to instructions
 			routine.register(type_definition(definition, name, key[0]), name, key)
+		else: # Built-in definition
+			routine.register(type_definition(start + check + end, name, key[0]), name, key)
 	return routine
 
 op_ins = function_method('&')
@@ -295,12 +295,12 @@ def b_uni_type(task, x, y):
 	routine.register(type_definition(start + end, name, supername), name, (x.name,))
 	routine.register(type_definition(start + end, name, supername), name, (y.name,))
 	for key, value in supertype.methods.items(): # Rewrite methods with own type name
-		if isinstance(value, type) or type(value).__name__ == 'method': # Built-in supertype
-			routine.register(type_definition(start + check + end, name, key[0]), name, key)
-		else:
+		if isinstance(value, type_definition): # Built-in supertype
 			definition = [instruction.rewrite(i, supername, name) for i in value.instructions]
 			definition[-2:-2] = check # Add user constraints to instructions
 			routine.register(type_definition(definition, name, key[0]), name, key)
+		else:
+			routine.register(type_definition(start + check + end, name, key[0]), name, key)
 	return routine
 
 op_uni = function_method('|')

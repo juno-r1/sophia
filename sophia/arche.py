@@ -147,6 +147,20 @@ Internal functions. The names of these functions are prefixed with "." to make
 them inaccessible to the user.
 """
 
+def alias_type(task, routine): # Type alias
+
+	new = type_method(task.op.register, routine.supertypes[1:], routine.prototype)
+	for key, value in list(routine.methods.items())[1:]: # Rewrite methods with own type name
+		new.register(type_definition([instruction.rewrite(i, routine.name, new.name) for i in value.instructions]
+									 if isinstance(value, type_definition)
+									 else value, new.name, key[0]), new.name, key)
+	return new
+
+f_alias = function_method('.alias')
+f_alias.register(alias_type,
+				 'type',
+				 ('type',))
+
 def assert_null(task, value): # Null assertion
 
 	scope = 1

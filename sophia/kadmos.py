@@ -273,6 +273,8 @@ class node:
 					token = function_statement(line)
 			elif len(line) > 1 and line[1].value == ':':
 				token = assignment(line)
+			elif len(line) > 1 and line[1].value == 'is':
+				token = alias(line)
 			else: # Tokenises expressions
 				token = lexer(line).parse() # Passes control to a lexer object that returns an expression tree when parse() is called
 			token.line = line[0].line
@@ -449,6 +451,14 @@ class assignment(statement):
 										   item.value,
 										   (str(int(self.register) + i),))
 										   for i, item in enumerate(self.value)] # Single-line function!
+
+class alias(statement):
+	"""Defines a type alias."""
+	def __init__(self, tokens): super().__init__(tokens[0], lexer(tokens[2:]).parse())
+
+	def __str__(self): return 'alias ' + str(self.value.value)
+
+	def execute(self): return instruction('.alias', self.value.value, (self.nodes[0].register,)),
 
 class if_statement(statement):
 	"""Defines an if statement."""
