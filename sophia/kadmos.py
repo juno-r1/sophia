@@ -533,11 +533,11 @@ class return_statement(statement):
 	def execute(self): 
 		
 		routine = self
-		while routine and not isinstance(routine, coroutine):
+		while not isinstance(routine, coroutine):
 			routine = routine.head
-		type_name = routine.type if routine else None
-		if type_name:
-			return (instruction(type_name, self.register, (self.nodes[0].register,)),
+		type_name = routine.type
+		if type_name and not isinstance(routine, module):
+			return (instruction(type_name, self.register, (self.nodes[0].register if self.nodes else self.register,)),
 					instruction('.return', '0', (self.nodes[0].register if self.nodes else '&0',)))
 		else:
 			return instruction('.return', '0', (self.nodes[0].register if self.nodes else '&0',)),

@@ -83,6 +83,7 @@ class type_definition:
 
 	def __call__(self, task, value):
 		
+		task.override = self.name # Set own type in caller state
 		task.caller = task.state()
 		task.values[self.name], task.types[self.name] = value, self.type
 		task.reserved = tuple(i for i in task.values)
@@ -107,6 +108,7 @@ class event_definition:
 			task.values[name], task.types[name] = future, 'future'
 			return future
 		else:
+			task.override = self.type # Set return type in caller state
 			task.caller = task.state()
 			task.values = task.values | dict(zip(self.params, args))
 			task.types = task.types | dict(zip(self.params, self.types))
@@ -132,6 +134,7 @@ class function_definition:
 			task.values[name], task.types[name] = future, 'future'
 			return future
 		else:
+			task.override = self.type # Set return type in caller state
 			task.caller = task.state()
 			task.values = task.values | dict(zip(self.params, args))
 			task.types = task.types | dict(zip(self.params, self.types))
@@ -253,6 +256,7 @@ def constraint_boolean(task, constraint):
 	if not constraint:
 		value = task.values[name]
 		task.restore(task.caller)
+		task.override = 'null'
 		return task.error('CAST', name, str(value))
 	elif task.op.label and task.op.label[0] != name: # Update type of checked value for subsequent constraints
 		task.types[name] = task.op.label[0]
@@ -507,8 +511,6 @@ def return_untyped(task, sentinel):
 	
 	if task.caller:
 		task.restore(task.caller) # Restore namespace of calling routine
-		if task.types[task.op.name] == 'type':
-			task.override = task.op.name # Allow type checks to return their own type
 	else:
 		task.path = 0 # End task
 	return sentinel

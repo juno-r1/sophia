@@ -62,15 +62,6 @@ for example:
 
 type list_of_int: list[int]
 
-type membership
-
-because types are sets, the in operator also applies to types
-<untyped> in <type> performs a type check and returns a boolean
-
-for example:
-
-bool a: 1 in int // true
-
 ---
 
 function composition
@@ -79,4 +70,4 @@ g.f(x) = g(f(x))
 
 ---
 
-type checks for return and routine operators currently unimplemented
+type checks for routine operators currently unimplemented

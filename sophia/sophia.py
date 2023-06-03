@@ -250,7 +250,8 @@ class task:
 				'instructions': self.instructions,
 				'path': self.path,
 				'op': self.op,
-				'caller': self.caller}
+				'caller': self.caller,
+				'override': self.override}
 
 	def restore(self, state): # Restore previous state of task
 
