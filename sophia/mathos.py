@@ -2,7 +2,8 @@
 The Mathos module defines built-in operators.
 '''
 
-from arche import element, slice, function_method
+from arche import element, slice, function_method, type_method, type_definition
+from kadmos import instruction
 
 def u_add(_, x): # Pain
 
@@ -221,6 +222,30 @@ def b_ins_slice(_, x, y):
 		upper = ranges[2] - (ranges[2] % step) # Gets lowest upper bound
 		return slice((lower, upper, m))
 
+def b_ins_type(task, x, y):
+	
+	name, supername = '<{0}&{1}>'.format(x.name, y.name), [i[0] for i in x.methods if i in y.methods][0] # Use closest mutual supertype
+	supertype, index = task.values[supername], x.supertypes.index(supername)
+	routine = type_method(name, x.supertypes[index:], x.prototype)
+	lhs = [instruction(x.name, '0', (name,)), 
+		   instruction('?', '0', ('0',)),
+		   instruction('.constraint', '0', ('0',))]
+	rhs = [instruction(y.name, '0', (name,)),
+		   instruction('?', '0', ('0',)),
+		   instruction('.constraint', '0', ('0',))]
+	check = lhs + rhs
+	start, end = [instruction('START', '', label = [name])], [instruction('.return', '0', (name,)), instruction('END', '')]
+	routine.register(type_definition(start + rhs + end, name, supername), name, (x.name,))
+	routine.register(type_definition(start + lhs + end, name, supername), name, (y.name,))
+	for key, value in supertype.methods.items(): # Rewrite methods with own type name
+		if isinstance(value, type) or type(value).__name__ == 'method': # Built-in supertype
+			routine.register(type_definition(start + check + end, name, key[0]), name, key)
+		else:
+			definition = [instruction.rewrite(i, supername, name) for i in value.instructions]
+			definition[-2:-2] = check # Add user constraints to instructions
+			routine.register(type_definition(definition, name, key[0]), name, key)
+	return routine
+
 op_ins = function_method('&')
 op_ins.register(b_ins_string,
 				'string',
@@ -234,6 +259,9 @@ op_ins.register(b_ins_record,
 op_ins.register(b_ins_slice,
 				'slice',
 				('slice', 'slice'))
+op_ins.register(b_ins_type,
+				'type',
+				('type', 'type'))
 
 def b_uni_string(_, x, y):
 
@@ -251,6 +279,29 @@ def b_uni_slice(_, x, y):
 
 	return tuple((list(x) + list(y)).sort())
 
+def b_uni_type(task, x, y):
+	
+	name, supername = '<{0}|{1}>'.format(x.name, y.name), [i[0] for i in x.methods if i in y.methods][0] # Use closest mutual supertype
+	supertype, index = task.values[supername], x.supertypes.index(supername)
+	routine = type_method(name, x.supertypes[index:], x.prototype)
+	check = [instruction(x.name, '0', (name,)), 
+			 instruction('?', '1', ('0',)),
+			 instruction(y.name, '0', (name,)),
+			 instruction('?', '0', ('0',)),
+			 instruction('or', '0', ('0', '1')),
+			 instruction('.constraint', '0', ('0',))]
+	start, end = [instruction('START', '', label = [name])], [instruction('.return', '0', (name,)), instruction('END', '')]
+	routine.register(type_definition(start + end, name, supername), name, (x.name,))
+	routine.register(type_definition(start + end, name, supername), name, (y.name,))
+	for key, value in supertype.methods.items(): # Rewrite methods with own type name
+		if isinstance(value, type) or type(value).__name__ == 'method': # Built-in supertype
+			routine.register(type_definition(start + check + end, name, key[0]), name, key)
+		else:
+			definition = [instruction.rewrite(i, supername, name) for i in value.instructions]
+			definition[-2:-2] = check # Add user constraints to instructions
+			routine.register(type_definition(definition, name, key[0]), name, key)
+	return routine
+
 op_uni = function_method('|')
 op_uni.register(b_uni_string,
 				'string',
@@ -264,6 +315,9 @@ op_uni.register(b_uni_record,
 op_uni.register(b_uni_slice,
 				'list',
 				('slice', 'slice'))
+op_uni.register(b_uni_type,
+				'type',
+				('type', 'type'))
 
 def b_slc(_, x, y):
 
