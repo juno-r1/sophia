@@ -744,7 +744,7 @@ class concatenator(operator):
 		return self
 
 	def execute(self):
-		
+
 		if self.value == ':':
 			return instruction(':', self.register, tuple(item.register for item in self.nodes)),
 		else:
@@ -816,7 +816,12 @@ class sequence_literal(left_bracket):
 	"""Defines a sequence constructor."""
 	def execute(self):
 		
-		return (instruction('.sequence', self.register, (self.nodes[0].register,)),) if self.nodes else ()
+		if self.nodes and self.nodes[0].value == ':' and len(self.nodes[0].nodes) == 3:
+			return instruction('cast', self.register, ('list', self.nodes[0].register)),
+		elif self.nodes:
+			return instruction('.sequence', self.register, (self.nodes[0].register,)),
+		else:
+			return ()
 
 class meta_statement(left_bracket):
 	"""Defines a meta-statement."""

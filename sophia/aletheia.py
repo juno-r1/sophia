@@ -252,7 +252,7 @@ class sophia_list(sophia_untyped): # List type
 	def __record__(cls, value): return tuple(value.items())
 
 	@classmethod
-	def __slice__(cls, value): return tuple(value.value)
+	def __slice__(cls, value): return tuple(value)
 
 t_list = arche.type_method('list', ['untyped'], [])
 t_list.register(sophia_list,

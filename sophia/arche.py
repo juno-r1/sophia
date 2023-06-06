@@ -189,6 +189,7 @@ def bind_untyped(task, value):
 	while task.instructions[task.path + offset].register != name:
 		offset = offset + 1
 	task.override = task.types[task.op.args[0]]
+	#task.members[name] = task.members[task.op.args[0]]
 	task.instructions[task.path + offset].name = task.check(name, default = value) if name in task.values else task.override
 	return task.error('BIND', name) if name in task.reserved else value
 
@@ -196,6 +197,7 @@ def bind_untyped_type(task, value, type_routine):
 	
 	name = task.op.label[0]
 	task.override = task.types[task.op.args[0]]
+	#task.members[name] = task.members[task.op.register]
 	return task.error('BIND', name) if name in task.reserved else value
 
 f_bind = function_method('.bind')
@@ -250,10 +252,17 @@ f_break.register(break_untyped,
 
 def concatenate_untyped(task, value):
 	
+	#task.members[task.op.register] = task.types[task.op.args[0]]
 	return [value]
 
 def concatenate_untyped_untyped(task, sequence, value):
-	
+
+	#sequence_type, member_type = task.members[task.op.args[0]], task.types[task.op.args[1]]
+	#if sequence_type == member_type:
+	#	task.members[task.op.register] = member_type
+	#else:
+	#	sequence_type, member_type = task.values[sequence_type], task.values[member_type]
+	#	task.members[task.op.register] = [i for i in sequence_type.supertypes if i in member_type.supertypes][0]
 	return sequence + [value]
 
 f_concatenate = function_method('.concatenate')
@@ -356,9 +365,10 @@ def index_string_slice(task, sequence, index):
 		return task.error('INDX', index)
 
 def index_list_integer(task, sequence, index):
-
+	
 	length = len(sequence)
 	if -length <= index < length:
+		#task.override = task.members[task.op.args[0]] # Take member type
 		return sequence[int(index)] # Sophia's integer type is abstract, Python's isn't
 	else:
 		return task.error('INDX', index)
@@ -374,6 +384,7 @@ def index_list_slice(task, sequence, index):
 def index_record_untyped(task, sequence, index):
 	
 	if index in sequence:
+		#task.override = task.members[task.op.args[0]] # Take member type
 		return sequence[index]
 	else:
 		return task.error('INDX', index)
@@ -537,34 +548,20 @@ f_return.register(return_untyped,
 				  'untyped',
 				  ('untyped',))
 
-def sequence_null(task):
-
-	return []
-
 def sequence_untyped(task, sequence):
 	
+	#task.members[task.op.register] = task.members[task.op.args[0]]
 	if not isinstance(sequence, list):
 		sequence = [sequence]
 	if sequence and isinstance(sequence[0], element): # If items is a key-item pair in a record
 		return dict(iter(sequence)) # Better way to merge a list of key-value pairs into a record
-	else: # If list or slice:
+	else: # If list:
 		return tuple(sequence)
 
-def sequence_slice(task, sequence):
-
-	return tuple(sequence) # Tuple expands slice
-
 f_sequence = function_method('.sequence')
-f_sequence.register(sequence_null,
-					'untyped',
-					())
 f_sequence.register(sequence_untyped,
 					'*',
 					('untyped',))
-f_sequence.register(sequence_slice,
-					'list',
-					('slice',))
-
 
 def type_type(task, supertype):
 	
@@ -781,7 +778,7 @@ f_length.register(length_slice,
 				  'integer',
 				  ('slice',))
 
-def namespace_null(task):
+def namespace_null(task): # Do not let the user read working registers
 
 	return {k: v for k, v in task.values.items() if k not in task.reserved}
 

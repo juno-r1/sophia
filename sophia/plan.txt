@@ -1,0 +1,9 @@
+member types
+
+list[int]
+
+sequence types specify the type of their members
+the closest mutual type of a list's members are determined upon its creation
+the interpreter always knows the member type of a sequence; thus, type checking is never necessary
+unlike union and intersection types, member types do not actually exist as distinct types
+rather, the member type is queried as a property of the sequence when needed
