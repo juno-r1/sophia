@@ -1,1 +1,1 @@
-print('Hello, world!')
+return sum([1:5:1])

@@ -769,10 +769,16 @@ class left_bracket(operator):
 
 class function_call(left_bracket):
 	"""Defines a function call."""
+	def led(self, lex, left): # For function calls
+		
+		self.nodes = [left] if isinstance(lex.peek, right_bracket) else [left, lex.parse(self.lbp)] # Accounts for empty brackets
+		if len(self.nodes) > 1 and isinstance(self.nodes[1], concatenator): # Unpack concatenator
+			self.nodes = [self.nodes[0]] + self.nodes[1].nodes
+		lex.use()
+		return self
+
 	def execute(self):
 		
-		if isinstance(self.nodes[1], concatenator): # Unpack concatenator
-			self.nodes = [self.nodes[0]] + self.nodes[1].nodes
 		args = tuple(item.register for item in self.nodes[1:])
 		if isinstance(self.head, bind):
 			return instruction(self.nodes[0].value, self.register, args, label = ['.bind', self.head.value]),

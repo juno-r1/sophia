@@ -5,7 +5,7 @@ The Arche module defines the standard library and internal data types.
 from aletheia import cast
 from kadmos import instruction, module, translator
 from rationals import Rational as real
-from sys import stderr
+from math import ceil, copysign, floor
 
 class element(tuple):
 	"""Key-value pair used in record construction."""
@@ -680,22 +680,76 @@ f_print.register(print_string,
 
 def error_string(task, status):
 	
-	print(status, file = stderr)
+	task.error('USER', status)
 	return None
 
 f_error = function_method('error')
 f_error.register(error_string,
-				 'untyped', # Fails own type check on purpose
+				 'null',
 				 ('string',))
 
 """
 Built-in functions.
 """
 
+def abs_number(task, value):
+
+	return value if value >= 0 else -value
+
+f_abs = function_method('abs')
+f_abs.register(abs_number,
+			   'number',
+			   ('number',))
+
 f_cast = function_method('cast')
 f_cast.register(cast,
 				'*',
 				('type', 'untyped'))
+
+def ceiling_number(task, value):
+
+	return ceil(value) # Handled by real
+
+f_ceiling = function_method('ceiling')
+f_ceiling.register(ceiling_number,
+				   'integer',
+				   ('number',))
+
+def floor_number(task, value):
+
+	return floor(value) # Handled by real
+
+f_floor = function_method('floor')
+f_floor.register(floor_number,
+				 'integer',
+				 ('number',))
+
+def format_string_list(task, string, args):
+
+	return string.format(*args)
+
+f_format = function_method('format')
+f_format.register(format_string_list,
+				  'string',
+				  ('string', 'list'))
+
+def hash_untyped(task, value):
+
+	return real(hash(value), 1, _normalise = False) # NOT CRYPTOGRAPHICALLY SECURE
+
+f_hash = function_method('hash')
+f_hash.register(hash_untyped,
+				'integer',
+				('untyped',))
+
+def join_list_string(task, sequence, joiner):
+
+	return joiner.join(sequence)
+
+f_join = function_method('join')
+f_join.register(join_list_string,
+				'string',
+				('list', 'string'))
 
 def length_string(task, sequence):
 
@@ -727,6 +781,15 @@ f_length.register(length_slice,
 				  'integer',
 				  ('slice',))
 
+def namespace_null(task):
+
+	return {k: v for k, v in task.values.items() if k not in task.reserved}
+
+f_namespace = function_method('namespace')
+f_namespace.register(namespace_null,
+					 'record',
+					 ())
+
 def reverse_slice(task, value):
 		
 	return slice([value.end, value.start, -value.step])
@@ -744,6 +807,49 @@ f_round = function_method('round')
 f_round.register(round_number,
 				 'integer',
 				 ('number',))
+
+def sign_number(task, value):
+
+	return real(0) if value == 0 else real(int(copysign(1, value)))
+
+f_sign = function_method('sign')
+f_sign.register(sign_number,
+				'integer',
+				('number',))
+
+def split_string_string(task, string, separator):
+
+	return tuple(string.split(separator))
+
+f_split = function_method('split')
+f_split.register(split_string_string,
+				 'list',
+				 ('string', 'string'))
+
+def sum_list(task, sequence):
+
+	return real(sum(sequence))
+
+def sum_slice(task, sequence):
+
+	return real(sum(i for i in sequence))
+
+f_sum = function_method('sum')
+f_sum.register(sum_list,
+			   'number',
+			   ('list',))
+f_sum.register(sum_slice,
+			   'number',
+			   ('slice',))
+
+def typeof_untyped(task, value):
+	
+	return task.values[task.types[task.op.args[0]]]
+
+f_typeof = function_method('typeof')
+f_typeof.register(typeof_untyped,
+				  'type',
+				  ('untyped',))
 
 """
 Namespace composition and internals.

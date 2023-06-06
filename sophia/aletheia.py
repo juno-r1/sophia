@@ -131,19 +131,19 @@ class sophia_boolean(sophia_untyped): # Boolean type
 	def __boolean__(cls, value): return value
 
 	@classmethod
-	def __number__(cls, value): return True if value != 0 else False
+	def __number__(cls, value): return value != 0
 
 	@classmethod
-	def __string__(cls, value): return True if value != '' else False
+	def __string__(cls, value): return value != ''
 
 	@classmethod
-	def __list__(cls, value): return True if value != [] else False
+	def __list__(cls, value): return value != []
 
 	@classmethod
-	def __record__(cls, value): return True if value != {} else False
+	def __record__(cls, value): return value != {}
 
 	@classmethod
-	def __slice__(cls, value): return True if len(value) != 0 else False
+	def __slice__(cls, value): return len(value) != 0
 
 t_boolean = arche.type_method('boolean', ['untyped'], False)
 t_boolean.register(sophia_boolean,
@@ -156,7 +156,7 @@ class sophia_number(sophia_untyped): # Abstract number type
 	types = real
 
 	@classmethod
-	def __boolean__(cls, value): return 1 if value else 0
+	def __boolean__(cls, value): return real(int(value))
 
 	@classmethod
 	def __number__(cls, value): return value
@@ -167,7 +167,7 @@ class sophia_number(sophia_untyped): # Abstract number type
 	@classmethod
 	def __future__(cls, value): return real(value.pid)
 
-t_number = arche.type_method('number', ['untyped'], real('0'))
+t_number = arche.type_method('number', ['untyped'], real(0))
 t_number.register(sophia_number,
 				  'number',
 				  ('untyped',))
@@ -189,7 +189,7 @@ class sophia_integer(sophia_number): # Integer type
 			task.override = 'null'
 			return task.error('CAST', cls.name, str(value))
 
-t_integer = arche.type_method('integer', ['number', 'untyped'], real('0'))
+t_integer = arche.type_method('integer', ['number', 'untyped'], real(0))
 t_integer.register(sophia_integer,
 				   'integer',
 				   ('untyped',))
@@ -203,16 +203,13 @@ class sophia_string(sophia_untyped): # String type
 	def __null__(cls, value): return 'null'
 
 	@classmethod
-	def __type__(cls, value): return 'type {0}'.format(value.name)
+	def __type__(cls, value): return value.name
 
 	@classmethod
-	def __event__(cls, value): return 'event {0}'.format(value.name)
+	def __event__(cls, value): return value.name
 
 	@classmethod
-	def __operator__(cls, value): return 'operator {0}'.format(value.name)
-
-	@classmethod
-	def __function__(cls, value): return 'function {0}'.format(value.name)
+	def __function__(cls, value): return value.name
 
 	@classmethod
 	def __boolean__(cls, value): return 'true' if value else 'false'
@@ -277,7 +274,7 @@ class sophia_slice(sophia_untyped): # Slice type
 	name = 'slice'
 	types = arche.slice
 
-t_slice = arche.type_method('slice', ['untyped'], slice(real('0'), real('0'), real('1')))
+t_slice = arche.type_method('slice', ['untyped'], slice(real(0), real(0), real(1)))
 t_slice.register(sophia_slice,
 				 'slice',
 				 ('untyped',))

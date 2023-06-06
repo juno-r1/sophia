@@ -73,5 +73,6 @@ errors = {
 	'TIME': 'Timeout warning' '\n' 'Enter Ctrl+C to interrupt program',
 	'UPRN': 'Unmatched parentheses',
 	'UQTE': 'Unmatched quotes',
+	'USER': '{0}',
 	'WRIT': 'Stream not writeable'
 }
