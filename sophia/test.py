@@ -1,3 +1,5 @@
-a = [1, 2, 3, 4, 5]
-a[1:4] = [2]
-print(a)
+import json
+
+with open('kleio.json', 'r') as data:
+	metadata = json.load(data)['+']['u_add']
+	print(metadata)

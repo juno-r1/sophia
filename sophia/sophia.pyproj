@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>77ea40b1-1af6-4971-ad30-ff261d0da3cb</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>harmonia.py</StartupFile>
+    <StartupFile>run.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -25,12 +25,11 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="aletheia.py" />
-    <Compile Include="arche.py" />
+    <Compile Include="mathos.py" />
     <Compile Include="harmonia.py" />
     <Compile Include="hemera.py" />
-    <Compile Include="kleio.py" />
-    <Compile Include="mathos.py" />
-    <Compile Include="rationals.py" />
+    <Compile Include="iris.py" />
+    <Compile Include="arche.py" />
     <Compile Include="sophia.py" />
     <Compile Include="kadmos.py" />
     <Compile Include="run.py" />
@@ -62,6 +61,7 @@
     <Content Include="harmonia\test22.sph" />
     <Content Include="harmonia\test23.sph" />
     <Content Include="harmonia\test24.sph" />
+    <Content Include="kleio.json" />
     <Content Include="plan.txt" />
     <Content Include="sophia\main.sph" />
     <Content Include="sophia\test.sph" />

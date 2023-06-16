@@ -1,5 +1,5 @@
 '''
-The Kleio module defines classes for process management.
+The Iris module defines classes for process management and inter-process messaging.
 '''
 
 from multiprocessing import Pipe
@@ -17,7 +17,7 @@ class proxy:
 		self.count = 0 # Reference counter
 
 class reference:
-	"""Reference object for a proxy. Represents the state of a task in another task."""
+	"""Reference object for a proxy. Represents the user-accessible state of a task."""
 	__slots__ = ('name', 'pid', 'check')
 
 	def __init__(self, routine, check = None):
@@ -31,18 +31,3 @@ class reference:
 		self.check = check if check else 'untyped'
 
 	def __str__(self): return self.name
-
-"""
-Standard streams. These futures are abstract interfaces with stdin, stdout, and stderr.
-"""
-
-stdin = reference(None)
-stdin.name, stdin.pid = 'stdin', 0
-stdout = reference(None)
-stdout.name, stdout.pid = 'stdout', 1
-stderr = reference(None)
-stderr.name, stderr.pid = 'stderr', 2
-
-streams = {'stdin': stdin,
-		   'stdout': stdout,
-		   'stderr': stderr}

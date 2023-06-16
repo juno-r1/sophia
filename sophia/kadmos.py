@@ -4,7 +4,7 @@ The Kadmos module handles Sophia file parsing and instruction generation.
 
 import hemera
 from aletheia import infer
-from rationals import Rational as real
+from mathos import real
 
 characters = '.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz' # Sorted by position in UTF-8
 parens = '()[]{}'
@@ -838,13 +838,12 @@ class right_bracket(operator):
 class lexer:
 	"""
 	Implements a Pratt parser for expressions.
+	These sources helped with expression parsing:
+	https://eli.thegreenplace.net/2010/01/02/top-down-operator-precedence-parsing
+	https://abarker.github.io/typped/pratt_parsing_intro.html
+	https://web.archive.org/web/20150228044653/http://effbot.org/zone/simple-top-down-parsing.htm
+	https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
 	"""
-	# These sources helped with expression parsing:
-	# https://eli.thegreenplace.net/2010/01/02/top-down-operator-precedence-parsing
-	# https://abarker.github.io/typped/pratt_parsing_intro.html
-	# https://web.archive.org/web/20150228044653/http://effbot.org/zone/simple-top-down-parsing.htm
-	# https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
-
 	def __init__(self, tokens):
 
 		self.lexes = (iter(tokens), iter(tokens))

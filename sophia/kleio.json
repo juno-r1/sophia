@@ -1,0 +1,2419 @@
+{
+  "null": {
+    "type": {
+      "type": "type",
+      "member": null,
+      "length": null
+    },
+    "sophia_null": {
+      "signature": [
+        {
+          "type": "null",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "null",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    }
+  },
+  "untyped": {
+    "type": {
+      "type": "type",
+      "member": null,
+      "length": null
+    },
+    "sophia_untyped": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "untyped",
+        "member": "*",
+        "length": "*"
+      },
+      "arity": 1
+    }
+  },
+  "type": {
+    "type": {
+      "type": "type",
+      "member": null,
+      "length": null
+    },
+    "sophia_type": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "type",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    }
+  },
+  "event": {
+    "type": {
+      "type": "type",
+      "member": null,
+      "length": null
+    },
+    "sophia_event": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "event",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    }
+  },
+  "function": {
+    "type": {
+      "type": "type",
+      "member": null,
+      "length": null
+    },
+    "sophia_function": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "function",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    }
+  },
+  "boolean": {
+    "type": {
+      "type": "type",
+      "member": null,
+      "length": null
+    },
+    "sophia_boolean": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "boolean",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    }
+  },
+  "number": {
+    "type": {
+      "type": "type",
+      "member": null,
+      "length": null
+    },
+    "sophia_number": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "number",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    }
+  },
+  "integer": {
+    "type": {
+      "type": "type",
+      "member": null,
+      "length": null
+    },
+    "sophia_integer": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "integer",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    }
+  },
+  "string": {
+    "type": {
+      "type": "type",
+      "member": null,
+      "length": null
+    },
+    "sophia_string": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "string",
+        "member": "string",
+        "length": "*"
+      },
+      "arity": 1
+    }
+  },
+  "list": {
+    "type": {
+      "type": "type",
+      "member": null,
+      "length": null
+    },
+    "sophia_list": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "list",
+        "member": "*",
+        "length": "*"
+      },
+      "arity": 1
+    }
+  },
+  "record": {
+    "type": {
+      "type": "type",
+      "member": null,
+      "length": null
+    },
+    "sophia_record": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "record",
+        "member": "*",
+        "length": "*"
+      },
+      "arity": 1
+    }
+  },
+  "slice": {
+    "type": {
+      "type": "type",
+      "member": null,
+      "length": null
+    },
+    "sophia_slice": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "slice",
+        "member": "integer",
+        "length": "*"
+      },
+      "arity": 1
+    }
+  },
+  "future": {
+    "type": {
+      "type": "type",
+      "member": null,
+      "length": null
+    },
+    "sophia_future": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "future",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    }
+  },
+  "+": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "u_add": {
+      "signature": [
+        {
+          "type": "number",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "number",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    },
+    "b_add": {
+      "signature": [
+        {
+          "type": "number",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "number",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "number",
+        "member": null,
+        "length": null
+      },
+      "arity": 2
+    }
+  },
+  "-": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "u_sub": {
+      "signature": [
+        {
+          "type": "number",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "number",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    },
+    "b_sub": {
+      "signature": [
+        {
+          "type": "number",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "number",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "number",
+        "member": null,
+        "length": null
+      },
+      "arity": 2
+    }
+  },
+  "*": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "u_rsv": {
+      "signature": [
+        {
+          "type": "future",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "!",
+        "member": "!",
+        "length": "!"
+      },
+      "arity": 1
+    },
+    "b_mul": {
+      "signature": [
+        {
+          "type": "number",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "number",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "number",
+        "member": null,
+        "length": null
+      },
+      "arity": 2
+    }
+  },
+  "/": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "b_div": {
+      "signature": [
+        {
+          "type": "number",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "number",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "number",
+        "member": null,
+        "length": null
+      },
+      "arity": 2
+    }
+  },
+  "^": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "b_exp": {
+      "signature": [
+        {
+          "type": "number",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "number",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "number",
+        "member": null,
+        "length": null
+      },
+      "arity": 2
+    }
+  },
+  "%": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "b_mod": {
+      "signature": [
+        {
+          "type": "number",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "number",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "number",
+        "member": null,
+        "length": null
+      },
+      "arity": 2
+    }
+  },
+  "=": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "b_eql": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "boolean",
+        "member": null,
+        "length": null
+      },
+      "arity": 2
+    }
+  },
+  "!=": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "b_neq": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "boolean",
+        "member": null,
+        "length": null
+      },
+      "arity": 2
+    }
+  },
+  "<": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "b_ltn": {
+      "signature": [
+        {
+          "type": "number",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "number",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "boolean",
+        "member": null,
+        "length": null
+      },
+      "arity": 2
+    }
+  },
+  ">": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "n_rcv": {
+      "signature": [],
+      "final": {
+        "type": "!",
+        "member": "!",
+        "length": "!"
+      },
+      "arity": 0
+    },
+    "b_gtn": {
+      "signature": [
+        {
+          "type": "number",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "number",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "boolean",
+        "member": null,
+        "length": null
+      },
+      "arity": 2
+    }
+  },
+  "<=": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "b_leq": {
+      "signature": [
+        {
+          "type": "number",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "number",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "boolean",
+        "member": null,
+        "length": null
+      },
+      "arity": 2
+    }
+  },
+  ">=": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "b_geq": {
+      "signature": [
+        {
+          "type": "number",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "number",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "boolean",
+        "member": null,
+        "length": null
+      },
+      "arity": 2
+    }
+  },
+  "in": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "b_sbs_string": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "string",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "boolean",
+        "member": null,
+        "length": null
+      },
+      "arity": 2
+    },
+    "b_sbs_list": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "list",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "boolean",
+        "member": null,
+        "length": null
+      },
+      "arity": 2
+    },
+    "b_sbs_record": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "record",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "boolean",
+        "member": null,
+        "length": null
+      },
+      "arity": 2
+    },
+    "b_sbs_slice": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "slice",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "boolean",
+        "member": null,
+        "length": null
+      },
+      "arity": 2
+    }
+  },
+  "not": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "u_lnt": {
+      "signature": [
+        {
+          "type": "boolean",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "boolean",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    }
+  },
+  "and": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "b_lnd": {
+      "signature": [
+        {
+          "type": "boolean",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "boolean",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "boolean",
+        "member": null,
+        "length": null
+      },
+      "arity": 2
+    }
+  },
+  "or": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "b_lor": {
+      "signature": [
+        {
+          "type": "boolean",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "boolean",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "boolean",
+        "member": null,
+        "length": null
+      },
+      "arity": 2
+    }
+  },
+  "xor": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "b_lxr": {
+      "signature": [
+        {
+          "type": "boolean",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "boolean",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "boolean",
+        "member": null,
+        "length": null
+      },
+      "arity": 2
+    }
+  },
+  "&": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "b_ins_string": {
+      "signature": [
+        {
+          "type": "string",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "string",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "string",
+        "member": null,
+        "length": null
+      },
+      "arity": 2
+    },
+    "b_ins_list": {
+      "signature": [
+        {
+          "type": "list",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "list",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "list",
+        "member": null,
+        "length": null
+      },
+      "arity": 2
+    },
+    "b_ins_record": {
+      "signature": [
+        {
+          "type": "record",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "record",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "list",
+        "member": null,
+        "length": null
+      },
+      "arity": 2
+    },
+    "b_ins_slice": {
+      "signature": [
+        {
+          "type": "slice",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "slice",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "slice",
+        "member": "integer",
+        "length": null
+      },
+      "arity": 2
+    },
+    "b_ins_type": {
+      "signature": [
+        {
+          "type": "type",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "type",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "type",
+        "member": null,
+        "length": null
+      },
+      "arity": 2
+    }
+  },
+  "|": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "b_uni_string": {
+      "signature": [
+        {
+          "type": "string",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "string",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "string",
+        "member": null,
+        "length": null
+      },
+      "arity": 2
+    },
+    "b_uni_list": {
+      "signature": [
+        {
+          "type": "list",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "list",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "list",
+        "member": null,
+        "length": null
+      },
+      "arity": 2
+    },
+    "b_uni_record": {
+      "signature": [
+        {
+          "type": "record",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "record",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "record",
+        "member": null,
+        "length": null
+      },
+      "arity": 2
+    },
+    "b_uni_slice": {
+      "signature": [
+        {
+          "type": "slice",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "slice",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "slice",
+        "member": "integer",
+        "length": null
+      },
+      "arity": 2
+    },
+    "b_uni_type": {
+      "signature": [
+        {
+          "type": "type",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "type",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "type",
+        "member": null,
+        "length": null
+      },
+      "arity": 2
+    }
+  },
+  ":": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "b_slc": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "untyped",
+        "member": null,
+        "length": null
+      },
+      "arity": 2
+    },
+    "t_slc": {
+      "signature": [
+        {
+          "type": "number",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "number",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "number",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "slice",
+        "member": "integer",
+        "length": null
+      },
+      "arity": 3
+    }
+  },
+  "?": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "u_sfe_null": {
+      "signature": [
+        {
+          "type": "null",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "boolean",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    },
+    "u_sfe_untyped": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "boolean",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    }
+  },
+  "!": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "u_usf": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "!",
+        "member": "!",
+        "length": "!"
+      },
+      "arity": 1
+    }
+  },
+  "->": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "b_snd": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "future",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "future",
+        "member": null,
+        "length": null
+      },
+      "arity": 2
+    }
+  },
+  "new": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "u_new": {
+      "signature": [
+        {
+          "type": "type",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "!",
+        "member": "!",
+        "length": "!"
+      },
+      "arity": 1
+    }
+  },
+  ".alias": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "alias_type": {
+      "signature": [
+        {
+          "type": "type",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "type",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    }
+  },
+  ".assert": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "assert_null": {
+      "signature": [
+        {
+          "type": "null",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": ".",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    },
+    "assert_untyped": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": ".",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    }
+  },
+  ".bind": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "bind_untyped": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "!",
+        "member": "!",
+        "length": "!"
+      },
+      "arity": 1
+    },
+    "bind_untyped_type": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "type",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "!",
+        "member": "!",
+        "length": "!"
+      },
+      "arity": 2
+    }
+  },
+  ".branch": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "branch_null": {
+      "signature": [],
+      "final": {
+        "type": ".",
+        "member": null,
+        "length": null
+      },
+      "arity": 0
+    },
+    "branch_boolean": {
+      "signature": [
+        {
+          "type": "boolean",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": ".",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    }
+  },
+  ".break": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "break_untyped": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": ".",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    }
+  },
+  ".concatenate": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "concatenate_untyped": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "untyped",
+        "member": "!",
+        "length": 1
+      },
+      "arity": 1
+    },
+    "concatenate_untyped_untyped": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "untyped",
+        "member": "!",
+        "length": "!"
+      },
+      "arity": 2
+    }
+  },
+  ".constraint": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "constraint_boolean": {
+      "signature": [
+        {
+          "type": "boolean",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": ".",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    }
+  },
+  ".event": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "event_null": {
+      "signature": [],
+      "final": {
+        "type": "event",
+        "member": null,
+        "length": null
+      },
+      "arity": 0
+    }
+  },
+  ".function": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "function_null": {
+      "signature": [],
+      "final": {
+        "type": "function",
+        "member": null,
+        "length": null
+      },
+      "arity": 0
+    }
+  },
+  ".index": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "index_string_integer": {
+      "signature": [
+        {
+          "type": "string",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "integer",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "string",
+        "member": "string",
+        "length": 1
+      },
+      "arity": 2
+    },
+    "index_string_slice": {
+      "signature": [
+        {
+          "type": "string",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "slice",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "string",
+        "member": "string",
+        "length": "!"
+      },
+      "arity": 2
+    },
+    "index_list_integer": {
+      "signature": [
+        {
+          "type": "list",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "integer",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "!",
+        "member": "!",
+        "length": "!"
+      },
+      "arity": 2
+    },
+    "index_list_slice": {
+      "signature": [
+        {
+          "type": "list",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "slice",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "list",
+        "member": "!",
+        "length": "!"
+      },
+      "arity": 2
+    },
+    "index_record_untyped": {
+      "signature": [
+        {
+          "type": "record",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "!",
+        "member": "!",
+        "length": "!"
+      },
+      "arity": 2
+    },
+    "index_record_slice": {
+      "signature": [
+        {
+          "type": "record",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "slice",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "record",
+        "member": "!",
+        "length": "!"
+      },
+      "arity": 2
+    },
+    "index_slice_integer": {
+      "signature": [
+        {
+          "type": "slice",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "integer",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "integer",
+        "member": null,
+        "length": null
+      },
+      "arity": 2
+    },
+    "index_slice_slice": {
+      "signature": [
+        {
+          "type": "slice",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "slice",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "slice",
+        "member": "integer",
+        "length": "!"
+      },
+      "arity": 2
+    }
+  },
+  ".iterator": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "iterator_string": {
+      "signature": [
+        {
+          "type": "string",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "untyped",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    },
+    "iterator_list": {
+      "signature": [
+        {
+          "type": "list",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "untyped",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    },
+    "iterator_record": {
+      "signature": [
+        {
+          "type": "record",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "untyped",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    },
+    "iterator_slice": {
+      "signature": [
+        {
+          "type": "slice",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "untyped",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    }
+  },
+  ".link": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "link_null": {
+      "signature": [],
+      "final": {
+        "type": "future",
+        "member": null,
+        "length": null
+      },
+      "arity": 0
+    }
+  },
+  ".loop": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "loop_null": {
+      "signature": [],
+      "final": {
+        "type": ".",
+        "member": null,
+        "length": null
+      },
+      "arity": 0
+    }
+  },
+  ".meta": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "meta_string": {
+      "signature": [
+        {
+          "type": "string",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": ".",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    }
+  },
+  ".next": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "next_untyped": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "*",
+        "member": "*",
+        "length": "*"
+      },
+      "arity": 1
+    }
+  },
+  ".return": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "return_null": {
+      "signature": [
+        {
+          "type": "null",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "null",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    },
+    "return_untyped": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "!",
+        "member": "!",
+        "length": "!"
+      },
+      "arity": 1
+    }
+  },
+  ".sequence": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "sequence_untyped": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "!",
+        "member": "!",
+        "length": "!"
+      },
+      "arity": 1
+    }
+  },
+  ".type": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "type_type": {
+      "signature": [
+        {
+          "type": "type",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "type",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    },
+    "type_type_untyped": {
+      "signature": [
+        {
+          "type": "type",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "type",
+        "member": null,
+        "length": null
+      },
+      "arity": 2
+    }
+  },
+  ".unloop": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "unloop_null": {
+      "signature": [
+        {
+          "type": "null",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "null",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    },
+    "unloop_untyped": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "untyped",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    }
+  },
+  "stdin": {
+    "type": {
+      "type": "future",
+      "member": null,
+      "length": null
+    }
+  },
+  "stdout": {
+    "type": {
+      "type": "future",
+      "member": null,
+      "length": null
+    }
+  },
+  "stderr": {
+    "type": {
+      "type": "future",
+      "member": null,
+      "length": null
+    }
+  },
+  "input": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "input_string": {
+      "signature": [
+        {
+          "type": "string",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "string",
+        "member": "string",
+        "length": "*"
+      },
+      "arity": 1
+    }
+  },
+  "print": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "print_string": {
+      "signature": [
+        {
+          "type": "string",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "string",
+        "member": "string",
+        "length": "!"
+      },
+      "arity": 1
+    }
+  },
+  "error": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "error_string": {
+      "signature": [
+        {
+          "type": "string",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "null",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    }
+  },
+  "abs": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "abs_number": {
+      "signature": [
+        {
+          "type": "number",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "number",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    }
+  },
+  "cast": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "cast_type_untyped": {
+      "signature": [
+        {
+          "type": "type",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "!",
+        "member": "!",
+        "length": "!"
+      },
+      "arity": 2
+    }
+  },
+  "ceiling": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "ceiling_number": {
+      "signature": [
+        {
+          "type": "number",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "integer",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    }
+  },
+  "floor": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "floor_number": {
+      "signature": [
+        {
+          "type": "number",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "integer",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    }
+  },
+  "format": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "format_string_list": {
+      "signature": [
+        {
+          "type": "string",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "list",
+          "member": "string",
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "string",
+        "member": "string",
+        "length": "*"
+      },
+      "arity": 2
+    }
+  },
+  "hash": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "hash_untyped": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "integer",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    }
+  },
+  "join": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "join_list_string": {
+      "signature": [
+        {
+          "type": "list",
+          "member": "string",
+          "length": null
+        },
+        {
+          "type": "string",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "string",
+        "member": "string",
+        "length": "*"
+      },
+      "arity": 2
+    }
+  },
+  "length": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "length_string": {
+      "signature": [
+        {
+          "type": "string",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "integer",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    },
+    "length_list": {
+      "signature": [
+        {
+          "type": "list",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "integer",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    },
+    "length_record": {
+      "signature": [
+        {
+          "type": "record",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "integer",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    },
+    "length_slice": {
+      "signature": [
+        {
+          "type": "slice",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "integer",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    }
+  },
+  "namespace": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "namespace_null": {
+      "signature": [],
+      "final": {
+        "type": "record",
+        "member": "*",
+        "length": "*"
+      },
+      "arity": 0
+    }
+  },
+  "reverse": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "reverse_slice": {
+      "signature": [
+        {
+          "type": "slice",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "slice",
+        "member": "integer",
+        "length": null
+      },
+      "arity": 1
+    }
+  },
+  "round": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "round_number": {
+      "signature": [
+        {
+          "type": "number",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "integer",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    }
+  },
+  "sign": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "sign_number": {
+      "signature": [
+        {
+          "type": "number",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "integer",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    }
+  },
+  "split": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "split_string_string": {
+      "signature": [
+        {
+          "type": "string",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "string",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "list",
+        "member": "string",
+        "length": "*"
+      },
+      "arity": 2
+    }
+  },
+  "sum": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "sum_list": {
+      "signature": [
+        {
+          "type": "list",
+          "member": "number",
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "number",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    },
+    "sum_slice": {
+      "signature": [
+        {
+          "type": "slice",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "integer",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    }
+  },
+  "typeof": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "typeof_untyped": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "type",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    }
+  }
+}

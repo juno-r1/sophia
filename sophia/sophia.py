@@ -6,7 +6,7 @@ This is the root module and the only module that the user should need to access.
 
 # ☉ 0.6 04-06-2023
 
-import aletheia, arche, hemera, kadmos, kleio, mathos
+import aletheia, arche, hemera, iris, kadmos
 import multiprocessing as mp
 from os import name as os_name
 from queue import Empty
@@ -33,7 +33,7 @@ class runtime:
 		self.stream = mp.Queue() # Supervisor message stream
 		self.pool = mp.Pool(initializer = self.initialise)
 		self.main = task(self.instructions, self.values, self.types, flags) # Initial task
-		self.tasks = {self.main.pid: kleio.proxy(self.main)} # Proxies of tasks
+		self.tasks = {self.main.pid: iris.proxy(self.main)} # Proxies of tasks
 		self.events = {} # Persistent event tasks
 		self.flags = flags
 
@@ -46,13 +46,13 @@ class runtime:
 		args = self.values | {routine.name: method} | dict(zip(routine.params, args))
 		types = self.types | {routine.name: aletheia.infer(method)} | dict(zip(routine.params, routine.types))
 		new = task(routine.instructions, args, types, self.flags)
-		self.tasks[new.pid] = kleio.proxy(new)
+		self.tasks[new.pid] = iris.proxy(new)
 		if types[routine.name] == 'event':
 			self.events[new.pid] = new # Persistent reference to event
 		self.tasks[new.pid].result = self.pool.apply_async(new.execute)
 		self.tasks[new.pid].count = self.tasks[new.pid].count + 1
 		self.tasks[pid].references.append(new.pid) # Mark reference to process
-		self.tasks[pid].calls.send(kleio.reference(new, routine.type)) # Return reference to process
+		self.tasks[pid].calls.send(iris.reference(new, routine.type)) # Return reference to process
 
 	def send(self, pid, reference, message):
 		
@@ -86,11 +86,11 @@ class runtime:
 		linked = kadmos.module(name, root = self.root)
 		instructions, values, types = kadmos.translator(linked).generate()
 		routine = task(instructions, values, types, self.flags)
-		self.tasks[routine.pid] = kleio.proxy(routine)
+		self.tasks[routine.pid] = iris.proxy(routine)
 		self.tasks[routine.pid].result = self.pool.apply_async(routine.execute)
 		self.tasks[routine.pid].count = self.tasks[routine.pid].count + 1
 		self.tasks[pid].references.append(routine.pid) # Mark reference to process
-		self.tasks[pid].calls.send(kleio.reference(routine, 'untyped')) # Return reference to process
+		self.tasks[pid].calls.send(iris.reference(routine, 'untyped')) # Return reference to process
 
 	def terminate(self, pid):
 		
@@ -157,21 +157,14 @@ class task:
 		self.instructions = instructions
 		self.path = int(bool(instructions)) # Does not execute if the parser encountered an error
 		self.op = instructions[0] # Current instruction
+		self.signature = () # Current type signature
 		self.caller = None # Stores the state of the calling routine
-		self.override = None # Override flag, for when a method has a different return type to the one declared
-		self.values = aletheia.types | \
-					  mathos.operators | \
-					  arche.functions | \
-					  kleio.streams | \
-					  values
-		self.types = {i: 'type' for i in aletheia.types} | \
-					 {i: 'function' for i in mathos.operators | arche.functions} | \
-					 {i: 'future' for i in kleio.streams} | \
-					 {k: (v if v else aletheia.infer(values[k])) for k, v in types.items()}
+		self.values = arche.builtins | values
+		self.types = arche.types | {k: (v if v else aletheia.descriptor(aletheia.infer(values[k]))) for k, v in types.items()}
 		self.reserved = tuple(i for i in self.values)
 
-	def execute(self): # Target of task.pool.apply_async()
-		
+	def execute(self):
+		"""Task runtime loop; target of task.pool.apply_async()."""
 		debug_task = 'task' in self.flags
 		if 'instructions' in self.flags:
 			hemera.debug_instructions(self)
@@ -191,7 +184,8 @@ class task:
 				continue
 			arity = self.op.arity
 			args = [self] + [self.find(arg) for arg in self.op.args]
-			signature = tuple([self.check(arg) for arg in self.op.args])
+			self.signature = tuple([self.check(arg) for arg in self.op.args])
+			print(args[1:], [str(i) for i in self.signature])
 			"""
 			Multiple dispatch algorithm, with help from Julia:
 			https://github.com/JeffBezanson/phdthesis
@@ -200,29 +194,26 @@ class task:
 			if not (method := self.find(self.op.name)):
 				continue
 			if not (candidates := [x for x in method.methods if method.arity[x] == arity]): # Remove candidates with mismatching arity
-				self.error('DISP', method.name, str(signature))
+				self.error('DISP', method.name, str(self.signature))
 				continue
-			for i, name in enumerate(signature):
-				supertypes = self.values[name].supertypes
-				candidates = [item for item in candidates if item[i] in supertypes] # Filter for candidates with a matching supertype
+			for i, name in enumerate(self.signature):
+				candidates = [item for item in candidates if item[i] in self.supertype(name)] # Filter for candidates with a matching supertype
 				depth = max([self.values[item[i]].specificity for item in candidates], default = 0) # Get the depth of the most specific candidate
 				candidates = [item for item in candidates if self.values[item[i]].specificity == depth] # Keep only the most specific signatures
 			if candidates:
-				match = candidates[0] # Just take the first match it finds, I don't know
+				match = candidates[0]
 				instance = method.methods[match]
 			else:
-				self.error('DISP', method.name, str(signature))
+				self.error('DISP', method.name, str(self.signature))
 				continue
 			"""
-			Execute instruction and update or unbind registers.
+			Execute instruction and update registers.
 			"""
-			value = instance(*args)
-			if self.override:
-				self.values[self.op.register] = value
-				self.types[self.op.register], self.override = self.override, None
-			elif (final := method.finals[match]) != '.':
-				self.values[self.op.register] = value
-				self.types[self.op.register] = aletheia.infer(value) if final == '*' else final
+			address, final = self.op.register, method.finals[match]
+			if final == '.': # Suppress return
+				instance(*args)
+			else:
+				self.values[address], self.types[address] = (instance(*args), aletheia.descriptor.read(final)) if final else instance(*args)
 		if 'profile' in self.flags:
 			pr.disable()
 			pr.print_stats(sort = 'tottime')
@@ -235,9 +226,18 @@ class task:
 		
 		return self.values[name] if name in self.values else self.error('FIND', name)
 
-	def check(self, name, default = None): # Internal function to check if a name has a type bound to it
+	def check(self, name, default = None): # Internal function to get a value's type descriptor
 		
 		return self.types[name] if name in self.types else aletheia.infer(default)
+
+	def supertype(self, name): # Get supertypes of type
+		
+		supertypes = self.values[name.type].supertypes
+		if name.member:
+			supertypes = ['.'.join((name.type, item)) for item in self.values[name.member].supertypes] + supertypes
+		if name.length:
+			supertypes = [str(name)] + supertypes
+		return supertypes
 
 	def state(self): # Get current state of task as subset of __dict__
 
@@ -248,8 +248,7 @@ class task:
 				'instructions': self.instructions,
 				'path': self.path,
 				'op': self.op,
-				'caller': self.caller,
-				'override': self.override}
+				'caller': self.caller}
 
 	def restore(self, state): # Restore previous state of task
 
