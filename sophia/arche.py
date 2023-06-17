@@ -581,7 +581,9 @@ arche_sfe = function_method('?')
 arche_sfe.retrieve(u_sfe_null)
 arche_sfe.retrieve(u_sfe_untyped)
 
-def u_usf(_, x): return x if x else None, infer(x)
+def u_usf(task, x):
+	
+	return (x, task.signature[0]) if x else (None, descriptor('null'))
 
 arche_usf = function_method('!')
 arche_usf.retrieve(u_usf)
