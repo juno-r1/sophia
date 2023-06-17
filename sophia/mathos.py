@@ -452,6 +452,14 @@ class slice:
 				yield n
 				n = n + self.step
 
+	def __len__(self):
+
+		return int((self.end - self.start) / self.step) + 1
+
+	def __str__(self):
+
+		return '{0}:{1}:{2}'.format(self.start, self.end, self.step)
+
 class element(tuple):
 	"""Key-value pair used in record construction."""
 	pass

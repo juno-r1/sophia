@@ -160,7 +160,7 @@ class task:
 		self.signature = () # Current type signature
 		self.caller = None # Stores the state of the calling routine
 		self.values = arche.builtins | values
-		self.types = arche.types | {k: (v if v else aletheia.descriptor(aletheia.infer(values[k]))) for k, v in types.items()}
+		self.types = arche.types | types
 		self.reserved = tuple(self.values)
 		self.final = aletheia.descriptor('untyped') # Return type of routine
 
@@ -186,7 +186,6 @@ class task:
 			arity = self.op.arity
 			args = [self] + [self.find(arg) for arg in self.op.args]
 			self.signature = tuple([self.check(arg) for arg in self.op.args])
-			print(args[1:], [str(i) for i in self.signature])
 			"""
 			Multiple dispatch algorithm, with help from Julia:
 			https://github.com/JeffBezanson/phdthesis
@@ -257,7 +256,8 @@ class task:
 				'instructions': self.instructions,
 				'path': self.path,
 				'op': self.op,
-				'caller': self.caller}
+				'caller': self.caller,
+				'final': self.final}
 
 	def restore(self, state): # Restore previous state of task
 

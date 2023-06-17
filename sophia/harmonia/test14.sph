@@ -17,7 +17,7 @@ assert unbound: // Unbound name
 else:
 	bool c: true
 
-assert str x: // Invalid type
+assert str(x): // Invalid type
 	bool d: false
 else:
 	bool d: true

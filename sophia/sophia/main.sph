@@ -1,2 +1,40 @@
-list a: [1, 2, 3]
-return length(a)
+// 5.4
+
+list x: [1, 2, 3]
+
+assert true: // Non-null value
+	bool a: true
+else:
+	bool a: false
+
+assert true, null: // Null value, multiple assertion
+	bool b: false
+else:
+	bool b: true
+
+assert unbound: // Unbound name
+	bool c: false
+else:
+	bool c: true
+
+assert str(x): // Invalid type
+	bool d: false
+else:
+	bool d: true
+
+assert x[3]: // Index out of bounds
+	bool e: false
+else:
+	bool e: true
+
+assert print(1): // Invalid input type
+	bool f: false
+else:
+	bool f: true
+
+assert print('1', '2'): // Incorrect number of arguments
+	bool g: false
+else:
+	bool g: true
+
+return a and b and c and d and e and f and g

@@ -3,7 +3,7 @@ The Kadmos module handles Sophia file parsing and instruction generation.
 '''
 
 import hemera
-from aletheia import infer
+from aletheia import descriptor, infer
 from mathos import real
 
 characters = '.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz' # Sorted by position in UTF-8
@@ -78,7 +78,7 @@ class translator:
 		self.constant = constants # Constant register counter
 		self.instructions = [instruction('START', '', label = [node.name])]
 		self.values = {'0': None, '&0': None} # Register namespace
-		self.types = {'0': 'null', '&0': 'null'} # Register types
+		self.types = {'0': descriptor('null'), '&0': descriptor('null')} # Register types
 
 	def generate(self, offset = 0):
 		
@@ -146,7 +146,7 @@ class translator:
 				return index
 		else:
 			if isinstance(self.node, name): # Variable register
-				return '0' if isinstance(self.node.head, assert_statement) else self.node.value
+				return self.node.value
 			elif isinstance(self.node, receive):
 				return self.node.value.value
 			elif self.node.value is None: # Null value is interned so that instructions can reliably take null as an operand

@@ -11,7 +11,7 @@ from math import copysign
 import json
 with open('kleio.json') as f:
 	metadata = json.load(f)
-del f # Hell
+del f # Python inexplicably does not do this automatically
 
 class method:
 	"""
@@ -53,7 +53,8 @@ class type_method(method):
 
 	def subtype(self, task, value):
 		
-		return value, task.signature[0] # Type already known
+		signature = task.signature[0]
+		return value, descriptor(self.name, signature.member, signature.length)
 
 class event_method(method): pass
 class function_method(method): pass
@@ -84,19 +85,19 @@ class event_definition:
 
 	def __call__(self, task, *args):
 
-		if '.bind' in task.op.label:
-			name = task.op.label[1]
-			task.message('future', self, args, task.values[self.name])
-			future = task.calls.recv()
-			task.values[name], task.types[name] = future, descriptor('future')
-			return future, descriptor('future')
-		else:
-			task.caller = task.state()
-			task.values = task.values | dict(zip(self.params, args))
-			task.types = task.types | dict(zip(self.params, (descriptor(i) for i in self.types)))
-			task.reserved = tuple(task.values)
-			task.instructions = self.instructions
-			task.path = 1
+		#if '.bind' in task.op.label:
+		#	name = task.op.label[1]
+		#	task.message('future', self, args, task.values[self.name])
+		#	future = task.calls.recv()
+		#	task.values[name], task.types[name] = future, descriptor('future')
+		#	return future, descriptor('future')
+		#else:
+		task.caller = task.state()
+		task.values = task.values | dict(zip(self.params, args))
+		task.types = task.types | dict(zip(self.params, (descriptor(i) for i in self.types)))
+		task.reserved = tuple(task.values)
+		task.instructions = self.instructions
+		task.path = 1
 
 class function_definition:
 	"""Definition for a user-defined function."""
@@ -108,19 +109,19 @@ class function_definition:
 
 	def __call__(self, task, *args):
 
-		if '.bind' in task.op.label:
-			name = task.op.label[1]
-			task.message('future', self, args, task.values[self.name])
-			future = task.calls.recv()
-			task.values[name], task.types[name] = future, descriptor('future')
-			return future, descriptor('future')
-		else:
-			task.caller = task.state()
-			task.values = task.values | dict(zip(self.params, args))
-			task.types = task.types | dict(zip(self.params, (descriptor(i) for i in self.types)))
-			task.reserved = tuple(task.values)
-			task.instructions = self.instructions
-			task.path = 1
+		#if '.bind' in task.op.label:
+		#	name = task.op.label[1]
+		#	task.message('future', self, args, task.values[self.name])
+		#	future = task.calls.recv()
+		#	task.values[name], task.types[name] = future, descriptor('future')
+		#	return future, descriptor('future')
+		#else:
+		task.caller = task.state()
+		task.values = task.values | dict(zip(self.params, args))
+		task.types = task.types | dict(zip(self.params, (descriptor(i) for i in self.types)))
+		task.reserved = tuple(task.values)
+		task.instructions = self.instructions
+		task.path = 1
 
 """
 Built-in types.
@@ -263,11 +264,11 @@ class sophia_integer(sophia_number): # Integer type
 		
 		try: # Faster than isinstance(), I think
 			if value % 1 == 0:
-				return value
+				return value, descriptor('integer')
 			else:
-				return task.error('CAST', cls.name, str(value))
+				return task.error('CAST', cls.name, str(value)), descriptor('null')
 		except TypeError:
-			return task.error('CAST', cls.name, str(value))
+			return task.error('CAST', cls.name, str(value)), descriptor('null')
 
 cls_integer = type_method('integer', ['number', 'untyped'], real(0))
 cls_integer.retrieve(sophia_integer)
@@ -563,7 +564,10 @@ arche_uni.retrieve(b_uni_type)
 
 def b_slc(_, x, y): return element((x, y))
 
-def t_slc(_, x, y, z): return slice((x, y, z))
+def t_slc(_, x, y, z):
+	
+	value = slice((x, y, z))
+	return value, descriptor('slice', 'integer', len(value))
 
 arche_slc = function_method(':')
 arche_slc.retrieve(b_slc)
@@ -632,16 +636,16 @@ arche_assert.retrieve(assert_untyped)
 
 def bind_untyped(task, value):
 	
-	name, offset = task.op.label[0], 0
+	name, signature, offset = task.op.label[0], task.signature[0], 0
 	while task.instructions[task.path + offset].register != name:
 		offset = offset + 1
-	task.instructions[task.path + offset].name = task.check(name, default = value).type if name in task.values else task.signature[0].type
-	return (task.error('BIND', name), descriptor('null')) if name in task.reserved else (value, task.signature[0])
+	task.instructions[task.path + offset].name = task.check(name, default = value).type if name in task.values else signature.type
+	return (task.error('BIND', name), descriptor('null')) if name in task.reserved else (value, signature)
 
 def bind_untyped_type(task, value, type_routine):
 	
-	name = task.op.label[0]
-	return (task.error('BIND', name), descriptor('null')) if name in task.reserved else (value, task.signature[0])
+	name, signature = task.op.label[0], task.signature[0]
+	return (task.error('BIND', name), descriptor('null')) if name in task.reserved else (value, signature)
 
 arche_bind = function_method('.bind')
 arche_bind.retrieve(bind_untyped)
@@ -782,41 +786,47 @@ def index_string_slice(task, sequence, index):
 
 	length = task.signature[0].length
 	if (-length <= index.start < length) and (-length <= index.end < length):
-		return ''.join(sequence[int(n)] for n in iter(index)) # Constructs slice of string using range
+		return ''.join(sequence[int(n)] for n in iter(index)), descriptor('string', 'string', task.signature[1].length) # Constructs slice of string using range
 	else:
-		return task.error('INDX', index)
+		return task.error('INDX', index), descriptor('null')
 
 def index_list_integer(task, sequence, index):
 	
 	length = task.signature[0].length
 	if -length <= index < length:
-		return sequence[int(index)] # Sophia's integer type is abstract, Python's isn't
+		value = sequence[int(index)]
+		signature = infer(value)
+		return value, descriptor(task.signature[0].member, signature.member, signature.length)
 	else:
-		return task.error('INDX', index)
+		return task.error('INDX', index), descriptor('null')
 
 def index_list_slice(task, sequence, index):
 	
 	length = task.signature[0].length
 	if (-length <= index.start < length) and (-length <= index.end < length):
-		return tuple(sequence[int(n)] for n in iter(index)) # Constructs list of list using range
+		value = tuple(sequence[int(n)] for n in iter(index))
+		return value, descriptor('list', task.signature[0].member, task.signature[1].length)
 	else:
-		return task.error('INDX', index)
+		return task.error('INDX', index), descriptor('null')
 
 def index_record_untyped(task, sequence, index):
 	
 	if index in sequence:
-		return sequence[index]
+		value = sequence[index]
+		signature = infer(value)
+		return value, descriptor(task.signature[0].member, signature.member, signature.length)
 	else:
-		return task.error('INDX', index)
+		return task.error('INDX', index), descriptor('null')
 
 def index_record_slice(task, sequence, index):
 
 	length = task.signature[0].length
 	if (-length <= index.start < length) and (-length <= index.end < length):
 		items = tuple(sequence.items())
-		return dict(items[int(n)] for n in iter(index)) # Constructs slice of record using range
+		value = dict(items[int(n)] for n in iter(index))
+		return value, descriptor('list', task.signature[0].member, task.signature[1].length)
 	else:
-		return task.error('INDX', index)
+		return task.error('INDX', index), descriptor('null')
 
 def index_slice_integer(task, sequence, index):
 
@@ -830,9 +840,9 @@ def index_slice_slice(task, sequence, index):
 	
 	length = task.signature[0].length
 	if (-length <= index.start < length) and (-length <= index.end < length):
-		return tuple(sequence[int(n)] for n in iter(index))
+		return tuple(sequence[int(n)] for n in iter(index)), descriptor('slice', 'integer', task.signature[1].length)
 	else:
-		return task.error('INDX', index)
+		return task.error('INDX', index), descriptor('null')
 
 arche_index = function_method('.index')
 arche_index.retrieve(index_string_integer)
@@ -913,9 +923,10 @@ arche_meta.retrieve(meta_string)
 def next_untyped(task, iterator):
 
 	try:
-		return next(iterator)
+		value = next(iterator)
+		return value, infer(value)
 	except StopIteration:
-		return None
+		return None, descriptor('null')
 
 arche_next = function_method('.next')
 arche_next.retrieve(next_untyped)
@@ -926,15 +937,16 @@ def return_null(task, sentinel):
 		task.restore(task.caller) # Restore namespace of calling routine
 	else:
 		task.path = 0 # End task
-	return sentinel
+	return sentinel # Returns null
 
 def return_untyped(task, sentinel):
 	
+	final = task.final
 	if task.caller:
 		task.restore(task.caller) # Restore namespace of calling routine
 	else:
 		task.path = 0 # End task
-	return sentinel, task.final
+	return sentinel, final
 
 arche_return = function_method('.return')
 arche_return.retrieve(return_null)

@@ -2,8 +2,12 @@
 The Aletheia module defines built-in types and type operations.
 '''
 
+from functools import reduce
+
 class descriptor:
 	"""Type descriptor that holds the properties of a given value."""
+	__slots__ = ('type', 'member', 'length')
+
 	def __init__(self, name = None, member = 'untyped', length = None):
 
 		self.type = name
@@ -40,32 +44,30 @@ class descriptor:
 
 def infer(value): # Infers type of value
 	
-	name = type(value).__name__
-	member, length = 'untyped', None
+	name, member = type(value).__name__, 'untyped'
 	if name in names:
-		if name == 'str':
-			name, member, length = 'string', 'string', len(value)
-		elif name == 'tuple': # Cheap (but not complete) member type evaluation
-			name = 'list'
-			types = [infer(item).type for item in value]
-			first = types[0]
-			member = first if all(i == first for i in types) else 'untyped'
-			length = len(value)
-		elif name == 'dict':
-			name = 'record'
-			types = [infer(item).type for item in value.values()]
-			first = types[0]
-			member = first if all(i == first for i in types) else 'untyped'
-			length = len(value)
-		elif name == 'slice':
-			member, length = 'integer', len(value)
-		elif name == 'real' and value % 1 == 0:
+		name = names[name]
+		if name == 'number' and value % 1 == 0:
 			name = 'integer'
-		else:
-			name = names[name]
+		elif name == 'string':
+			member = 'string'
+		elif name == 'slice':
+			member = 'integer'
+		elif name == 'list':
+			member = reduce(supertype, [infer(item).type for item in value]) if value else 'untyped'
+		elif name == 'record':
+			member = reduce(supertype, [infer(item).type for item in value.values()]) if value else 'untyped'
 	else:
 		name = 'untyped' # Applies to all internal types
+	try:
+		length = len(value)
+	except TypeError:
+		length = None
 	return descriptor(name, member, length)
+
+def supertype(a, b): # Must be named function due to limitations of multiprocessing
+
+	return [i for i in supertypes[a] if i in supertypes[b]][0]
 
 names = {
 	'NoneType': 'null',
@@ -79,4 +81,19 @@ names = {
 	'dict': 'record',
 	'slice': 'slice',
 	'reference': 'future'
+}
+supertypes = {
+	'null': ['null'],
+	'untyped': ['untyped'],
+	'type': ['type', 'untyped'],
+	'event': ['event', 'untyped'],
+	'function': ['function', 'untyped'],
+	'boolean': ['boolean', 'untyped'],
+	'number': ['number', 'untyped'],
+	'integer': ['integer', 'number', 'untyped'],
+	'string': ['string', 'untyped'],
+	'list': ['list', 'untyped'],
+	'record': ['record', 'untyped'],
+	'slice': ['slice', 'untyped'],
+	'future': ['future', 'untyped']
 }

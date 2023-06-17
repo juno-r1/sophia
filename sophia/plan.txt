@@ -1,25 +1,5 @@
 extended sequence types
 
-list.int.3
-
-sequence types specify the type of their members and their length
-the closest mutual type of a list's members are determined upon its creation
-the interpreter always knows the member type of a sequence; thus, type checking is never necessary
-unlike union and intersection types, member types do not actually exist as distinct types
-rather, the member type is queried as a property of the sequence when needed
-
-extended types
-
-all values now have their type properties specified in a type descriptor
-these properties are encoded:
-	type
-	member type
-	length
-member type and length are optional properties
-
-generation of a supertype hierarchy from a type descriptor takes the order length < member type < type
-type properties of methods require use of dict instead of string
-
 json format for type information of methods
 
 for signature:

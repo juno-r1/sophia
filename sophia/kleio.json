@@ -14,7 +14,7 @@
         }
       ],
       "final": {
-        "type": "null",
+        "type": "!",
         "member": null,
         "length": null
       },
@@ -36,9 +36,9 @@
         }
       ],
       "final": {
-        "type": "untyped",
-        "member": "*",
-        "length": "*"
+        "type": "!",
+        "member": null,
+        "length": null
       },
       "arity": 1
     }
@@ -58,7 +58,7 @@
         }
       ],
       "final": {
-        "type": "type",
+        "type": "!",
         "member": null,
         "length": null
       },
@@ -80,7 +80,7 @@
         }
       ],
       "final": {
-        "type": "event",
+        "type": "!",
         "member": null,
         "length": null
       },
@@ -102,7 +102,7 @@
         }
       ],
       "final": {
-        "type": "function",
+        "type": "!",
         "member": null,
         "length": null
       },
@@ -124,7 +124,7 @@
         }
       ],
       "final": {
-        "type": "boolean",
+        "type": "!",
         "member": null,
         "length": null
       },
@@ -146,7 +146,7 @@
         }
       ],
       "final": {
-        "type": "number",
+        "type": "!",
         "member": null,
         "length": null
       },
@@ -168,7 +168,7 @@
         }
       ],
       "final": {
-        "type": "integer",
+        "type": "!",
         "member": null,
         "length": null
       },
@@ -190,9 +190,9 @@
         }
       ],
       "final": {
-        "type": "string",
-        "member": "string",
-        "length": "*"
+        "type": "!",
+        "member": null,
+        "length": null
       },
       "arity": 1
     }
@@ -212,9 +212,9 @@
         }
       ],
       "final": {
-        "type": "list",
-        "member": "*",
-        "length": "*"
+        "type": "!",
+        "member": null,
+        "length": null
       },
       "arity": 1
     }
@@ -234,9 +234,9 @@
         }
       ],
       "final": {
-        "type": "record",
-        "member": "*",
-        "length": "*"
+        "type": "!",
+        "member": null,
+        "length": null
       },
       "arity": 1
     }
@@ -256,9 +256,9 @@
         }
       ],
       "final": {
-        "type": "slice",
-        "member": "integer",
-        "length": "*"
+        "type": "!",
+        "member": null,
+        "length": null
       },
       "arity": 1
     }
@@ -278,7 +278,7 @@
         }
       ],
       "final": {
-        "type": "future",
+        "type": "!",
         "member": null,
         "length": null
       },
@@ -1112,8 +1112,8 @@
         }
       ],
       "final": {
-        "type": "slice",
-        "member": "integer",
+        "type": "!",
+        "member": null,
         "length": null
       },
       "arity": 3
@@ -1517,9 +1517,9 @@
         }
       ],
       "final": {
-        "type": "string",
-        "member": "string",
-        "length": "!"
+        "type": "!",
+        "member": null,
+        "length": null
       },
       "arity": 2
     },
@@ -1538,8 +1538,8 @@
       ],
       "final": {
         "type": "!",
-        "member": "!",
-        "length": "!"
+        "member": null,
+        "length": null
       },
       "arity": 2
     },
@@ -1557,9 +1557,9 @@
         }
       ],
       "final": {
-        "type": "list",
-        "member": "!",
-        "length": "!"
+        "type": "!",
+        "member": null,
+        "length": null
       },
       "arity": 2
     },
@@ -1578,8 +1578,8 @@
       ],
       "final": {
         "type": "!",
-        "member": "!",
-        "length": "!"
+        "member": null,
+        "length": null
       },
       "arity": 2
     },
@@ -1597,9 +1597,9 @@
         }
       ],
       "final": {
-        "type": "record",
-        "member": "!",
-        "length": "!"
+        "type": "!",
+        "member": null,
+        "length": null
       },
       "arity": 2
     },
@@ -1637,9 +1637,9 @@
         }
       ],
       "final": {
-        "type": "slice",
-        "member": "integer",
-        "length": "!"
+        "type": "!",
+        "member": null,
+        "length": null
       },
       "arity": 2
     }
@@ -1780,9 +1780,9 @@
         }
       ],
       "final": {
-        "type": "*",
-        "member": "*",
-        "length": "*"
+        "type": "!",
+        "member": null,
+        "length": null
       },
       "arity": 1
     }
@@ -2055,8 +2055,8 @@
       ],
       "final": {
         "type": "!",
-        "member": "!",
-        "length": "!"
+        "member": null,
+        "length": null
       },
       "arity": 2
     }

@@ -1,3 +1,1 @@
-from aletheia import descriptor
-
-print(descriptor('null').__dict__)
+print(len(True))

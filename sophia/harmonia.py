@@ -5,7 +5,7 @@ Users can use this tool to verify the integrity of their installation.
 '''
 
 import sophia, os
-from rationals import Rational as real
+from mathos import real
 
 if __name__ == '__main__':
 
