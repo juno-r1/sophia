@@ -49,7 +49,7 @@ class type_method(method):
 		self.supertypes = [name] + supertypes
 		self.prototype = prototype
 		self.specificity = len(supertypes) + 1
-		self.register(self.subtype, '', (name,)) # Subtype check
+		self.register(self.subtype, descriptor('!'), (descriptor(name),)) # Subtype check
 
 	def subtype(self, task, value):
 		
@@ -68,10 +68,9 @@ class type_definition:
 
 	def __call__(self, task, value):
 		
-		#task.override = self.name # Set own type in caller state
 		task.caller = task.state()
 		task.values[self.name], task.types[self.name] = value, descriptor(self.type)
-		task.reserved = tuple(i for i in task.values)
+		task.reserved = tuple(task.values)
 		task.instructions = self.instructions
 		task.path = 1
 
@@ -92,11 +91,10 @@ class event_definition:
 			task.values[name], task.types[name] = future, descriptor('future')
 			return future, descriptor('future')
 		else:
-			#task.override = self.type # Set return type in caller state
 			task.caller = task.state()
 			task.values = task.values | dict(zip(self.params, args))
 			task.types = task.types | dict(zip(self.params, (descriptor(i) for i in self.types)))
-			task.reserved = tuple(i for i in task.values)
+			task.reserved = tuple(task.values)
 			task.instructions = self.instructions
 			task.path = 1
 
@@ -117,11 +115,10 @@ class function_definition:
 			task.values[name], task.types[name] = future, descriptor('future')
 			return future, descriptor('future')
 		else:
-			#task.override = self.type # Set return type in caller state
 			task.caller = task.state()
 			task.values = task.values | dict(zip(self.params, args))
 			task.types = task.types | dict(zip(self.params, (descriptor(i) for i in self.types)))
-			task.reserved = tuple(i for i in task.values)
+			task.reserved = tuple(task.values)
 			task.instructions = self.instructions
 			task.path = 1
 
@@ -136,8 +133,8 @@ class sophia_null: # Null type
 
 	def __new__(cls, task, value): return
 
-arche_null = type_method('null', [], None)
-arche_null.retrieve(sophia_null)
+cls_null = type_method('null', [], None)
+cls_null.retrieve(sophia_null)
 
 class sophia_untyped: # Non-abstract base class
 
@@ -147,7 +144,7 @@ class sophia_untyped: # Non-abstract base class
 	def __new__(cls, task, value): # Type check disguised as an object constructor
 		
 		if isinstance(value, cls.types):
-			return value, descriptor(cls.name, member = task.signature[0].member, length = task.signature[0].length)
+			return value, descriptor(cls.name, task.signature[0].member, task.signature[0].length)
 		else:
 			return task.error('CAST', cls.name, str(value)), descriptor('null')
 
@@ -184,32 +181,32 @@ class sophia_untyped: # Non-abstract base class
 	@classmethod
 	def __stream__(cls, value): return
 
-arche_untyped = type_method('untyped', [], None)
-arche_untyped.retrieve(sophia_untyped)
+cls_untyped = type_method('untyped', [], None)
+cls_untyped.retrieve(sophia_untyped)
 
 class sophia_type(sophia_untyped): # Type type
 	
 	name = 'type'
 	types = type_method
 
-arche_type = type_method('type', ['untyped'], None)
-arche_type.retrieve(sophia_type)
+cls_type = type_method('type', ['untyped'], None)
+cls_type.retrieve(sophia_type)
 
 class sophia_event(sophia_untyped): # Event type
 
 	name = 'event'
 	types = event_method
 
-arche_event = type_method('event', ['untyped'], None)
-arche_event.retrieve(sophia_event)
+cls_event = type_method('event', ['untyped'], None)
+cls_event.retrieve(sophia_event)
 
 class sophia_function(sophia_untyped): # Function type
 
 	name = 'function'
 	types = function_method
 
-arche_function = type_method('function', ['untyped'], None)
-arche_function.retrieve(sophia_function)
+cls_function = type_method('function', ['untyped'], None)
+cls_function.retrieve(sophia_function)
 
 class sophia_boolean(sophia_untyped): # Boolean type
 
@@ -234,8 +231,8 @@ class sophia_boolean(sophia_untyped): # Boolean type
 	@classmethod
 	def __slice__(cls, value): return len(value) != 0
 
-arche_boolean = type_method('boolean', ['untyped'], False)
-arche_boolean.retrieve(sophia_boolean)
+cls_boolean = type_method('boolean', ['untyped'], False)
+cls_boolean.retrieve(sophia_boolean)
 
 class sophia_number(sophia_untyped): # Abstract number type
 
@@ -254,8 +251,8 @@ class sophia_number(sophia_untyped): # Abstract number type
 	@classmethod
 	def __future__(cls, value): return real(value.pid)
 
-arche_number = type_method('number', ['untyped'], real(0))
-arche_number.retrieve(sophia_number)
+cls_number = type_method('number', ['untyped'], real(0))
+cls_number.retrieve(sophia_number)
 
 class sophia_integer(sophia_number): # Integer type
 
@@ -268,14 +265,12 @@ class sophia_integer(sophia_number): # Integer type
 			if value % 1 == 0:
 				return value
 			else:
-				task.override = 'null'
 				return task.error('CAST', cls.name, str(value))
 		except TypeError:
-			task.override = 'null'
 			return task.error('CAST', cls.name, str(value))
 
-arche_integer = type_method('integer', ['number', 'untyped'], real(0))
-arche_integer.retrieve(sophia_integer)
+cls_integer = type_method('integer', ['number', 'untyped'], real(0))
+cls_integer.retrieve(sophia_integer)
 
 class sophia_string(sophia_untyped): # String type
 
@@ -315,8 +310,8 @@ class sophia_string(sophia_untyped): # String type
 	@classmethod
 	def __future__(cls, value): return value.name
 
-arche_string = type_method('string', ['untyped'], '')
-arche_string.retrieve(sophia_string)
+cls_string = type_method('string', ['untyped'], '')
+cls_string.retrieve(sophia_string)
 
 class sophia_list(sophia_untyped): # List type
 
@@ -335,57 +330,49 @@ class sophia_list(sophia_untyped): # List type
 	@classmethod
 	def __slice__(cls, value): return tuple(value)
 
-arche_list = type_method('list', ['untyped'], [])
-arche_list.retrieve(sophia_list)
+cls_list = type_method('list', ['untyped'], [])
+cls_list.retrieve(sophia_list)
 
 class sophia_record(sophia_untyped): # Record type
 
 	name = 'record'
 	types = dict
 
-arche_record = type_method('record', ['untyped'], {})
-arche_record.retrieve(sophia_record)
+cls_record = type_method('record', ['untyped'], {})
+cls_record.retrieve(sophia_record)
 
 class sophia_slice(sophia_untyped): # Slice type
 
 	name = 'slice'
 	types = slice
 
-arche_slice = type_method('slice', ['untyped'], slice((real(0), real(0), real(1))))
-arche_slice.retrieve(sophia_slice)
+cls_slice = type_method('slice', ['untyped'], slice((real(0), real(0), real(1))))
+cls_slice.retrieve(sophia_slice)
 
 class sophia_future(sophia_untyped): # Process type
 	
 	name = 'future'
 	types = reference
 
-arche_future = type_method('future', ['untyped'], None)
-arche_future.retrieve(sophia_future)
+cls_future = type_method('future', ['untyped'], None)
+cls_future.retrieve(sophia_future)
 
 """
 Built-in operators.
 """
 
 
-def u_add(_, x): # Pain
+def u_add(_, x): return +x
 
-	return +x
-
-def b_add(_, x, y):
-
-	return x + y
+def b_add(_, x, y): return x + y
 
 arche_add = function_method('+')
 arche_add.retrieve(u_add)
 arche_add.retrieve(b_add)
 
-def u_sub(_, x):
+def u_sub(_, x): return -x
 
-	return -x
-
-def b_sub(_, x, y):
-
-	return x - y
+def b_sub(_, x, y): return x - y
 
 arche_sub = function_method('-')
 arche_sub.retrieve(u_sub)
@@ -396,54 +383,38 @@ def u_rsv(task, x):
 	task.message('resolve', x)
 	return task.calls.recv(), x.check
 
-def b_mul(_, x, y):
-
-	return x * y
+def b_mul(_, x, y):	return x * y
 
 arche_mul = function_method('*')
 arche_mul.retrieve(u_rsv)
 arche_mul.retrieve(b_mul)
 
-def b_div(_, x, y):
-
-	if y != 0: # Null return on division-by-zero
-		return x / y
+def b_div(_, x, y): return x / y if y != 0 else None
 
 arche_div = function_method('/')
 arche_div.retrieve(b_div)
 
-def b_exp(_, x, y):
-
-	return x ** y
+def b_exp(_, x, y):	return x ** y
 
 arche_exp = function_method('^')
 arche_exp.retrieve(b_exp)
 
-def b_mod(_, x, y):
-
-	if y != 0: # Null return on modulo-by-zero
-		return x % y
+def b_mod(_, x, y): return x % y if y != 0 else None
 
 arche_mod = function_method('%')
 arche_mod.retrieve(b_mod)
 
-def b_eql(_, x, y): # Stricter equality because of that dumb fucker bool
-
-	return type(x) is type(y) and x == y
+def b_eql(_, x, y): return type(x) is type(y) and x == y
 
 arche_eql = function_method('=')
 arche_eql.retrieve(b_eql)
 
-def b_neq(_, x, y):
-
-	return type(x) is not type(y) or x != y
+def b_neq(_, x, y): return type(x) is not type(y) or x != y
 
 arche_neq = function_method('!=')
 arche_neq.retrieve(b_neq)
 
-def b_ltn(_, x, y):
-	
-	return x < y
+def b_ltn(_, x, y):	return x < y
 
 arche_ltn = function_method('<')
 arche_ltn.retrieve(b_ltn)
@@ -453,43 +424,29 @@ def n_rcv(task):
 	value = task.messages.recv()
 	return value, infer(value)
 
-def b_gtn(_, x, y):
-
-	return x > y
+def b_gtn(_, x, y):	return x > y
 
 arche_gtn = function_method('>')
 arche_gtn.retrieve(n_rcv)
 arche_gtn.retrieve(b_gtn)
 
-def b_leq(_, x, y):
-
-	return x <= y
+def b_leq(_, x, y):	return x <= y
 
 arche_leq = function_method('<=')
 arche_leq.retrieve(b_leq)
 
-def b_geq(_, x, y):
-
-	return x >= y
+def b_geq(_, x, y):	return x >= y
 
 arche_geq = function_method('>=')
 arche_geq.retrieve(b_geq)
 
-def b_sbs_string(_, x, y):
-	
-	return x in y
+def b_sbs_string(_, x, y): return x in y
 
-def b_sbs_list(_, x, y):
-	
-	return x in y
+def b_sbs_list(_, x, y): return x in y
 
-def b_sbs_record(_, x, y):
-	
-	return x in y
+def b_sbs_record(_, x, y): return x in y
 
-def b_sbs_slice(_, x, y):
-	
-	return x in y
+def b_sbs_slice(_, x, y): return x in y
 
 arche_sbs = function_method('in')
 arche_sbs.retrieve(b_sbs_string)
@@ -497,45 +454,31 @@ arche_sbs.retrieve(b_sbs_list)
 arche_sbs.retrieve(b_sbs_record)
 arche_sbs.retrieve(b_sbs_slice)
 
-def u_lnt(_, x):
-
-	return not x
+def u_lnt(_, x): return not x
 
 arche_lnt = function_method('not')
 arche_lnt.retrieve(u_lnt)
 
-def b_lnd(_, x, y):
-
-	return x and y
+def b_lnd(_, x, y): return x and y
 
 arche_lnd = function_method('and')
 arche_lnd.retrieve(b_lnd)
 
-def b_lor(_, x, y):
-
-	return x or y
+def b_lor(_, x, y): return x or y
 
 arche_lor = function_method('or')
 arche_lor.retrieve(b_lor)
 
-def b_lxr(_, x, y):
-
-	return x != y
+def b_lxr(_, x, y): return x != y
 
 arche_lxr = function_method('xor')
 arche_lxr.retrieve(b_lxr)
 
-def b_ins_string(_, x, y):
+def b_ins_string(_, x, y): return ''.join(i for i in x if i in y) # Order of list dependent on order of operators
 
-	return ''.join(i for i in x if i in y) # Order of list dependent on order of operators
+def b_ins_list(_, x, y): return tuple(i for i in x if i in y)
 
-def b_ins_list(_, x, y):
-
-	return tuple(i for i in x if i in y)
-
-def b_ins_record(_, x, y):
-
-	return tuple(k for k in x if k in y)
+def b_ins_record(_, x, y): return tuple(k for k in x if k in y)
 
 def b_ins_slice(_, x, y):
 	
@@ -580,21 +523,13 @@ arche_ins.retrieve(b_ins_record)
 arche_ins.retrieve(b_ins_slice)
 arche_ins.retrieve(b_ins_type)
 
-def b_uni_string(_, x, y):
+def b_uni_string(_, x, y): return x + y
 
-	return x + y
+def b_uni_list(_, x, y): return tuple(list(x) + list(y))
 
-def b_uni_list(_, x, y):
+def b_uni_record(_, x, y): return x | y
 
-	return tuple(list(x) + list(y))
-
-def b_uni_record(_, x, y):
-
-	return x | y
-
-def b_uni_slice(_, x, y):
-
-	return tuple((list(x) + list(y)).sort())
+def b_uni_slice(_, x, y): return tuple((list(x) + list(y)).sort())
 
 def b_uni_type(task, x, y):
 	
@@ -626,33 +561,23 @@ arche_uni.retrieve(b_uni_record)
 arche_uni.retrieve(b_uni_slice)
 arche_uni.retrieve(b_uni_type)
 
-def b_slc(_, x, y):
+def b_slc(_, x, y): return element((x, y))
 
-	return element((x, y))
-
-def t_slc(_, x, y, z):
-	
-	return slice((x, y, z))
+def t_slc(_, x, y, z): return slice((x, y, z))
 
 arche_slc = function_method(':')
 arche_slc.retrieve(b_slc)
 arche_slc.retrieve(t_slc)
 
-def u_sfe_null(_, x):
+def u_sfe_null(_, x): return False
 
-	return False
-
-def u_sfe_untyped(_, x):
-	
-	return True
+def u_sfe_untyped(_, x): return True
 
 arche_sfe = function_method('?')
 arche_sfe.retrieve(u_sfe_null)
 arche_sfe.retrieve(u_sfe_untyped)
 
-def u_usf(_, x):
-
-	return x if x else None, infer(x)
+def u_usf(_, x): return x if x else None, infer(x)
 
 arche_usf = function_method('!')
 arche_usf.retrieve(u_usf)
@@ -665,11 +590,7 @@ def b_snd(task, x, y):
 arche_snd = function_method('->')
 arche_snd.retrieve(b_snd)
 
-def u_new(task, x):
-	
-	if x.prototype is None:
-		return task.error('PROT', x.name)
-	return x.prototype, x.name
+def u_new(task, x): return task.error('PROT', x.name) if x.prototype is None else (x.prototype, x.name)
 
 arche_new = function_method('new')
 arche_new.retrieve(u_new)
@@ -714,13 +635,13 @@ def bind_untyped(task, value):
 	name, offset = task.op.label[0], 0
 	while task.instructions[task.path + offset].register != name:
 		offset = offset + 1
-	task.instructions[task.path + offset].name = task.check(name, default = value).type if name in task.values else task.override.type
-	return task.error('BIND', name) if name in task.reserved else value, task.signature[0]
+	task.instructions[task.path + offset].name = task.check(name, default = value).type if name in task.values else task.signature[0].type
+	return (task.error('BIND', name), descriptor('null')) if name in task.reserved else (value, task.signature[0])
 
 def bind_untyped_type(task, value, type_routine):
 	
 	name = task.op.label[0]
-	return task.error('BIND', name) if name in task.reserved else value, task.signature[0]
+	return (task.error('BIND', name), descriptor('null')) if name in task.reserved else (value, task.signature[0])
 
 arche_bind = function_method('.bind')
 arche_bind.retrieve(bind_untyped)
@@ -764,17 +685,17 @@ arche_break.retrieve(break_untyped)
 
 def concatenate_untyped(task, value):
 	
-	return [value], descriptor('untyped', member = task.signature[0].type, length = 1)
+	return [value], descriptor('untyped', task.signature[0].type, 1)
 
 def concatenate_untyped_untyped(task, sequence, value):
 
 	sequence_type, member_type = task.signature[0], task.signature[1]
 	length = sequence_type.length + 1
 	if sequence_type.member == member_type.type:
-		final = descriptor('untyped', member = sequence_type.member, length = length)
+		final = descriptor('untyped', sequence_type.member, length)
 	else:
 		sequence_type, member_type = task.values[sequence_type.member], task.values[member_type.type]
-		final = descriptor('untyped', member = [i for i in sequence_type.supertypes if i in member_type.supertypes][0], length = length)
+		final = descriptor('untyped', [i for i in sequence_type.supertypes if i in member_type.supertypes][0], length)
 	return sequence + [value], final
 
 arche_concatenate = function_method('.concatenate')
@@ -1013,7 +934,7 @@ def return_untyped(task, sentinel):
 		task.restore(task.caller) # Restore namespace of calling routine
 	else:
 		task.path = 0 # End task
-	return sentinel
+	return sentinel, task.final
 
 arche_return = function_method('.return')
 arche_return.retrieve(return_null)
@@ -1169,8 +1090,7 @@ def cast_type_untyped(task, target, value):
 	if result is None:
 		return task.error('CAST', target.name, value)
 	else:
-		task.override = infer(target)
-		return result
+		return result, infer(target)
 
 arche_cast = function_method('cast')
 arche_cast.retrieve(cast_type_untyped)
@@ -1290,6 +1210,6 @@ arche_typeof.retrieve(typeof_untyped)
 Namespace composition and internals.
 """
 
-builtins = {v.name: v for k, v in globals().items() if k.split('_')[0] == 'arche'} | \
+builtins = {v.name: v for k, v in globals().items() if k.split('_')[0] in ['cls', 'arche']} | \
 		   {'stdin': stdin, 'stdout': stdout, 'stderr': stderr}
 types = {i: descriptor.convert(metadata[i]['type']) for i in builtins}

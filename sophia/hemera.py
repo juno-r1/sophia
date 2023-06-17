@@ -2,11 +2,11 @@
 The Hemera module defines Sophia's IO interface, error messages, and debug tools.
 '''
 
-from sys import stdin, stdout, stderr
+from sys import stderr
 
 def stream_in(): return input()
 
-def stream_out(value): print(value, sep = '', file = stdout)
+def stream_out(value): print(value, sep = '')
 
 def stream_err(value): print(value, sep = '', file = stderr)
 

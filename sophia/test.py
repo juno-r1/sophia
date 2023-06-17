@@ -1,5 +1,3 @@
-import json
+from aletheia import descriptor
 
-with open('kleio.json', 'r') as data:
-	metadata = json.load(data)['+']['u_add']
-	print(metadata)
+print(descriptor('null').__dict__)

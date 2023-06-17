@@ -1,14 +1,14 @@
 '''
 The Sophia module is the core of the language.
 The module defines the runtime environment and task operations.
-This is the root module and the only module that the user should need to access.
+This is the root module and the only module the user should need to access.
 '''
 
 # ☉ 0.6 04-06-2023
 
 import aletheia, arche, hemera, iris, kadmos
 import multiprocessing as mp
-from os import name as os_name
+import os
 from queue import Empty
 
 class runtime:
@@ -22,7 +22,7 @@ class runtime:
 		
 		mp.freeze_support()
 		try:
-			mp.set_start_method('spawn' if os_name == 'nt' else 'fork')
+			mp.set_start_method('spawn' if os.name == 'nt' else 'fork')
 		except RuntimeError:
 			pass
 		initial = kadmos.module(address, root = root)
@@ -161,7 +161,8 @@ class task:
 		self.caller = None # Stores the state of the calling routine
 		self.values = arche.builtins | values
 		self.types = arche.types | {k: (v if v else aletheia.descriptor(aletheia.infer(values[k]))) for k, v in types.items()}
-		self.reserved = tuple(i for i in self.values)
+		self.reserved = tuple(self.values)
+		self.final = aletheia.descriptor('untyped') # Return type of routine
 
 	def execute(self):
 		"""Task runtime loop; target of task.pool.apply_async()."""
@@ -197,9 +198,9 @@ class task:
 				self.error('DISP', method.name, str(self.signature))
 				continue
 			for i, name in enumerate(self.signature):
-				candidates = [item for item in candidates if item[i] in self.supertype(name)] # Filter for candidates with a matching supertype
-				depth = max([self.values[item[i]].specificity for item in candidates], default = 0) # Get the depth of the most specific candidate
-				candidates = [item for item in candidates if self.values[item[i]].specificity == depth] # Keep only the most specific signatures
+				candidates = [item for item in candidates if self.supertype(name, item[i])] # Filter for candidates with a matching supertype
+				depth = max([self.specificity(item[i]) for item in candidates], default = 0) # Get the depth of the most specific candidate
+				candidates = [item for item in candidates if self.specificity(item[i]) == depth] # Keep only the most specific signatures
 			if candidates:
 				match = candidates[0]
 				instance = method.methods[match]
@@ -210,10 +211,12 @@ class task:
 			Execute instruction and update registers.
 			"""
 			address, final = self.op.register, method.finals[match]
-			if final == '.': # Suppress return
+			if final.type == '.': # Suppress return
 				instance(*args)
+			elif final.type == '!': # Function provides type signature
+				self.values[address], self.types[address] = instance(*args)
 			else:
-				self.values[address], self.types[address] = (instance(*args), aletheia.descriptor.read(final)) if final else instance(*args)
+				self.values[address], self.types[address] = instance(*args), final
 		if 'profile' in self.flags:
 			pr.disable()
 			pr.print_stats(sort = 'tottime')
@@ -230,14 +233,20 @@ class task:
 		
 		return self.types[name] if name in self.types else aletheia.infer(default)
 
-	def supertype(self, name): # Get supertypes of type
+	def supertype(self, name, other): # Check if other is a supertype of name
 		
-		supertypes = self.values[name.type].supertypes
+		return (other.type in self.values[name.type].supertypes) and \
+			   (other.member in self.values[name.member].supertypes) and \
+			   (other.length is None or other.length == name.length)
+
+	def specificity(self, name): # Get specificity of type
+		
+		x = self.values[name.type].specificity
 		if name.member:
-			supertypes = ['.'.join((name.type, item)) for item in self.values[name.member].supertypes] + supertypes
+			x = x + self.values[name.member].specificity
 		if name.length:
-			supertypes = [str(name)] + supertypes
-		return supertypes
+			x = x + 1
+		return x
 
 	def state(self): # Get current state of task as subset of __dict__
 
