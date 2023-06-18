@@ -480,19 +480,19 @@ def b_ins_record(_, x, y): return tuple(k for k in x if k in y)
 
 def b_ins_slice(_, x, y):
 	
-	n, m = x.indices[2], y.indices[2]
+	n, m = x.step, y.step
 	while m != 0: # Euclidean algorithm for greatest common divisor
 		n, m = m, n % m
-	if n % (y.indices[0] - x.indices[0]) == 0: # Solution for intersection of slices
-		step = (x.indices[2] * y.indices[2]) / n # Step of intersection
-		ranges = [x.indices[0], x.indices[1], y.indices[0], y.indices[1]].sort()
+	if n % (y.start - x.start) == 0: # Solution for intersection of slices
+		step = (x.step * y.step) / n # Step of intersection
+		ranges = [x.start, x.end, y.start, y.end].sort()
 		lower = ranges[1] - (ranges[1] % step) + step # Gets highest lower bound
 		upper = ranges[2] - (ranges[2] % step) # Gets lowest upper bound
 		return slice((lower, upper, m))
 
 def b_ins_type(task, x, y):
 	
-	name, supername = '<{0}&{1}>'.format(x.name, y.name), [i[0] for i in x.methods if i in y.methods][0] # Use closest mutual supertype
+	name, supername = '<{0}&{1}>'.format(x.name, y.name), [i for i in x.supertypes if i in y.supertypes][0] # Use closest mutual supertype
 	supertype, index = task.values[supername], x.supertypes.index(supername)
 	routine = type_method(name, x.supertypes[index:], x.prototype)
 	lhs = [instruction(x.name, '0', (name,)), 
@@ -503,15 +503,15 @@ def b_ins_type(task, x, y):
 		   instruction('.constraint', '0', ('0',))]
 	check = lhs + rhs
 	start, end = [instruction('START', '', label = [name])], [instruction('.return', '0', (name,)), instruction('END', '')]
-	routine.register(type_definition(start + rhs + end, name, supername), name, (x.name,))
-	routine.register(type_definition(start + lhs + end, name, supername), name, (y.name,))
+	routine.register(type_definition(start + rhs + end, name, descriptor(supername)), name, (descriptor(x.name),))
+	routine.register(type_definition(start + lhs + end, name, descriptor(supername)), name, (descriptor(y.name),))
 	for key, value in supertype.methods.items(): # Rewrite methods with own type name
 		if isinstance(value, type_definition):
 			definition = [instruction.rewrite(i, supername, name) for i in value.instructions]
 			definition[-2:-2] = check # Add user constraints to instructions
-			routine.register(type_definition(definition, name, key[0]), name, key)
+			routine.register(type_definition(definition, name, key[0]), descriptor(name), key)
 		else: # Built-in definition
-			routine.register(type_definition(start + check + end, name, key[0]), name, key)
+			routine.register(type_definition(start + check + end, name, key[0]), descriptor(name), key)
 	return routine
 
 arche_ins = function_method('&')
@@ -530,8 +530,8 @@ def b_uni_record(_, x, y): return x | y
 def b_uni_slice(_, x, y): return tuple((list(x) + list(y)).sort())
 
 def b_uni_type(task, x, y):
-	
-	name, supername = '<{0}|{1}>'.format(x.name, y.name), [i[0] for i in x.methods if i in y.methods][0] # Use closest mutual supertype
+
+	name, supername = '<{0}|{1}>'.format(x.name, y.name), [i for i in x.supertypes if i in y.supertypes][0] # Use closest mutual supertype
 	supertype, index = task.values[supername], x.supertypes.index(supername)
 	routine = type_method(name, x.supertypes[index:], x.prototype)
 	check = [instruction(x.name, '0', (name,)), 
@@ -541,15 +541,15 @@ def b_uni_type(task, x, y):
 			 instruction('or', '0', ('0', '1')),
 			 instruction('.constraint', '0', ('0',))]
 	start, end = [instruction('START', '', label = [name])], [instruction('.return', '0', (name,)), instruction('END', '')]
-	routine.register(type_definition(start + end, name, supername), name, (x.name,))
-	routine.register(type_definition(start + end, name, supername), name, (y.name,))
+	routine.register(type_definition(start + end, name, descriptor(supername)), descriptor(name), (descriptor(x.name),))
+	routine.register(type_definition(start + end, name, descriptor(supername)), descriptor(name), (descriptor(y.name),))
 	for key, value in supertype.methods.items(): # Rewrite methods with own type name
 		if isinstance(value, type_definition): # Built-in supertype
 			definition = [instruction.rewrite(i, supername, name) for i in value.instructions]
 			definition[-2:-2] = check # Add user constraints to instructions
-			routine.register(type_definition(definition, name, key[0]), name, key)
+			routine.register(type_definition(definition, name, key[0]), descriptor(name), key)
 		else:
-			routine.register(type_definition(start + check + end, name, key[0]), name, key)
+			routine.register(type_definition(start + check + end, name, key[0]), descriptor(name), key)
 	return routine
 
 arche_uni = function_method('|')
@@ -593,7 +593,13 @@ def b_snd(task, x, y):
 arche_snd = function_method('->')
 arche_snd.retrieve(b_snd)
 
-def u_new(task, x): return task.error('PROT', x.name) if x.prototype is None else (x.prototype, x.name)
+def u_new(task, x):
+	
+	if x.prototype is None:
+		return task.error('PROT', x.name)
+	else:
+		signature = infer(x.prototype)
+		return x.prototype, descriptor(x.name, signature.member, signature.length)
 
 arche_new = function_method('new')
 arche_new.retrieve(u_new)
@@ -609,7 +615,7 @@ def alias_type(task, routine): # Type alias
 	for key, value in list(routine.methods.items())[1:]: # Rewrite methods with own type name
 		new.register(type_definition([instruction.rewrite(i, routine.name, new.name) for i in value.instructions]
 									 if isinstance(value, type_definition)
-									 else value, new.name, key[0]), new.name, key)
+									 else value, new.name, key[0]), descriptor(new.name), key)
 	return new
 
 arche_alias = function_method('.alias')
@@ -869,8 +875,7 @@ arche_iterator.retrieve(iterator_slice)
 
 def link_null(task):
 	
-	name = task.op.register
-	task.message('link', name + '.sph')
+	task.message('link', task.op.register + '.sph')
 	return task.calls.recv()
 
 arche_link = function_method('.link')

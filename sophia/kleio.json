@@ -385,8 +385,8 @@
       ],
       "final": {
         "type": "!",
-        "member": "!",
-        "length": "!"
+        "member": null,
+        "length": null
       },
       "arity": 1
     },

@@ -1,36 +1,44 @@
-// 3.2.7.1, 5.8
+type pos extends int => pos > 0
+type even extends int => even % 2 = 0
 
-type even extends int:
+int w: 2; int x: 1; int y: -2; int z: -1
 
-	even % 2 = 0
+test is pos | even
 
-int halve (even n):
-
-	return n / 2
-
-int x: 2
-assert even(x):
-	even x: x
+assert test(w):
 	bool a: true
 else:
 	bool a: false
-
-bool b: halve(x) = 1
-
-int x: 1
-assert even(x):
-	bool c: false
+assert test(x):
+	bool b: true
 else:
+	bool b: false
+assert test(y):
 	bool c: true
-
-type quadruple extends even:
-
-	quadruple % 4 = 0
-
-int x: 4
-assert quadruple(x):
-	bool d: true
 else:
+	bool c: false
+assert test(z):
 	bool d: false
+else:
+	bool d: true
 
-return a and b and c and d
+test is pos & even
+
+assert test(w):
+	bool e: true
+else:
+	bool e: false
+assert test(x):
+	bool f: false
+else:
+	bool f: true
+assert test(y):
+	bool g: false
+else:
+	bool g: true
+assert test(z):
+	bool h: false
+else:
+	bool h: true
+
+return [a, b, c, d, e, f, g, h]

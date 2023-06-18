@@ -5,7 +5,7 @@ type triple extends list with [0, 0, 0] => true
 bool a: new int = 0
  
 x: new triple
-assert triple x:
+assert triple(x):
 	bool b: true
 else:
 	bool b: false

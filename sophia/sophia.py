@@ -90,7 +90,7 @@ class runtime:
 		self.tasks[routine.pid].result = self.pool.apply_async(routine.execute)
 		self.tasks[routine.pid].count = self.tasks[routine.pid].count + 1
 		self.tasks[pid].references.append(routine.pid) # Mark reference to process
-		self.tasks[pid].calls.send(iris.reference(routine, 'untyped')) # Return reference to process
+		self.tasks[pid].calls.send(iris.reference(routine, aletheia.descriptor('untyped'))) # Return reference to process
 
 	def terminate(self, pid):
 		

@@ -23,7 +23,7 @@ class descriptor:
 			attributes.append(str(self.length))
 		return '.'.join(attributes)
 
-	__repr__ = __str__
+	#__repr__ = __str__
 
 	@classmethod
 	def read(cls, string):
