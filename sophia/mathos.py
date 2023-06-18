@@ -382,6 +382,8 @@ class real(numbers.Rational):
 
 	def __eq__(a, b):
 		"""a == b"""
+		if a is True or a is False or b is True or b is False: # Endless torment
+			return False
 		try:
 			return (a.numerator == b.numerator and
 					a.denominator == b.denominator)

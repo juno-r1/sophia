@@ -70,7 +70,9 @@ class type_definition:
 	def __call__(self, task, value):
 		
 		task.caller = task.state()
-		task.values[self.name], task.types[self.name] = value, descriptor(self.type)
+		properties = infer(value)
+		task.final = descriptor(self.name, properties.member, properties.length)
+		task.values[self.name], task.types[self.name] = value, self.type
 		task.reserved = tuple(task.values)
 		task.instructions = self.instructions
 		task.path = 1
@@ -85,19 +87,17 @@ class event_definition:
 
 	def __call__(self, task, *args):
 
-		#if '.bind' in task.op.label:
-		#	name = task.op.label[1]
-		#	task.message('future', self, args, task.values[self.name])
-		#	future = task.calls.recv()
-		#	task.values[name], task.types[name] = future, descriptor('future')
-		#	return future, descriptor('future')
-		#else:
-		task.caller = task.state()
-		task.values = task.values | dict(zip(self.params, args))
-		task.types = task.types | dict(zip(self.params, (descriptor(i) for i in self.types)))
-		task.reserved = tuple(task.values)
-		task.instructions = self.instructions
-		task.path = 1
+		if '.bind' in task.op.label:
+			task.message('future', self, args, task.values[self.name])
+			return task.calls.recv()
+		else:
+			task.caller = task.state()
+			task.final = self.type
+			task.values = task.values | dict(zip(self.params, args))
+			task.types = task.types | dict(zip(self.params, self.types))
+			task.reserved = tuple(task.values)
+			task.instructions = self.instructions
+			task.path = 1
 
 class function_definition:
 	"""Definition for a user-defined function."""
@@ -109,19 +109,17 @@ class function_definition:
 
 	def __call__(self, task, *args):
 
-		#if '.bind' in task.op.label:
-		#	name = task.op.label[1]
-		#	task.message('future', self, args, task.values[self.name])
-		#	future = task.calls.recv()
-		#	task.values[name], task.types[name] = future, descriptor('future')
-		#	return future, descriptor('future')
-		#else:
-		task.caller = task.state()
-		task.values = task.values | dict(zip(self.params, args))
-		task.types = task.types | dict(zip(self.params, (descriptor(i) for i in self.types)))
-		task.reserved = tuple(task.values)
-		task.instructions = self.instructions
-		task.path = 1
+		if '.bind' in task.op.label:
+			task.message('future', self, args, task.values[self.name])
+			return task.calls.recv()
+		else:
+			task.caller = task.state()
+			task.final = self.type
+			task.values = task.values | dict(zip(self.params, args))
+			task.types = task.types | dict(zip(self.params, self.types))
+			task.reserved = tuple(task.values)
+			task.instructions = self.instructions
+			task.path = 1
 
 """
 Built-in types.
@@ -405,12 +403,12 @@ def b_mod(_, x, y): return x % y if y != 0 else None
 arche_mod = function_method('%')
 arche_mod.retrieve(b_mod)
 
-def b_eql(_, x, y): return type(x) is type(y) and x == y
+def b_eql(_, x, y): return x == y
 
 arche_eql = function_method('=')
 arche_eql.retrieve(b_eql)
 
-def b_neq(_, x, y): return type(x) is not type(y) or x != y
+def b_neq(_, x, y): return x != y
 
 arche_neq = function_method('!=')
 arche_neq.retrieve(b_neq)
@@ -422,8 +420,7 @@ arche_ltn.retrieve(b_ltn)
 
 def n_rcv(task):
 	
-	value = task.messages.recv()
-	return value, infer(value)
+	return task.messages.recv()
 
 def b_gtn(_, x, y):	return x > y
 
@@ -716,7 +713,7 @@ def constraint_boolean(task, constraint):
 		task.restore(task.caller)
 		task.error('CAST', name, str(value))
 	elif task.op.label and task.op.label[0] != name: # Update type of checked value for subsequent constraints
-		task.types[name] = task.op.label[0]
+		task.types[name].type = task.op.label[0]
 
 arche_constraint = function_method('.constraint')
 arche_constraint.retrieve(constraint_boolean)
@@ -724,7 +721,7 @@ arche_constraint.retrieve(constraint_boolean)
 def event_null(task):
 
 	name = task.op.register
-	types, params = task.op.label[0::2], task.op.label[1::2]
+	types, params = [descriptor.read(i) for i in task.op.label[0::2]], task.op.label[1::2]
 	start, scope = task.path, 0
 	while True: # Collect instructions
 		op, task.path = task.instructions[task.path], task.path + 1
@@ -741,11 +738,7 @@ def event_null(task):
 				end = task.path
 				break
 	definition = event_definition(task.instructions[start:end], params, types)
-	if name in task.values and task.types[name] == 'event':
-		routine = task.values[name]
-	else:
-		routine = event_method(name)
-		task.types[name] = 'event'
+	routine = task.values[name] if name in task.values and task.types[name].type == 'event' else event_method(name)
 	routine.register(definition, types[0], tuple(types[1:-1]))
 	return routine
 
@@ -755,7 +748,7 @@ arche_event.retrieve(event_null)
 def function_null(task):
 
 	name = task.op.register
-	types, params = task.op.label[0::2], task.op.label[1::2]
+	types, params = [descriptor.read(i) for i in task.op.label[0::2]], task.op.label[1::2]
 	start, scope = task.path, 0
 	while True: # Collect instructions
 		op, task.path = task.instructions[task.path], task.path + 1
@@ -765,11 +758,7 @@ def function_null(task):
 				end = task.path
 				break
 	definition = function_definition(task.instructions[start:end], params, types)
-	if name in task.values and task.types[name] == 'function':
-		routine = task.values[name]
-	else:
-		routine = function_method(name)
-		task.types[name] = 'function'
+	routine = task.values[name] if name in task.values and task.types[name].type == 'function' else function_method(name)
 	routine.register(definition, types[0], tuple(types[1:]))
 	return routine
 
@@ -925,10 +914,9 @@ arche_meta.retrieve(meta_string)
 def next_untyped(task, iterator):
 
 	try:
-		value = next(iterator)
-		return value, infer(value)
+		return next(iterator)
 	except StopIteration:
-		return None, descriptor('null')
+		return None
 
 arche_next = function_method('.next')
 arche_next.retrieve(next_untyped)
@@ -981,19 +969,19 @@ def type_type(task, supertype):
 	end = task.path
 	instructions = task.instructions[start:end]
 	routine = type_method(name, supertype.supertypes, supertype.prototype)
-	if isinstance(supertype.methods[('untyped',)], type): # Built-in supertype
+	if isinstance(list(supertype.methods.values())[-1], type): # Built-in supertype
 		check = [instruction(supername, '0', (name,)), 
 				 instruction('?', '0', ('0',)), # Convert to boolean
 				 instruction('.constraint', '0', ('0',), label = [supername])]
-		routine.register(type_definition(instructions, name, supername), name, (supername,))
+		routine.register(type_definition(instructions, name, descriptor(supername)), descriptor(name), (descriptor(supername),))
 		instructions[1:1] = check
-		routine.register(type_definition(instructions, name, supername), name, ('untyped',))
+		routine.register(type_definition(instructions, name, descriptor(supername)), descriptor(name), (descriptor('untyped'),))
 	else:
 		for key, value in list(supertype.methods.items())[1:]: # Rewrite methods with own type name
 			definition = [instruction.rewrite(i, supername, name) for i in value.instructions]
 			definition[-2:-2] = instructions[1:-2] # Add user constraints to instructions
-			routine.register(type_definition(definition, name, key[0]), name, key)
-		routine.register(type_definition(instructions, name, supername), name, (supername,))
+			routine.register(type_definition(definition, name, key[0]), descriptor(name), key)
+		routine.register(type_definition(instructions, name, descriptor(supername)), descriptor(name), (descriptor(supername),))
 	return routine
 
 def type_type_untyped(task, supertype, prototype):
@@ -1009,19 +997,19 @@ def type_type_untyped(task, supertype, prototype):
 	end = task.path
 	instructions = task.instructions[start:end]
 	routine = type_method(name, supertype.supertypes, prototype)
-	if isinstance(supertype.methods[('untyped',)], type): # Built-in supertype
+	if isinstance(list(supertype.methods.values())[-1], type): # Built-in supertype
 		check = [instruction(supername, '0', (name,)), 
 				 instruction('?', '0', ('0',)), # Convert to boolean
 				 instruction('.constraint', '0', ('0',), label = [supername])]
-		routine.register(type_definition(instructions, name, supername), name, (supername,))
+		routine.register(type_definition(instructions, name, descriptor(supername)), descriptor(name), (descriptor(supername),))
 		instructions[1:1] = check
-		routine.register(type_definition(instructions, name, supername), name, ('untyped',))
+		routine.register(type_definition(instructions, name, descriptor(supername)), descriptor(name), (descriptor('untyped'),))
 	else:
 		for key, value in list(supertype.methods.items())[1:]: # Rewrite methods with own type name
 			definition = [instruction.rewrite(i, supername, name) for i in value.instructions]
 			definition[-2:-2] = instructions[1:-2] # Add user constraints to instructions
-			routine.register(type_definition(definition, name, key[0]), name, key)
-		routine.register(type_definition(instructions, name, supername), name, (supername,))
+			routine.register(type_definition(definition, name, key[0]), descriptor(name), key)
+		routine.register(type_definition(instructions, name, descriptor(supername)), descriptor(name), (descriptor(supername),))
 	return routine
 
 arche_type = function_method('.type')
@@ -1029,7 +1017,7 @@ arche_type.retrieve(type_type)
 arche_type.retrieve(type_type_untyped)
 
 def unloop_null(task, value):
-
+	
 	iterator, name = str(int(task.op.args[0]) - 1), task.op.label[0]
 	task.values[iterator] = None # Sanitise registers
 	del task.values[name], task.types[name]
@@ -1063,7 +1051,8 @@ stderr.name, stderr.pid = 'stderr', 2
 
 def input_string(task, value):
 
-	return input(value)
+	string = input(value)
+	return string, descriptor('string', 'string', len(string))
 
 arche_input = function_method('input')
 arche_input.retrieve(input_string)
@@ -1098,13 +1087,13 @@ arche_abs.retrieve(abs_number)
 def cast_type_untyped(task, target, value):
 	
 	try:
-		result = getattr(builtins['sophia_' + target.name], '__{0}__'.format(names[type(value).__name__].name), None)(value)
+		result = getattr(globals()['sophia_' + target.name], '__{0}__'.format(names[type(value).__name__]), None)(value)
 	except KeyError:
 		return task.error('CAST', target.name, value)
 	if result is None:
 		return task.error('CAST', target.name, value)
 	else:
-		return result, infer(target)
+		return result
 
 arche_cast = function_method('cast')
 arche_cast.retrieve(cast_type_untyped)
@@ -1215,7 +1204,7 @@ arche_sum.retrieve(sum_slice)
 
 def typeof_untyped(task, value):
 	
-	return task.values[task.types[task.op.args[0]]]
+	return task.values[task.types[task.op.args[0]].type]
 
 arche_typeof = function_method('typeof')
 arche_typeof.retrieve(typeof_untyped)

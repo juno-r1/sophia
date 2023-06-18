@@ -25,7 +25,7 @@ def debug_namespace(task): # Takes a task object
 	print('===',
 	      task.name,
 		  '---',
-		  '\n---\n'.join((' '.join((name, task.types[name], str(value))) for name, value in task.values.items() if name[0] not in '0123456789&')),
+		  '\n---\n'.join((' '.join((name, str(task.types[name]), str(value))) for name, value in task.values.items() if name[0] not in '0123456789&')),
 		  '===',
 		  sep = '\n',
 		  file = stderr)

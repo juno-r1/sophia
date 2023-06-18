@@ -1,23 +1,36 @@
-// 3.2.9
+// 3.2.7.1, 5.8
 
-if ?true:
+type even extends int:
+
+	even % 2 = 0
+
+int halve (even n):
+
+	return n / 2
+
+int x: 2
+assert even(x):
+	even x: x
 	bool a: true
 else:
 	bool a: false
 
-if ?null:
-	bool b: false
-else:
-	bool b: true
+bool b: halve(x) = 1
 
-assert !true:
-	bool c: true
-else:
+int x: 1
+assert even(x):
 	bool c: false
-
-assert !false:
-	bool d: false
 else:
+	bool c: true
+
+type quadruple extends even:
+
+	quadruple % 4 = 0
+
+int x: 4
+assert quadruple(x):
 	bool d: true
+else:
+	bool d: false
 
 return a and b and c and d

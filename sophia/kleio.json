@@ -582,9 +582,9 @@
     "n_rcv": {
       "signature": [],
       "final": {
-        "type": "!",
-        "member": "!",
-        "length": "!"
+        "type": "*",
+        "member": null,
+        "length": null
       },
       "arity": 0
     },
@@ -1438,7 +1438,7 @@
         }
       ],
       "final": {
-        "type": ".",
+        "type": "null",
         "member": null,
         "length": null
       },
@@ -1780,7 +1780,7 @@
         }
       ],
       "final": {
-        "type": "!",
+        "type": "*",
         "member": null,
         "length": null
       },
@@ -1961,9 +1961,9 @@
         }
       ],
       "final": {
-        "type": "string",
-        "member": "string",
-        "length": "*"
+        "type": "*",
+        "member": null,
+        "length": null
       },
       "arity": 1
     }
@@ -2054,7 +2054,7 @@
         }
       ],
       "final": {
-        "type": "!",
+        "type": "*",
         "member": null,
         "length": null
       },
@@ -2125,9 +2125,9 @@
         }
       ],
       "final": {
-        "type": "string",
-        "member": "string",
-        "length": "*"
+        "type": "*",
+        "member": null,
+        "length": null
       },
       "arity": 2
     }
@@ -2174,9 +2174,9 @@
         }
       ],
       "final": {
-        "type": "string",
-        "member": "string",
-        "length": "*"
+        "type": "*",
+        "member": null,
+        "length": null
       },
       "arity": 2
     }
@@ -2257,9 +2257,9 @@
     "namespace_null": {
       "signature": [],
       "final": {
-        "type": "record",
-        "member": "*",
-        "length": "*"
+        "type": "*",
+        "member": null,
+        "length": null
       },
       "arity": 0
     }
@@ -2350,9 +2350,9 @@
         }
       ],
       "final": {
-        "type": "list",
-        "member": "string",
-        "length": "*"
+        "type": "*",
+        "member": null,
+        "length": null
       },
       "arity": 2
     }

@@ -15,13 +15,15 @@ class descriptor:
 		self.length = length
 
 	def __str__(self):
-
+		
 		attributes = [self.type]
 		if self.member != 'untyped':
 			attributes.append(self.member)
 		if self.length:
 			attributes.append(str(self.length))
 		return '.'.join(attributes)
+
+	__repr__ = __str__
 
 	@classmethod
 	def read(cls, string):

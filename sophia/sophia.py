@@ -47,7 +47,7 @@ class runtime:
 		types = self.types | {routine.name: aletheia.infer(method)} | dict(zip(routine.params, routine.types))
 		new = task(routine.instructions, args, types, self.flags)
 		self.tasks[new.pid] = iris.proxy(new)
-		if types[routine.name] == 'event':
+		if types[routine.name].type == 'event':
 			self.events[new.pid] = new # Persistent reference to event
 		self.tasks[new.pid].result = self.pool.apply_async(new.execute)
 		self.tasks[new.pid].count = self.tasks[new.pid].count + 1
@@ -194,28 +194,30 @@ class task:
 			if not (method := self.find(self.op.name)):
 				continue
 			if not (candidates := [x for x in method.methods if method.arity[x] == arity]): # Remove candidates with mismatching arity
-				self.error('DISP', method.name, str(self.signature))
+				self.error('DISP', method.name, self.signature)
 				continue
 			for i, name in enumerate(self.signature):
 				candidates = [item for item in candidates if self.supertype(name, item[i])] # Filter for candidates with a matching supertype
-				depth = max([self.specificity(item[i]) for item in candidates], default = 0) # Get the depth of the most specific candidate
-				candidates = [item for item in candidates if self.specificity(item[i]) == depth] # Keep only the most specific signatures
-			if candidates:
+				specificity = [self.specificity(item[i]) for item in candidates]
+				depth = max(specificity, default = 0) # Get the depth of the most specific candidate
+				candidates = [item for j, item in enumerate(candidates) if specificity[j] == depth] # Keep only the most specific signatures
+			try:
 				match = candidates[0]
 				instance = method.methods[match]
-			else:
-				self.error('DISP', method.name, str(self.signature))
+			except IndexError:
+				self.error('DISP', method.name, self.signature)
 				continue
 			"""
 			Execute instruction and update registers.
 			"""
+			value = instance(*args) # Needs to happen first to account for state changes
 			address, final = self.op.register, method.finals[match]
-			if final.type == '.': # Suppress return
-				instance(*args)
-			elif final.type == '!': # Function provides type signature
-				self.values[address], self.types[address] = instance(*args)
-			else:
-				self.values[address], self.types[address] = instance(*args), final
+			if final.type == '!': # Function provides type signature
+				self.values[address], self.types[address] = value
+			elif final.type == '*' or '.bind' in self.op.label: # Infer type
+				self.values[address], self.types[address] = value, aletheia.infer(value)
+			elif final.type != '.': # Write if not suppressed
+				self.values[address], self.types[address] = value, final
 		if 'profile' in self.flags:
 			pr.disable()
 			pr.print_stats(sort = 'tottime')
@@ -240,12 +242,9 @@ class task:
 
 	def specificity(self, name): # Get specificity of type
 		
-		x = self.values[name.type].specificity
-		if name.member:
-			x = x + self.values[name.member].specificity
-		if name.length:
-			x = x + 1
-		return x
+		return self.values[name.type].specificity + \
+			   (self.values[name.member].specificity if name.member else 0) + \
+			   int(name.length is not None)
 
 	def state(self): # Get current state of task as subset of __dict__
 
@@ -275,7 +274,7 @@ class task:
 				if scope == 1 and op.name == 'EVENT':
 					name = op.label[0]
 					break
-		self.values[name], self.types[name] = message, 'untyped'
+		self.values[name], self.types[name] = message, aletheia.descriptor('untyped')
 
 	def message(self, instruction = None, *args):
 		
