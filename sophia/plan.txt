@@ -7,7 +7,67 @@ for signature:
 	null: not required for dispatch
 for final:
 	specified: automatically provided to the final type
-	null: not required
 	"*": inferred by interpreter
 	"!": must be returned by function
 	".": does not bind
+
+it's done, but at what cost?
+there's gotta be a better way to do this
+
+---
+
+branch
+scope: 0, 1
+start: task.path
+path: task.path
+move: true, false
+
+assert_null
+scope = 1
+move = true
+branch_conditional
+
+branch_null
+scope = 1
+move = true
+branch_unconditional
+
+branch_boolean
+scope = 1
+move = true
+branch_conditional
+
+break_null
+scope = 0
+move = true
+branch_break
+
+event_null
+scope = 0
+move = true
+branch_conditional
+
+function_null
+scope = 0
+move = true
+branch_conditional
+
+loop_null
+scope = 1
+move = true
+branch_loop
+
+meta_string
+scope = 0
+move = false
+branch_conditional
+
+type_type
+scope = 0
+move = true
+branch_conditional
+
+unloop_null
+scope = 1
+move = true
+branch_unconditional

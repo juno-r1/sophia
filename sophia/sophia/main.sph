@@ -1,44 +1,24 @@
-type pos extends int => pos > 0
-type even extends int => even % 2 = 0
+// 4.2, 5.2
 
-int w: 2; int x: 1; int y: -2; int z: -1
+int x: 0
+while x < 5:
+	x: x + 1
+bool a: x = 5
 
-test is pos | even
+int x: 0; int y: 0
+while x < 5:
+	x: x + 1
+	continue
+	y: y + 1
+bool b: x = 5 and y = 0
 
-assert test(w):
-	bool a: true
+int x: 0; int y: 0
+while x < 5:
+	x: x + 1
+	break
+	y: y + 1
 else:
-	bool a: false
-assert test(x):
-	bool b: true
-else:
-	bool b: false
-assert test(y):
-	bool c: true
-else:
-	bool c: false
-assert test(z):
-	bool d: false
-else:
-	bool d: true
+	x: -1
+bool c: x = -1 and y = 0
 
-test is pos & even
-
-assert test(w):
-	bool e: true
-else:
-	bool e: false
-assert test(x):
-	bool f: false
-else:
-	bool f: true
-assert test(y):
-	bool g: false
-else:
-	bool g: true
-assert test(z):
-	bool h: false
-else:
-	bool h: true
-
-return [a, b, c, d, e, f, g, h]
+return a and b and c

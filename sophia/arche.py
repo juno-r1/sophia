@@ -360,7 +360,6 @@ cls_future.retrieve(sophia_future)
 Built-in operators.
 """
 
-
 def u_add(_, x): return +x
 
 def b_add(_, x, y): return x + y
@@ -623,13 +622,7 @@ arche_alias.retrieve(alias_type)
 
 def assert_null(task, value): # Null assertion
 
-	scope = 1
-	while True:
-		op, task.path = task.instructions[task.path], task.path + 1
-		if not op.register:
-			scope = scope - 1 if op.name == 'END' else scope + 1
-			if scope == 0:
-				return
+	return task.branch_conditional(1, True)
 
 def assert_untyped(task, value): # Non-null assertion
 	
@@ -658,24 +651,12 @@ arche_bind.retrieve(bind_untyped_type)
 
 def branch_null(task): # Unconditional branch
 	
-	scope = 1
-	while True:
-		op, task.path = task.instructions[task.path], task.path + 1
-		if not op.register:
-			scope = scope - 1 if op.name == 'END' else scope + 1
-			if scope == 0 and task.instructions[task.path].name != 'ELSE':
-				return
+	return task.branch_unconditional(1, True)
 
 def branch_boolean(task, condition): # Conditional branch
 
 	if not condition:
-		scope = 1
-		while True:
-			op, task.path = task.instructions[task.path], task.path + 1
-			if not op.register:
-				scope = scope - 1 if op.name == 'END' else scope + 1
-				if scope == 0:
-					return
+		return task.branch_conditional(1, True)
 
 arche_branch = function_method('.branch')
 arche_branch.retrieve(branch_null)
@@ -684,10 +665,7 @@ arche_branch.retrieve(branch_boolean)
 def break_untyped(task, value): # For loop break
 
 	task.values[task.op.register], task.values[task.op.args[0]] = None, None # Sanitise registers
-	while True:
-		op, task.path = task.instructions[task.path], task.path + 1
-		if op.name == '.loop':
-			return
+	return task.branch_break(0, True)
 
 arche_break = function_method('.break')
 arche_break.retrieve(break_untyped)
@@ -728,21 +706,9 @@ def event_null(task):
 
 	name = task.op.register
 	types, params = [descriptor.read(i) for i in task.op.label[0::2]], task.op.label[1::2]
-	start, scope = task.path, 0
-	while True: # Collect instructions
-		op, task.path = task.instructions[task.path], task.path + 1
-		if not op.register:
-			scope = scope - 1 if op.name == 'END' else scope + 1
-			if scope == 0:
-				end = task.path
-				break
-	while True: # ...Twice
-		op, task.path = task.instructions[task.path], task.path + 1
-		if not op.register:
-			scope = scope - 1 if op.name == 'END' else scope + 1
-			if scope == 0:
-				end = task.path
-				break
+	start = task.path
+	task.branch_conditional(0, True)
+	end = task.branch_conditional(0, True)
 	definition = event_definition(task.instructions[start:end], params, types)
 	routine = task.values[name] if name in task.values and task.types[name].type == 'event' else event_method(name)
 	routine.register(definition, types[0], tuple(types[1:-1]))
@@ -755,14 +721,8 @@ def function_null(task):
 
 	name = task.op.register
 	types, params = [descriptor.read(i) for i in task.op.label[0::2]], task.op.label[1::2]
-	start, scope = task.path, 0
-	while True: # Collect instructions
-		op, task.path = task.instructions[task.path], task.path + 1
-		if not op.register:
-			scope = scope - 1 if op.name == 'END' else scope + 1
-			if scope == 0:
-				end = task.path
-				break
+	start = task.path
+	end = task.branch_conditional(0, True)
 	definition = function_definition(task.instructions[start:end], params, types)
 	routine = task.values[name] if name in task.values and task.types[name].type == 'function' else function_method(name)
 	routine.register(definition, types[0], tuple(types[1:]))
@@ -883,14 +843,7 @@ arche_link.retrieve(link_null)
 
 def loop_null(task): # Reverse branch
 
-	scope = 1
-	while True:
-		task.path = task.path - 1
-		op = task.instructions[task.path]
-		if not op.register:
-			scope = scope + 1 if op.name == 'END' else scope - 1
-			if scope == 0:
-				return
+	task.branch_loop(1, True)
 
 arche_loop = function_method('.loop')
 arche_loop.retrieve(loop_null)
@@ -901,14 +854,8 @@ def meta_string(task, string):
 	offset = int(task.op.register) - 1
 	constants = len([item for item in task.values if item[0] == '&']) - 1
 	instructions, values, types = translator(meta, constants = constants).generate(offset = offset)
-	start, path, scope = task.path, task.path, 0
-	while True: # Collect instructions
-		op, path = task.instructions[path], path + 1
-		if not op.register:
-			scope = scope - 1 if op.name == 'END' else scope + 1
-			if scope == 0:
-				end = path
-				break
+	start = task.path
+	end = task.branch_conditional(0, False)
 	task.instructions[start + 1:end] = instructions
 	task.values.update(values)
 	task.types.update(types)
@@ -964,14 +911,8 @@ arche_sequence.retrieve(sequence_untyped)
 def type_type(task, supertype):
 	
 	name, supername = task.op.register, supertype.name
-	start, scope = task.path, 0
-	while True: # Collect instructions
-		op, task.path = task.instructions[task.path], task.path + 1
-		if not op.register:
-			scope = scope - 1 if op.name == 'END' else scope + 1
-			if scope == 0:
-				break
-	end = task.path
+	start = task.path
+	end = task.branch_conditional(0, True)
 	instructions = task.instructions[start:end]
 	routine = type_method(name, supertype.supertypes, supertype.prototype)
 	if isinstance(list(supertype.methods.values())[-1], type): # Built-in supertype
@@ -992,14 +933,8 @@ def type_type(task, supertype):
 def type_type_untyped(task, supertype, prototype):
 	
 	name, supername = task.op.register, supertype.name
-	start, scope = task.path, 0
-	while True: # Collect instructions
-		op, task.path = task.instructions[task.path], task.path + 1
-		if not op.register:
-			scope = scope - 1 if op.name == 'END' else scope + 1
-			if scope == 0:
-				break
-	end = task.path
+	start = task.path
+	end = task.branch_conditional(0, True)
 	instructions = task.instructions[start:end]
 	routine = type_method(name, supertype.supertypes, prototype)
 	if isinstance(list(supertype.methods.values())[-1], type): # Built-in supertype
@@ -1026,13 +961,7 @@ def unloop_null(task, value):
 	iterator, name = str(int(task.op.args[0]) - 1), task.op.label[0]
 	task.values[iterator] = None # Sanitise registers
 	del task.values[name], task.types[name]
-	scope = 1
-	while True:
-		op, task.path = task.instructions[task.path], task.path + 1
-		if not op.register:
-			scope = scope - 1 if op.name == 'END' else scope + 1
-			if scope == 0 and task.instructions[task.path].name != 'ELSE':
-				return
+	return task.branch_unconditional(1, True)
 
 def unloop_untyped(task, value):
 
