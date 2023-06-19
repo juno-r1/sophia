@@ -226,49 +226,14 @@ class task:
 		self.message('terminate')
 		return self.state() # Return mutable state to supervisor
 
-	def branch_conditional(self, scope = 0, move = False):
+	def branch(self, scope = 0, skip = False, move = False):
 
 		path = self.path
 		while True:
 			op, path = self.instructions[path], path + 1
 			if not op.register:
 				scope = scope - 1 if op.name == 'END' else scope + 1
-				if scope == 0:
-					if move:
-						self.path = path
-					return path
-
-	def branch_unconditional(self, scope = 0, move = False):
-
-		path = self.path
-		while True:
-			op, path = self.instructions[path], path + 1
-			if not op.register:
-				scope = scope - 1 if op.name == 'END' else scope + 1
-				if scope == 0 and self.instructions[path].name != 'ELSE':
-					if move:
-						self.path = path
-					return path
-
-	def branch_break(self, scope = 0, move = False):
-
-		path = self.path
-		while True:
-			op, path = self.instructions[path], path + 1
-			if op.name == '.loop':
-				if move:
-					self.path = path
-				return path
-
-	def branch_loop(self, scope = 0, move = False):
-
-		path = self.path
-		while True:
-			path = path - 1
-			op = self.instructions[path]
-			if not op.register:
-				scope = scope + 1 if op.name == 'END' else scope - 1
-				if scope == 0:
+				if scope == 0 and (skip or self.instructions[path].name != 'ELSE'):
 					if move:
 						self.path = path
 					return path

@@ -622,7 +622,7 @@ arche_alias.retrieve(alias_type)
 
 def assert_null(task, value): # Null assertion
 
-	return task.branch_conditional(1, True)
+	return task.branch(1, True, True)
 
 def assert_untyped(task, value): # Non-null assertion
 	
@@ -651,21 +651,24 @@ arche_bind.retrieve(bind_untyped_type)
 
 def branch_null(task): # Unconditional branch
 	
-	return task.branch_unconditional(1, True)
+	return task.branch(1, False, True)
 
 def branch_boolean(task, condition): # Conditional branch
 
 	if not condition:
-		return task.branch_conditional(1, True)
+		return task.branch(1, True, True)
 
 arche_branch = function_method('.branch')
 arche_branch.retrieve(branch_null)
 arche_branch.retrieve(branch_boolean)
 
-def break_untyped(task, value): # For loop break
+def break_untyped(task, value): # Loop break
 
 	task.values[task.op.register], task.values[task.op.args[0]] = None, None # Sanitise registers
-	return task.branch_break(0, True)
+	while True:
+		op, task.path = task.instructions[task.path], task.path + 1
+		if op.name == '.loop':
+			return
 
 arche_break = function_method('.break')
 arche_break.retrieve(break_untyped)
@@ -707,8 +710,8 @@ def event_null(task):
 	name = task.op.register
 	types, params = [descriptor.read(i) for i in task.op.label[0::2]], task.op.label[1::2]
 	start = task.path
-	task.branch_conditional(0, True)
-	end = task.branch_conditional(0, True)
+	task.branch(0, True, True)
+	end = task.branch(0, True, True)
 	definition = event_definition(task.instructions[start:end], params, types)
 	routine = task.values[name] if name in task.values and task.types[name].type == 'event' else event_method(name)
 	routine.register(definition, types[0], tuple(types[1:-1]))
@@ -722,7 +725,7 @@ def function_null(task):
 	name = task.op.register
 	types, params = [descriptor.read(i) for i in task.op.label[0::2]], task.op.label[1::2]
 	start = task.path
-	end = task.branch_conditional(0, True)
+	end = task.branch(0, True, True)
 	definition = function_definition(task.instructions[start:end], params, types)
 	routine = task.values[name] if name in task.values and task.types[name].type == 'function' else function_method(name)
 	routine.register(definition, types[0], tuple(types[1:]))
@@ -842,8 +845,15 @@ arche_link = function_method('.link')
 arche_link.retrieve(link_null)
 
 def loop_null(task): # Reverse branch
-
-	task.branch_loop(1, True)
+	
+	scope = 1
+	while True:
+		task.path = task.path - 1
+		op = task.instructions[task.path]
+		if not op.register:
+			scope = scope + 1 if op.name == 'END' else scope - 1
+			if scope == 0:
+				return
 
 arche_loop = function_method('.loop')
 arche_loop.retrieve(loop_null)
@@ -855,7 +865,7 @@ def meta_string(task, string):
 	constants = len([item for item in task.values if item[0] == '&']) - 1
 	instructions, values, types = translator(meta, constants = constants).generate(offset = offset)
 	start = task.path
-	end = task.branch_conditional(0, False)
+	end = task.branch(0, True, False)
 	task.instructions[start + 1:end] = instructions
 	task.values.update(values)
 	task.types.update(types)
@@ -912,7 +922,7 @@ def type_type(task, supertype):
 	
 	name, supername = task.op.register, supertype.name
 	start = task.path
-	end = task.branch_conditional(0, True)
+	end = task.branch(0, True, True)
 	instructions = task.instructions[start:end]
 	routine = type_method(name, supertype.supertypes, supertype.prototype)
 	if isinstance(list(supertype.methods.values())[-1], type): # Built-in supertype
@@ -934,7 +944,7 @@ def type_type_untyped(task, supertype, prototype):
 	
 	name, supername = task.op.register, supertype.name
 	start = task.path
-	end = task.branch_conditional(0, True)
+	end = task.branch(0, True, True)
 	instructions = task.instructions[start:end]
 	routine = type_method(name, supertype.supertypes, prototype)
 	if isinstance(list(supertype.methods.values())[-1], type): # Built-in supertype
@@ -961,7 +971,7 @@ def unloop_null(task, value):
 	iterator, name = str(int(task.op.args[0]) - 1), task.op.label[0]
 	task.values[iterator] = None # Sanitise registers
 	del task.values[name], task.types[name]
-	return task.branch_unconditional(1, True)
+	return task.branch(1, False, True)
 
 def unloop_untyped(task, value):
 
