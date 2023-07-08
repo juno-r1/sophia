@@ -1,17 +1,17 @@
 '''
 The Arche module defines the standard library of Sophia.
 '''
-
-from aletheia import descriptor, infer, names
+from aletheia import descriptor, infer, subtype
+import aletheia
 from iris import reference
 from kadmos import instruction, module, translator
 from mathos import real, slice, element
 from math import copysign
 
 import json
-with open('kleio.json') as f:
-	metadata = json.load(f)
-del f # Python inexplicably does not do this automatically
+with open('kleio.json') as kleio:
+	metadata = json.load(kleio)
+del kleio # Python inexplicably does not do this automatically
 
 class method:
 	"""
@@ -30,9 +30,9 @@ class method:
 	def retrieve(self, routine): # Retrieves metadata from Kleio
 
 		data = metadata[self.name][routine.__name__]
-		signature = tuple(descriptor.convert(i) for i in data['signature'])
+		signature = tuple(descriptor(**i, prepare = True) for i in data['signature']) # Tuples are hashable
 		self.methods[signature] = routine
-		self.finals[signature] = descriptor.convert(data['final'])
+		self.finals[signature] = descriptor(**data['final'])
 		self.arity[signature] = data['arity']
 
 	def register(self, definition, final, signature): # Registers user-defined definition
@@ -49,12 +49,6 @@ class type_method(method):
 		self.supertypes = [name] + supertypes
 		self.prototype = prototype
 		self.specificity = len(supertypes) + 1
-		self.register(self.subtype, descriptor('!'), (descriptor(name),)) # Subtype check
-
-	def subtype(self, task, value):
-		
-		signature = task.signature[0]
-		return value, descriptor(self.name, signature.member, signature.length)
 
 class event_method(method): pass
 class function_method(method): pass
@@ -64,18 +58,18 @@ class type_definition:
 	def __init__(self, instructions, name, known):
 
 		self.instructions = instructions
-		self.name = name
-		self.type = known
+		self.name = name # String name of type
+		self.type = known # Descriptor of supertype
 
 	def __call__(self, task, value):
 		
 		task.caller = task.state()
-		properties = infer(value)
-		task.final = descriptor(self.name, properties.member, properties.length)
+		task.final = descriptor(self.name)
 		task.values[self.name], task.types[self.name] = value, self.type
 		task.reserved = tuple(task.values)
 		task.instructions = self.instructions
 		task.path = 1
+		task.properties.type = '!'
 
 class event_definition:
 	"""Definition for a user-defined event."""
@@ -89,6 +83,7 @@ class event_definition:
 
 		if '.bind' in task.op.label:
 			task.message('future', self, args, task.values[self.name])
+			task.properties.type = 'future'
 			return task.calls.recv()
 		else:
 			task.caller = task.state()
@@ -98,6 +93,7 @@ class event_definition:
 			task.reserved = tuple(task.values)
 			task.instructions = self.instructions
 			task.path = 1
+			task.properties.type = '!'
 
 class function_definition:
 	"""Definition for a user-defined function."""
@@ -111,6 +107,7 @@ class function_definition:
 
 		if '.bind' in task.op.label:
 			task.message('future', self, args, task.values[self.name])
+			task.properties.type = 'future'
 			return task.calls.recv()
 		else:
 			task.caller = task.state()
@@ -120,6 +117,7 @@ class function_definition:
 			task.reserved = tuple(task.values)
 			task.instructions = self.instructions
 			task.path = 1
+			task.properties.type = '!'
 
 """
 Built-in types.
@@ -134,6 +132,7 @@ class sophia_null: # Null type
 
 cls_null = type_method('null', [], None)
 cls_null.retrieve(sophia_null)
+cls_null.retrieve(subtype)
 
 class sophia_untyped: # Non-abstract base class
 
@@ -143,9 +142,10 @@ class sophia_untyped: # Non-abstract base class
 	def __new__(cls, task, value): # Type check disguised as an object constructor
 		
 		if isinstance(value, cls.types):
-			return value, descriptor(cls.name, task.signature[0].member, task.signature[0].length)
+			return value
 		else:
-			return task.error('CAST', cls.name, str(value)), descriptor('null')
+			task.properties.type = 'null'
+			return task.error('CAST', cls.name, str(value))
 
 	@classmethod
 	def __null__(cls, value): return
@@ -175,13 +175,14 @@ class sophia_untyped: # Non-abstract base class
 	def __record__(cls, value): return
 
 	@classmethod
-	def __future__(cls, value): return
+	def __slice__(cls, value): return
 
 	@classmethod
-	def __stream__(cls, value): return
+	def __future__(cls, value): return
 
 cls_untyped = type_method('untyped', [], None)
 cls_untyped.retrieve(sophia_untyped)
+cls_untyped.retrieve(subtype)
 
 class sophia_type(sophia_untyped): # Type type
 	
@@ -190,6 +191,7 @@ class sophia_type(sophia_untyped): # Type type
 
 cls_type = type_method('type', ['untyped'], None)
 cls_type.retrieve(sophia_type)
+cls_type.retrieve(subtype)
 
 class sophia_event(sophia_untyped): # Event type
 
@@ -198,6 +200,7 @@ class sophia_event(sophia_untyped): # Event type
 
 cls_event = type_method('event', ['untyped'], None)
 cls_event.retrieve(sophia_event)
+cls_event.retrieve(subtype)
 
 class sophia_function(sophia_untyped): # Function type
 
@@ -206,6 +209,7 @@ class sophia_function(sophia_untyped): # Function type
 
 cls_function = type_method('function', ['untyped'], None)
 cls_function.retrieve(sophia_function)
+cls_function.retrieve(subtype)
 
 class sophia_boolean(sophia_untyped): # Boolean type
 
@@ -232,6 +236,7 @@ class sophia_boolean(sophia_untyped): # Boolean type
 
 cls_boolean = type_method('boolean', ['untyped'], False)
 cls_boolean.retrieve(sophia_boolean)
+cls_boolean.retrieve(subtype)
 
 class sophia_number(sophia_untyped): # Abstract number type
 
@@ -252,6 +257,7 @@ class sophia_number(sophia_untyped): # Abstract number type
 
 cls_number = type_method('number', ['untyped'], real(0))
 cls_number.retrieve(sophia_number)
+cls_number.retrieve(subtype)
 
 class sophia_integer(sophia_number): # Integer type
 
@@ -261,15 +267,14 @@ class sophia_integer(sophia_number): # Integer type
 	def __new__(cls, task, value):
 		
 		try: # Faster than isinstance(), I think
-			if value % 1 == 0:
-				return value, descriptor('integer')
-			else:
-				return task.error('CAST', cls.name, str(value)), descriptor('null')
+			return value if value % 1 == 0 else task.error('CAST', cls.name, str(value))
 		except TypeError:
-			return task.error('CAST', cls.name, str(value)), descriptor('null')
+			task.properties.type = 'null'
+			return task.error('CAST', cls.name, str(value))
 
 cls_integer = type_method('integer', ['number', 'untyped'], real(0))
 cls_integer.retrieve(sophia_integer)
+cls_integer.retrieve(subtype)
 
 class sophia_string(sophia_untyped): # String type
 
@@ -311,6 +316,7 @@ class sophia_string(sophia_untyped): # String type
 
 cls_string = type_method('string', ['untyped'], '')
 cls_string.retrieve(sophia_string)
+cls_string.retrieve(subtype)
 
 class sophia_list(sophia_untyped): # List type
 
@@ -331,6 +337,7 @@ class sophia_list(sophia_untyped): # List type
 
 cls_list = type_method('list', ['untyped'], [])
 cls_list.retrieve(sophia_list)
+cls_list.retrieve(subtype)
 
 class sophia_record(sophia_untyped): # Record type
 
@@ -339,6 +346,7 @@ class sophia_record(sophia_untyped): # Record type
 
 cls_record = type_method('record', ['untyped'], {})
 cls_record.retrieve(sophia_record)
+cls_record.retrieve(subtype)
 
 class sophia_slice(sophia_untyped): # Slice type
 
@@ -347,6 +355,7 @@ class sophia_slice(sophia_untyped): # Slice type
 
 cls_slice = type_method('slice', ['untyped'], slice((real(0), real(0), real(1))))
 cls_slice.retrieve(sophia_slice)
+cls_slice.retrieve(subtype)
 
 class sophia_future(sophia_untyped): # Process type
 	
@@ -355,6 +364,7 @@ class sophia_future(sophia_untyped): # Process type
 
 cls_future = type_method('future', ['untyped'], None)
 cls_future.retrieve(sophia_future)
+cls_future.retrieve(subtype)
 
 """
 Built-in operators.
@@ -379,7 +389,8 @@ arche_sub.retrieve(b_sub)
 def u_rsv(task, x):
 	
 	task.message('resolve', x)
-	return task.calls.recv(), x.check
+	task.properties = x.check
+	return task.calls.recv()
 
 def b_mul(_, x, y):	return x * y
 
@@ -560,10 +571,7 @@ arche_uni.retrieve(b_uni_type)
 
 def b_slc(_, x, y): return element((x, y))
 
-def t_slc(_, x, y, z):
-	
-	value = slice((x, y, z))
-	return value, descriptor('slice', 'integer', len(value))
+def t_slc(_, x, y, z): return slice((x, y, z))
 
 arche_slc = function_method(':')
 arche_slc.retrieve(b_slc)
@@ -577,9 +585,7 @@ arche_sfe = function_method('?')
 arche_sfe.retrieve(u_sfe_null)
 arche_sfe.retrieve(u_sfe_untyped)
 
-def u_usf(task, x):
-	
-	return (x, task.signature[0]) if x else (None, descriptor('null'))
+def u_usf(task, x): return x or None
 
 arche_usf = function_method('!')
 arche_usf.retrieve(u_usf)
@@ -598,7 +604,10 @@ def u_new(task, x):
 		return task.error('PROT', x.name)
 	else:
 		signature = infer(x.prototype)
-		return x.prototype, descriptor(x.name, signature.member, signature.length)
+		task.properties.type = x.name
+		task.properties.member = signature.member
+		task.properties.length = signature.length
+		return x.prototype
 
 arche_new = function_method('new')
 arche_new.retrieve(u_new)
@@ -621,7 +630,7 @@ arche_alias = function_method('.alias')
 arche_alias.retrieve(alias_type)
 
 def assert_null(task, value): # Null assertion
-
+	
 	return task.branch(1, True, True)
 
 def assert_untyped(task, value): # Non-null assertion
@@ -638,12 +647,20 @@ def bind_untyped(task, value):
 	while task.instructions[task.path + offset].register != name:
 		offset = offset + 1
 	task.instructions[task.path + offset].name = task.check(name, default = value).type if name in task.values else signature.type
-	return (task.error('BIND', name), descriptor('null')) if name in task.reserved else (value, signature)
+	if name in task.reserved:
+		return task.error('BIND', name)
+	else:
+		task.properties = signature
+		return value
 
 def bind_untyped_type(task, value, type_routine):
 	
 	name, signature = task.op.label[0], task.signature[0]
-	return (task.error('BIND', name), descriptor('null')) if name in task.reserved else (value, signature)
+	if name in task.reserved:
+		return task.error('BIND', name)
+	else:
+		task.properties = signature
+		return value
 
 arche_bind = function_method('.bind')
 arche_bind.retrieve(bind_untyped)
@@ -675,18 +692,19 @@ arche_break.retrieve(break_untyped)
 
 def concatenate_untyped(task, value):
 	
-	return [value], descriptor('untyped', task.signature[0].type, 1)
+	task.properties.member = task.signature[0].type
+	return [value]
 
 def concatenate_untyped_untyped(task, sequence, value):
 
 	sequence_type, member_type = task.signature[0], task.signature[1]
-	length = sequence_type.length + 1
+	task.properties.length = sequence_type.length + 1
 	if sequence_type.member == member_type.type:
-		final = descriptor('untyped', sequence_type.member, length)
+		task.properties.member = sequence_type.member
 	else:
 		sequence_type, member_type = task.values[sequence_type.member], task.values[member_type.type]
-		final = descriptor('untyped', [i for i in sequence_type.supertypes if i in member_type.supertypes][0], length)
-	return sequence + [value], final
+		task.properties.member = [i for i in sequence_type.supertypes if i in member_type.supertypes][0]
+	return sequence + [value]
 
 arche_concatenate = function_method('.concatenate')
 arche_concatenate.retrieve(concatenate_untyped)
@@ -708,7 +726,7 @@ arche_constraint.retrieve(constraint_boolean)
 def event_null(task):
 
 	name = task.op.register
-	types, params = [descriptor.read(i) for i in task.op.label[0::2]], task.op.label[1::2]
+	types, params = [task.describe(descriptor.read(i)) for i in task.op.label[0::2]], task.op.label[1::2]
 	start = task.path
 	task.branch(0, True, True)
 	end = task.branch(0, True, True)
@@ -723,9 +741,8 @@ arche_event.retrieve(event_null)
 def function_null(task):
 
 	name = task.op.register
-	types, params = [descriptor.read(i) for i in task.op.label[0::2]], task.op.label[1::2]
-	start = task.path
-	end = task.branch(0, True, True)
+	types, params = [task.describe(descriptor.read(i)) for i in task.op.label[0::2]], task.op.label[1::2]
+	start, end = task.path, task.branch(0, True, True)
 	definition = function_definition(task.instructions[start:end], params, types)
 	routine = task.values[name] if name in task.values and task.types[name].type == 'function' else function_method(name)
 	routine.register(definition, types[0], tuple(types[1:]))
@@ -740,53 +757,60 @@ def index_string_integer(task, sequence, index):
 	if -length <= index < length:
 		return sequence[int(index)] # Sophia's integer type is abstract, Python's isn't
 	else:
+		task.properties.type = 'null'
 		return task.error('INDX', index)
 
 def index_string_slice(task, sequence, index):
 
 	length = task.signature[0].length
 	if (-length <= index.start < length) and (-length <= index.end < length):
-		return ''.join(sequence[int(n)] for n in iter(index)), descriptor('string', 'string', task.signature[1].length) # Constructs slice of string using range
+		task.properties.length = task.signature[1].length
+		return ''.join(sequence[int(n)] for n in iter(index)) # Constructs slice of string using range
 	else:
-		return task.error('INDX', index), descriptor('null')
+		task.properties.type = 'null'
+		return task.error('INDX', index)
 
 def index_list_integer(task, sequence, index):
 	
 	length = task.signature[0].length
 	if -length <= index < length:
-		value = sequence[int(index)]
-		signature = infer(value)
-		return value, descriptor(task.signature[0].member, signature.member, signature.length)
+		task.properties.type = task.signature[0].member
+		return sequence[int(index)]
 	else:
-		return task.error('INDX', index), descriptor('null')
+		task.properties.type = 'null'
+		return task.error('INDX', index)
 
 def index_list_slice(task, sequence, index):
 	
 	length = task.signature[0].length
 	if (-length <= index.start < length) and (-length <= index.end < length):
-		value = tuple(sequence[int(n)] for n in iter(index))
-		return value, descriptor('list', task.signature[0].member, task.signature[1].length)
+		task.properties.member = task.signature[0].member
+		task.properties.length = task.signature[1].length
+		return tuple(sequence[int(n)] for n in iter(index))
 	else:
-		return task.error('INDX', index), descriptor('null')
+		task.properties.type = 'null'
+		return task.error('INDX', index)
 
 def index_record_untyped(task, sequence, index):
 	
 	if index in sequence:
-		value = sequence[index]
-		signature = infer(value)
-		return value, descriptor(task.signature[0].member, signature.member, signature.length)
+		task.properties.type = task.signature[0].member
+		return sequence[index]
 	else:
-		return task.error('INDX', index), descriptor('null')
+		task.properties.type = 'null'
+		return task.error('INDX', index)
 
 def index_record_slice(task, sequence, index):
 
 	length = task.signature[0].length
 	if (-length <= index.start < length) and (-length <= index.end < length):
+		task.properties.member = task.signature[0].member
+		task.properties.length = task.signature[1].length
 		items = tuple(sequence.items())
-		value = dict(items[int(n)] for n in iter(index))
-		return value, descriptor('list', task.signature[0].member, task.signature[1].length)
+		return dict(items[int(n)] for n in iter(index))
 	else:
-		return task.error('INDX', index), descriptor('null')
+		task.properties.type = 'null'
+		return task.error('INDX', index)
 
 def index_slice_integer(task, sequence, index):
 
@@ -794,15 +818,18 @@ def index_slice_integer(task, sequence, index):
 	if -length <= index < length:
 		return sequence[int(index)]
 	else:
+		task.properties.type = 'null'
 		return task.error('INDX', index)
 
 def index_slice_slice(task, sequence, index):
 	
 	length = task.signature[0].length
 	if (-length <= index.start < length) and (-length <= index.end < length):
-		return tuple(sequence[int(n)] for n in iter(index)), descriptor('slice', 'integer', task.signature[1].length)
+		task.properties.length = task.signature[1].length
+		return tuple(sequence[int(n)] for n in iter(index))
 	else:
-		return task.error('INDX', index), descriptor('null')
+		task.properties.type = 'null'
+		return task.error('INDX', index)
 
 arche_index = function_method('.index')
 arche_index.retrieve(index_string_integer)
@@ -868,7 +895,7 @@ def meta_string(task, string):
 	end = task.branch(0, True, False)
 	task.instructions[start + 1:end] = instructions
 	task.values.update(values)
-	task.types.update(types)
+	task.types.update({k: task.describe(v) for k, v in types.items()})
 
 arche_meta = function_method('.meta')
 arche_meta.retrieve(meta_string)
@@ -893,12 +920,12 @@ def return_null(task, sentinel):
 
 def return_untyped(task, sentinel):
 	
-	final = task.final
+	task.properties = task.final
 	if task.caller:
 		task.restore(task.caller) # Restore namespace of calling routine
 	else:
 		task.path = 0 # End task
-	return sentinel, final
+	return sentinel
 
 arche_return = function_method('.return')
 arche_return.retrieve(return_null)
@@ -907,13 +934,13 @@ arche_return.retrieve(return_untyped)
 def sequence_untyped(task, sequence):
 	
 	signature = task.signature[0]
-	member, length = signature.member, signature.length
+	task.properties.member, task.properties.length = signature.member, signature.length
 	if not isinstance(sequence, list):
 		sequence = [sequence]
 	if sequence and isinstance(sequence[0], element): # If items is a key-item pair in a record
-		return dict(iter(sequence)), descriptor('record', member = member, length = length)
+		return dict(iter(sequence))
 	else: # If list:
-		return tuple(sequence), descriptor('list', member = member, length = length)
+		return tuple(sequence)
 
 arche_sequence = function_method('.sequence')
 arche_sequence.retrieve(sequence_untyped)
@@ -921,45 +948,51 @@ arche_sequence.retrieve(sequence_untyped)
 def type_type(task, supertype):
 	
 	name, supername = task.op.register, supertype.name
-	start = task.path
-	end = task.branch(0, True, True)
+	type_tag, final_tag, supertype_tag = descriptor(name), descriptor(name), task.describe(descriptor(supername))
+	type_tag.supertypes = [name] + supertype_tag.supertypes
+	type_tag.specificity = (supertype_tag.specificity[0] + 1, 0, 0)
+	start, end = task.path, task.branch(0, True, True)
 	instructions = task.instructions[start:end]
 	routine = type_method(name, supertype.supertypes, supertype.prototype)
-	if isinstance(list(supertype.methods.values())[-1], type): # Built-in supertype
+	routine.register(subtype, final_tag, (type_tag,))
+	if supername in aletheia.supertypes: # Built-in supertype
 		check = [instruction(supername, '0', (name,)), 
 				 instruction('?', '0', ('0',)), # Convert to boolean
 				 instruction('.constraint', '0', ('0',), label = [supername])]
-		routine.register(type_definition(instructions, name, descriptor(supername)), descriptor(name), (descriptor(supername),))
+		routine.register(type_definition(instructions, name, supertype_tag), final_tag, (supertype_tag,))
 		instructions[1:1] = check
-		routine.register(type_definition(instructions, name, descriptor(supername)), descriptor(name), (descriptor('untyped'),))
+		routine.register(type_definition(instructions, name, supertype_tag), final_tag, (descriptor('untyped', prepare = True),))
 	else:
 		for key, value in list(supertype.methods.items())[1:]: # Rewrite methods with own type name
 			definition = [instruction.rewrite(i, supername, name) for i in value.instructions]
 			definition[-2:-2] = instructions[1:-2] # Add user constraints to instructions
-			routine.register(type_definition(definition, name, key[0]), descriptor(name), key)
-		routine.register(type_definition(instructions, name, descriptor(supername)), descriptor(name), (descriptor(supername),))
+			routine.register(type_definition(definition, name, key[0]), final_tag, key)
+		routine.register(type_definition(instructions, name, supertype_tag), final_tag, (supertype_tag,))
 	return routine
 
 def type_type_untyped(task, supertype, prototype):
 	
 	name, supername = task.op.register, supertype.name
-	start = task.path
-	end = task.branch(0, True, True)
+	type_tag, final_tag, supertype_tag = descriptor(name), descriptor(name), task.describe(descriptor(supername))
+	type_tag.supertypes = [name] + supertype_tag.supertypes
+	type_tag.specificity = (supertype_tag.specificity[0] + 1, 0, 0)
+	start, end = task.path, task.branch(0, True, True)
 	instructions = task.instructions[start:end]
 	routine = type_method(name, supertype.supertypes, prototype)
-	if isinstance(list(supertype.methods.values())[-1], type): # Built-in supertype
+	routine.register(subtype, final_tag, (type_tag,))
+	if supername in aletheia.supertypes: # Built-in supertype
 		check = [instruction(supername, '0', (name,)), 
 				 instruction('?', '0', ('0',)), # Convert to boolean
 				 instruction('.constraint', '0', ('0',), label = [supername])]
-		routine.register(type_definition(instructions, name, descriptor(supername)), descriptor(name), (descriptor(supername),))
+		routine.register(type_definition(instructions, name, supertype_tag), final_tag, (supertype_tag,))
 		instructions[1:1] = check
-		routine.register(type_definition(instructions, name, descriptor(supername)), descriptor(name), (descriptor('untyped'),))
+		routine.register(type_definition(instructions, name, supertype_tag), final_tag, (descriptor('untyped', prepare = True),))
 	else:
 		for key, value in list(supertype.methods.items())[1:]: # Rewrite methods with own type name
 			definition = [instruction.rewrite(i, supername, name) for i in value.instructions]
 			definition[-2:-2] = instructions[1:-2] # Add user constraints to instructions
-			routine.register(type_definition(definition, name, key[0]), descriptor(name), key)
-		routine.register(type_definition(instructions, name, descriptor(supername)), descriptor(name), (descriptor(supername),))
+			routine.register(type_definition(definition, name, key[0]), final_tag, key)
+		routine.register(type_definition(instructions, name, supertype_tag), final_tag, (supertype_tag,))
 	return routine
 
 arche_type = function_method('.type')
@@ -974,7 +1007,7 @@ def unloop_null(task, value):
 	return task.branch(1, False, True)
 
 def unloop_untyped(task, value):
-
+	
 	return value
 
 arche_unloop = function_method('.unloop')
@@ -994,9 +1027,8 @@ stderr = reference(None)
 stderr.name, stderr.pid = 'stderr', 2
 
 def input_string(task, value):
-
-	string = input(value)
-	return string, descriptor('string', 'string', len(string))
+	
+	return input(value)
 
 arche_input = function_method('input')
 arche_input.retrieve(input_string)
@@ -1031,7 +1063,7 @@ arche_abs.retrieve(abs_number)
 def cast_type_untyped(task, target, value):
 	
 	try:
-		result = getattr(globals()['sophia_' + target.name], '__{0}__'.format(names[type(value).__name__]), None)(value)
+		result = getattr(globals()['sophia_' + target.name], '__{0}__'.format(aletheia.names[type(value).__name__]), None)(value)
 	except KeyError:
 		return task.error('CAST', target.name, value)
 	if result is None:
@@ -1108,7 +1140,7 @@ arche_namespace.retrieve(namespace_null)
 
 def reverse_slice(task, value):
 		
-	return slice([value.end, value.start, -value.step])
+	return slice((value.end, value.start, -value.step))
 
 arche_reverse = function_method('reverse')
 arche_reverse.retrieve(reverse_slice)
@@ -1157,6 +1189,6 @@ arche_typeof.retrieve(typeof_untyped)
 Namespace composition and internals.
 """
 
-builtins = {v.name: v for k, v in globals().items() if k.split('_')[0] in ['cls', 'arche']} | \
+builtins = {v.name: v for k, v in globals().items() if k.split('_')[0] in ('cls', 'arche')} | \
 		   {'stdin': stdin, 'stdout': stdout, 'stderr': stderr}
-types = {i: descriptor.convert(metadata[i]['type']) for i in builtins}
+types = {i: descriptor(**metadata[i]['type'], prepare = True) for i in builtins}

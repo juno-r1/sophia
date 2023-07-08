@@ -14,7 +14,22 @@
         }
       ],
       "final": {
-        "type": "!",
+        "type": "null",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    },
+    "subtype": {
+      "signature": [
+        {
+          "type": "null",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "null",
         "member": null,
         "length": null
       },
@@ -36,7 +51,22 @@
         }
       ],
       "final": {
-        "type": "!",
+        "type": "untyped",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    },
+    "subtype": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "untyped",
         "member": null,
         "length": null
       },
@@ -58,7 +88,22 @@
         }
       ],
       "final": {
-        "type": "!",
+        "type": "type",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    },
+    "subtype": {
+      "signature": [
+        {
+          "type": "type",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "type",
         "member": null,
         "length": null
       },
@@ -80,7 +125,22 @@
         }
       ],
       "final": {
-        "type": "!",
+        "type": "event",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    },
+    "subtype": {
+      "signature": [
+        {
+          "type": "event",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "event",
         "member": null,
         "length": null
       },
@@ -102,7 +162,22 @@
         }
       ],
       "final": {
-        "type": "!",
+        "type": "function",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    },
+    "subtype": {
+      "signature": [
+        {
+          "type": "function",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "function",
         "member": null,
         "length": null
       },
@@ -124,7 +199,22 @@
         }
       ],
       "final": {
-        "type": "!",
+        "type": "boolean",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    },
+    "subtype": {
+      "signature": [
+        {
+          "type": "boolean",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "boolean",
         "member": null,
         "length": null
       },
@@ -146,7 +236,22 @@
         }
       ],
       "final": {
-        "type": "!",
+        "type": "number",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    },
+    "subtype": {
+      "signature": [
+        {
+          "type": "number",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "number",
         "member": null,
         "length": null
       },
@@ -168,7 +273,22 @@
         }
       ],
       "final": {
-        "type": "!",
+        "type": "integer",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    },
+    "subtype": {
+      "signature": [
+        {
+          "type": "integer",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "integer",
         "member": null,
         "length": null
       },
@@ -190,7 +310,22 @@
         }
       ],
       "final": {
-        "type": "!",
+        "type": "string",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    },
+    "subtype": {
+      "signature": [
+        {
+          "type": "string",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "string",
         "member": null,
         "length": null
       },
@@ -212,7 +347,22 @@
         }
       ],
       "final": {
-        "type": "!",
+        "type": "list",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    },
+    "subtype": {
+      "signature": [
+        {
+          "type": "list",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "list",
         "member": null,
         "length": null
       },
@@ -234,7 +384,22 @@
         }
       ],
       "final": {
-        "type": "!",
+        "type": "record",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    },
+    "subtype": {
+      "signature": [
+        {
+          "type": "record",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "record",
         "member": null,
         "length": null
       },
@@ -256,7 +421,22 @@
         }
       ],
       "final": {
-        "type": "!",
+        "type": "slice",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    },
+    "subtype": {
+      "signature": [
+        {
+          "type": "slice",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "slice",
         "member": null,
         "length": null
       },
@@ -278,7 +458,22 @@
         }
       ],
       "final": {
-        "type": "!",
+        "type": "future",
+        "member": null,
+        "length": null
+      },
+      "arity": 1
+    },
+    "subtype": {
+      "signature": [
+        {
+          "type": "future",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "future",
         "member": null,
         "length": null
       },
@@ -384,7 +579,7 @@
         }
       ],
       "final": {
-        "type": "!",
+        "type": null,
         "member": null,
         "length": null
       },
@@ -582,7 +777,7 @@
     "n_rcv": {
       "signature": [],
       "final": {
-        "type": "*",
+        "type": null,
         "member": null,
         "length": null
       },
@@ -1112,8 +1307,8 @@
         }
       ],
       "final": {
-        "type": "!",
-        "member": null,
+        "type": "slice",
+        "member": "integer",
         "length": null
       },
       "arity": 3
@@ -1171,7 +1366,7 @@
         }
       ],
       "final": {
-        "type": "!",
+        "type": null,
         "member": null,
         "length": null
       },
@@ -1220,9 +1415,9 @@
         }
       ],
       "final": {
-        "type": "!",
-        "member": "!",
-        "length": "!"
+        "type": null,
+        "member": null,
+        "length": null
       },
       "arity": 1
     }
@@ -1264,7 +1459,7 @@
         }
       ],
       "final": {
-        "type": ".",
+        "type": "!",
         "member": null,
         "length": null
       },
@@ -1279,7 +1474,7 @@
         }
       ],
       "final": {
-        "type": ".",
+        "type": "!",
         "member": null,
         "length": null
       },
@@ -1301,7 +1496,7 @@
         }
       ],
       "final": {
-        "type": "!",
+        "type": null,
         "member": null,
         "length": null
       },
@@ -1321,7 +1516,7 @@
         }
       ],
       "final": {
-        "type": "!",
+        "type": null,
         "member": null,
         "length": null
       },
@@ -1337,7 +1532,7 @@
     "branch_null": {
       "signature": [],
       "final": {
-        "type": ".",
+        "type": "!",
         "member": null,
         "length": null
       },
@@ -1352,7 +1547,7 @@
         }
       ],
       "final": {
-        "type": ".",
+        "type": "!",
         "member": null,
         "length": null
       },
@@ -1374,7 +1569,7 @@
         }
       ],
       "final": {
-        "type": ".",
+        "type": "!",
         "member": null,
         "length": null
       },
@@ -1396,9 +1591,9 @@
         }
       ],
       "final": {
-        "type": "!",
+        "type": "untyped",
         "member": null,
-        "length": null
+        "length": 1
       },
       "arity": 1
     },
@@ -1416,7 +1611,7 @@
         }
       ],
       "final": {
-        "type": "!",
+        "type": "untyped",
         "member": null,
         "length": null
       },
@@ -1517,8 +1712,8 @@
         }
       ],
       "final": {
-        "type": "!",
-        "member": null,
+        "type": "string",
+        "member": "string",
         "length": null
       },
       "arity": 2
@@ -1537,7 +1732,7 @@
         }
       ],
       "final": {
-        "type": "!",
+        "type": null,
         "member": null,
         "length": null
       },
@@ -1557,7 +1752,7 @@
         }
       ],
       "final": {
-        "type": "!",
+        "type": "list",
         "member": null,
         "length": null
       },
@@ -1577,7 +1772,7 @@
         }
       ],
       "final": {
-        "type": "!",
+        "type": null,
         "member": null,
         "length": null
       },
@@ -1597,7 +1792,7 @@
         }
       ],
       "final": {
-        "type": "!",
+        "type": "record",
         "member": null,
         "length": null
       },
@@ -1637,8 +1832,8 @@
         }
       ],
       "final": {
-        "type": "!",
-        "member": null,
+        "type": "list",
+        "member": "integer",
         "length": null
       },
       "arity": 2
@@ -1736,7 +1931,7 @@
     "loop_null": {
       "signature": [],
       "final": {
-        "type": ".",
+        "type": "!",
         "member": null,
         "length": null
       },
@@ -1758,7 +1953,7 @@
         }
       ],
       "final": {
-        "type": ".",
+        "type": "!",
         "member": null,
         "length": null
       },
@@ -1780,7 +1975,7 @@
         }
       ],
       "final": {
-        "type": "*",
+        "type": null,
         "member": null,
         "length": null
       },
@@ -1817,7 +2012,7 @@
         }
       ],
       "final": {
-        "type": "!",
+        "type": null,
         "member": null,
         "length": null
       },
@@ -1839,7 +2034,7 @@
         }
       ],
       "final": {
-        "type": "!",
+        "type": null,
         "member": null,
         "length": null
       },
@@ -1961,8 +2156,8 @@
         }
       ],
       "final": {
-        "type": "*",
-        "member": null,
+        "type": "string",
+        "member": "string",
         "length": null
       },
       "arity": 1
@@ -1985,7 +2180,7 @@
       "final": {
         "type": "string",
         "member": "string",
-        "length": "!"
+        "length": null
       },
       "arity": 1
     }
@@ -2054,7 +2249,7 @@
         }
       ],
       "final": {
-        "type": "*",
+        "type": null,
         "member": null,
         "length": null
       },
@@ -2125,8 +2320,8 @@
         }
       ],
       "final": {
-        "type": "*",
-        "member": null,
+        "type": "string",
+        "member": "string",
         "length": null
       },
       "arity": 2
@@ -2174,8 +2369,8 @@
         }
       ],
       "final": {
-        "type": "*",
-        "member": null,
+        "type": "string",
+        "member": "string",
         "length": null
       },
       "arity": 2
@@ -2257,7 +2452,7 @@
     "namespace_null": {
       "signature": [],
       "final": {
-        "type": "*",
+        "type": "record",
         "member": null,
         "length": null
       },
@@ -2350,8 +2545,8 @@
         }
       ],
       "final": {
-        "type": "*",
-        "member": null,
+        "type": "list",
+        "member": "string",
         "length": null
       },
       "arity": 2

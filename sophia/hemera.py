@@ -10,6 +10,15 @@ def stream_out(value): print(value, sep = '')
 
 def stream_err(value): print(value, sep = '', file = stderr)
 
+def debug_descriptor(descriptor):
+
+	print(descriptor.type,
+		  descriptor.member,
+		  descriptor.length,
+		  descriptor.supertypes,
+		  descriptor.supermember,
+		  descriptor.specificity)
+
 def debug_instructions(task):
 	
 	print('===', file = stderr)

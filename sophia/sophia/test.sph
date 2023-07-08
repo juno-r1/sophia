@@ -1,1 +1,7 @@
+weird problem with the instruction generator of sophia
+apparently so long as there are no operators
+the interpreter completely ignores arbitrary sequences of names
+so you can just comment like this
+without any effect whatsoever
+
 return true

@@ -158,11 +158,12 @@ class task:
 		self.path = int(bool(instructions)) # Does not execute if the parser encountered an error
 		self.op = instructions[0] # Current instruction
 		self.signature = () # Current type signature
+		self.properties = aletheia.descriptor(None, None, None) # Final type properties
 		self.caller = None # Stores the state of the calling routine
 		self.values = arche.builtins | values
-		self.types = arche.types | types
+		self.types = {k: self.describe(v) for k, v in (arche.types | types).items()} # Pre-compute dispatch information
 		self.reserved = tuple(self.values)
-		self.final = aletheia.descriptor('untyped') # Return type of routine
+		self.final = aletheia.descriptor() # Return type of routine
 
 	def execute(self):
 		"""Task runtime loop; target of task.pool.apply_async()."""
@@ -184,23 +185,29 @@ class task:
 			if not self.op.register: # Labels
 				continue
 			arity = self.op.arity
-			args = [self] + [self.find(arg) for arg in self.op.args]
+			try:
+				args = [self] + [self.find(arg) for arg in self.op.args]
+			except NameError:
+				if self.op.register != '0':
+					continue
 			self.signature = tuple([self.check(arg) for arg in self.op.args])
 			"""
 			Multiple dispatch algorithm, with help from Julia:
 			https://github.com/JeffBezanson/phdthesis
 			Now distilled into 3 extremely stupid list comprehensions!
 			"""
-			if not (method := self.find(self.op.name)):
+			try:
+				method = self.find(self.op.name)
+			except NameError:
 				continue
 			if not (candidates := [x for x in method.methods if method.arity[x] == arity]): # Remove candidates with mismatching arity
 				self.error('DISP', method.name, self.signature)
 				continue
-			for i, name in enumerate(self.signature):
-				candidates = [item for item in candidates if self.supertype(name, item[i])] # Filter for candidates with a matching supertype
-				specificity = [self.specificity(item[i]) for item in candidates]
-				depth = max(specificity, default = 0) # Get the depth of the most specific candidate
-				candidates = [item for j, item in enumerate(candidates) if specificity[j] == depth] # Keep only the most specific signatures
+			for i, name in enumerate(self.signature): # Triple-nested for loops? You know it
+				candidates = [item for item in candidates if name < item[i]] # Filter for candidates with a matching supertype
+				for j in range(aletheia.descriptor.criteria): # Iterate through specificity criteria
+					depth = max([item[i].specificity[j] for item in candidates], default = 0) # Get the depth of the most specific candidate
+					candidates = [item for item in candidates if item[i].specificity[j] == depth] # Keep only the most specific signatures
 			try:
 				match = candidates[0]
 				instance = method.methods[match]
@@ -212,12 +219,11 @@ class task:
 			"""
 			value = instance(*args) # Needs to happen first to account for state changes
 			address, final = self.op.register, method.finals[match]
-			if final.type == '!': # Function provides type signature
-				self.values[address], self.types[address] = value
-			elif final.type == '*' or '.bind' in self.op.label: # Infer type
-				self.values[address], self.types[address] = value, aletheia.infer(value)
-			elif final.type != '.': # Write if not suppressed
-				self.values[address], self.types[address] = value, final
+			if final.type != '!' and self.properties.type != '!': # Suppress write
+				final = aletheia.descriptor(final.type, final.member, final.length)
+				self.values[address] = value
+				self.types[address] = self.describe(final.merge(self.properties).complete(value))
+			self.properties = aletheia.descriptor(None, None, None)
 		if 'profile' in self.flags:
 			pr.disable()
 			pr.print_stats(sort = 'tottime')
@@ -226,7 +232,7 @@ class task:
 		self.message('terminate')
 		return self.state() # Return mutable state to supervisor
 
-	def branch(self, scope = 0, skip = False, move = False):
+	def branch(self, scope = 0, skip = False, move = False): # Universal branch function
 
 		path = self.path
 		while True:
@@ -240,23 +246,24 @@ class task:
 
 	def find(self, name): # Retrieves a binding's value in the current namespace
 		
-		return self.values[name] if name in self.values else self.error('FIND', name)
+		if name in self.values:
+			return self.values[name]
+		else:
+			self.error('FIND', name)
+			raise NameError
 
 	def check(self, name, default = None): # Internal function to get a value's type descriptor
 		
-		return self.types[name] if name in self.types else aletheia.infer(default)
+		return self.types[name] if name in self.types else self.describe(aletheia.infer(default))
 
-	def supertype(self, name, other): # Check if other is a supertype of name
+	def describe(self, value):
 		
-		return (other.type in self.values[name.type].supertypes) and \
-			   (other.member in self.values[name.member].supertypes) and \
-			   (other.length is None or other.length == name.length)
-
-	def specificity(self, name): # Get specificity of type
-		
-		return self.values[name.type].specificity + \
-			   (self.values[name.member].specificity if name.member else 0) + \
-			   int(name.length is not None)
+		value.supertypes = self.values[value.type or 'null'].supertypes
+		value.supermember = self.values[value.member or 'null'].supertypes
+		value.specificity = (self.values[value.type].specificity if value.type else 0,
+							 self.values[value.member].specificity if value.member else 0,
+							 int(value.length is not None))
+		return value
 
 	def state(self): # Get current state of task as subset of __dict__
 
@@ -277,8 +284,7 @@ class task:
 	def prepare(self, namespace, message): # Sets up task for event execution
 		
 		self.restore(namespace)
-		self.path = 0
-		scope = 0
+		self.path, scope = 0, 0
 		while True:
 			op, self.path = self.instructions[self.path], self.path + 1
 			if not op.register:
@@ -286,7 +292,7 @@ class task:
 				if scope == 1 and op.name == 'EVENT':
 					name = op.label[0]
 					break
-		self.values[name], self.types[name] = message, aletheia.descriptor('untyped')
+		self.values[name], self.types[name] = message, self.describe(aletheia.descriptor('untyped'))
 
 	def message(self, instruction = None, *args):
 		

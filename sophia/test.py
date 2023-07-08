@@ -1,2 +1,2 @@
-from mathos import real
-print(True == real(1))
+a = -2.5
+print(a.numerator, a.denominator)

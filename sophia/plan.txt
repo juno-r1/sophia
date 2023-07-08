@@ -13,3 +13,38 @@ for final:
 
 it's done, but at what cost?
 there's gotta be a better way to do this
+try again
+
+---
+
+extended types
+main type encoded as string
+type properties encoded as descriptor
+
+runtime loop:
+
+get type signature and descriptors
+dispatch first for type and then for descriptors
+(things happen)
+write final type
+infer descriptors unless explicitly provided
+
+json format for type information of methods
+
+for signature:
+	specified: required for dispatch
+	null: not required for dispatch
+for final:
+	specified: automatically provided to the final type
+	null: inferred by interpreter unless overridden by method
+	"!": no return; does not bind
+
+---
+
+i need different criteria to evaluate specificity
+because a number just ain't gonna cut it
+what does "the most specific" type mean for extended types?
+
+type should be the most specific
+from those candidates, member type should be the most specific
+from those candidates, length should be the most specific

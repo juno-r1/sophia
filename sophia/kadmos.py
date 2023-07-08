@@ -78,7 +78,7 @@ class translator:
 		self.constant = constants # Constant register counter
 		self.instructions = [instruction('START', '', label = [node.name])]
 		self.values = {'0': None, '&0': None} # Register namespace
-		self.types = {'0': descriptor('null'), '&0': descriptor('null')} # Register types
+		self.types = {'0': descriptor(prepare = True), '&0': descriptor(prepare = True)} # Register types
 
 	def generate(self, offset = 0):
 		
@@ -142,7 +142,7 @@ class translator:
 			else:
 				index = str(sum(self.path) + offset + 1) # Sum of path is a pretty good way to minimise registers
 				self.values[index] = None
-				self.types[index] = 'untyped'
+				self.types[index] = descriptor(prepare = True)
 				return index
 		else:
 			if isinstance(self.node, name): # Variable register
