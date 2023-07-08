@@ -581,9 +581,21 @@ def u_sfe_null(_, x): return False
 
 def u_sfe_untyped(_, x): return True
 
+def b_sfe_untyped_untyped(task, x, y):
+	
+	task.properties = task.signature[0]
+	return x
+
+def b_sfe_null_untyped(task, x, y):
+	
+	task.properties = task.signature[1]
+	return y
+
 arche_sfe = function_method('?')
 arche_sfe.retrieve(u_sfe_null)
 arche_sfe.retrieve(u_sfe_untyped)
+arche_sfe.retrieve(b_sfe_untyped_untyped)
+arche_sfe.retrieve(b_sfe_null_untyped)
 
 def u_usf(task, x): return x or None
 

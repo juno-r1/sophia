@@ -1349,6 +1349,46 @@
         "length": null
       },
       "arity": 1
+    },
+    "b_sfe_untyped_untyped": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": null,
+        "member": null,
+        "length": null
+      },
+      "arity": 2
+    },
+    "b_sfe_null_untyped": {
+      "signature": [
+        {
+          "type": "null",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": null,
+        "member": null,
+        "length": null
+      },
+      "arity": 2
     }
   },
   "!": {

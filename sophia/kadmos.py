@@ -34,7 +34,8 @@ binding_power = (('(', ')', '[', ']', '{', '}'), # The left-binding power of a b
 				 ('&', '|'),
 				 ('+', '-'),
 				 ('*', '/', '%'),
-				 ('^',))
+				 ('^',),
+				 ('?',))
 
 class instruction:
 	"""Instruction used in the virtual machine"""
