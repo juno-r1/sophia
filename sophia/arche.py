@@ -388,7 +388,7 @@ arche_sub.retrieve(b_sub)
 def u_rsv(task, x):
 	
 	task.message('resolve', x)
-	task.properties = x.check
+	task.properties.merge(x.check)
 	return task.calls.recv()
 
 def b_mul(_, x, y):	return x * y
@@ -582,12 +582,12 @@ def u_sfe_untyped(_, x): return True
 
 def b_sfe_untyped_untyped(task, x, y):
 	
-	task.properties = task.signature[0]
+	task.properties.merge(task.signature[0])
 	return x
 
 def b_sfe_null_untyped(task, x, y):
 	
-	task.properties = task.signature[1]
+	task.properties.merge(task.signature[1])
 	return y
 
 arche_sfe = function_method('?')
@@ -663,11 +663,11 @@ def bind_untyped(task, value):
 	name, signature, offset = task.op.label[0], task.signature[0], 0
 	while task.instructions[task.path + offset].register != name:
 		offset = offset + 1
-	task.instructions[task.path + offset].name = task.check(name, default = value).type if name in task.values else signature.type
+	task.instructions[task.path + offset].name = task.types[name].type if name in task.types else signature.type
 	if name in task.reserved:
 		return task.error('BIND', name)
 	else:
-		task.properties = signature
+		task.properties.merge(signature)
 		return value
 
 def bind_untyped_type(task, value, type_routine):
@@ -676,7 +676,7 @@ def bind_untyped_type(task, value, type_routine):
 	if name in task.reserved:
 		return task.error('BIND', name)
 	else:
-		task.properties = signature
+		task.properties.merge(signature)
 		return value
 
 arche_bind = function_method('.bind')
@@ -860,18 +860,22 @@ arche_index.retrieve(index_slice_slice)
 
 def iterator_string(task, iterable):
 
+	task.properties.type = 'string'
 	return iter(iterable)
 
 def iterator_list(task, iterable):
 
+	task.properties.type = task.signature[0].member
 	return iter(iterable)
 
 def iterator_record(task, iterable):
 
+	task.properties.type = task.signature[0].member
 	return iter(iterable)
 
 def iterator_slice(task, iterable):
 
+	task.properties.type = 'integer'
 	return iter(iterable)
 
 arche_iterator = function_method('.iterator')
@@ -920,8 +924,10 @@ arche_meta.retrieve(meta_string)
 def next_untyped(task, iterator):
 
 	try:
+		task.properties.type = task.signature[0].type
 		return next(iterator)
 	except StopIteration:
+		task.properties.type = 'null'
 		return None
 
 arche_next = function_method('.next')
@@ -937,7 +943,7 @@ def return_null(task, sentinel):
 
 def return_untyped(task, sentinel):
 	
-	task.properties = task.final
+	task.properties.merge(task.final)
 	if task.caller:
 		task.restore(task.caller) # Restore namespace of calling routine
 	else:
@@ -1021,11 +1027,25 @@ def unloop_null(task, value):
 
 def unloop_untyped(task, value):
 	
+	task.properties.type = task.signature[0].type
+	return value
+
+def unloop_null_type(task, value, routine):
+	
+	iterator, name = str(int(task.op.args[0]) - 1), task.op.label[0]
+	task.values[iterator] = None # Sanitise registers
+	del task.values[name], task.types[name]
+	return task.branch(1, False, True)
+
+def unloop_untyped_type(task, value, routine):
+	
 	return value
 
 arche_unloop = function_method('.unloop')
 arche_unloop.retrieve(unloop_null)
 arche_unloop.retrieve(unloop_untyped)
+arche_unloop.retrieve(unloop_null_type)
+arche_unloop.retrieve(unloop_untyped_type)
 
 """
 Standard streams and I/O operations. These futures are abstract interfaces

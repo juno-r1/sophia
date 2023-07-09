@@ -58,15 +58,17 @@ class descriptor:
 				member = values[1]
 		return cls(values[0], member, length)
 
-	def merge(self, other):
-		self.type = other.type or self.type
-		self.member = other.member or self.member
-		self.length = other.length if other.length is not None else self.length
-		return self
+	def merge(self, other): # Because Python loves to keep references where it shouldn't
 
-	def complete(self, value): # Completes descriptor with inferred type of value
+		self.type = other.type
+		self.member = other.member
+		self.length = other.length
+
+	def complete(self, other, value): # Completes descriptor with properties and inferred type of value
 		
-		self.type = self.type or infer_type(value)
+		self.type = self.type or other.type or infer_type(value)
+		self.member = self.member or other.member
+		self.length = self.length if self.length is not None else other.length
 		if self.type in ('string', 'list', 'record', 'slice'):
 			self.member = self.member or infer_member(value, self.type)
 			self.length = self.length if self.length is not None else len(value)

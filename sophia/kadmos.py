@@ -499,12 +499,18 @@ class for_statement(statement):
 	def start(self): 
 		
 		adjacent = str(int(self.register) + 1) # Uses the register of the first enclosed statement
-		return (instruction('.iterator', self.register, (self.nodes[0].register,)),
-				instruction('ELSE' if self.branch else 'START', '', line = self.line),
-				instruction('.next', adjacent, (self.register,)),
-				instruction('.unloop', '0', (adjacent,), label = [self.value.value]), # Equivalent to Python's StopIteration check
-				instruction('.bind', self.value.value, ('0', self.value.type) if self.value.type else ('0',), label = [self.value.value]),
-				instruction(self.value.type if self.value.type else 'untyped', self.value.value, (self.value.value,)))
+		if self.value.type:
+			return (instruction('.iterator', self.register, (self.nodes[0].register,)),
+					instruction('ELSE' if self.branch else 'START', '', line = self.line),
+					instruction('.next', adjacent, (self.register,)),
+					instruction('.unloop', '0', (adjacent, self.value.type), label = [self.value.value]), # Equivalent to Python's StopIteration check
+					instruction('.bind', self.value.value, ('0', self.value.type), label = [self.value.value]),
+					instruction(self.value.type, self.value.value, (self.value.value,)))
+		else:
+			return (instruction('.iterator', self.register, (self.nodes[0].register,)),
+					instruction('ELSE' if self.branch else 'START', '', line = self.line),
+					instruction('.next', adjacent, (self.register,)),
+					instruction('.unloop', self.value.value, (adjacent,), label = [self.value.value]),) # Equivalent to Python's StopIteration check
 
 	def execute(self): return instruction('.loop', '0'),
 

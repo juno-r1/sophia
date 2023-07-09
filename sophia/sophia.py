@@ -186,19 +186,24 @@ class task:
 				continue
 			arity = self.op.arity
 			try:
-				args = [self] + [self.find(arg) for arg in self.op.args]
-			except NameError:
-				if self.op.register != '0':
+				args = [self] + [self.values[arg] for arg in self.op.args]
+				self.signature = tuple([self.types[arg] for arg in self.op.args])
+			except KeyError:
+				self.error('FIND', name)
+				if self.op.register == '0':
+					args = [self, None]
+					self.signature = [aletheia.descriptor('null', prepare = True)]
+				else:
 					continue
-			self.signature = tuple([self.check(arg) for arg in self.op.args])
 			"""
 			Multiple dispatch algorithm, with help from Julia:
 			https://github.com/JeffBezanson/phdthesis
 			Now distilled into 3 extremely stupid list comprehensions!
 			"""
 			try:
-				method = self.find(self.op.name)
-			except NameError:
+				method = self.values[self.op.name]
+			except KeyError:
+				self.error('FIND', self.op.name)
 				continue
 			if not (candidates := [x for x in method.methods if method.arity[x] == arity]): # Remove candidates with mismatching arity
 				self.error('DISP', method.name, self.signature)
@@ -220,9 +225,8 @@ class task:
 			value = instance(*args) # Needs to happen first to account for state changes
 			address, final = self.op.register, method.finals[match]
 			if final.type != '!' and self.properties.type != '!': # Suppress write
-				final = aletheia.descriptor(final.type, final.member, final.length)
 				self.values[address] = value
-				self.types[address] = self.describe(final.merge(self.properties).complete(value))
+				self.types[address] = self.describe(self.properties.complete(final, value))
 			self.properties = aletheia.descriptor(None, None, None)
 		if 'profile' in self.flags:
 			pr.disable()
@@ -244,25 +248,12 @@ class task:
 						self.path = path
 					return path
 
-	def find(self, name): # Retrieves a binding's value in the current namespace
-		
-		if name in self.values:
-			return self.values[name]
-		else:
-			self.error('FIND', name)
-			raise NameError
-
-	def check(self, name, default = None): # Internal function to get a value's type descriptor
-		
-		return self.types[name] if name in self.types else self.describe(aletheia.infer(default))
-
 	def describe(self, value):
 		
-		value.supertypes = self.values[value.type or 'null'].supertypes
-		value.supermember = self.values[value.member or 'null'].supertypes
-		value.specificity = (self.values[value.type].specificity if value.type else 0,
-							 self.values[value.member].specificity if value.member else 0,
-							 int(value.length is not None))
+		type_routine, member_routine = self.values[value.type or 'null'], self.values[value.member or 'null']
+		value.supertypes = type_routine.supertypes
+		value.supermember = member_routine.supertypes
+		value.specificity = (type_routine.specificity, member_routine.specificity, int(value.length is not None))
 		return value
 
 	def state(self): # Get current state of task as subset of __dict__

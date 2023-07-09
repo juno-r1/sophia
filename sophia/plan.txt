@@ -1,50 +1,32 @@
-extended sequence types
+faster specificity
 
-json format for type information of methods
+what needs to be done?
 
-for signature:
-	specified: required for dispatch
-	null: not required for dispatch
-for final:
-	specified: automatically provided to the final type
-	"*": inferred by interpreter
-	"!": must be returned by function
-	".": does not bind
+for each criterion, select the candidates with the highest specificity
+is there a way to do that *without* iterating through the criteria?
 
-it's done, but at what cost?
-there's gotta be a better way to do this
-try again
+algorithm currently works by finding all valid candidates and then refining the list to get the most specific valid candidate
+another method that would work is the reverse
+find the most specific candidate and then check if it's valid
+or:
+get every valid candidate regardless of specificity and then get the most specific candidate in one
 
----
+type signatures are expressible as a sequence of numbers representing the specificity of each parameter
+for example:
 
-extended types
-main type encoded as string
-type properties encoded as descriptor
+int, str.str.1, untyped
+>>>
+3.0.0.2.2.1.1.0.0
 
-runtime loop:
-
-get type signature and descriptors
-dispatch first for type and then for descriptors
-(things happen)
-write final type
-infer descriptors unless explicitly provided
-
-json format for type information of methods
-
-for signature:
-	specified: required for dispatch
-	null: not required for dispatch
-for final:
-	specified: automatically provided to the final type
-	null: inferred by interpreter unless overridden by method
-	"!": no return; does not bind
+assuming that every candidate is valid, the highest number is the most specific
 
 ---
 
-i need different criteria to evaluate specificity
-because a number just ain't gonna cut it
-what does "the most specific" type mean for extended types?
+better for loop
 
-type should be the most specific
-from those candidates, member type should be the most specific
-from those candidates, length should be the most specific
+if type:
+	use given type
+	bind
+else:
+	use member type of iterator
+	do not bind

@@ -1894,7 +1894,7 @@
         }
       ],
       "final": {
-        "type": "untyped",
+        "type": null,
         "member": null,
         "length": null
       },
@@ -1909,7 +1909,7 @@
         }
       ],
       "final": {
-        "type": "untyped",
+        "type": null,
         "member": null,
         "length": null
       },
@@ -1924,7 +1924,7 @@
         }
       ],
       "final": {
-        "type": "untyped",
+        "type": null,
         "member": null,
         "length": null
       },
@@ -1939,7 +1939,7 @@
         }
       ],
       "final": {
-        "type": "untyped",
+        "type": null,
         "member": null,
         "length": null
       },
@@ -2158,6 +2158,46 @@
         "length": null
       },
       "arity": 1
+    },
+    "unloop_null_type": {
+      "signature": [
+        {
+          "type": "null",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "type",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "null",
+        "member": null,
+        "length": null
+      },
+      "arity": 2
+    },
+    "unloop_untyped_type": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "type",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "untyped",
+        "member": null,
+        "length": null
+      },
+      "arity": 2
     }
   },
   "stdin": {
