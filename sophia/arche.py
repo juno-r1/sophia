@@ -2,11 +2,10 @@
 The Arche module defines the standard library of Sophia.
 '''
 from aletheia import descriptor, infer, subtype
-import aletheia
 from iris import reference
-from kadmos import instruction, module, translator
 from mathos import real, slice, element
 from math import copysign
+import aletheia, kadmos
 
 import json
 with open('kleio.json') as kleio:
@@ -504,24 +503,24 @@ def b_ins_type(task, x, y):
 	
 	name, supername = '<{0}&{1}>'.format(x.name, y.name), [i for i in x.supertypes if i in y.supertypes][0] # Use closest mutual supertype
 	supertype, index = task.values[supername], x.supertypes.index(supername)
+	type_tag, final_tag, super_tag = descriptor(name), descriptor(name), task.describe(descriptor(supername))
+	type_tag.supertypes = [name] + super_tag.supertypes
+	type_tag.specificity = (super_tag.specificity[0] + 1, 0, 0)
+	x_tag, y_tag = task.describe(descriptor(x.name)), task.describe(descriptor(y.name))
 	routine = type_method(name, x.supertypes[index:], x.prototype)
-	lhs = [instruction(x.name, '0', (name,)), 
-		   instruction('?', '0', ('0',)),
-		   instruction('.constraint', '0', ('0',))]
-	rhs = [instruction(y.name, '0', (name,)),
-		   instruction('?', '0', ('0',)),
-		   instruction('.constraint', '0', ('0',))]
+	routine.register(subtype, final_tag, (type_tag,))
+	lhs, rhs = kadmos.generate_intersection(name, x.name), kadmos.generate_intersection(name, y.name)
 	check = lhs + rhs
-	start, end = [instruction('START', '', label = [name])], [instruction('.return', '0', (name,)), instruction('END', '')]
-	routine.register(type_definition(start + rhs + end, name, descriptor(supername)), name, (descriptor(x.name),))
-	routine.register(type_definition(start + lhs + end, name, descriptor(supername)), name, (descriptor(y.name),))
+	start, end = kadmos.generate_labels(name)
+	routine.register(type_definition(start + rhs + end, name, super_tag), name, (x_tag,))
+	routine.register(type_definition(start + lhs + end, name, super_tag), name, (y_tag,))
 	for key, value in supertype.methods.items(): # Rewrite methods with own type name
 		if isinstance(value, type_definition):
-			definition = [instruction.rewrite(i, supername, name) for i in value.instructions]
+			definition = [kadmos.instruction.rewrite(i, supername, name) for i in value.instructions]
 			definition[-2:-2] = check # Add user constraints to instructions
-			routine.register(type_definition(definition, name, key[0]), descriptor(name), key)
+			routine.register(type_definition(definition, name, key[0]), final_tag, key)
 		else: # Built-in definition
-			routine.register(type_definition(start + check + end, name, key[0]), descriptor(name), key)
+			routine.register(type_definition(start + check + end, name, key[0]), final_tag, key)
 	return routine
 
 arche_ins = function_method('&')
@@ -543,23 +542,23 @@ def b_uni_type(task, x, y):
 
 	name, supername = '<{0}|{1}>'.format(x.name, y.name), [i for i in x.supertypes if i in y.supertypes][0] # Use closest mutual supertype
 	supertype, index = task.values[supername], x.supertypes.index(supername)
+	type_tag, final_tag, super_tag = descriptor(name), descriptor(name), task.describe(descriptor(supername))
+	type_tag.supertypes = [name] + super_tag.supertypes
+	type_tag.specificity = (super_tag.specificity[0] + 1, 0, 0)
+	x_tag, y_tag = task.describe(descriptor(x.name)), task.describe(descriptor(y.name))
 	routine = type_method(name, x.supertypes[index:], x.prototype)
-	check = [instruction(x.name, '0', (name,)), 
-			 instruction('?', '1', ('0',)),
-			 instruction(y.name, '0', (name,)),
-			 instruction('?', '0', ('0',)),
-			 instruction('or', '0', ('0', '1')),
-			 instruction('.constraint', '0', ('0',))]
-	start, end = [instruction('START', '', label = [name])], [instruction('.return', '0', (name,)), instruction('END', '')]
-	routine.register(type_definition(start + end, name, descriptor(supername)), descriptor(name), (descriptor(x.name),))
-	routine.register(type_definition(start + end, name, descriptor(supername)), descriptor(name), (descriptor(y.name),))
+	routine.register(subtype, final_tag, (type_tag,))
+	check = kadmos.generate_union(name, x.name, y.name)
+	start, end = kadmos.generate_labels(name)
+	routine.register(type_definition(start + end, name, super_tag), final_tag, (x_tag,))
+	routine.register(type_definition(start + end, name, super_tag), final_tag, (y_tag,))
 	for key, value in supertype.methods.items(): # Rewrite methods with own type name
 		if isinstance(value, type_definition): # Built-in supertype
-			definition = [instruction.rewrite(i, supername, name) for i in value.instructions]
+			definition = [kadmos.instruction.rewrite(i, supername, name) for i in value.instructions]
 			definition[-2:-2] = check # Add user constraints to instructions
-			routine.register(type_definition(definition, name, key[0]), descriptor(name), key)
+			routine.register(type_definition(definition, name, key[0]), final_tag, key)
 		else:
-			routine.register(type_definition(start + check + end, name, key[0]), descriptor(name), key)
+			routine.register(type_definition(start + check + end, name, key[0]), final_tag, key)
 	return routine
 
 arche_uni = function_method('|')
@@ -631,11 +630,17 @@ them inaccessible to the user.
 
 def alias_type(task, routine): # Type alias
 
-	new = type_method(task.op.register, routine.supertypes[1:], routine.prototype)
+	name, supername = task.op.register, routine.supertypes[1]
+	new_tag, final_tag = task.describe(descriptor(supername)), descriptor(name)
+	new_tag.type = name
+	new_tag.supertypes = [name] + new_tag.supertypes
+	new_tag.specificity = (new_tag.specificity[0] + 1, 0, 0)
+	new = type_method(name, routine.supertypes[1:], routine.prototype)
+	new.register(subtype, final_tag, (new_tag,))
 	for key, value in list(routine.methods.items())[1:]: # Rewrite methods with own type name
-		new.register(type_definition([instruction.rewrite(i, routine.name, new.name) for i in value.instructions]
+		new.register(type_definition([kadmos.instruction.rewrite(i, routine.name, name) for i in value.instructions]
 									 if isinstance(value, type_definition)
-									 else value, new.name, key[0]), descriptor(new.name), key)
+									 else value, name, key[0]), final_tag, key)
 	return new
 
 arche_alias = function_method('.alias')
@@ -899,10 +904,10 @@ arche_loop.retrieve(loop_null)
 
 def meta_string(task, string):
 
-	meta = module(string, meta = task.name)
+	meta = kadmos.module(string, meta = task.name)
 	offset = int(task.op.register) - 1
 	constants = len([item for item in task.values if item[0] == '&']) - 1
-	instructions, values, types = translator(meta, constants = constants).generate(offset = offset)
+	instructions, values, types = kadmos.translator(meta, constants = constants).generate(offset = offset)
 	start = task.path
 	end = task.branch(0, True, False)
 	task.instructions[start + 1:end] = instructions
@@ -960,51 +965,47 @@ arche_sequence.retrieve(sequence_untyped)
 def type_type(task, supertype):
 	
 	name, supername = task.op.register, supertype.name
-	type_tag, final_tag, supertype_tag = descriptor(name), descriptor(name), task.describe(descriptor(supername))
-	type_tag.supertypes = [name] + supertype_tag.supertypes
-	type_tag.specificity = (supertype_tag.specificity[0] + 1, 0, 0)
+	type_tag, final_tag, super_tag = descriptor(name), descriptor(name), task.describe(descriptor(supername))
+	type_tag.supertypes = [name] + super_tag.supertypes
+	type_tag.specificity = (super_tag.specificity[0] + 1, 0, 0)
 	start, end = task.path, task.branch(0, True, True)
 	instructions = task.instructions[start:end]
 	routine = type_method(name, supertype.supertypes, supertype.prototype)
 	routine.register(subtype, final_tag, (type_tag,))
 	if supername in aletheia.supertypes: # Built-in supertype
-		check = [instruction(supername, '0', (name,)), 
-				 instruction('?', '0', ('0',)), # Convert to boolean
-				 instruction('.constraint', '0', ('0',), label = [supername])]
-		routine.register(type_definition(instructions, name, supertype_tag), final_tag, (supertype_tag,))
+		check = kadmos.generate_supertype(name, supername)
+		routine.register(type_definition(instructions, name, super_tag), final_tag, (super_tag,))
 		instructions[1:1] = check
-		routine.register(type_definition(instructions, name, supertype_tag), final_tag, (descriptor('untyped', prepare = True),))
+		routine.register(type_definition(instructions, name, super_tag), final_tag, (descriptor('untyped', prepare = True),))
 	else:
 		for key, value in list(supertype.methods.items())[1:]: # Rewrite methods with own type name
-			definition = [instruction.rewrite(i, supername, name) for i in value.instructions]
+			definition = [kadmos.instruction.rewrite(i, supername, name) for i in value.instructions]
 			definition[-2:-2] = instructions[1:-2] # Add user constraints to instructions
 			routine.register(type_definition(definition, name, key[0]), final_tag, key)
-		routine.register(type_definition(instructions, name, supertype_tag), final_tag, (supertype_tag,))
+		routine.register(type_definition(instructions, name, super_tag), final_tag, (super_tag,))
 	return routine
 
 def type_type_untyped(task, supertype, prototype):
 	
 	name, supername = task.op.register, supertype.name
-	type_tag, final_tag, supertype_tag = descriptor(name), descriptor(name), task.describe(descriptor(supername))
-	type_tag.supertypes = [name] + supertype_tag.supertypes
-	type_tag.specificity = (supertype_tag.specificity[0] + 1, 0, 0)
+	type_tag, final_tag, super_tag = descriptor(name), descriptor(name), task.describe(descriptor(supername))
+	type_tag.supertypes = [name] + super_tag.supertypes
+	type_tag.specificity = (super_tag.specificity[0] + 1, 0, 0)
 	start, end = task.path, task.branch(0, True, True)
 	instructions = task.instructions[start:end]
 	routine = type_method(name, supertype.supertypes, prototype)
 	routine.register(subtype, final_tag, (type_tag,))
 	if supername in aletheia.supertypes: # Built-in supertype
-		check = [instruction(supername, '0', (name,)), 
-				 instruction('?', '0', ('0',)), # Convert to boolean
-				 instruction('.constraint', '0', ('0',), label = [supername])]
-		routine.register(type_definition(instructions, name, supertype_tag), final_tag, (supertype_tag,))
+		check = kadmos.generate_supertype(name, supername)
+		routine.register(type_definition(instructions, name, super_tag), final_tag, (super_tag,))
 		instructions[1:1] = check
-		routine.register(type_definition(instructions, name, supertype_tag), final_tag, (descriptor('untyped', prepare = True),))
+		routine.register(type_definition(instructions, name, super_tag), final_tag, (descriptor('untyped', prepare = True),))
 	else:
 		for key, value in list(supertype.methods.items())[1:]: # Rewrite methods with own type name
-			definition = [instruction.rewrite(i, supername, name) for i in value.instructions]
+			definition = [kadmos.instruction.rewrite(i, supername, name) for i in value.instructions]
 			definition[-2:-2] = instructions[1:-2] # Add user constraints to instructions
 			routine.register(type_definition(definition, name, key[0]), final_tag, key)
-		routine.register(type_definition(instructions, name, supertype_tag), final_tag, (supertype_tag,))
+		routine.register(type_definition(instructions, name, super_tag), final_tag, (super_tag,))
 	return routine
 
 arche_type = function_method('.type')

@@ -877,6 +877,10 @@ class eol:
 	"""Sentinel object for the lexer."""
 	def __init__(self): self.lbp = -1
 
+"""
+Utility functions.
+"""
+
 def group(lines): # Groups lines with trailing characters and splits single-line definitions
 
 	if not lines:
@@ -954,3 +958,28 @@ def bp(symbol):
 			return i + 1
 	else:
 		return len(binding_power) # Default binding power; 1 less than unary operators
+
+def generate_labels(name):
+
+	return [instruction('START', '', label = [name])], [instruction('.return', '0', (name,)), instruction('END', '')]
+
+def generate_supertype(name, supername):
+
+	return [instruction(supername, '0', (name,)), 
+			instruction('?', '0', ('0',)), # Convert to boolean
+			instruction('.constraint', '0', ('0',), label = [supername])]
+
+def generate_intersection(name, x_name):
+
+	return [instruction(x_name, '0', (name,)), 
+			instruction('?', '0', ('0',)),
+			instruction('.constraint', '0', ('0',))]
+
+def generate_union(name, x_name, y_name):
+
+	return [instruction(x_name, '0', (name,)), 
+			instruction('?', '1', ('0',)),
+			instruction(y_name, '0', (name,)),
+			instruction('?', '0', ('0',)),
+			instruction('or', '0', ('0', '1')),
+			instruction('.constraint', '0', ('0',))]

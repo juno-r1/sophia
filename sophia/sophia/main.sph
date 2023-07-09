@@ -1,1 +1,44 @@
-return null ? 'a'
+type pos extends int => pos > 0
+type even extends int => even % 2 = 0
+
+int w: 2; int x: 1; int y: -2; int z: -1
+
+test is pos | even
+
+assert test(w):
+	bool a: true
+else:
+	bool a: false
+assert test(x):
+	bool b: true
+else:
+	bool b: false
+assert test(y):
+	bool c: true
+else:
+	bool c: false
+assert test(z):
+	bool d: false
+else:
+	bool d: true
+
+test is pos & even
+
+assert test(w):
+	bool e: true
+else:
+	bool e: false
+assert test(x):
+	bool f: false
+else:
+	bool f: true
+assert test(y):
+	bool g: false
+else:
+	bool g: true
+assert test(z):
+	bool h: false
+else:
+	bool h: true
+
+return a and b and c and d and e and f and g and h
