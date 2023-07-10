@@ -164,6 +164,7 @@ class task:
 		self.types = {k: self.describe(v) for k, v in (arche.types | types).items()} # Pre-compute dispatch information
 		self.reserved = tuple(self.values)
 		self.final = aletheia.descriptor() # Return type of routine
+		self.cache = {} # Instruction cache
 
 	def execute(self):
 		"""Task runtime loop; target of task.pool.apply_async()."""
@@ -200,25 +201,30 @@ class task:
 			https://github.com/JeffBezanson/phdthesis
 			Now distilled into 3 extremely stupid list comprehensions!
 			"""
-			try:
-				method = self.values[self.op.name]
-			except KeyError:
-				self.error('FIND', self.op.name)
-				continue
-			if not (candidates := [x for x in method.methods if method.arity[x] == arity]): # Remove candidates with mismatching arity
-				self.error('DISP', method.name, self.signature)
-				continue
-			for i, name in enumerate(self.signature): # Triple-nested for loops? You know it
-				candidates = [item for item in candidates if name < item[i]] # Filter for candidates with a matching supertype
-				for j in range(aletheia.descriptor.criteria): # Iterate through specificity criteria
-					depth = max([item[i].specificity[j] for item in candidates], default = 0) # Get the depth of the most specific candidate
-					candidates = [item for item in candidates if item[i].specificity[j] == depth] # Keep only the most specific signatures
-			try:
-				match = candidates[0]
+			if self.path in self.cache and (result := self.cache[self.path])[0] == self.signature:
+				match, method = result[1], result[2]
 				instance = method.methods[match]
-			except IndexError:
-				self.error('DISP', method.name, self.signature)
-				continue
+			else:
+				try:
+					method = self.values[self.op.name]
+				except KeyError:
+					self.error('FIND', self.op.name)
+					continue
+				if not (candidates := [x for x in method.methods if method.arity[x] == arity]): # Remove candidates with mismatching arity
+					self.error('DISP', method.name, self.signature)
+					continue
+				for i, name in enumerate(self.signature): # Triple-nested for loops? You know it
+					candidates = [item for item in candidates if name < item[i]] # Filter for candidates with a matching supertype
+					for j in range(aletheia.descriptor.criteria): # Iterate through specificity criteria
+						depth = max([item[i].specificity[j] for item in candidates], default = 0) # Get the depth of the most specific candidate
+						candidates = [item for item in candidates if item[i].specificity[j] == depth] # Keep only the most specific signatures
+				try:
+					match = candidates[0]
+					instance = method.methods[match]
+					self.cache[self.path] = (self.signature, match, method) # Cache result
+				except IndexError:
+					self.error('DISP', method.name, self.signature)
+					continue
 			"""
 			Execute instruction and update registers.
 			"""
@@ -266,7 +272,8 @@ class task:
 				'path': self.path,
 				'op': self.op,
 				'caller': self.caller,
-				'final': self.final}
+				'final': self.final,
+				'cache': self.cache}
 
 	def restore(self, state): # Restore previous state of task
 

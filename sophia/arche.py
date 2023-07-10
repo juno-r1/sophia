@@ -63,6 +63,7 @@ class type_definition:
 	def __call__(self, task, value):
 		
 		task.caller = task.state()
+		task.cache = {}
 		task.final = descriptor(self.name)
 		task.values[self.name], task.types[self.name] = value, self.type
 		task.reserved = tuple(task.values)
@@ -86,6 +87,7 @@ class event_definition:
 			return task.calls.recv()
 		else:
 			task.caller = task.state()
+			task.cache = {}
 			task.final = self.type
 			task.values = task.values | dict(zip(self.params, args))
 			task.types = task.types | dict(zip(self.params, self.types))
@@ -110,6 +112,7 @@ class function_definition:
 			return task.calls.recv()
 		else:
 			task.caller = task.state()
+			task.cache = {}
 			task.final = self.type
 			task.values = task.values | dict(zip(self.params, args))
 			task.types = task.types | dict(zip(self.params, self.types))
@@ -1027,8 +1030,12 @@ def unloop_null(task, value):
 
 def unloop_untyped(task, value):
 	
-	task.properties.type = task.signature[0].type
-	return value
+	name, signature = task.op.label[0], task.signature[0]
+	if name in task.reserved:
+		return task.error('BIND', name)
+	else:
+		task.properties.merge(signature)
+		return value
 
 def unloop_null_type(task, value, routine):
 	

@@ -25,11 +25,21 @@ class descriptor:
 			self.supermember = []
 			self.specificity = (0, 0, 0)
 
+	def __eq__(self, other): # Implements equality for descriptors
+
+		return (self.type == other.type) and \
+			   (self.member == other.member) and \
+			   (self.length == other.length)
+
 	def __lt__(self, other): # Implements supertype relation for descriptors
 		
 		return (other.type in self.supertypes) and \
 			   (other.member is None or other.member in self.supermember) and \
 			   (other.length is None or other.length == self.length)
+
+	def __hash__(self):
+		
+		return hash((self.type, self.member, self.length))
 
 	def __str__(self):
 		

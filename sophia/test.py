@@ -1,10 +1,13 @@
-#from random import randint
+def fib(n):
 
-#for i in range(20):
-#	print((randint(1, 5), randint(1, 5), randint(1, 5)))
+	a, b = 0, 1
+	for i in range(n):
+		a, b = b, a + b
+	return a
 
-from mathos import real
-
-a, b = real(1), real(2)
-c = real.__add__(a, b)
-print(c)
+from cProfile import Profile
+pr = Profile()
+pr.enable()
+fib(100000)
+pr.disable()
+pr.print_stats(sort = 'tottime')
