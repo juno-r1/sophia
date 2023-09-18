@@ -37,10 +37,6 @@ class descriptor:
 			   (other.member is None or other.member in self.supermember) and \
 			   (other.length is None or other.length == self.length)
 
-	def __hash__(self):
-		
-		return hash((self.type, self.member, self.length))
-
 	def __str__(self):
 		
 		attributes = [self.type or 'null']
@@ -68,7 +64,7 @@ class descriptor:
 				member = values[1]
 		return cls(values[0], member, length)
 
-	def merge(self, other): # Because Python loves to keep references where it shouldn't
+	def merge(self, other): # Because Python loves to keep references to mutable objects where it shouldn't
 
 		self.type = other.type
 		self.member = other.member
@@ -84,6 +80,115 @@ class descriptor:
 			self.length = self.length if self.length is not None else len(value)
 		return self
 
+class dispatch:
+	"""
+	Multiple dispatch object that implements a singly linked binary search
+	tree. It is only ever necessary to traverse downward.
+	"""
+	__slots__ = ('true', 'false', 'value', 'index', 'op')
+
+	def __init__(self, value, condition = None, index = 0):
+		
+		self.true = None # Path or method if true
+		self.false = None # Path or method if false
+		self.value = value # Condition value
+		self.index = index # Signature index
+		if condition == 'type':
+			self.op = self.supertype
+		elif condition == 'member':
+			self.op = self.supermember
+		elif condition == 'length':
+			self.op = self.length
+		else:
+			self.op = self.zero
+
+	def __bool__(self): return True
+
+	def __str__(self): return '{0} {1} {2}'.format(self.index, self.value, self.op.__name__)
+
+	def supertype(self, signature): return self.value in signature.supertypes
+
+	def supermember(self, signature): return self.value in signature.supermember
+
+	def length(self, signature): return self.value == signature.length
+
+	def zero(self, signature): return True # Always true when called
+
+	def extend(self, routine, final, signature): # Add node to tree
+		
+		new = leaf(routine, final, signature)
+		if not signature: # Null method
+			self.false = new
+			return
+		if self.true is None: # Empty tree
+			self.true = new
+			return
+		value, path = new, []
+		while self: # Traverse tree to closest leaf node
+			index = self.index
+			branch = self.op(signature[index])
+			head, self = self, self.true if branch else self.false
+			path.append(head)
+		# self becomes a leaf node object halfway through this method. I know
+		if signature != self.signature: # If signatures do not match:
+			item, other = signature[index], self.signature[index]
+			while item == other:
+				index = index + 1
+				try:
+					item = signature[index]
+				except IndexError: # Criteria too specific
+					for i in range(index): # Find most significant criterion from the signatures
+						if signature[i] != self.signature[i]:
+							value = dispatch.generate(signature[i], self.signature[i], i)
+							break
+					while head.index > i:
+						head = path.pop()  # Back-track
+					branch = head.op(signature[head.index]) # Reset branch for new head
+					break
+				try:
+					other = self.signature[index]
+				except IndexError: # Increment index
+					value = dispatch('untyped', 'type', index)
+					break
+			else:
+				value = dispatch.generate(item, other, index)
+			value.true, value.false = new, self
+		if branch:
+			head.true = value
+		else:
+			head.false = value
+
+	@classmethod
+	def generate(cls, item, other, index):
+
+		if item.type != other.type:
+			return cls(item.type, 'type', index)
+		elif item.member != other.member:
+			return cls(item.member, 'member', index)
+		else:
+			return cls(item.length, 'length', index)
+
+class leaf:
+	"""
+	Leaf node of dispatch tree.
+	"""
+	__slots__ = ('routine', 'final', 'signature')
+
+	def __init__(self, routine, final, signature):
+
+		self.routine = routine
+		self.final = final
+		self.signature = signature
+
+	def __bool__(self): return False
+
+	def __str__(self):
+		
+		try:
+			return self.routine.__name__
+		except AttributeError:
+			return self.routine.name
+
 def infer(value): # Infers type descriptor of value
 	
 	name, member = type(value).__name__, None
@@ -96,9 +201,9 @@ def infer(value): # Infers type descriptor of value
 		elif name == 'slice':
 			member = 'integer'
 		elif name == 'list':
-			member = reduce(supertype, [infer(item).type for item in value]) if value else 'untyped'
+			member = reduce(supertype, [infer_type(item) for item in value]) if value else 'untyped'
 		elif name == 'record':
-			member = reduce(supertype, [infer(item).type for item in value.values()]) if value else 'untyped'
+			member = reduce(supertype, [infer_type(item) for item in value.values()]) if value else 'untyped'
 	else:
 		name = 'untyped' # Applies to all internal types
 	try:

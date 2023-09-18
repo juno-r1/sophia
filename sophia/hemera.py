@@ -17,7 +17,15 @@ def debug_descriptor(descriptor):
 		  descriptor.length,
 		  descriptor.supertypes,
 		  descriptor.supermember,
-		  descriptor.specificity)
+		  descriptor.specificity,
+		  file = stderr)
+
+def debug_dispatch(tree, level = 0):
+	
+	print(('  ' * level) + str(tree), file = stderr)
+	if tree:
+		debug_dispatch(tree.true, level + 1)
+		debug_dispatch(tree.false, level + 1)
 
 def debug_instructions(task):
 	

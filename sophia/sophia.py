@@ -44,7 +44,7 @@ class runtime:
 	def future(self, pid, routine, args, method):
 
 		args = self.values | {routine.name: method} | dict(zip(routine.params, args))
-		types = self.types | {routine.name: aletheia.infer(method)} | dict(zip(routine.params, routine.types))
+		types = self.types | {routine.name: aletheia.infer(method)} | dict(zip(routine.params, routine.signature))
 		new = task(routine.instructions, args, types, self.flags)
 		self.tasks[new.pid] = iris.proxy(new)
 		if types[routine.name].type == 'event':
@@ -52,7 +52,7 @@ class runtime:
 		self.tasks[new.pid].result = self.pool.apply_async(new.execute)
 		self.tasks[new.pid].count = self.tasks[new.pid].count + 1
 		self.tasks[pid].references.append(new.pid) # Mark reference to process
-		self.tasks[pid].calls.send(iris.reference(new, routine.type)) # Return reference to process
+		self.tasks[pid].calls.send(iris.reference(new, routine.final)) # Return reference to process
 
 	def send(self, pid, reference, message):
 		
@@ -155,16 +155,16 @@ class task:
 		self.pid = id(self) # Guaranteed not to collide with other task PIDs; not the same as the PID of the pool process
 		self.flags = flags
 		self.instructions = instructions
+		self.cache = [None for _ in instructions] # Instruction cache
 		self.path = int(bool(instructions)) # Does not execute if the parser encountered an error
 		self.op = instructions[0] # Current instruction
-		self.signature = () # Current type signature
+		self.signature = [] # Current type signature
 		self.properties = aletheia.descriptor(None, None, None) # Final type properties
 		self.caller = None # Stores the state of the calling routine
 		self.values = arche.builtins | values
 		self.types = {k: self.describe(v) for k, v in (arche.types | types).items()} # Pre-compute dispatch information
 		self.reserved = tuple(self.values)
 		self.final = aletheia.descriptor() # Return type of routine
-		self.cache = {} # Instruction cache
 
 	def execute(self):
 		"""Task runtime loop; target of task.pool.apply_async()."""
@@ -177,7 +177,7 @@ class task:
 			pr.enable()
 		while self.path:
 			"""
-			Prepare instruction, get arguments and type signature.
+			Prepare instruction, method, and arguments.
 			"""
 			self.op = self.instructions[self.path]
 			if debug_task:
@@ -185,12 +185,17 @@ class task:
 			self.path = self.path + 1
 			if not self.op.register: # Labels
 				continue
-			arity = self.op.arity
 			try:
-				args = [self] + [self.values[arg] for arg in self.op.args]
-				self.signature = tuple([self.types[arg] for arg in self.op.args])
+				method, args = self.values[self.op.name], self.op.args
 			except KeyError:
-				self.error('FIND', name)
+				self.error('FIND', self.op.name)
+				continue
+			try:
+				tree = method.tree.true if args else method.tree.false # Here's tree
+				self.signature = [self.types[arg] for arg in args]
+				args = [self] + [self.values[arg] for arg in args]
+			except KeyError as e:
+				self.error('FIND', e)
 				if self.op.register == '0':
 					args = [self, None]
 					self.signature = [aletheia.descriptor('null', prepare = True)]
@@ -199,41 +204,39 @@ class task:
 			"""
 			Multiple dispatch algorithm, with help from Julia:
 			https://github.com/JeffBezanson/phdthesis
-			Now distilled into 3 extremely stupid list comprehensions!
+			Binary search tree yields closest key for method, then key is verified.
 			"""
-			if self.path in self.cache and (result := self.cache[self.path])[0] == self.signature:
-				match, method = result[1], result[2]
-				instance = method.methods[match]
+			if (cache := self.cache[self.path]) and cache[0] == self.signature:
+				instance, final = cache[1], cache[2]
 			else:
+				while tree: # Traverse tree; terminates upon reaching leaf node
+					try:
+						tree = tree.true if tree.op(self.signature[tree.index]) else tree.false
+					except IndexError:
+						tree = tree.false
 				try:
-					method = self.values[self.op.name]
-				except KeyError:
-					self.error('FIND', self.op.name)
-					continue
-				if not (candidates := [x for x in method.methods if method.arity[x] == arity]): # Remove candidates with mismatching arity
-					self.error('DISP', method.name, self.signature)
-					continue
-				for i, name in enumerate(self.signature): # Triple-nested for loops? You know it
-					candidates = [item for item in candidates if name < item[i]] # Filter for candidates with a matching supertype
-					for j in range(aletheia.descriptor.criteria): # Iterate through specificity criteria
-						depth = max([item[i].specificity[j] for item in candidates], default = 0) # Get the depth of the most specific candidate
-						candidates = [item for item in candidates if item[i].specificity[j] == depth] # Keep only the most specific signatures
-				try:
-					match = candidates[0]
-					instance = method.methods[match]
-					self.cache[self.path] = (self.signature, match, method) # Cache result
-				except IndexError:
+					if tree is None:
+						raise KeyError
+					instance, final, signature = tree.routine, tree.final, tree.signature
+					for i, item in enumerate(self.signature): # Verify type signature
+						if not item < signature[i]:
+							raise KeyError
+					self.cache[self.path] = (self.signature, instance, final) # Cache result
+				except (IndexError, KeyError):
 					self.error('DISP', method.name, self.signature)
 					continue
 			"""
 			Execute instruction and update registers.
 			"""
 			value = instance(*args) # Needs to happen first to account for state changes
-			address, final = self.op.register, method.finals[match]
 			if final.type != '!' and self.properties.type != '!': # Suppress write
+				address = self.op.register
 				self.values[address] = value
 				self.types[address] = self.describe(self.properties.complete(final, value))
 			self.properties = aletheia.descriptor(None, None, None)
+		"""
+		Terminate runtime loop and execute flagged operations.
+		"""
 		if 'profile' in self.flags:
 			pr.disable()
 			pr.print_stats(sort = 'tottime')
@@ -254,7 +257,7 @@ class task:
 						self.path = path
 					return path
 
-	def describe(self, value):
+	def describe(self, value): # Complete descriptor using runtime information
 		
 		type_routine, member_routine = self.values[value.type or 'null'], self.values[value.member or 'null']
 		value.supertypes = type_routine.supertypes

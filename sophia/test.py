@@ -1,13 +1,9 @@
-def fib(n):
+from time import perf_counter
 
-	a, b = 0, 1
-	for i in range(n):
-		a, b = b, a + b
-	return a
-
-from cProfile import Profile
-pr = Profile()
-pr.enable()
-fib(100000)
-pr.disable()
-pr.print_stats(sort = 'tottime')
+x = perf_counter()
+a, b = 0, 1
+for i in range(10000):
+	a, b = b, a + b
+y = perf_counter()
+print(a)
+print(y - x)

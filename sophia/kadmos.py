@@ -39,7 +39,7 @@ binding_power = (('(', ')', '[', ']', '{', '}'), # The left-binding power of a b
 
 class instruction:
 	"""Instruction used in the virtual machine"""
-	__slots__ = ('name', 'register', 'args', 'line', 'label', 'arity')
+	__slots__ = ('name', 'register', 'args', 'line', 'label')
 
 	def __init__(self, name, register, args = (), line = 0, label = []):
 
@@ -48,7 +48,6 @@ class instruction:
 		self.args = args
 		self.line = line
 		self.label = label
-		self.arity = len(args)
 
 	def __str__(self): # Convert instruction to string
 

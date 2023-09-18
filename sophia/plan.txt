@@ -19,14 +19,78 @@ int, str.str.1, untyped
 3.0.0.2.2.1.1.0.0
 
 assuming that every candidate is valid, the highest number is the most specific
+unfortunately, this only works if each number is fixed-length
 
 ---
 
-better for loop
+cache problem
+caching only works for loops right now
+caching *should* also work for function calls but the cache gets wiped every time a function is called
 
-if type:
-	use given type
-	bind
-else:
-	use member type of iterator
-	do not bind
+---
+
+2/5 of all function calls are from the fucking descriptor hash
+there *has* to be a way to make that less intense
+hash gets called every time a key is added or accessed
+
+---
+
+better idea: multimethods use search trees for dispatch instead
+it should be possible to construct a search tree such that navigating the tree yields a method
+what the hell does such a tree look like?
+no, really. *how* do you format a tree so that navigating it is equivalent to the existing dispatch algorithm?
+
+current algorithm:
+traverse signature from left to right
+for item in signature:
+	get the candidate with the most specific supertype
+
+construct a tree by using the minimum number of criteria possible to fully distinguish all methods
+two things need to be established
+	what format should the tree take?
+	how do you update the tree?
+
+binary search tree
+each node describes a condition
+conditions are defined by adding methods
+each method only needs *1* condition to distinguish it from another
+	space complexity of O(n)
+	time complexity of best case O(log n), worst case O(n)
+which are *way* better than the triple-nested iteration in the previous algorithm
+
+distinguishing criteria:
+	type in supertypes
+	member in supermember
+	length = n
+
+to decide which criterion to use:
+	use types unless types are same
+	use members unless members are same
+	use length unless lengths are same
+	if all are same, signal to move to the next parameter
+
+---
+
+format of criteria
+
+necessary to specify:
+	number of parameter
+	type/member/length
+	value of above
+
+add method to tree
+
+traverse tree
+check critiera for nth type in signature
+the traversal is guaranteed to reach a leaf node
+to decide which criterion to use:
+	use types unless types are same
+	use members unless members are same
+	use length unless lengths are same
+	if all are same, signal to move to the next parameter
+	if all parameters are used up:
+		if the two signatures are exactly the same:
+			overwrite the method
+		if one signature is longer than the other:
+			increment n
+			set type criterion for nth parameter

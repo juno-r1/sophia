@@ -1,11 +1,11 @@
 '''
 The Arche module defines the standard library of Sophia.
 '''
-from aletheia import descriptor, infer, subtype
+from aletheia import descriptor, dispatch, infer, subtype
 from iris import reference
 from mathos import real, slice, element
 from math import copysign
-import aletheia, kadmos
+import aletheia, kadmos, hemera
 
 import json
 with open('kleio.json') as kleio:
@@ -22,23 +22,16 @@ class method:
 	def __init__(self, name):
 
 		self.name = name
-		self.methods = {}
-		self.finals = {}
-		self.arity = {}
+		self.tree = dispatch(None)
 
 	def retrieve(self, routine): # Retrieves metadata from Kleio
 
 		data = metadata[self.name][routine.__name__]
-		signature = tuple(descriptor(**i, prepare = True) for i in data['signature']) # Tuples are hashable
-		self.methods[signature] = routine
-		self.finals[signature] = descriptor(**data['final'])
-		self.arity[signature] = data['arity']
+		self.tree.extend(routine, descriptor(**data['final']), [descriptor(**i, prepare = True) for i in data['signature']])
 
 	def register(self, definition, final, signature): # Registers user-defined definition
 		
-		self.methods[signature] = definition # Function
-		self.finals[signature] = final # Return type
-		self.arity[signature] = len(signature) # Pre-evaluated length of signature
+		self.tree.extend(definition, final, signature)
 
 class type_method(method):
 
@@ -52,32 +45,40 @@ class type_method(method):
 class event_method(method): pass
 class function_method(method): pass
 
-class type_definition:
-	"""Definition for a user-defined type."""
-	def __init__(self, instructions, name, known):
-
+class definition:
+	"""Definition for a user-defined method."""
+	def __init__(self, instructions, names, signature):
+		
 		self.instructions = instructions
-		self.name = name # String name of type
-		self.type = known # Descriptor of supertype
+		self.name = names[0]
+		self.params = names[1:]
+		self.final = signature[0]
+		self.signature = signature[1:]
+
+class type_definition(definition):
+	"""Definition for a user-defined type."""
+	def __init__(self, instructions, name, supertype):
+		
+		super().__init__(instructions, (name, name), (descriptor(name), supertype))
 
 	def __call__(self, task, value):
 		
 		task.caller = task.state()
-		task.cache = {}
-		task.final = descriptor(self.name)
-		task.values[self.name], task.types[self.name] = value, self.type
+		task.final = self.final
+		task.values[self.name], task.types[self.name] = value, self.signature[0]
 		task.reserved = tuple(task.values)
 		task.instructions = self.instructions
+		task.cache = [None for _ in self.instructions]
 		task.path = 1
 		task.properties.type = '!'
 
-class event_definition:
+class event_definition(definition):
 	"""Definition for a user-defined event."""
 	def __init__(self, instructions, params, types):
 
-		self.instructions = instructions
-		self.name, self.params, self.message = params[0], params[1:-1], params[-1]
-		self.type, self.types, self.check = types[0], types[1:-1], types[-1]
+		super().__init__(instructions, params[:-1], types[:-1])
+		self.message = params[-1]
+		self.check = types[-1]
 
 	def __call__(self, task, *args):
 
@@ -87,23 +88,17 @@ class event_definition:
 			return task.calls.recv()
 		else:
 			task.caller = task.state()
-			task.cache = {}
-			task.final = self.type
+			task.final = self.final
 			task.values = task.values | dict(zip(self.params, args))
-			task.types = task.types | dict(zip(self.params, self.types))
+			task.types = task.types | dict(zip(self.params, self.signature))
 			task.reserved = tuple(task.values)
 			task.instructions = self.instructions
+			task.cache = [None for _ in self.instructions]
 			task.path = 1
 			task.properties.type = '!'
 
-class function_definition:
+class function_definition(definition):
 	"""Definition for a user-defined function."""
-	def __init__(self, instructions, params, types):
-
-		self.instructions = instructions
-		self.name, self.params = params[0], params[1:]
-		self.type, self.types = types[0], types[1:]
-
 	def __call__(self, task, *args):
 
 		if '.bind' in task.op.label:
@@ -112,12 +107,12 @@ class function_definition:
 			return task.calls.recv()
 		else:
 			task.caller = task.state()
-			task.cache = {}
-			task.final = self.type
+			task.final = self.final
 			task.values = task.values | dict(zip(self.params, args))
-			task.types = task.types | dict(zip(self.params, self.types))
+			task.types = task.types | dict(zip(self.params, self.signature))
 			task.reserved = tuple(task.values)
 			task.instructions = self.instructions
+			task.cache = [None for _ in self.instructions]
 			task.path = 1
 			task.properties.type = '!'
 
@@ -509,21 +504,22 @@ def b_ins_type(task, x, y):
 	type_tag, final_tag, super_tag = descriptor(name), descriptor(name), task.describe(descriptor(supername))
 	type_tag.supertypes = [name] + super_tag.supertypes
 	type_tag.specificity = (super_tag.specificity[0] + 1, 0, 0)
-	x_tag, y_tag = task.describe(descriptor(x.name)), task.describe(descriptor(y.name))
 	routine = type_method(name, x.supertypes[index:], x.prototype)
 	routine.register(subtype, final_tag, (type_tag,))
 	lhs, rhs = kadmos.generate_intersection(name, x.name), kadmos.generate_intersection(name, y.name)
 	check = lhs + rhs
 	start, end = kadmos.generate_labels(name)
-	routine.register(type_definition(start + rhs + end, name, super_tag), name, (x_tag,))
-	routine.register(type_definition(start + lhs + end, name, super_tag), name, (y_tag,))
-	for key, value in supertype.methods.items(): # Rewrite methods with own type name
+	tree = supertype.tree.true
+	while tree: # Rewrite methods with own type name
+		key, value = tree.false.signature, tree.false.routine
 		if isinstance(value, type_definition):
 			definition = [kadmos.instruction.rewrite(i, supername, name) for i in value.instructions]
 			definition[-2:-2] = check # Add user constraints to instructions
 			routine.register(type_definition(definition, name, key[0]), final_tag, key)
 		else: # Built-in definition
 			routine.register(type_definition(start + check + end, name, key[0]), final_tag, key)
+		tree = tree.true
+	routine.register(type_definition(start + rhs + end, name, super_tag), final_tag, (type_tag,))
 	return routine
 
 arche_ins = function_method('&')
@@ -542,26 +538,27 @@ def b_uni_record(_, x, y): return x | y
 def b_uni_slice(_, x, y): return tuple((list(x) + list(y)).sort())
 
 def b_uni_type(task, x, y):
-
+	
 	name, supername = '<{0}|{1}>'.format(x.name, y.name), [i for i in x.supertypes if i in y.supertypes][0] # Use closest mutual supertype
 	supertype, index = task.values[supername], x.supertypes.index(supername)
 	type_tag, final_tag, super_tag = descriptor(name), descriptor(name), task.describe(descriptor(supername))
 	type_tag.supertypes = [name] + super_tag.supertypes
 	type_tag.specificity = (super_tag.specificity[0] + 1, 0, 0)
-	x_tag, y_tag = task.describe(descriptor(x.name)), task.describe(descriptor(y.name))
 	routine = type_method(name, x.supertypes[index:], x.prototype)
 	routine.register(subtype, final_tag, (type_tag,))
 	check = kadmos.generate_union(name, x.name, y.name)
 	start, end = kadmos.generate_labels(name)
-	routine.register(type_definition(start + end, name, super_tag), final_tag, (x_tag,))
-	routine.register(type_definition(start + end, name, super_tag), final_tag, (y_tag,))
-	for key, value in supertype.methods.items(): # Rewrite methods with own type name
+	tree = supertype.tree.true
+	while tree: # Rewrite methods with own type name
+		key, value = tree.false.signature, tree.false.routine
 		if isinstance(value, type_definition): # Built-in supertype
 			definition = [kadmos.instruction.rewrite(i, supername, name) for i in value.instructions]
 			definition[-2:-2] = check # Add user constraints to instructions
 			routine.register(type_definition(definition, name, key[0]), final_tag, key)
 		else:
 			routine.register(type_definition(start + check + end, name, key[0]), final_tag, key)
+		tree = tree.true
+	routine.register(type_definition(start + end, name, super_tag), final_tag, (type_tag,))
 	return routine
 
 arche_uni = function_method('|')
@@ -633,17 +630,22 @@ them inaccessible to the user.
 
 def alias_type(task, routine): # Type alias
 
-	name, supername = task.op.register, routine.supertypes[1]
+	replace, name, supername = routine.name, task.op.register, routine.supertypes[1]
 	new_tag, final_tag = task.describe(descriptor(supername)), descriptor(name)
 	new_tag.type = name
 	new_tag.supertypes = [name] + new_tag.supertypes
 	new_tag.specificity = (new_tag.specificity[0] + 1, 0, 0)
 	new = type_method(name, routine.supertypes[1:], routine.prototype)
-	new.register(subtype, final_tag, (new_tag,))
-	for key, value in list(routine.methods.items())[1:]: # Rewrite methods with own type name
-		new.register(type_definition([kadmos.instruction.rewrite(i, routine.name, name) for i in value.instructions]
+	tree = routine.tree.true
+	while tree: # Rewrite methods with own type name
+		if tree.value == replace:
+			tree.value = name
+		key, value = tree.false.signature, tree.false.routine
+		new.register(type_definition([kadmos.instruction.rewrite(i, replace, name) for i in value.instructions]
 									 if isinstance(value, type_definition)
 									 else value, name, key[0]), final_tag, key)
+		tree = tree.true
+	new.register(subtype, final_tag, (new_tag,))
 	return new
 
 arche_alias = function_method('.alias')
@@ -739,6 +741,7 @@ def constraint_boolean(task, constraint):
 		task.error('CAST', name, str(value))
 	elif task.op.label and task.op.label[0] != name: # Update type of checked value for subsequent constraints
 		task.types[name].type = task.op.label[0]
+		task.describe(task.types[name])
 
 arche_constraint = function_method('.constraint')
 arche_constraint.retrieve(constraint_boolean)
@@ -753,19 +756,21 @@ def event_null(task):
 	definition = event_definition(task.instructions[start:end], params, types)
 	routine = task.values[name] if name in task.values and task.types[name].type == 'event' else event_method(name)
 	routine.register(definition, types[0], tuple(types[1:-1]))
+	task.cache = [None for i in task.cache]
 	return routine
 
 arche_event = function_method('.event')
 arche_event.retrieve(event_null)
 
 def function_null(task):
-
+	
 	name = task.op.register
 	types, params = [task.describe(descriptor.read(i)) for i in task.op.label[0::2]], task.op.label[1::2]
 	start, end = task.path, task.branch(0, True, True)
 	definition = function_definition(task.instructions[start:end], params, types)
 	routine = task.values[name] if name in task.values and task.types[name].type == 'function' else function_method(name)
 	routine.register(definition, types[0], tuple(types[1:]))
+	task.cache = [None for i in task.cache] # Clean up cache to ensure correct dispatch
 	return routine
 
 arche_function = function_method('.function')
@@ -918,6 +923,7 @@ def meta_string(task, string):
 	start = task.path
 	end = task.branch(0, True, False)
 	task.instructions[start + 1:end] = instructions
+	task.cache[start + 1:end] = [None for _ in instructions]
 	task.values.update(values)
 	task.types.update({k: task.describe(v) for k, v in types.items()})
 
@@ -980,18 +986,22 @@ def type_type(task, supertype):
 	start, end = task.path, task.branch(0, True, True)
 	instructions = task.instructions[start:end]
 	routine = type_method(name, supertype.supertypes, supertype.prototype)
-	routine.register(subtype, final_tag, (type_tag,))
+	task.cache = [None for i in task.cache]
 	if supername in aletheia.supertypes: # Built-in supertype
 		check = kadmos.generate_supertype(name, supername)
 		routine.register(type_definition(instructions, name, super_tag), final_tag, (super_tag,))
 		instructions[1:1] = check
 		routine.register(type_definition(instructions, name, super_tag), final_tag, (descriptor('untyped', prepare = True),))
 	else:
-		for key, value in list(supertype.methods.items())[1:]: # Rewrite methods with own type name
-			definition = [kadmos.instruction.rewrite(i, supername, name) for i in value.instructions]
+		tree = supertype.tree.true
+		while tree: # Traverse down tree and copy all false leaves
+			key, value = tree.false.signature, tree.false.routine
+			definition = [kadmos.instruction.rewrite(i, supername, name) for i in value.instructions] # Rewrite methods with own type name
 			definition[-2:-2] = instructions[1:-2] # Add user constraints to instructions
 			routine.register(type_definition(definition, name, key[0]), final_tag, key)
+			tree = tree.true
 		routine.register(type_definition(instructions, name, super_tag), final_tag, (super_tag,))
+	routine.register(subtype, final_tag, (type_tag,))
 	return routine
 
 def type_type_untyped(task, supertype, prototype):
@@ -1003,18 +1013,22 @@ def type_type_untyped(task, supertype, prototype):
 	start, end = task.path, task.branch(0, True, True)
 	instructions = task.instructions[start:end]
 	routine = type_method(name, supertype.supertypes, prototype)
-	routine.register(subtype, final_tag, (type_tag,))
+	task.cache = [None for i in task.cache]
 	if supername in aletheia.supertypes: # Built-in supertype
 		check = kadmos.generate_supertype(name, supername)
 		routine.register(type_definition(instructions, name, super_tag), final_tag, (super_tag,))
 		instructions[1:1] = check
 		routine.register(type_definition(instructions, name, super_tag), final_tag, (descriptor('untyped', prepare = True),))
 	else:
-		for key, value in list(supertype.methods.items())[1:]: # Rewrite methods with own type name
-			definition = [kadmos.instruction.rewrite(i, supername, name) for i in value.instructions]
+		tree = supertype.tree.true
+		while tree: # Traverse down tree and copy all false leaves
+			key, value = tree.false.signature, tree.false.routine
+			definition = [kadmos.instruction.rewrite(i, supername, name) for i in value.instructions] # Rewrite methods with own type name
 			definition[-2:-2] = instructions[1:-2] # Add user constraints to instructions
 			routine.register(type_definition(definition, name, key[0]), final_tag, key)
+			tree = tree.true
 		routine.register(type_definition(instructions, name, super_tag), final_tag, (super_tag,))
+	routine.register(subtype, final_tag, (type_tag,))
 	return routine
 
 arche_type = function_method('.type')
