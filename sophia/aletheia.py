@@ -123,12 +123,14 @@ class dispatch:
 		if self.true is None: # Empty tree
 			self.true = new
 			return
-		value, path = new, []
+		value = new
 		while self: # Traverse tree to closest leaf node
 			index = self.index
-			branch = self.op(signature[index])
+			try:
+				branch = self.op(signature[index])
+			except IndexError:
+				branch = False
 			head, self = self, self.true if branch else self.false
-			path.append(head)
 		# self becomes a leaf node object halfway through this method. I know
 		if signature != self.signature: # If signatures do not match:
 			item, other = signature[index], self.signature[index]
@@ -141,18 +143,18 @@ class dispatch:
 						if signature[i] != self.signature[i]:
 							value = dispatch.generate(signature[i], self.signature[i], i)
 							break
-					while head.index > i:
-						head = path.pop()  # Back-track
 					branch = head.op(signature[head.index]) # Reset branch for new head
+					value.true, value.false = new, head.true if branch else head.false
 					break
 				try:
 					other = self.signature[index]
 				except IndexError: # Increment index
 					value = dispatch('untyped', 'type', index)
+					value.true, value.false = new, self
 					break
 			else:
 				value = dispatch.generate(item, other, index)
-			value.true, value.false = new, self
+				value.true, value.false = new, self
 		if branch:
 			head.true = value
 		else:
