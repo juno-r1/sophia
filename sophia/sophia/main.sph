@@ -1,4 +1,6 @@
-num a: 0; num b: 1
-for i in 0:10000:1:
-	num a: b; num b: a + b
-return a
+int first (int x, int y) => x + y
+int second (int x) => x * 2
+int third (int x) => x + 3
+
+final is third.second.first
+return final(1, 3)

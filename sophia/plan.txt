@@ -1,25 +1,4 @@
-faster specificity
-
-what needs to be done?
-
-for each criterion, select the candidates with the highest specificity
-is there a way to do that *without* iterating through the criteria?
-
-algorithm currently works by finding all valid candidates and then refining the list to get the most specific valid candidate
-another method that would work is the reverse
-find the most specific candidate and then check if it's valid
-or:
-get every valid candidate regardless of specificity and then get the most specific candidate in one
-
-type signatures are expressible as a sequence of numbers representing the specificity of each parameter
-for example:
-
-int, str.str.1, untyped
->>>
-3.0.0.2.2.1.1.0.0
-
-assuming that every candidate is valid, the highest number is the most specific
-unfortunately, this only works if each number is fixed-length
+to do
 
 ---
 
@@ -29,68 +8,42 @@ caching *should* also work for function calls but the cache gets wiped every tim
 
 ---
 
-2/5 of all function calls are from the fucking descriptor hash
-there *has* to be a way to make that less intense
-hash gets called every time a key is added or accessed
+implement map/filter/reduce
 
 ---
 
-better idea: multimethods use search trees for dispatch instead
-it should be possible to construct a search tree such that navigating the tree yields a method
-what the hell does such a tree look like?
-no, really. *how* do you format a tree so that navigating it is equivalent to the existing dispatch algorithm?
+function composition
+if types can be composed then functions ought to be composable too
+basic principle of first-class functions
+sure, it'll take some work daisy-chaining instructions together
+but you already made it work for type union/intersection
+use . as the operator?
 
-current algorithm:
-traverse signature from left to right
-for item in signature:
-	get the candidate with the most specific supertype
+this turns out to be a bit more of a problem than you might think
+function composition works great when you can model functions has having one signature and return type
+so you can chain them together, right?
+multiple dispatch complicates this significantly
+problem here with many-to-many domain/range mapping
 
-construct a tree by using the minimum number of criteria possible to fully distinguish all methods
-two things need to be established
-	what format should the tree take?
-	how do you update the tree?
+two solutions:
 
-binary search tree
-each node describes a condition
-conditions are defined by adding methods
-each method only needs *1* condition to distinguish it from another
-	space complexity of O(n)
-	time complexity of best case O(log n), worst case O(n)
-which are *way* better than the triple-nested iteration in the previous algorithm
+1.
+when composing functions, have a way to specify which method from each function you're composing
+easy to implement
+just need a function that takes a function and a list of types and outputs the selected method as its own function
+that could actually be really useful even if this solution isn't used
 
-distinguishing criteria:
-	type in supertypes
-	member in supermember
-	length = n
+2.
+just attempt to compose two functions together
+oh no
+now the intuitive way to do this would be to map out the possible ways to link every method of each function together
+i.e. "what would happen if you just called these two functions consecutively?"
+and then encode that into a new function
+far more powerful than solution 1
 
-to decide which criterion to use:
-	use types unless types are same
-	use members unless members are same
-	use length unless lengths are same
-	if all are same, signal to move to the next parameter
+understanding that a composition of two functions should operate as if they have been called consecutively -
+and that the dispatch algorithm deterministically selects 1 method for a given input -
+we can create a 1-to-1 mapping from every method to every other method
 
----
-
-format of criteria
-
-necessary to specify:
-	number of parameter
-	type/member/length
-	value of above
-
-add method to tree
-
-traverse tree
-check critiera for nth type in signature
-the traversal is guaranteed to reach a leaf node
-to decide which criterion to use:
-	use types unless types are same
-	use members unless members are same
-	use length unless lengths are same
-	if all are same, signal to move to the next parameter
-	if all parameters are used up:
-		if the two signatures are exactly the same:
-			overwrite the method
-		if one signature is longer than the other:
-			increment n
-			set type criterion for nth parameter
+composing functions is as simple as finding, for each output of the first function, the methods of the second function that would be selected
+just run the dispatch algorithm on the second tree for each final from the first tree

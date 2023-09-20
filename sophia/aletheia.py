@@ -112,7 +112,14 @@ class dispatch:
 
 	def length(self, signature): return self.value == signature.length
 
-	def zero(self, signature): return True # Always true when called
+	def zero(self, signature): return True # Never actually gets called
+
+	def collect(self): # Collect all leaf nodes (order not important)
+
+		x, y = self.true, self.false
+		x = x.collect() if x else ([x] if x is not None else [])
+		y = y.collect() if y else ([y] if y is not None else [])
+		return x + y
 
 	def extend(self, routine, final, signature): # Add node to tree
 		

@@ -80,6 +80,7 @@ def debug_error(name, line, status, args): # Prints error information
 errors = {
 	'BIND': 'Bind to reserved name: {0}',
 	'CAST': 'Failed cast to {0}: {1}',
+	'COMP': 'Failed composition: {0} does not map onto {1}',
 	'DISP': 'Failed dispatch: {0} has no signature {1}',
 	'EVNT': 'Event has no initial',
 	'FIND': 'Undefined name: {0}',

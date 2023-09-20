@@ -1,6 +1,7 @@
 '''
 The Arche module defines the standard library of Sophia.
 '''
+
 from aletheia import descriptor, dispatch, infer, subtype
 from iris import reference
 from mathos import real, slice, element
@@ -623,6 +624,40 @@ def u_new(task, x):
 arche_new = function_method('new')
 arche_new.retrieve(u_new)
 
+def b_cmp(task, x, y):
+	
+	new = function_method('{0}.{1}'.format(x.name, y.name))
+	methods = [i for i in y.tree.collect()] # Methods of 1st function
+	for method in methods:
+		tree = x.tree.true # Dispatch tree of 2nd function
+		while tree:
+			if tree.index == 0:
+				tree = tree.true if tree.op(method.final) else tree.false
+			else:
+				tree = tree.false
+		else:
+			if tree is None:
+				continue
+			instance, final, signature = tree.routine, tree.final, tree.signature
+			if not method.final < signature[0]:
+				continue
+			routine = method.routine
+			instructions = routine.instructions
+			for op in instructions: # Rewrite 1st function so that returns set up the 2nd function instead
+				if op.name == '.return':
+					op.name, op.register = '.skip', instance.params[0]
+			instructions = instructions + [kadmos.instruction('RETURN', '')] + instance.instructions
+			definition = function_definition(instructions, [new.name] + routine.params, [final] + routine.signature)
+			new.register(definition, final, method.signature)
+	if new.tree.true is None and new.tree.false is None:
+		del new
+		return task.error('COMP', x.name, y.name)
+	else:
+		return new
+
+arche_cmp = function_method('.')
+arche_cmp.retrieve(b_cmp)
+
 """
 Internal functions. The names of these functions are prefixed with "." to make
 them inaccessible to the user.
@@ -648,8 +683,20 @@ def alias_type(task, routine): # Type alias
 	new.register(subtype, final_tag, (new_tag,))
 	return new
 
+def alias_function(task, routine): # Function alias
+
+	name = task.op.register
+	new = function_method(name)
+	methods = routine.tree.collect()
+	for method in methods:
+		instance = method.routine
+		definition = function_definition(instance.instructions, [name] + instance.params, [method.final] + list(method.signature))
+		new.register(definition, method.final, method.signature)
+	return new
+
 arche_alias = function_method('.alias')
 arche_alias.retrieve(alias_type)
+arche_alias.retrieve(alias_function)
 
 def assert_null(task, value): # Null assertion
 	
@@ -976,6 +1023,20 @@ def sequence_untyped(task, sequence):
 
 arche_sequence = function_method('.sequence')
 arche_sequence.retrieve(sequence_untyped)
+
+def skip_untyped(task, value):
+
+	signature, final = task.signature[0], task.properties
+	final.type, final.member, final.length = signature.type, signature.member, signature.length
+	path = task.path
+	while True:
+		op, path = task.instructions[path], path + 1
+		if not op.register and op.name == 'RETURN':
+			task.path = path
+			return value
+
+arche_skip = function_method('.skip')
+arche_skip.retrieve(skip_untyped)
 
 def type_type(task, supertype):
 	

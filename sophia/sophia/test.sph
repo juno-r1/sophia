@@ -1,7 +1,7 @@
-weird problem with the instruction generator of sophia
-apparently so long as there are no operators
-the interpreter completely ignores arbitrary sequences of names
-so you can just comment like this
-without any effect whatsoever
-
-return true
+int n: 10000
+num s: 0
+int flip: -1
+for i in 1:n:1:
+	flip: -flip
+	s: s + (flip / (2 * i - 1))
+return s * 4

@@ -6,7 +6,7 @@ import hemera
 from aletheia import descriptor, infer
 from mathos import real
 
-characters = '.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz' # Sorted by position in UTF-8
+characters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz' # Sorted by position in UTF-8
 parens = '()[]{}'
 comment = '//'
 structure_tokens = ('if', 'while', 'for', 'else', 'assert', 'return', 'link', 'start')
@@ -35,7 +35,8 @@ binding_power = (('(', ')', '[', ']', '{', '}'), # The left-binding power of a b
 				 ('+', '-'),
 				 ('*', '/', '%'),
 				 ('^',),
-				 ('?',))
+				 ('?',),
+				 ('.'))
 
 class instruction:
 	"""Instruction used in the virtual machine"""
@@ -928,14 +929,19 @@ def split(line): # Takes a line from the file data and splits it into tokens
 					shift = True
 				except ValueError:
 					return 'UQTE' # Unmatched quotes
+			elif line and ((symbol[-1] == '.' and line[0] in '0123456789') or (line[0] == '.' and symbol[-1] in '0123456789')):
+				continue # Distinguish between dot operator and decimal point
 			elif not line or (symbol[-1] in characters) != (line[0] in characters): # XOR for last and next character being part of an operator
 				shift = True
 		else:
 			tokens.append(symbol)
 	return tokens
 
-def balanced(tokens): # Takes a string and checks if its parentheses are balanced
-	
+def balanced(tokens): 
+	"""
+	Takes a string and checks if its parentheses are balanced.
+	https://stackoverflow.com/questions/6701853/parentheses-pairing-issue
+	"""
 	opening, closing = parens[0::2], parens[1::2] # Gets all opening parentheses from string
 	string, stack = '', []
 	for token in tokens:
@@ -953,8 +959,6 @@ def balanced(tokens): # Takes a string and checks if its parentheses are balance
 				return False # Parentheses are unbalanced
 	else:	
 		return not stack # Interprets stack as a boolean, where an empty stack is falsy
-
-	# https://stackoverflow.com/questions/6701853/parentheses-pairing-issue
 
 def bp(symbol):
 

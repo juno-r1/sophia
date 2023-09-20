@@ -1393,6 +1393,32 @@
       }
     }
   },
+  ".": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "b_cmp": {
+      "signature": [
+        {
+          "type": "function",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "function",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "function",
+        "member": null,
+        "length": null
+      }
+    }
+  },
   ".alias": {
     "type": {
       "type": "function",
@@ -1409,6 +1435,20 @@
       ],
       "final": {
         "type": "type",
+        "member": null,
+        "length": null
+      }
+    },
+    "alias_function": {
+      "signature": [
+        {
+          "type": "function",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "function",
         "member": null,
         "length": null
       }
@@ -1966,6 +2006,27 @@
       "length": null
     },
     "sequence_untyped": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": null,
+        "member": null,
+        "length": null
+      }
+    }
+  },
+  ".skip": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "skip_untyped": {
       "signature": [
         {
           "type": "untyped",
