@@ -2306,6 +2306,32 @@
       }
     }
   },
+  "dispatch": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "dispatch_function_list": {
+      "signature": [
+        {
+          "type": "function",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "list",
+          "member": "type",
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "function",
+        "member": null,
+        "length": null
+      }
+    }
+  },
   "floor": {
     "type": {
       "type": "function",

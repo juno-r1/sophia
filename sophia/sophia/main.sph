@@ -1,4 +1,2 @@
-str first (str x) => x | '!'
-
-final is print.first.join
-return final(['Hello', 'World'], ' ')
+final is dispatch(length, [str])
+return final('Hello')

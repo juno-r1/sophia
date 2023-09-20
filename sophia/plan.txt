@@ -24,3 +24,8 @@ i would be inclined to use angle brackets (e.g. list<str, 1>) but this introduce
 input is bugged
 multiprocessing shuts off stdin for all spawned processes
 requires message to supervisor
+
+---
+
+function for extracting methods from functions
+takes a function and a list of types as input and returns the method that that signature yields as its own function

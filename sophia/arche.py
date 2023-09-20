@@ -702,8 +702,11 @@ def alias_function(task, routine): # Function alias
 	methods = routine.tree.collect()
 	for method in methods:
 		instance = method.routine
-		definition = function_definition(instance.instructions, [name] + instance.params, [method.final] + list(method.signature))
-		new.register(definition, method.final, method.signature)
+		try:
+			definition = function_definition(instance.instructions, [name] + instance.params, [method.final] + list(method.signature))
+			new.register(definition, method.final, method.signature)
+		except AttributeError: # Built-ins
+			new.register(instance, method.final, method.signature)
 	return new
 
 arche_alias = function_method('.alias')
@@ -1207,6 +1210,29 @@ def ceiling_number(task, value):
 
 arche_ceiling = function_method('ceiling')
 arche_ceiling.retrieve(ceiling_number)
+
+def dispatch_function_list(task, routine, signature):
+	
+	tree = routine.tree.true if signature else routine.tree.false
+	while tree:
+		try:
+			tree = tree.true if tree.op(signature[tree.index]) else tree.false
+		except IndexError:
+			tree = tree.false
+	if tree is None:
+		return task.error('DISP', routine.name, signature)
+	instance, final, signature = tree.routine, tree.final, tree.signature
+	new = function_method(routine.name)
+	try:
+		definition = function_definition(instance.instructions, [routine.name] + instance.params, [final] + list(signature))
+		new.register(definition, final, signature)
+	except AttributeError: # Built-ins
+		print(instance)
+		new.register(instance, final, signature)
+	return new
+
+arche_dispatch = function_method('dispatch')
+arche_dispatch.retrieve(dispatch_function_list)
 
 def floor_number(task, value):
 
