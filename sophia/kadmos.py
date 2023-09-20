@@ -992,3 +992,16 @@ def generate_union(name, x_name, y_name):
 			instruction('?', '0', ('0',)),
 			instruction('or', '0', ('0', '1')),
 			instruction('.constraint', '0', ('0',))]
+
+def generate_y_function(name, args, register):
+
+	return [instruction('START', '', label = [name]),
+			instruction(name, register, args = args),
+			instruction('END', '')]
+
+def generate_x_function(name, args):
+
+	return [instruction('START', '', label = [name]),
+			instruction(name, '0', args = args),
+			instruction('.return', '0', '0'),
+			instruction('END', '')]

@@ -4,7 +4,7 @@ to do
 
 cache problem
 caching only works for loops right now
-caching *should* also work for function calls but the cache gets wiped every time a function is called
+caching *should* also work for function calls but the cache gets wiped every time a new method is defined
 
 ---
 
@@ -12,38 +12,15 @@ implement map/filter/reduce
 
 ---
 
-function composition
-if types can be composed then functions ought to be composable too
-basic principle of first-class functions
-sure, it'll take some work daisy-chaining instructions together
-but you already made it work for type union/intersection
-use . as the operator?
+function composition is go
+only problem is that i used the dot notation for it, which means that the type notation no longer works
+consider some kind of solution using curly brackets?
+e.g. list{str, 1}
+i think this is the only nice way i have to notate these
+i would be inclined to use angle brackets (e.g. list<str, 1>) but this introduces huge problems for parsing
 
-this turns out to be a bit more of a problem than you might think
-function composition works great when you can model functions has having one signature and return type
-so you can chain them together, right?
-multiple dispatch complicates this significantly
-problem here with many-to-many domain/range mapping
+---
 
-two solutions:
-
-1.
-when composing functions, have a way to specify which method from each function you're composing
-easy to implement
-just need a function that takes a function and a list of types and outputs the selected method as its own function
-that could actually be really useful even if this solution isn't used
-
-2.
-just attempt to compose two functions together
-oh no
-now the intuitive way to do this would be to map out the possible ways to link every method of each function together
-i.e. "what would happen if you just called these two functions consecutively?"
-and then encode that into a new function
-far more powerful than solution 1
-
-understanding that a composition of two functions should operate as if they have been called consecutively -
-and that the dispatch algorithm deterministically selects 1 method for a given input -
-we can create a 1-to-1 mapping from every method to every other method
-
-composing functions is as simple as finding, for each output of the first function, the methods of the second function that would be selected
-just run the dispatch algorithm on the second tree for each final from the first tree
+input is bugged
+multiprocessing shuts off stdin for all spawned processes
+requires message to supervisor

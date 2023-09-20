@@ -1,6 +1,4 @@
-int first (int x, int y) => x + y
-int second (int x) => x * 2
-int third (int x) => x + 3
+str first (str x) => x | '!'
 
-final is third.second.first
-return final(1, 3)
+final is print.first.join
+return final(['Hello', 'World'], ' ')

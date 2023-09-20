@@ -28,7 +28,7 @@ class method:
 	def retrieve(self, routine): # Retrieves metadata from Kleio
 
 		data = metadata[self.name][routine.__name__]
-		self.tree.extend(routine, descriptor(**data['final']), [descriptor(**i, prepare = True) for i in data['signature']])
+		self.tree.extend(routine, descriptor(**data['final'], prepare = True), [descriptor(**i, prepare = True) for i in data['signature']])
 
 	def register(self, definition, final, signature): # Registers user-defined definition
 		
@@ -635,21 +635,33 @@ def b_cmp(task, x, y):
 				tree = tree.true if tree.op(method.final) else tree.false
 			else:
 				tree = tree.false
-		else:
-			if tree is None:
-				continue
-			instance, final, signature = tree.routine, tree.final, tree.signature
-			if not method.final < signature[0]:
-				continue
-			routine = method.routine
-			instructions = routine.instructions
-			for op in instructions: # Rewrite 1st function so that returns set up the 2nd function instead
-				if op.name == '.return':
-					op.name, op.register = '.skip', instance.params[0]
-			instructions = instructions + [kadmos.instruction('RETURN', '')] + instance.instructions
-			definition = function_definition(instructions, [new.name] + routine.params, [final] + routine.signature)
-			new.register(definition, final, method.signature)
-	if new.tree.true is None and new.tree.false is None:
+		if tree is None:
+			continue
+		instance, final, x_signature = tree.routine, tree.final, tree.signature
+		if not method.final < x_signature[0]:
+			continue
+		routine = method.routine
+		y_signature = method.signature
+		try:
+			x_params = instance.params
+			x_instructions = instance.instructions
+		except AttributeError: # x is built-in
+			x_params = ['x' + str(i) for i, _ in enumerate(x_signature)]
+			x_instructions = kadmos.generate_x_function(x.name, x_params)
+		try:
+			y_params = routine.params
+			y_instructions = routine.instructions
+		except AttributeError: # y is built-in
+			y_params = ['x' + str(i) for i, _ in enumerate(y_signature)]
+			y_instructions = kadmos.generate_y_function(y.name, y_params, x_params[0])
+		for op in y_instructions: # Rewrite 1st function so that returns set up the 2nd function instead
+			if op.name == '.return':
+				op.name, op.register = '.skip', x_params[0]
+		instructions = y_instructions + [kadmos.instruction('RETURN', '')] + x_instructions
+		print(*instructions, sep = '\n')
+		definition = function_definition(instructions, [new.name] + y_params, [final] + list(y_signature))
+		new.register(definition, final, method.signature)
+	if new.tree.true is None and new.tree.false is None: # Empty tree
 		del new
 		return task.error('COMP', x.name, y.name)
 	else:

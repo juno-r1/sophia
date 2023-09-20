@@ -6,7 +6,7 @@ from functools import reduce
 
 class descriptor:
 	"""Type descriptor that holds the properties of a given value."""
-	__slots__ = ('type', 'member', 'length', 'supertypes', 'supermember', 'specificity')
+	#__slots__ = ('type', 'member', 'length', 'supertypes', 'supermember', 'specificity')
 	criteria = 3
 
 	def __init__(self, type = None, member = None, length = None, prepare = False):
@@ -15,9 +15,9 @@ class descriptor:
 		self.member = member
 		self.length = length
 		if prepare:
-			self.supertypes = supertypes[self.type or 'null']
+			self.supertypes = supertypes[self.type if self.type and self.type != '!' else 'null']
 			self.supermember = supertypes[self.member or 'null']
-			self.specificity = (specificity[self.type] if self.type else 0,
+			self.specificity = (specificity[self.type] if self.type and self.type != '!' else 0,
 								specificity[self.member] if self.member else 0,
 								int(self.length is not None))
 		else:
