@@ -10,6 +10,16 @@ caching *should* also work for function calls but the cache gets wiped every tim
 
 implement map/filter/reduce
 
+map
+call a function on every element of a list
+for each element:
+	get the complete type descriptor for the element
+	perform dispatch with the function and the element
+	invoke the runtime such that the element is the 1st argument of the function
+
+filter
+construct a list of every element where the function returns true
+
 ---
 
 function composition is go
@@ -24,8 +34,3 @@ i would be inclined to use angle brackets (e.g. list<str, 1>) but this introduce
 input is bugged
 multiprocessing shuts off stdin for all spawned processes
 requires message to supervisor
-
----
-
-function for extracting methods from functions
-takes a function and a list of types as input and returns the method that that signature yields as its own function

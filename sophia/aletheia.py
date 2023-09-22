@@ -25,13 +25,13 @@ class descriptor:
 			self.supermember = []
 			self.specificity = (0, 0, 0)
 
-	def __eq__(self, other): # Implements equality for descriptors
+	def __eq__(self, other): # Implements equality
 
 		return (self.type == other.type) and \
 			   (self.member == other.member) and \
 			   (self.length == other.length)
 
-	def __lt__(self, other): # Implements supertype relation for descriptors
+	def __lt__(self, other): # Implements supertype relation
 		
 		return (other.type in self.supertypes) and \
 			   (other.member is None or other.member in self.supermember) and \
@@ -66,9 +66,7 @@ class descriptor:
 
 	def merge(self, other): # Because Python loves to keep references to mutable objects where it shouldn't
 
-		self.type = other.type
-		self.member = other.member
-		self.length = other.length
+		self.__dict__.update(other.__dict__)
 
 	def complete(self, other, value): # Completes descriptor with properties and inferred type of value
 		
@@ -79,6 +77,13 @@ class descriptor:
 			self.member = self.member or infer_member(value, self.type)
 			self.length = self.length if self.length is not None else len(value)
 		return self
+
+	def mutual(self, other): # Implements mutual supertype relation
+		
+		mutuals = [i for i in self.supertypes if i in other.supertypes]
+		final = descriptor(mutuals[0])
+		final.supertypes = mutuals
+		return final
 
 class dispatch:
 	"""

@@ -8,6 +8,7 @@ from mathos import real, slice, element
 from math import copysign
 import aletheia, kadmos, hemera
 
+from functools import reduce
 import json
 with open('kleio.json') as kleio:
 	metadata = json.load(kleio)
@@ -1219,15 +1220,20 @@ def dispatch_function_list(task, routine, signature):
 			tree = tree.true if tree.op(signature[tree.index]) else tree.false
 		except IndexError:
 			tree = tree.false
-	if tree is None:
+	try:
+		if tree is None:
+			raise KeyError
+		instance, final, result = tree.routine, tree.final, tree.signature
+		for i, item in enumerate(signature): # Verify type signature
+			if not item < result[i]:
+				raise KeyError
+	except (IndexError, KeyError):
 		return task.error('DISP', routine.name, signature)
-	instance, final, signature = tree.routine, tree.final, tree.signature
 	new = function_method(routine.name)
 	try:
 		definition = function_definition(instance.instructions, [routine.name] + instance.params, [final] + list(signature))
 		new.register(definition, final, signature)
 	except AttributeError: # Built-ins
-		print(instance)
 		new.register(instance, final, signature)
 	return new
 
@@ -1240,6 +1246,37 @@ def floor_number(task, value):
 
 arche_floor = function_method('floor')
 arche_floor.retrieve(floor_number)
+
+def filter_function_list(task, routine, target):
+
+	result, member, length = [], task.signature[1].member, 0
+	for value in target: # Dispatch and execute for each element of the list
+		signature = task.describe(descriptor(member).complete(infer(value), value))
+		tree = routine.tree.true if target else routine.tree.false
+		while tree: # Traverse tree; terminates upon reaching leaf node
+			tree = tree.true if tree.index == 0 and tree.op(signature) else tree.false
+		if (tree is None) or len(tree.signature) > 1 or not (signature < tree.signature[0]):
+			return task.error('DISP', routine.name, signature)
+		instance, signature = tree.routine, tree.signature
+		if 'boolean' not in tree.final.supertypes:
+			return task.error('FLTR', routine.name, value)
+		if isinstance(instance, function_definition):
+			caller = task.caller
+			instance(task, value)
+			task.properties.type = None # Stop the function call from suppressing the write
+			check = task.run() # WARNING: Recursive runtime
+			task.caller = caller
+		else: # Built-ins
+			check = instance(task, value)
+		if check:
+			result.append(value)
+			length = length + 1
+	task.properties.member = member # Member type remains constant
+	task.properties.length = length
+	return result
+
+arche_filter = function_method('filter')
+arche_filter.retrieve(filter_function_list)
 
 def format_string_list(task, string, args):
 
@@ -1284,12 +1321,79 @@ arche_length.retrieve(length_list)
 arche_length.retrieve(length_record)
 arche_length.retrieve(length_slice)
 
+def map_function_list(task, routine, target):
+
+	result, final, member = [], [], task.signature[1].member
+	for value in target: # Dispatch and execute for each element of the list
+		signature = task.describe(descriptor(member).complete(infer(value), value))
+		tree = routine.tree.true if target else routine.tree.false
+		while tree: # Traverse tree; terminates upon reaching leaf node
+			tree = tree.true if tree.index == 0 and tree.op(signature) else tree.false
+		if (tree is None) or len(tree.signature) > 1 or not (signature < tree.signature[0]):
+			return task.error('DISP', routine.name, signature)
+		instance, signature = tree.routine, tree.signature
+		final.append(tree.final)
+		if isinstance(instance, function_definition):
+			caller = task.caller
+			instance(task, value)
+			task.properties.type = None # Stop the function call from suppressing the write
+			result.append(task.run()) # WARNING: Recursive runtime
+			task.caller = caller
+		else: # Built-ins
+			result.append(instance(task, value))
+	final = reduce(descriptor.mutual, final) # Use the return type of the map, not the inferred type of the elements
+	task.properties.member = final.type
+	return result
+
+arche_map = function_method('map')
+arche_map.retrieve(map_function_list)
+
 def namespace_null(task): # Do not let the user read working registers
 
 	return {k: v for k, v in task.values.items() if k not in task.reserved}
 
 arche_namespace = function_method('namespace')
 arche_namespace.retrieve(namespace_null)
+
+def reduce_function_list(task, routine, target):
+	
+	try:
+		x, member = target[0], task.signature[1].member
+		x_type = task.describe(descriptor(member).complete(infer(x), x))
+	except IndexError:
+		return task.error('RDCE')
+	for y in target[1:]: # Dispatch and execute for each element of the list
+		y_type = task.describe(descriptor(member).complete(infer(y), y))
+		xy = [x_type, y_type]
+		tree = routine.tree.true if target else routine.tree.false
+		while tree: # Traverse tree; terminates upon reaching leaf node
+			try:
+				tree = tree.true if tree.op(xy[tree.index]) else tree.false
+			except IndexError:
+				tree = tree.false
+		try:
+			if tree is None:
+				raise KeyError
+			instance, final, signature = tree.routine, tree.final, tree.signature
+			for i, item in enumerate(xy): # Verify type signature
+				if not item < signature[i]:
+					raise KeyError
+		except (IndexError, KeyError):
+			return task.error('DISP', routine.name, xy)
+		if isinstance(instance, function_definition):
+			caller = task.caller
+			instance(task, x, y)
+			task.properties.type = None # Stop the function call from suppressing the write
+			x = task.run() # WARNING: Recursive runtime
+			task.caller = caller
+		else: # Built-ins
+			x = instance(task, x, y)
+		x_type, y_type = final, member
+	task.properties.merge(final)
+	return x
+
+arche_reduce = function_method('reduce')
+arche_reduce.retrieve(reduce_function_list)
 
 def reverse_slice(task, value):
 		
@@ -1311,6 +1415,27 @@ def sign_number(task, value):
 
 arche_sign = function_method('sign')
 arche_sign.retrieve(sign_number)
+
+def signature_function_list(task, routine, signature):
+
+	tree = routine.tree.true if signature else routine.tree.false
+	while tree:
+		try:
+			tree = tree.true if tree.op(signature[tree.index]) else tree.false
+		except IndexError:
+			tree = tree.false
+	try:
+		if tree is None:
+			raise KeyError
+		for i, item in enumerate(signature): # Verify type signature
+			if not item < tree.signature[i]:
+				raise KeyError
+		return True
+	except (IndexError, KeyError):
+		return False
+
+arche_signature = function_method('signature')
+arche_signature.retrieve(signature_function_list)
 
 def split_string_string(task, string, separator):
 

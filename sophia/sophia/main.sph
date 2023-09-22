@@ -1,2 +1,3 @@
-final is dispatch(length, [str])
-return final('Hello')
+int add (int x, int y) => x + y
+list a: [1, 2, 3]
+return reduce(add, a)

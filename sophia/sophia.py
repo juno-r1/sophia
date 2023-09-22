@@ -167,14 +167,35 @@ class task:
 		self.final = aletheia.descriptor() # Return type of routine
 
 	def execute(self):
-		"""Task runtime loop; target of task.pool.apply_async()."""
-		debug_task = 'task' in self.flags
+		"""
+		Target of task.pool.apply_async().
+		Executes flags, then launches runtime loop.
+		"""
 		if 'instructions' in self.flags:
 			hemera.debug_instructions(self)
 		if 'profile' in self.flags:
 			from cProfile import Profile
 			pr = Profile()
 			pr.enable()
+		self.run()
+		"""
+		Terminate runtime loop and execute flagged operations.
+		"""
+		if 'profile' in self.flags:
+			pr.disable()
+			pr.print_stats(sort = 'tottime')
+		if 'namespace' in self.flags:
+			hemera.debug_namespace(self)
+		self.message('terminate')
+		return self.state() # Return mutable state to supervisor
+
+	def run(self):
+		"""
+		Task runtime loop.
+		Performs dispatch and executes instructions.
+		"""
+		debug_task = 'task' in self.flags # Debug runtime loop
+		self.caller = None # Reset caller
 		while self.path:
 			"""
 			Prepare instruction, method, and arguments.
@@ -234,16 +255,8 @@ class task:
 				self.values[address] = value
 				self.types[address] = self.describe(self.properties.complete(final, value))
 			self.properties = aletheia.descriptor(None, None, None)
-		"""
-		Terminate runtime loop and execute flagged operations.
-		"""
-		if 'profile' in self.flags:
-			pr.disable()
-			pr.print_stats(sort = 'tottime')
-		if 'namespace' in self.flags:
-			hemera.debug_namespace(self)
-		self.message('terminate')
-		return self.state() # Return mutable state to supervisor
+		else:
+			return value # Yields return value for operations that need it
 
 	def branch(self, scope = 0, skip = False, move = False): # Universal branch function
 
@@ -301,6 +314,9 @@ class task:
 
 	def error(self, status, *args): # Error handler
 		
+		self.properties.type = 'null'
+		self.properties.member = None
+		self.properties.length = None
 		if self.op.register != '0': # Suppresses error for assertions
 			if 'suppress' not in self.flags:
 				hemera.debug_error(self.name, self.op.line, status, args)

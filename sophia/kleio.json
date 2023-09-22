@@ -2353,6 +2353,32 @@
       }
     }
   },
+  "filter": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "filter_function_list": {
+      "signature": [
+        {
+          "type": "function",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "list",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "list",
+        "member": null,
+        "length": null
+      }
+    }
+  },
   "format": {
     "type": {
       "type": "function",
@@ -2489,6 +2515,32 @@
       }
     }
   },
+  "map": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "map_function_list": {
+      "signature": [
+        {
+          "type": "function",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "list",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "list",
+        "member": null,
+        "length": null
+      }
+    }
+  },
   "namespace": {
     "type": {
       "type": "function",
@@ -2499,6 +2551,32 @@
       "signature": [],
       "final": {
         "type": "record",
+        "member": null,
+        "length": null
+      }
+    }
+  },
+  "reduce": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "reduce_function_list": {
+      "signature": [
+        {
+          "type": "function",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "list",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": null,
         "member": null,
         "length": null
       }
@@ -2562,6 +2640,32 @@
       ],
       "final": {
         "type": "integer",
+        "member": null,
+        "length": null
+      }
+    }
+  },
+  "signature": {
+    "type": {
+      "type": "function",
+      "member": null,
+      "length": null
+    },
+    "signature_function_list": {
+      "signature": [
+        {
+          "type": "function",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "list",
+          "member": "type",
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "boolean",
         "member": null,
         "length": null
       }
