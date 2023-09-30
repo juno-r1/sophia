@@ -62,6 +62,7 @@
     <Content Include="harmonia\test23.sph" />
     <Content Include="harmonia\test24.sph" />
     <Content Include="kleio.json" />
+    <Content Include="plan.txt" />
     <Content Include="sophia\main.sph" />
     <Content Include="sophia\test.sph" />
   </ItemGroup>
