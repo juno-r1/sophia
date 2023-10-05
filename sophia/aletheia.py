@@ -71,11 +71,12 @@ class descriptor:
 	def complete(self, other, value): # Completes descriptor with properties and inferred type of value
 		
 		self.type = self.type or other.type or infer_type(value)
-		self.member = self.member or other.member
-		self.length = self.length if self.length is not None else other.length
 		if self.type in ('string', 'list', 'record', 'slice'):
-			self.member = self.member or infer_member(value, self.type)
-			self.length = self.length if self.length is not None else len(value)
+			self.member = self.member or other.member or infer_member(value, self.type)
+			self.length = self.length if self.length is not None else (other.length if other.length is not None else len(value))
+		else:
+			self.member = None
+			self.length = None
 		return self
 
 	def mutual(self, other): # Implements mutual supertype relation
@@ -84,6 +85,14 @@ class descriptor:
 		final = descriptor(mutuals[0])
 		final.supertypes = mutuals
 		return final
+
+	def describe(self, task): # Complete descriptor using runtime information
+		
+		type_routine, member_routine = task.values[self.type or 'null'], task.values[self.member or 'null']
+		self.supertypes = type_routine.supertypes
+		self.supermember = member_routine.supertypes
+		self.specificity = (type_routine.specificity, member_routine.specificity, int(self.length is not None))
+		return self
 
 class dispatch:
 	"""

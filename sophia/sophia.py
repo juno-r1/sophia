@@ -6,7 +6,7 @@ This is the root module and the only module the user should need to access.
 
 # ☉ 0.6.1 30-09-2023
 
-import aletheia, arche, hemera, iris, kadmos
+import aletheia, hemera, iris, kadmos, metis
 import multiprocessing as mp
 import os
 from queue import Empty
@@ -28,11 +28,11 @@ class runtime:
 		initial = kadmos.module(address, root = root)
 		if 'tree' in flags:
 			hemera.debug_tree(initial) # Here's tree
-		self.instructions, self.values, self.types = kadmos.translator(initial).generate()
+		processor = metis.processor(*kadmos.translator(initial).generate()).analyse()
 		self.root = root
 		self.stream = mp.Queue() # Supervisor message stream
 		self.pool = mp.Pool(initializer = self.initialise)
-		self.main = task(self.instructions, self.values, self.types, flags) # Initial task
+		self.main = task(processor, flags) # Initial task
 		self.tasks = {self.main.pid: iris.proxy(self.main)} # Proxies of tasks
 		self.events = {} # Persistent event tasks
 		self.flags = flags
@@ -149,21 +149,21 @@ class task:
 	A task handles synchronous program execution and passes messages to and
 	from the supervisor.
 	"""
-	def __init__(self, instructions, values, types, flags): # God objects? What is she objecting to?
+	def __init__(self, processor, flags): # God objects? What is she objecting to?
 		
-		self.name = instructions[0].label[0] if instructions else ''
+		self.name = processor.name
 		self.pid = id(self) # Guaranteed not to collide with other task PIDs; not the same as the PID of the pool process
 		self.flags = flags
-		self.instructions = instructions
-		self.cache = [None for _ in instructions] # Instruction cache
-		self.path = int(bool(instructions)) # Does not execute if the parser encountered an error
-		self.op = instructions[0] # Current instruction
+		self.caller = None # Stores the state of the calling routine
+		self.instructions = processor.instructions
+		self.path = int(bool(self.instructions)) # Does not execute if the parser encountered an error
+		self.op = self.instructions[0] # Current instruction
+		self.cache = processor.cache # Instruction cache
+		self.values = processor.values
+		self.types = processor.types
+		self.reserved = tuple(self.values)
 		self.signature = [] # Current type signature
 		self.properties = aletheia.descriptor(None, None, None) # Final type properties
-		self.caller = None # Stores the state of the calling routine
-		self.values = arche.builtins | values
-		self.types = {k: self.describe(v) for k, v in (arche.types | types).items()} # Pre-compute dispatch information
-		self.reserved = tuple(self.values)
 		self.final = aletheia.descriptor() # Return type of routine
 
 	def execute(self):
@@ -200,52 +200,38 @@ class task:
 			"""
 			Prepare instruction, method, and arguments.
 			"""
-			self.op = self.instructions[self.path]
+			self.op, cache = self.instructions[self.path], self.cache[self.path]
 			if debug_task:
 				hemera.debug_task(self)
 			self.path = self.path + 1
 			if not self.op.register: # Labels
 				continue
-			try:
-				method, args = self.values[self.op.name], self.op.args
-			except KeyError:
-				self.error('FIND', self.op.name)
-				continue
-			try:
-				tree = method.tree.true if args else method.tree.false # Here's tree
-				self.signature = [self.types[arg] for arg in args]
-				args = [self] + [self.values[arg] for arg in args]
-			except KeyError as e:
-				self.error('FIND', e)
-				if self.op.register == '0':
-					args = [self, None]
-					self.signature = [aletheia.descriptor('null', prepare = True)]
-				else:
-					continue
+			method, addresses = self.values[self.op.name], self.op.args
+			args = [self] + [self.values[arg] for arg in addresses]
+
 			"""
 			Multiple dispatch algorithm, with help from Julia:
 			https://github.com/JeffBezanson/phdthesis
 			Binary search tree yields closest key for method, then key is verified.
 			"""
-			if (cache := self.cache[self.path]) and cache[0] == self.signature:
-				instance, final = cache[1], cache[2]
+			self.signature = [self.types[arg] for arg in addresses]
+			if cache is not None:
+				instance, final, signature = cache.routine, cache.final, cache.signature
 			else:
+				tree = method.tree.true if addresses else method.tree.false # Here's tree
 				while tree: # Traverse tree; terminates upon reaching leaf node
 					try:
 						tree = tree.true if tree.op(self.signature[tree.index]) else tree.false
 					except IndexError:
 						tree = tree.false
-				try:
-					if tree is None:
-						raise KeyError
-					instance, final, signature = tree.routine, tree.final, tree.signature
-					for i, item in enumerate(self.signature): # Verify type signature
-						if not item < signature[i]:
-							raise KeyError
-					self.cache[self.path] = (self.signature, instance, final) # Cache result
-				except (IndexError, KeyError):
+				if tree is None:
 					self.error('DISP', method.name, self.signature)
 					continue
+				instance, final, signature = tree.routine, tree.final, tree.signature
+				for i, item in enumerate(self.signature): # Verify type signature
+					if not item < signature[i]:
+						self.error('DISP', method.name, self.signature)
+						continue
 			"""
 			Execute instruction and update registers.
 			"""
@@ -253,7 +239,7 @@ class task:
 			if final.type != '!' and self.properties.type != '!': # Suppress write
 				address = self.op.register
 				self.values[address] = value
-				self.types[address] = self.describe(self.properties.complete(final, value))
+				self.types[address] = self.properties.complete(final, value).describe(self)
 			self.properties = aletheia.descriptor(None, None, None)
 		else:
 			return value # Yields return value for operations that need it
@@ -269,14 +255,6 @@ class task:
 					if move:
 						self.path = path
 					return path
-
-	def describe(self, value): # Complete descriptor using runtime information
-		
-		type_routine, member_routine = self.values[value.type or 'null'], self.values[value.member or 'null']
-		value.supertypes = type_routine.supertypes
-		value.supermember = member_routine.supertypes
-		value.specificity = (type_routine.specificity, member_routine.specificity, int(value.length is not None))
-		return value
 
 	def state(self): # Get current state of task as subset of __dict__
 
@@ -306,7 +284,7 @@ class task:
 				if scope == 1 and op.name == 'EVENT':
 					name = op.label[0]
 					break
-		self.values[name], self.types[name] = message, self.describe(aletheia.descriptor('untyped'))
+		self.values[name], self.types[name] = message, aletheia.descriptor('untyped').describe(self)
 
 	def message(self, instruction = None, *args):
 		

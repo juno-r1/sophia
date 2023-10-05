@@ -30,6 +30,7 @@
     <Compile Include="hemera.py" />
     <Compile Include="iris.py" />
     <Compile Include="arche.py" />
+    <Compile Include="metis.py" />
     <Compile Include="sophia.py" />
     <Compile Include="kadmos.py" />
     <Compile Include="run.py" />

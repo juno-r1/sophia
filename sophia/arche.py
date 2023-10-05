@@ -6,7 +6,7 @@ from aletheia import descriptor, dispatch, infer, subtype
 from iris import reference
 from mathos import real, slice, element
 from math import copysign
-import aletheia, kadmos, hemera
+import aletheia, kadmos
 
 from functools import reduce
 import json
@@ -495,15 +495,16 @@ def b_ins_slice(_, x, y):
 	if n % (y.start - x.start) == 0: # Solution for intersection of slices
 		step = (x.step * y.step) / n # Step of intersection
 		ranges = [x.start, x.end, y.start, y.end].sort()
-		lower = ranges[1] - (ranges[1] % step) + step # Gets highest lower bound
-		upper = ranges[2] - (ranges[2] % step) # Gets lowest upper bound
+		lower, upper = ranges[1], ranges[2]
+		lower = lower - (lower % step) + step # Gets highest lower bound
+		upper = upper - (upper % step) # Gets lowest upper bound
 		return slice((lower, upper, m))
 
 def b_ins_type(task, x, y):
 	
 	name, supername = '<{0}&{1}>'.format(x.name, y.name), [i for i in x.supertypes if i in y.supertypes][0] # Use closest mutual supertype
 	supertype, index = task.values[supername], x.supertypes.index(supername)
-	type_tag, final_tag, super_tag = descriptor(name), descriptor(name), task.describe(descriptor(supername))
+	type_tag, final_tag, super_tag = descriptor(name), descriptor(name), descriptor(supername).describe(task)
 	type_tag.supertypes = [name] + super_tag.supertypes
 	type_tag.specificity = (super_tag.specificity[0] + 1, 0, 0)
 	routine = type_method(name, x.supertypes[index:], x.prototype)
@@ -543,7 +544,7 @@ def b_uni_type(task, x, y):
 	
 	name, supername = '<{0}|{1}>'.format(x.name, y.name), [i for i in x.supertypes if i in y.supertypes][0] # Use closest mutual supertype
 	supertype, index = task.values[supername], x.supertypes.index(supername)
-	type_tag, final_tag, super_tag = descriptor(name), descriptor(name), task.describe(descriptor(supername))
+	type_tag, final_tag, super_tag = descriptor(name), descriptor(name), descriptor(supername).describe(task)
 	type_tag.supertypes = [name] + super_tag.supertypes
 	type_tag.specificity = (super_tag.specificity[0] + 1, 0, 0)
 	routine = type_method(name, x.supertypes[index:], x.prototype)
@@ -679,7 +680,7 @@ them inaccessible to the user.
 def alias_type(task, routine): # Type alias
 
 	replace, name, supername = routine.name, task.op.register, routine.supertypes[1]
-	new_tag, final_tag = task.describe(descriptor(supername)), descriptor(name)
+	new_tag, final_tag = descriptor(supername).describe(task), descriptor(name)
 	new_tag.type = name
 	new_tag.supertypes = [name] + new_tag.supertypes
 	new_tag.specificity = (new_tag.specificity[0] + 1, 0, 0)
@@ -804,7 +805,7 @@ def constraint_boolean(task, constraint):
 		task.error('CAST', name, str(value))
 	elif task.op.label and task.op.label[0] != name: # Update type of checked value for subsequent constraints
 		task.types[name].type = task.op.label[0]
-		task.describe(task.types[name])
+		task.types[name].describe(task)
 
 arche_constraint = function_method('.constraint')
 arche_constraint.retrieve(constraint_boolean)
@@ -812,7 +813,7 @@ arche_constraint.retrieve(constraint_boolean)
 def event_null(task):
 
 	name = task.op.register
-	types, params = [task.describe(descriptor.read(i)) for i in task.op.label[0::2]], task.op.label[1::2]
+	types, params = [descriptor.read(i).describe(task) for i in task.op.label[0::2]], task.op.label[1::2]
 	start = task.path
 	task.branch(0, True, True)
 	end = task.branch(0, True, True)
@@ -828,7 +829,7 @@ arche_event.retrieve(event_null)
 def function_null(task):
 	
 	name = task.op.register
-	types, params = [task.describe(descriptor.read(i)) for i in task.op.label[0::2]], task.op.label[1::2]
+	types, params = [descriptor.read(i).describe(task) for i in task.op.label[0::2]], task.op.label[1::2]
 	start, end = task.path, task.branch(0, True, True)
 	definition = function_definition(task.instructions[start:end], params, types)
 	routine = task.values[name] if name in task.values and task.types[name].type == 'function' else function_method(name)
@@ -988,7 +989,7 @@ def meta_string(task, string):
 	task.instructions[start + 1:end] = instructions
 	task.cache[start + 1:end] = [None for _ in instructions]
 	task.values.update(values)
-	task.types.update({k: task.describe(v) for k, v in types.items()})
+	task.types.update({k: v.describe(task) for k, v in types.items()})
 
 arche_meta = function_method('.meta')
 arche_meta.retrieve(meta_string)
@@ -1057,7 +1058,7 @@ arche_skip.retrieve(skip_untyped)
 def type_type(task, supertype):
 	
 	name, supername = task.op.register, supertype.name
-	type_tag, final_tag, super_tag = descriptor(name), descriptor(name), task.describe(descriptor(supername))
+	type_tag, final_tag, super_tag = descriptor(name), descriptor(name), descriptor(supername).describe(task)
 	type_tag.supertypes = [name] + super_tag.supertypes
 	type_tag.specificity = (super_tag.specificity[0] + 1, 0, 0)
 	start, end = task.path, task.branch(0, True, True)
@@ -1084,7 +1085,7 @@ def type_type(task, supertype):
 def type_type_untyped(task, supertype, prototype):
 	
 	name, supername = task.op.register, supertype.name
-	type_tag, final_tag, super_tag = descriptor(name), descriptor(name), task.describe(descriptor(supername))
+	type_tag, final_tag, super_tag = descriptor(name), descriptor(name), descriptor(supername).describe(task)
 	type_tag.supertypes = [name] + super_tag.supertypes
 	type_tag.specificity = (super_tag.specificity[0] + 1, 0, 0)
 	start, end = task.path, task.branch(0, True, True)
@@ -1251,7 +1252,7 @@ def filter_function_list(task, routine, target):
 
 	result, member, length = [], task.signature[1].member, 0
 	for value in target: # Dispatch and execute for each element of the list
-		signature = task.describe(descriptor(member).complete(infer(value), value))
+		signature = descriptor(member).complete(infer(value), value).describe(task)
 		tree = routine.tree.true if target else routine.tree.false
 		while tree: # Traverse tree; terminates upon reaching leaf node
 			tree = tree.true if tree.index == 0 and tree.op(signature) else tree.false
@@ -1325,7 +1326,7 @@ def map_function_list(task, routine, target):
 
 	result, final, member = [], [], task.signature[1].member
 	for value in target: # Dispatch and execute for each element of the list
-		signature = task.describe(descriptor(member).complete(infer(value), value))
+		signature = descriptor(member).complete(infer(value), value).describe(task)
 		tree = routine.tree.true if target else routine.tree.false
 		while tree: # Traverse tree; terminates upon reaching leaf node
 			tree = tree.true if tree.index == 0 and tree.op(signature) else tree.false
@@ -1359,11 +1360,11 @@ def reduce_function_list(task, routine, target):
 	
 	try:
 		x, member = target[0], task.signature[1].member
-		x_type = task.describe(descriptor(member).complete(infer(x), x))
+		x_type = descriptor(member).complete(infer(x), x).describe(task)
 	except IndexError:
 		return task.error('RDCE')
 	for y in target[1:]: # Dispatch and execute for each element of the list
-		y_type = task.describe(descriptor(member).complete(infer(y), y))
+		y_type = descriptor(member).complete(infer(y), y).describe(task)
 		xy = [x_type, y_type]
 		tree = routine.tree.true if target else routine.tree.false
 		while tree: # Traverse tree; terminates upon reaching leaf node

@@ -21,6 +21,85 @@ input is bugged
 multiprocessing shuts off stdin for all spawned processes
 requires message to supervisor
 
+known bug with dispatch tree generation
+for example, t_slc and b_slc are distinguished by 0 supertype num instead of 2 supertype untyped
+prioritise arity over supertype
+
 ---
 
 extended static checker for sophia
+
+type checking
+
+this is a pretty much a solved problem for built-in types and operations
+this is also a solved problem for user-defined operations, since those are required to specify their pre-conditions and post-conditions
+when you introduce user-defined types, however, this becomes extremely non-trivial
+
+this would be fine if you were able to, say, define all type relations in header files
+however, types can and should be defined anywhere
+these are the tradeoffs that a dynamic language must make
+in a sufficiently dynamic language, such as this one, not all properties of the program can be statically known
+
+so what can we know?
+
+only the internal scope of any given procedure can be known
+a procedure can and will be called in any environment
+per the language specification, a procedure's types *do* need to be known when it is defined
+this does not, guarantee, however, that they will be known in the calling scope
+if the types aren't known in the calling scope, the checker should invalidate the call, since it is guaranteed to fail
+
+the checker cannot know anything about a type that is outside the scope it was defined
+nor can it know anything about types created, for example, in meta-statements
+if the checker encounters the name of a type that is bound but not defined in scope, it must assume that the type exists but cannot assume anything about it
+
+necessary to deal with conditional execution
+keep track of scope through blocks, treating them as their own scopes
+it should be possible to type check completely linearly, progressing through blocks as they come
+
+what can the checker do?
+
+the checker serves to verify the pre-conditions and post-conditions of every operation
+when it does this, it is able to guarantee certain properties of arguments
+to this end, the checker is also capable of detecting when a type check is unnecessary
+
+the checker should therefore be able to edit and remove unnecessary type checks
+
+---
+
+constant folding and propagation
+
+as a virtual register machine, sophia has to create every register it needs - and populate them with constants - at compile time
+therefore, every constant is known at compile time
+all built-ins are also available at compile time
+this allows you to evaluate a wide range of expressions at compile time
+
+constant folding does not involve block statements or function calls
+this is not just running the program
+
+the checker should remove unnecessary instructions after performing constant folding
+
+---
+
+pre-evaluated dispatch
+
+if you're going to be type checking the whole program
+and doing so basically requires performing dispatch on every instruction to verify that it works
+and dispatch is deterministic for intraprocedural data
+then you've basically already pre-evaluated dispatch
+
+this allows us to partially build the instruction cache *at compile time*
+
+---
+
+name checking
+
+because the analyser needs to retrieve the type information of every register for every instruction
+it is possible to check that every register exists and is not reserved when invoked
+this obviates the need to check for these errors at runtime
+
+it also means that there's no need for dedicated bind instructions; these can be made into labels
+
+in addition, some assertions can now be decided at compile time
+
+CAUTION: this is strongly affected by the behaviour of meta-statements
+in order for this to be able to work, meta-statements *must* occupy a different scope to where they are invoked
