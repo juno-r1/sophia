@@ -1844,8 +1844,8 @@
         }
       ],
       "final": {
-        "type": null,
-        "member": null,
+        "type": "untyped",
+        "member": "string",
         "length": null
       }
     },
@@ -1858,7 +1858,7 @@
         }
       ],
       "final": {
-        "type": null,
+        "type": "untyped",
         "member": null,
         "length": null
       }
@@ -1872,7 +1872,7 @@
         }
       ],
       "final": {
-        "type": null,
+        "type": "untyped",
         "member": null,
         "length": null
       }
@@ -1886,8 +1886,8 @@
         }
       ],
       "final": {
-        "type": null,
-        "member": null,
+        "type": "untyped",
+        "member": "integer",
         "length": null
       }
     }

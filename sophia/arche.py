@@ -6,9 +6,9 @@ from aletheia import descriptor, dispatch, infer, subtype
 from iris import reference
 from mathos import real, slice, element
 from math import copysign
+from functools import reduce
 import aletheia, kadmos
 
-from functools import reduce
 import json
 with open('kleio.json') as kleio:
 	metadata = json.load(kleio)
@@ -42,7 +42,6 @@ class type_method(method):
 		super().__init__(name)
 		self.supertypes = [name] + supertypes
 		self.prototype = prototype
-		self.specificity = len(supertypes) + 1
 
 class event_method(method): pass
 class function_method(method): pass
@@ -506,7 +505,6 @@ def b_ins_type(task, x, y):
 	supertype, index = task.values[supername], x.supertypes.index(supername)
 	type_tag, final_tag, super_tag = descriptor(name), descriptor(name), descriptor(supername).describe(task)
 	type_tag.supertypes = [name] + super_tag.supertypes
-	type_tag.specificity = (super_tag.specificity[0] + 1, 0, 0)
 	routine = type_method(name, x.supertypes[index:], x.prototype)
 	routine.register(subtype, final_tag, (type_tag,))
 	lhs, rhs = kadmos.generate_intersection(name, x.name), kadmos.generate_intersection(name, y.name)
@@ -546,7 +544,6 @@ def b_uni_type(task, x, y):
 	supertype, index = task.values[supername], x.supertypes.index(supername)
 	type_tag, final_tag, super_tag = descriptor(name), descriptor(name), descriptor(supername).describe(task)
 	type_tag.supertypes = [name] + super_tag.supertypes
-	type_tag.specificity = (super_tag.specificity[0] + 1, 0, 0)
 	routine = type_method(name, x.supertypes[index:], x.prototype)
 	routine.register(subtype, final_tag, (type_tag,))
 	check = kadmos.generate_union(name, x.name, y.name)
@@ -683,7 +680,6 @@ def alias_type(task, routine): # Type alias
 	new_tag, final_tag = descriptor(supername).describe(task), descriptor(name)
 	new_tag.type = name
 	new_tag.supertypes = [name] + new_tag.supertypes
-	new_tag.specificity = (new_tag.specificity[0] + 1, 0, 0)
 	new = type_method(name, routine.supertypes[1:], routine.prototype)
 	tree = routine.tree.true
 	while tree: # Rewrite methods with own type name
@@ -782,7 +778,7 @@ def concatenate_untyped(task, value):
 	return [value]
 
 def concatenate_untyped_untyped(task, sequence, value):
-
+	
 	sequence_type, member_type = task.signature[0], task.signature[1]
 	task.properties.length = sequence_type.length + 1
 	if sequence_type.member == member_type.type:
@@ -931,23 +927,21 @@ arche_index.retrieve(index_slice_integer)
 arche_index.retrieve(index_slice_slice)
 
 def iterator_string(task, iterable):
-
-	task.properties.type = 'string'
+	
 	return iter(iterable)
 
 def iterator_list(task, iterable):
 
-	task.properties.type = task.signature[0].member
+	task.properties.member = task.signature[0].member
 	return iter(iterable)
 
 def iterator_record(task, iterable):
 
-	task.properties.type = task.signature[0].member
+	task.properties.member = task.signature[0].member
 	return iter(iterable)
 
 def iterator_slice(task, iterable):
-
-	task.properties.type = 'integer'
+	
 	return iter(iterable)
 
 arche_iterator = function_method('.iterator')
@@ -995,9 +989,9 @@ arche_meta = function_method('.meta')
 arche_meta.retrieve(meta_string)
 
 def next_untyped(task, iterator):
-
+	
 	try:
-		task.properties.type = task.signature[0].type
+		task.properties.type = task.signature[0].member
 		return next(iterator)
 	except StopIteration:
 		task.properties.type = 'null'
@@ -1060,7 +1054,6 @@ def type_type(task, supertype):
 	name, supername = task.op.register, supertype.name
 	type_tag, final_tag, super_tag = descriptor(name), descriptor(name), descriptor(supername).describe(task)
 	type_tag.supertypes = [name] + super_tag.supertypes
-	type_tag.specificity = (super_tag.specificity[0] + 1, 0, 0)
 	start, end = task.path, task.branch(0, True, True)
 	instructions = task.instructions[start:end]
 	routine = type_method(name, supertype.supertypes, supertype.prototype)
@@ -1087,7 +1080,6 @@ def type_type_untyped(task, supertype, prototype):
 	name, supername = task.op.register, supertype.name
 	type_tag, final_tag, super_tag = descriptor(name), descriptor(name), descriptor(supername).describe(task)
 	type_tag.supertypes = [name] + super_tag.supertypes
-	type_tag.specificity = (super_tag.specificity[0] + 1, 0, 0)
 	start, end = task.path, task.branch(0, True, True)
 	instructions = task.instructions[start:end]
 	routine = type_method(name, supertype.supertypes, prototype)

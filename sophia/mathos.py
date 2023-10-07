@@ -2,7 +2,8 @@
 The Mathos module defines internal data types.
 '''
 
-import math, numbers, operator, re, sys
+import numbers, operator, re, sys
+from math import gcd
 
 # Constants related to the hash implementation;  hash(x) is based
 # on the reduction of x modulo the prime _PyHASH_MODULUS.
@@ -89,9 +90,8 @@ class real(numbers.Rational):
 							denominator *= 10**-exp
 				if m.group('sign') == '-':
 					numerator = -numerator
-			
-		if _normalise:
-			g = math.gcd(numerator, denominator)
+		if _normalise and numerator != 1 and denominator != 1:
+			g = gcd(numerator, denominator)
 			if denominator < 0:
 				g = -g
 			numerator //= g
@@ -190,12 +190,12 @@ class real(numbers.Rational):
 		"""a + b"""
 		na, da = a.numerator, a.denominator
 		nb, db = b.numerator, b.denominator
-		g = math.gcd(da, db)
+		g = gcd(da, db)
 		if g == 1:
 			return real(na * db + da * nb, da * db, _normalise = False)
 		s = da // g
 		t = na * (db // g) + nb * s
-		g2 = math.gcd(t, g)
+		g2 = gcd(t, g)
 		if g2 == 1:
 			return real(t, s * db, _normalise = False)
 		return real(t // g2, s * (db // g2), _normalise = False)
@@ -206,12 +206,12 @@ class real(numbers.Rational):
 		"""a - b"""
 		na, da = a.numerator, a.denominator
 		nb, db = b.numerator, b.denominator
-		g = math.gcd(da, db)
+		g = gcd(da, db)
 		if g == 1:
 			return real(na * db - da * nb, da * db, _normalise = False)
 		s = da // g
 		t = na * (db // g) - nb * s
-		g2 = math.gcd(t, g)
+		g2 = gcd(t, g)
 		if g2 == 1:
 			return real(t, s * db, _normalise = False)
 		return real(t // g2, s * (db // g2), _normalise = False)
@@ -220,11 +220,11 @@ class real(numbers.Rational):
 		"""a * b"""
 		na, da = a.numerator, a.denominator
 		nb, db = b.numerator, b.denominator
-		g1 = math.gcd(na, db)
+		g1 = gcd(na, db)
 		if g1 > 1:
 			na //= g1
 			db //= g1
-		g2 = math.gcd(nb, da)
+		g2 = gcd(nb, da)
 		if g2 > 1:
 			nb //= g2
 			da //= g2
@@ -237,11 +237,11 @@ class real(numbers.Rational):
 		# Same as _mul(), with inversed b.
 		na, da = a.numerator, a.denominator
 		nb, db = b.numerator, b.denominator
-		g1 = math.gcd(na, nb)
+		g1 = gcd(na, nb)
 		if g1 > 1:
 			na //= g1
 			nb //= g1
-		g2 = math.gcd(db, da)
+		g2 = gcd(db, da)
 		if g2 > 1:
 			da //= g2
 			db //= g2
@@ -443,7 +443,7 @@ class slice:
 			return self.end + self.step * (index + 1)
 
 	def __iter__(self): # Custom range generator for reals
-
+		
 		n = self.start
 		if self.step >= 0:
 			while n <= self.end:

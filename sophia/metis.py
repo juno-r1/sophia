@@ -4,6 +4,7 @@ This includes type checking, constant folding/propagation, and dispatch verifica
 '''
 
 import arche, hemera
+from kadmos import instruction
 
 class processor:
 	"""Static analysis processor for generated instructions."""
@@ -13,16 +14,18 @@ class processor:
 		self.instructions = instructions
 		self.values = arche.builtins | values
 		self.types = arche.types | {k: v.describe(self) for k, v in types.items()}
-		self.cache = []
+		self.cache = [None for i in instructions]
+		self.op = None
 
-	def analyse(self):
-
+	def analyse(self): # Disabled until I can figure out how this is meant to work
+		
 		instructions, cache, reserved = [], [], [list(self.values.keys())]
 		scope = 0
 		for i, op in enumerate(self.instructions): # No backtracking required
 			"""
 			Prepare instruction, method, and signature.
 			"""
+			self.op = op # Only used for error handling in Metis
 			if not op.register: # Labels
 				if op.name == 'START':
 					scope = scope + 1
@@ -47,12 +50,14 @@ class processor:
 				except IndexError:
 					tree = tree.false
 			if tree is None:
+				self.error('DISP', method.name, signature)
 				break
 			routine, final, types = tree.routine, tree.final, tree.signature
 			if len(args) != len(types): # Check arity
 				break
 			for i, item in enumerate(signature): # Verify type signature
-				if not item < types[i]:
+				if item > types[i]:
+					self.error('DISP', method.name, signature)
 					break
 			"""
 			Analyse characteristics of instruction.
@@ -69,6 +74,6 @@ class processor:
 		self.instructions, self.cache = instructions, cache
 		return self
 
-	def error(self, status, args):
+	def error(self, status, *args):
 		
 		hemera.debug_error(self.name, self.op.line, status, args)

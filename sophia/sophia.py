@@ -28,7 +28,7 @@ class runtime:
 		initial = kadmos.module(address, root = root)
 		if 'tree' in flags:
 			hemera.debug_tree(initial) # Here's tree
-		processor = metis.processor(*kadmos.translator(initial).generate()).analyse()
+		processor = metis.processor(*kadmos.translator(initial).generate())
 		self.root = root
 		self.stream = mp.Queue() # Supervisor message stream
 		self.pool = mp.Pool(initializer = self.initialise)
@@ -207,7 +207,7 @@ class task:
 			if not self.op.register: # Labels
 				continue
 			method, addresses = self.values[self.op.name], self.op.args
-			args = [self] + [self.values[arg] for arg in addresses]
+			args = [self.values[arg] for arg in addresses]
 
 			"""
 			Multiple dispatch algorithm, with help from Julia:
@@ -229,13 +229,13 @@ class task:
 					continue
 				instance, final, signature = tree.routine, tree.final, tree.signature
 				for i, item in enumerate(self.signature): # Verify type signature
-					if not item < signature[i]:
+					if item > signature[i]:
 						self.error('DISP', method.name, self.signature)
 						continue
 			"""
 			Execute instruction and update registers.
 			"""
-			value = instance(*args) # Needs to happen first to account for state changes
+			value = instance(self, *args) # Needs to happen first to account for state changes
 			if final.type != '!' and self.properties.type != '!': # Suppress write
 				address = self.op.register
 				self.values[address] = value

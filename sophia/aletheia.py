@@ -6,7 +6,6 @@ from functools import reduce
 
 class descriptor:
 	"""Type descriptor that holds the properties of a given value."""
-	#__slots__ = ('type', 'member', 'length', 'supertypes', 'supermember', 'specificity')
 	criteria = 3
 
 	def __init__(self, type = None, member = None, length = None, prepare = False):
@@ -17,13 +16,9 @@ class descriptor:
 		if prepare:
 			self.supertypes = supertypes[self.type if self.type and self.type != '!' else 'null']
 			self.supermember = supertypes[self.member or 'null']
-			self.specificity = (specificity[self.type] if self.type and self.type != '!' else 0,
-								specificity[self.member] if self.member else 0,
-								int(self.length is not None))
 		else:
 			self.supertypes = []
 			self.supermember = []
-			self.specificity = (0, 0, 0)
 
 	def __eq__(self, other): # Implements equality
 
@@ -36,6 +31,12 @@ class descriptor:
 		return (other.type in self.supertypes) and \
 			   (other.member is None or other.member in self.supermember) and \
 			   (other.length is None or other.length == self.length)
+
+	def __gt__(self, other): # Implements negative supertype relation
+
+		return (other.type not in self.supertypes) or \
+			   (other.member is not None and other.member not in self.supermember) or \
+			   (other.length is not None and other.length != self.length)
 
 	def __str__(self):
 		
@@ -71,12 +72,8 @@ class descriptor:
 	def complete(self, other, value): # Completes descriptor with properties and inferred type of value
 		
 		self.type = self.type or other.type or infer_type(value)
-		if self.type in ('string', 'list', 'record', 'slice'):
-			self.member = self.member or other.member or infer_member(value, self.type)
-			self.length = self.length if self.length is not None else (other.length if other.length is not None else len(value))
-		else:
-			self.member = None
-			self.length = None
+		self.member = self.member or other.member
+		self.length = self.length if self.length is not None else other.length
 		return self
 
 	def mutual(self, other): # Implements mutual supertype relation
@@ -91,7 +88,6 @@ class descriptor:
 		type_routine, member_routine = task.values[self.type or 'null'], task.values[self.member or 'null']
 		self.supertypes = type_routine.supertypes
 		self.supermember = member_routine.supertypes
-		self.specificity = (type_routine.specificity, member_routine.specificity, int(self.length is not None))
 		return self
 
 class dispatch:
@@ -244,16 +240,22 @@ def infer_type(value): # Infers type of value
 	else:
 		return 'untyped'
 
-def infer_member(value, name): # Infers member type of value
+def infer_member(value): # Infers member type of value
+	print(value)
+	try:
+		return reduce(supertype, [infer_type(item) for item in value.values()]) if value else 'untyped'
+	except AttributeError:
+		try:
+			return reduce(supertype, [infer_type(item) for item in value]) if value else 'untyped'
+		except TypeError:
+			return None
+
+def infer_length(value): # Infers length of value
 	
-	if name == 'string':
-		return 'string'
-	elif name == 'slice':
-		return 'integer'
-	elif name == 'list':
-		return reduce(supertype, [infer(item).type for item in value]) if value else 'untyped'
-	elif name == 'record':
-		return reduce(supertype, [infer(item).type for item in value.values()]) if value else 'untyped'
+	try:
+		return len(value)
+	except TypeError:
+		return None
 
 def subtype(task, value): return value
 
@@ -288,19 +290,4 @@ supertypes = {
 	'record': ['record', 'untyped'],
 	'slice': ['slice', 'untyped'],
 	'future': ['future', 'untyped']
-}
-specificity = {
-	'null': 1,
-	'untyped': 1,
-	'type': 2,
-	'event': 2,
-	'function': 2,
-	'boolean': 2,
-	'number': 2,
-	'integer': 3,
-	'string': 2,
-	'list': 2,
-	'record': 2,
-	'slice': 2,
-	'future': 2
 }
