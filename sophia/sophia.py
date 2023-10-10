@@ -90,7 +90,7 @@ class runtime:
 		self.tasks[routine.pid].result = self.pool.apply_async(routine.execute)
 		self.tasks[routine.pid].count = self.tasks[routine.pid].count + 1
 		self.tasks[pid].references.append(routine.pid) # Mark reference to process
-		self.tasks[pid].calls.send(iris.reference(routine, aletheia.descriptor('untyped'))) # Return reference to process
+		self.tasks[pid].calls.send(iris.reference(routine, aletheia.descriptor('untyped', prepare = True))) # Return reference to process
 
 	def terminate(self, pid):
 		
@@ -112,6 +112,11 @@ class runtime:
 			self.stream.put(None) # End supervisor
 		elif self.tasks[pid].count == 0: # Free own task
 			del self.tasks[pid]
+
+	def debug(self): # Function for testing tasks with error handling and without multiprocessing
+
+		self.main.flags = tuple(list(self.main.flags) + ['debug']) # Suppresses terminate message
+		return self.main.execute()
 
 	def run(self): # Supervisor process and pool management
 
@@ -140,7 +145,7 @@ class runtime:
 		self.pool.join()
 		if 'profile' in self.flags:
 			pr.disable()
-			pr.print_stats(sort = 'tottime')
+			pr.print_stats(sort = 'cumtime')
 		return self.tasks[self.main.pid].result.get()['values']['0']
 
 class task:
@@ -163,7 +168,7 @@ class task:
 		self.types = processor.types
 		self.reserved = tuple(self.values)
 		self.signature = [] # Current type signature
-		self.properties = aletheia.descriptor(None, None, None) # Final type properties
+		self.properties = aletheia.descriptor() # Final type properties
 		self.final = aletheia.descriptor() # Return type of routine
 
 	def execute(self):
@@ -177,17 +182,20 @@ class task:
 			from cProfile import Profile
 			pr = Profile()
 			pr.enable()
-		self.run()
+		value = self.run()
 		"""
 		Terminate runtime loop and execute flagged operations.
 		"""
 		if 'profile' in self.flags:
 			pr.disable()
-			pr.print_stats(sort = 'tottime')
+			pr.print_stats(sort = 'cumtime')
 		if 'namespace' in self.flags:
 			hemera.debug_namespace(self)
-		self.message('terminate')
-		return self.state() # Return mutable state to supervisor
+		if 'debug' in self.flags:
+			return value
+		else:
+			self.message('terminate')
+			return self.state() # Return mutable state to supervisor
 
 	def run(self):
 		"""
@@ -204,45 +212,45 @@ class task:
 			if debug_task:
 				hemera.debug_task(self)
 			self.path = self.path + 1
-			if not self.op.register: # Labels
+			if (address := self.op.register):
+				method, addresses = self.values[self.op.name], self.op.args
+				args = [self.values[arg] for arg in addresses]
+			else: # Labels
 				continue
-			method, addresses = self.values[self.op.name], self.op.args
-			args = [self.values[arg] for arg in addresses]
-
 			"""
 			Multiple dispatch algorithm, with help from Julia:
 			https://github.com/JeffBezanson/phdthesis
 			Binary search tree yields closest key for method, then key is verified.
 			"""
 			self.signature = [self.types[arg] for arg in addresses]
-			if cache is not None:
-				instance, final, signature = cache.routine, cache.final, cache.signature
-			else:
+			if cache is None:
 				tree = method.tree.true if addresses else method.tree.false # Here's tree
 				while tree: # Traverse tree; terminates upon reaching leaf node
-					try:
-						tree = tree.true if tree.op(self.signature[tree.index]) else tree.false
-					except IndexError:
-						tree = tree.false
+					tree = tree.true if (tree.index < self.op.arity) and tree.op(self.signature[tree.index]) else tree.false
 				if tree is None:
 					self.error('DISP', method.name, self.signature)
 					continue
 				instance, final, signature = tree.routine, tree.final, tree.signature
-				for i, item in enumerate(self.signature): # Verify type signature
-					if item > signature[i]:
-						self.error('DISP', method.name, self.signature)
-						continue
+				try:
+					for i, item in enumerate(self.signature): # Verify type signature
+						if item > signature[i]:
+							self.error('DISP', method.name, self.signature)
+							continue
+				except IndexError:
+					self.error('DISP', method.name, self.signature)
+					continue
+			else:
+				instance, final, signature = cache.routine, cache.final, cache.signature
 			"""
 			Execute instruction and update registers.
 			"""
-			value = instance(self, *args) # Needs to happen first to account for state changes
-			if final.type != '!' and self.properties.type != '!': # Suppress write
-				address = self.op.register
-				self.values[address] = value
-				self.types[address] = self.properties.complete(final, value).describe(self)
-			self.properties = aletheia.descriptor(None, None, None)
+			value = instance(self, *args)
+			if final.type != '!': # Suppress write
+				self.values[address] = value # Hot-swap descriptors; there's always 1 spare in the system
+				self.types[address], self.properties = self.complete(self.properties, final, value), self.types[address] if address in self.types else aletheia.descriptor()
+				self.properties.type, self.properties.member, self.properties.length = None, None, None
 		else:
-			return value # Yields return value for operations that need it
+			return value
 
 	def branch(self, scope = 0, skip = False, move = False): # Universal branch function
 
@@ -255,6 +263,16 @@ class task:
 					if move:
 						self.path = path
 					return path
+
+	def complete(self, descriptor, final, value): # Completes descriptor with properties and inferred type of value
+		
+		descriptor.type = descriptor.type or final.type or aletheia.infer_type(value)
+		descriptor.supertypes = self.values[descriptor.type or 'null'].supertypes
+		if 'sequence' in descriptor.supertypes:
+			descriptor.member = descriptor.member or final.member or aletheia.infer_member(value)
+			descriptor.length = descriptor.length or final.length or len(value)
+		descriptor.supermember = self.values[descriptor.member or 'null'].supertypes
+		return descriptor
 
 	def state(self): # Get current state of task as subset of __dict__
 

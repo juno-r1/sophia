@@ -103,3 +103,74 @@ in addition, some assertions can now be decided at compile time
 
 CAUTION: this is strongly affected by the behaviour of meta-statements
 in order for this to be able to work, meta-statements *must* occupy a different scope to where they are invoked
+
+---
+
+3/10(!) of all function calls and 7% of time are taken up by dispatch
+
+to do:
+fix the bug with dispatch
+figure out how metis should work
+change register allocation so that constants are assigned negative numbers / hash registers / figure out a way to give every register a unique hash
+
+980215 function calls in 0.977 seconds
+
+   Ordered by: internal time
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.489    0.489    0.977    0.977 sophia.py:192(run)			    half of the runtime is spent purely inside run without calling anything else
+    20004    0.045    0.000    0.062    0.000 arche.py:738(bind_untyped_type)	optimise out binds with metis
+    70016    0.038    0.000    0.038    0.000 aletheia.py:86(describe)			occurs once per run cycle; find a way to get the needed type information closer to run
+    20002    0.037    0.000    0.063    0.000 mathos.py:189(__add__)			rationals
+   100023    0.034    0.000    0.034    0.000 aletheia.py:35(__gt__)			optimise out dispatch with metis; 1/10 of all function calls are supertype checking
+    80017    0.032    0.000    0.032    0.000 aletheia.py:11(__init__)			---
+    10002    0.032    0.000    0.044    0.000 mathos.py:267(__mod__)			rationals
+    70016    0.031    0.000    0.031    0.000 aletheia.py:72(complete)			completing is better now; avoid inferring and also avoid calling this
+    30004    0.029    0.000    0.035    0.000 mathos.py:42(__new__)			    rationals
+    10001    0.024    0.000    0.033    0.000 arche.py:1115(unloop_untyped)		optimise out binds with metis
+    80017    0.023    0.000    0.023    0.000 sophia.py:210(<listcomp>)			necessary
+    10001    0.020    0.000    0.020    0.000 arche.py:961(loop_null)			necessary
+    80017    0.020    0.000    0.020    0.000 sophia.py:217(<listcomp>)			necessary, despite appearances; many instructions need to know the signature
+    60016    0.019    0.000    0.019    0.000 aletheia.py:119(supertype)		optimise out dispatch with metis
+    30006    0.016    0.000    0.026    0.000 aletheia.py:68(merge)			    *please* find a different way to do this
+    10001    0.011    0.000    0.061    0.000 arche.py:265(__new__)			    optimise out type checks with metis
+    10002    0.010    0.000    0.041    0.000 mathos.py:445(__iter__)			rationals
+    30006    0.010    0.000    0.010    0.000 {method 'update' of 'dict' objects}	see merge
+    80017    0.010    0.000    0.010    0.000 aletheia.py:202(__bool__)			optimise out dispatch with metis
+    70018    0.009    0.000    0.009    0.000 aletheia.py:115(__bool__)			optimise out dispatch with metis
+    10001    0.006    0.000    0.042    0.000 arche.py:373(b_add)			    necessary
+    30004    0.006    0.000    0.006    0.000 {built-in method __new__ of type object at 0x00007FF9225ECC60}	optimise out type checks with metis
+    10002    0.006    0.000    0.051    0.000 arche.py:991(next_untyped)		necessary
+    10002    0.005    0.000    0.005    0.000 mathos.py:383(__eq__)			    rationals
+    10002    0.005    0.000    0.046    0.000 {built-in method builtins.next}	necessary
+    10002    0.004    0.000    0.004    0.000 mathos.py:401(__le__)			    rationals
+    20002    0.003    0.000    0.003    0.000 {built-in method math.gcd}		rationals
+    10003    0.002    0.000    0.002    0.000 aletheia.py:260(subtype)			optimise out type checks with metis
+        1    0.000    0.000    0.000    0.000 arche.py:1108(unloop_null)
+        1    0.000    0.000    0.000    0.000 arche.py:943(iterator_slice)
+        1    0.000    0.000    0.000    0.000 aletheia.py:234(infer_type)
+        1    0.000    0.000    0.000    0.000 arche.py:573(t_slc)
+        1    0.000    0.000    0.000    0.000 mathos.py:405(__ge__)
+        1    0.000    0.000    0.000    0.000 sophia.py:247(branch)
+        1    0.000    0.000    0.000    0.000 {built-in method builtins.iter}
+        1    0.000    0.000    0.000    0.000 mathos.py:434(__init__)
+        1    0.000    0.000    0.000    0.000 arche.py:1011(return_untyped)
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+
+
+         197 function calls in 1.228 seconds
+
+---
+
+inferral of member/length
+oh my god
+
+member and length should be inferred for sequences, but *not* for other values
+therefore, either:
+    enormous amounts of time are wasted inferring these values for non-sequences (current solution)
+or:
+    the interpreter has to know when it's returning a sequence
+*or*:
+    change the default values of descriptors so that non-sequences have member null and length 0
+**or**
+    create 2 virtual types, unit and sequence, that indicate this information

@@ -6,7 +6,6 @@ from functools import reduce
 
 class descriptor:
 	"""Type descriptor that holds the properties of a given value."""
-	criteria = 3
 
 	def __init__(self, type = None, member = None, length = None, prepare = False):
 
@@ -19,6 +18,20 @@ class descriptor:
 		else:
 			self.supertypes = []
 			self.supermember = []
+
+	@classmethod
+	def read(cls, string):
+		
+		values = string.split('.')
+		member, length, l = None, None, len(values)
+		if l == 3:
+			member, length = values[1], int(values[2])
+		elif l == 2:
+			try:
+				length = int(values[1])
+			except ValueError:
+				member = values[1]
+		return cls(values[0], member, length)
 
 	def __eq__(self, other): # Implements equality
 
@@ -51,30 +64,15 @@ class descriptor:
 	#def __repr__(self): return str(self.__dict__)
 	#__str__ = __repr__
 
-	@classmethod
-	def read(cls, string):
+	def describe(self, task): # Complete descriptor using runtime information
 		
-		values = string.split('.')
-		member, length, l = None, None, len(values)
-		if l == 3:
-			member, length = values[1], int(values[2])
-		elif l == 2:
-			try:
-				length = int(values[1])
-			except ValueError:
-				member = values[1]
-		return cls(values[0], member, length)
+		self.supertypes = task.values[self.type or 'null'].supertypes
+		self.supermember = task.values[self.member or 'null'].supertypes
+		return self
 
 	def merge(self, other): # Because Python loves to keep references to mutable objects where it shouldn't
 
 		self.__dict__.update(other.__dict__)
-
-	def complete(self, other, value): # Completes descriptor with properties and inferred type of value
-		
-		self.type = self.type or other.type or infer_type(value)
-		self.member = self.member or other.member
-		self.length = self.length if self.length is not None else other.length
-		return self
 
 	def mutual(self, other): # Implements mutual supertype relation
 		
@@ -82,13 +80,6 @@ class descriptor:
 		final = descriptor(mutuals[0])
 		final.supertypes = mutuals
 		return final
-
-	def describe(self, task): # Complete descriptor using runtime information
-		
-		type_routine, member_routine = task.values[self.type or 'null'], task.values[self.member or 'null']
-		self.supertypes = type_routine.supertypes
-		self.supermember = member_routine.supertypes
-		return self
 
 class dispatch:
 	"""
@@ -151,27 +142,31 @@ class dispatch:
 		# self becomes a leaf node object halfway through this method. I know
 		if signature != self.signature: # If signatures do not match:
 			item, other = signature[index], self.signature[index]
-			while item == other:
-				index = index + 1
-				try:
-					item = signature[index]
-				except IndexError: # Criteria too specific
-					for i in range(index): # Find most significant criterion from the signatures
-						if signature[i] != self.signature[i]:
-							value = dispatch.generate(signature[i], self.signature[i], i)
-							break
-					branch = head.op(signature[head.index]) # Reset branch for new head
-					value.true, value.false = new, head.true if branch else head.false
-					break
-				try:
-					other = self.signature[index]
-				except IndexError: # Increment index
-					value = dispatch('untyped', 'type', index)
-					value.true, value.false = new, self
-					break
-			else:
-				value = dispatch.generate(item, other, index)
+			item_length, other_length = len(signature), len(self.signature)
+			difference = item_length - other_length
+			if difference > 0:
+				value = dispatch('untyped', 'type', other_length)
 				value.true, value.false = new, self
+			elif difference < 0:
+				value = dispatch('untyped', 'type', item_length)
+				value.true, value.false = self, new
+			else: # Prioritise unmatched arity over unmatched signatures
+				while item == other:
+					index = index + 1
+					try:
+						item = signature[index]
+					except IndexError: # Criteria too specific
+						for i in range(index): # Find most significant criterion from the signatures
+							if signature[i] != self.signature[i]:
+								value = dispatch.generate(signature[i], self.signature[i], i)
+								break
+						branch = head.op(signature[head.index]) # Reset branch for new head
+						value.true, value.false = new, head.true if branch else head.false
+						break
+					other = self.signature[index]
+				else:
+					value = dispatch.generate(item, other, index)
+					value.true, value.false = new, self
 		if branch:
 			head.true = value
 		else:
@@ -229,7 +224,7 @@ def infer(value): # Infers type descriptor of value
 		length = len(value)
 	except TypeError:
 		length = None
-	return descriptor(name, member, length)
+	return descriptor(name, member, length, prepare = True)
 
 def infer_type(value): # Infers type of value
 
@@ -241,21 +236,11 @@ def infer_type(value): # Infers type of value
 		return 'untyped'
 
 def infer_member(value): # Infers member type of value
-	print(value)
+	
 	try:
 		return reduce(supertype, [infer_type(item) for item in value.values()]) if value else 'untyped'
 	except AttributeError:
-		try:
-			return reduce(supertype, [infer_type(item) for item in value]) if value else 'untyped'
-		except TypeError:
-			return None
-
-def infer_length(value): # Infers length of value
-	
-	try:
-		return len(value)
-	except TypeError:
-		return None
+		return reduce(supertype, [infer_type(item) for item in value]) if value else 'untyped'
 
 def subtype(task, value): return value
 
@@ -279,15 +264,17 @@ names = {
 supertypes = {
 	'null': ['null'],
 	'untyped': ['untyped'],
-	'type': ['type', 'untyped'],
-	'event': ['event', 'untyped'],
-	'function': ['function', 'untyped'],
-	'boolean': ['boolean', 'untyped'],
-	'number': ['number', 'untyped'],
-	'integer': ['integer', 'number', 'untyped'],
-	'string': ['string', 'untyped'],
-	'list': ['list', 'untyped'],
-	'record': ['record', 'untyped'],
-	'slice': ['slice', 'untyped'],
-	'future': ['future', 'untyped']
+		'routine': ['routine', 'untyped'],
+			'type': ['type', 'routine', 'untyped'],
+			'event': ['event', 'routine', 'untyped'],
+			'function': ['function', 'routine', 'untyped'],
+		'boolean': ['boolean', 'untyped'],
+		'number': ['number', 'untyped'],
+			'integer': ['integer', 'number', 'untyped'],
+		'sequence': ['sequence', 'untyped'],
+			'string': ['string', 'sequence', 'untyped'],
+			'list': ['list', 'sequence', 'untyped'],
+			'record': ['record', 'sequence', 'untyped'],
+			'slice': ['slice', 'sequence', 'untyped'],
+		'future': ['future', 'sequence', 'untyped']
 }

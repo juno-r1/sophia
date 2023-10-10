@@ -12,7 +12,7 @@ import aletheia, kadmos
 import json
 with open('kleio.json') as kleio:
 	metadata = json.load(kleio)
-del kleio # Python inexplicably does not do this automatically
+del kleio # Python inexplicably does not free this automatically
 
 class method:
 	"""
@@ -71,7 +71,6 @@ class type_definition(definition):
 		task.instructions = self.instructions
 		task.cache = [None for _ in self.instructions]
 		task.path = 1
-		task.properties.type = '!'
 
 class event_definition(definition):
 	"""Definition for a user-defined event."""
@@ -96,7 +95,6 @@ class event_definition(definition):
 			task.instructions = self.instructions
 			task.cache = [None for _ in self.instructions]
 			task.path = 1
-			task.properties.type = '!'
 
 class function_definition(definition):
 	"""Definition for a user-defined function."""
@@ -115,7 +113,6 @@ class function_definition(definition):
 			task.instructions = self.instructions
 			task.cache = [None for _ in self.instructions]
 			task.path = 1
-			task.properties.type = '!'
 
 """
 Built-in types.
@@ -139,11 +136,7 @@ class sophia_untyped: # Non-abstract base class
 	
 	def __new__(cls, task, value): # Type check disguised as an object constructor
 		
-		if isinstance(value, cls.types):
-			return value
-		else:
-			task.properties.type = 'null'
-			return task.error('CAST', cls.name, str(value))
+		return value if isinstance(value, cls.types) else task.error('CAST', cls.name, str(value))
 
 	@classmethod
 	def __null__(cls, value): return
@@ -182,12 +175,21 @@ cls_untyped = type_method('untyped', [], None)
 cls_untyped.retrieve(sophia_untyped)
 cls_untyped.retrieve(subtype)
 
+class sophia_routine(sophia_untyped): # Routine abstract type
+	
+	name = 'routine'
+	types = type_method, event_method, function_method
+
+cls_type = type_method('routine', ['untyped'], None)
+cls_type.retrieve(sophia_routine)
+cls_type.retrieve(subtype)
+
 class sophia_type(sophia_untyped): # Type type
 	
 	name = 'type'
 	types = type_method
 
-cls_type = type_method('type', ['untyped'], None)
+cls_type = type_method('type', ['routine', 'untyped'], None)
 cls_type.retrieve(sophia_type)
 cls_type.retrieve(subtype)
 
@@ -196,7 +198,7 @@ class sophia_event(sophia_untyped): # Event type
 	name = 'event'
 	types = event_method
 
-cls_event = type_method('event', ['untyped'], None)
+cls_event = type_method('event', ['routine', 'untyped'], None)
 cls_event.retrieve(sophia_event)
 cls_event.retrieve(subtype)
 
@@ -205,7 +207,7 @@ class sophia_function(sophia_untyped): # Function type
 	name = 'function'
 	types = function_method
 
-cls_function = type_method('function', ['untyped'], None)
+cls_function = type_method('function', ['routine', 'untyped'], None)
 cls_function.retrieve(sophia_function)
 cls_function.retrieve(subtype)
 
@@ -248,12 +250,12 @@ class sophia_number(sophia_untyped): # Abstract number type
 	def __number__(cls, value): return value
 
 	@classmethod
-	def __string__(cls, value): return real(value)
+	def __string__(cls, value): return real.read(value)
 
 	@classmethod
 	def __future__(cls, value): return real(value.pid)
 
-cls_number = type_method('number', ['untyped'], real(0))
+cls_number = type_method('number', ['untyped'], real())
 cls_number.retrieve(sophia_number)
 cls_number.retrieve(subtype)
 
@@ -267,12 +269,20 @@ class sophia_integer(sophia_number): # Integer type
 		try: # Faster than isinstance(), I think
 			return value if value % 1 == 0 else task.error('CAST', cls.name, str(value))
 		except TypeError:
-			task.properties.type = 'null'
 			return task.error('CAST', cls.name, str(value))
 
-cls_integer = type_method('integer', ['number', 'untyped'], real(0))
+cls_integer = type_method('integer', ['number', 'untyped'], real())
 cls_integer.retrieve(sophia_integer)
 cls_integer.retrieve(subtype)
+
+class sophia_sequence(sophia_untyped): # Sequence abstract type
+	
+	name = 'sequence'
+	types = str, tuple, dict, slice
+
+cls_type = type_method('sequence', ['untyped'], None)
+cls_type.retrieve(sophia_sequence)
+cls_type.retrieve(subtype)
 
 class sophia_string(sophia_untyped): # String type
 
@@ -312,7 +322,7 @@ class sophia_string(sophia_untyped): # String type
 	@classmethod
 	def __future__(cls, value): return value.name
 
-cls_string = type_method('string', ['untyped'], '')
+cls_string = type_method('string', ['sequence', 'untyped'], '')
 cls_string.retrieve(sophia_string)
 cls_string.retrieve(subtype)
 
@@ -342,7 +352,7 @@ class sophia_record(sophia_untyped): # Record type
 	name = 'record'
 	types = dict
 
-cls_record = type_method('record', ['untyped'], {})
+cls_record = type_method('record', ['sequence', 'untyped'], {})
 cls_record.retrieve(sophia_record)
 cls_record.retrieve(subtype)
 
@@ -351,7 +361,7 @@ class sophia_slice(sophia_untyped): # Slice type
 	name = 'slice'
 	types = slice
 
-cls_slice = type_method('slice', ['untyped'], slice((real(0), real(0), real(1))))
+cls_slice = type_method('slice', ['sequence', 'untyped'], slice((real(), real(), real(1))))
 cls_slice.retrieve(sophia_slice)
 cls_slice.retrieve(subtype)
 
@@ -360,7 +370,7 @@ class sophia_future(sophia_untyped): # Process type
 	name = 'future'
 	types = reference
 
-cls_future = type_method('future', ['untyped'], None)
+cls_future = type_method('future', ['sequence', 'untyped'], None)
 cls_future.retrieve(sophia_future)
 cls_future.retrieve(subtype)
 
@@ -732,7 +742,7 @@ def bind_untyped(task, value):
 	if name in task.reserved:
 		return task.error('BIND', name)
 	else:
-		task.properties.merge(signature)
+		task.properties.__dict__.update(signature.__dict__)
 		return value
 
 def bind_untyped_type(task, value, type_routine):
@@ -741,7 +751,7 @@ def bind_untyped_type(task, value, type_routine):
 	if name in task.reserved:
 		return task.error('BIND', name)
 	else:
-		task.properties.merge(signature)
+		task.properties.__dict__.update(signature.__dict__)
 		return value
 
 arche_bind = function_method('.bind')
@@ -777,7 +787,7 @@ def concatenate_untyped(task, value):
 	task.properties.member = task.signature[0].type
 	return [value]
 
-def concatenate_untyped_untyped(task, sequence, value):
+def concatenate_sequence_untyped(task, sequence, value):
 	
 	sequence_type, member_type = task.signature[0], task.signature[1]
 	task.properties.length = sequence_type.length + 1
@@ -790,7 +800,7 @@ def concatenate_untyped_untyped(task, sequence, value):
 
 arche_concatenate = function_method('.concatenate')
 arche_concatenate.retrieve(concatenate_untyped)
-arche_concatenate.retrieve(concatenate_untyped_untyped)
+arche_concatenate.retrieve(concatenate_sequence_untyped)
 
 def constraint_boolean(task, constraint):
 	
@@ -926,29 +936,13 @@ arche_index.retrieve(index_record_slice)
 arche_index.retrieve(index_slice_integer)
 arche_index.retrieve(index_slice_slice)
 
-def iterator_string(task, iterable):
-	
-	return iter(iterable)
-
-def iterator_list(task, iterable):
+def iterator_sequence(task, sequence):
 
 	task.properties.member = task.signature[0].member
-	return iter(iterable)
-
-def iterator_record(task, iterable):
-
-	task.properties.member = task.signature[0].member
-	return iter(iterable)
-
-def iterator_slice(task, iterable):
-	
-	return iter(iterable)
+	return iter(sequence)
 
 arche_iterator = function_method('.iterator')
-arche_iterator.retrieve(iterator_string)
-arche_iterator.retrieve(iterator_list)
-arche_iterator.retrieve(iterator_record)
-arche_iterator.retrieve(iterator_slice)
+arche_iterator.retrieve(iterator_sequence)
 
 def link_null(task):
 	
@@ -1106,7 +1100,7 @@ arche_type.retrieve(type_type)
 arche_type.retrieve(type_type_untyped)
 
 def unloop_null(task, value):
-	
+
 	iterator, name = str(int(task.op.args[0]) - 1), task.op.label[0]
 	task.values[iterator] = None # Sanitise registers
 	del task.values[name], task.types[name]
@@ -1118,7 +1112,7 @@ def unloop_untyped(task, value):
 	if name in task.reserved:
 		return task.error('BIND', name)
 	else:
-		task.properties.merge(signature)
+		task.properties.__dict__.update(signature.__dict__)
 		return value
 
 def unloop_null_type(task, value, routine):
@@ -1256,7 +1250,6 @@ def filter_function_list(task, routine, target):
 		if isinstance(instance, function_definition):
 			caller = task.caller
 			instance(task, value)
-			task.properties.type = None # Stop the function call from suppressing the write
 			check = task.run() # WARNING: Recursive runtime
 			task.caller = caller
 		else: # Built-ins
@@ -1280,7 +1273,7 @@ arche_format.retrieve(format_string_list)
 
 def hash_untyped(task, value):
 
-	return real(hash(value), 1, _normalise = False) # NOT CRYPTOGRAPHICALLY SECURE
+	return real(hash(value)) # NOT CRYPTOGRAPHICALLY SECURE
 
 arche_hash = function_method('hash')
 arche_hash.retrieve(hash_untyped)
@@ -1294,19 +1287,19 @@ arche_join.retrieve(join_list_string)
 
 def length_string(task, sequence):
 	
-	return real(task.signature[0].length, 1, _normalise = False)
+	return real(task.signature[0].length)
 
 def length_list(task, sequence):
 	
-	return real(task.signature[0].length, 1, _normalise = False)
+	return real(task.signature[0].length)
 
 def length_record(task, sequence):
 	
-	return real(task.signature[0].length, 1, _normalise = False)
+	return real(task.signature[0].length)
 
 def length_slice(task, sequence):
 	
-	return real(task.signature[0].length, 1, _normalise = False)
+	return real(task.signature[0].length)
 
 arche_length = function_method('length')
 arche_length.retrieve(length_string)
@@ -1329,7 +1322,6 @@ def map_function_list(task, routine, target):
 		if isinstance(instance, function_definition):
 			caller = task.caller
 			instance(task, value)
-			task.properties.type = None # Stop the function call from suppressing the write
 			result.append(task.run()) # WARNING: Recursive runtime
 			task.caller = caller
 		else: # Built-ins
@@ -1376,7 +1368,6 @@ def reduce_function_list(task, routine, target):
 		if isinstance(instance, function_definition):
 			caller = task.caller
 			instance(task, x, y)
-			task.properties.type = None # Stop the function call from suppressing the write
 			x = task.run() # WARNING: Recursive runtime
 			task.caller = caller
 		else: # Built-ins
@@ -1404,7 +1395,7 @@ arche_round.retrieve(round_number)
 
 def sign_number(task, value):
 
-	return real(0) if value == 0 else real(int(copysign(1, value)))
+	return real() if value == 0 else real(int(copysign(1, value)))
 
 arche_sign = function_method('sign')
 arche_sign.retrieve(sign_number)
@@ -1462,4 +1453,4 @@ Namespace composition and internals.
 
 builtins = {v.name: v for k, v in globals().items() if k.split('_')[0] in ('cls', 'arche')} | \
 		   {'stdin': stdin, 'stdout': stdout, 'stderr': stderr}
-types = {i: descriptor(**metadata[i]['type'], prepare = True) for i in builtins}
+types = {k: infer(v) for k, v in builtins.items()}

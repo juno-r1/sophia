@@ -1,4 +1,7 @@
-int a: 0; int b: 1
-for i in 0:10000:1:
-	a: b; b: a + b
-return a
+// 1.1.3, 2.1, 3.1, 4.1, 4.3
+
+a: 1
+b: 1.1
+c: '1.1'
+d: true; e: false
+return [a, [b], [c, d], [], ['e': [e]], ['f': 'f', 'g': 'g']]

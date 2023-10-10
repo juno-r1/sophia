@@ -21,7 +21,6 @@ _RATIONAL_FORMAT = re.compile(r"""
 	   (?:/(?P<denom>\d+(_\d+)*))?        # an optional denominator
 	|                                     # or
 	   (?:\.(?P<decimal>d*|\d+(_\d+)*))?  # an optional fractional part
-	   (?:E(?P<exp>[-+]?\d+(_\d+)*))?     # and optional exponent
 	)
 	\s*\Z                                 # and optional whitespace to finish
 """, re.VERBOSE | re.IGNORECASE)
@@ -39,58 +38,43 @@ class real(numbers.Rational):
 	__slots__ = ('numerator', 'denominator')
 
 	# We're immutable, so use __new__ not __init__
-	def __new__(cls, numerator = 0, denominator = None, *, _normalise = True):
-		"""Constructs a real.
+	def __new__(cls, numerator = 0, denominator = 1):
+		"""
+		Constructs a real from a numerator/denominator pair of integers,
+		with defaults set to 0/1.
+		Sophia requires this constructor to be as fast as possible,
+		so it is assumed that the input is already normalised.
+		"""
+		self = numbers.Rational.__new__(cls) # Superclass reference already there
+		self.numerator = numerator
+		self.denominator = denominator
+		return self
 
-		Takes a string like '3/2' or '1.5', another real instance, or a
-		numerator/denominator pair of integers.
-
-		Examples
-		--------
-
-		>>> Fraction(10, -8)
-		Fraction(-5, 4)
-		>>> Fraction('-35/4')
-		Fraction(-35, 4)
-		>>> Fraction('3.1415') # conversion from numeric string
-		Fraction(6283, 2000)
-		>>> Fraction('-47e-2') # string may include a decimal exponent
-		Fraction(-47, 100)
-
+	@classmethod
+	def read(cls, numerator):
+		"""
+		Constructs a real from a string in the form a.b or a/b.
+		This constructor normalises by default.
 		"""
 		self = super(real, cls).__new__(cls)
-
-		if denominator is None:
-			try: # Fast construction from a single rational
-				self.numerator = numerator.numerator
-				self.denominator = numerator.denominator
-				return self
-			except AttributeError: # Handle construction from strings
-				m = _RATIONAL_FORMAT.match(numerator)
-				if m is None:
-					raise ValueError('Invalid literal for real: %r' % numerator)
-				numerator = int(m.group('num') or '0')
-				denom = m.group('denom')
-				if denom:
-					denominator = int(denom)
-				else:
-					denominator = 1
-					decimal = m.group('decimal')
-					if decimal:
-						decimal = decimal.replace('_', '')
-						scale = 10**len(decimal)
-						numerator = numerator * scale + int(decimal)
-						denominator *= scale
-					exp = m.group('exp')
-					if exp:
-						exp = int(exp)
-						if exp >= 0:
-							numerator *= 10**exp
-						else:
-							denominator *= 10**-exp
-				if m.group('sign') == '-':
-					numerator = -numerator
-		if _normalise and numerator != 1 and denominator != 1:
+		m = _RATIONAL_FORMAT.match(numerator)
+		if m is None:
+			raise ValueError('Invalid literal for real: %r' % numerator)
+		numerator = int(m.group('num') or '0')
+		denom = m.group('denom')
+		if denom:
+			denominator = int(denom)
+		else:
+			denominator = 1
+			decimal = m.group('decimal')
+			if decimal:
+				decimal = decimal.replace('_', '')
+				scale = 10**len(decimal)
+				numerator = numerator * scale + int(decimal)
+				denominator *= scale
+		if m.group('sign') == '-':
+			numerator = -numerator
+		if numerator != 1 and denominator != 1:
 			g = gcd(numerator, denominator)
 			if denominator < 0:
 				g = -g
@@ -190,15 +174,15 @@ class real(numbers.Rational):
 		"""a + b"""
 		na, da = a.numerator, a.denominator
 		nb, db = b.numerator, b.denominator
+		if da == 1 or db == 1:
+			return real(na * db + da * nb, da * db)
 		g = gcd(da, db)
-		if g == 1:
-			return real(na * db + da * nb, da * db, _normalise = False)
 		s = da // g
 		t = na * (db // g) + nb * s
+		if t == 1 or g == 1:
+			return real(t, s * db)
 		g2 = gcd(t, g)
-		if g2 == 1:
-			return real(t, s * db, _normalise = False)
-		return real(t // g2, s * (db // g2), _normalise = False)
+		return real(t // g2, s * (db // g2))
 
 	__radd__ = __add__
 
@@ -206,15 +190,15 @@ class real(numbers.Rational):
 		"""a - b"""
 		na, da = a.numerator, a.denominator
 		nb, db = b.numerator, b.denominator
+		if da == 1 or db == 1:
+			return real(na * db - da * nb, da * db)
 		g = gcd(da, db)
-		if g == 1:
-			return real(na * db - da * nb, da * db, _normalise = False)
 		s = da // g
 		t = na * (db // g) - nb * s
+		if t == 1 or g == 1:
+			return real(t, s * db)
 		g2 = gcd(t, g)
-		if g2 == 1:
-			return real(t, s * db, _normalise = False)
-		return real(t // g2, s * (db // g2), _normalise = False)
+		return real(t // g2, s * (db // g2))
 
 	def __mul__(a, b):
 		"""a * b"""
@@ -228,7 +212,7 @@ class real(numbers.Rational):
 		if g2 > 1:
 			nb //= g2
 			da //= g2
-		return real(na * nb, db * da, _normalise = False)
+		return real(na * nb, db * da)
 
 	__rmul__ = __mul__
 
@@ -248,13 +232,13 @@ class real(numbers.Rational):
 		n, d = na * db, nb * da
 		if d < 0:
 			n, d = -n, -d
-		return real(n, d, _normalise = False)
+		return real(n, d)
 
 	__rtruediv__ = __truediv__ # DO NOT CALL
 
 	def __floordiv__(a, b):
 		"""a // b"""
-		return real((a.numerator * b.denominator) // (a.denominator * b.numerator), 1)
+		return real((a.numerator * b.denominator) // (a.denominator * b.numerator))
 
 	__rfloordiv__ = __floordiv__
 
@@ -262,7 +246,7 @@ class real(numbers.Rational):
 		"""(a // b, a % b)"""
 		da, db = a.denominator, b.denominator
 		div, n_mod = divmod(a.numerator * db, da * b.numerator)
-		return real(div, 1), real(n_mod, da * db)
+		return real(div), real(n_mod, da * db)
 
 	def __mod__(a, b):
 		"""a % b"""
@@ -283,16 +267,13 @@ class real(numbers.Rational):
 			power = b.numerator
 			if power >= 0:
 				return real(int(a.numerator ** power),
-								int(a.denominator ** power),
-								_normalise = False)
+								int(a.denominator ** power))
 			elif a.numerator >= 0:
 				return real(int(a.denominator ** -power),
-								int(a.numerator ** -power),
-								_normalise = False)
+								int(a.numerator ** -power))
 			else:
 				return real(int((-a.denominator) ** -power),
-								int((-a.numerator) ** -power),
-								_normalise = False)
+								int((-a.numerator) ** -power))
 		else:
 			# A fractional power will generally produce an irrational number, which is rationalised here.
 			num, denom = (float(a) ** float(b)).as_integer_ratio()
@@ -302,15 +283,15 @@ class real(numbers.Rational):
 
 	def __pos__(a):
 		"""+a: Coerces a subclass instance to Fraction"""
-		return real(a.numerator, a.denominator, _normalise = False)
+		return real(a.numerator, a.denominator)
 
 	def __neg__(a):
 		"""-a"""
-		return real(-a.numerator, a.denominator, _normalise = False)
+		return real(-a.numerator, a.denominator)
 
 	def __abs__(a):
 		"""abs(a)"""
-		return real(abs(a.numerator), a.denominator, _normalise = False)
+		return real(abs(a.numerator), a.denominator)
 
 	def __int__(a, _index = operator.index):
 		"""int(a)"""
@@ -328,12 +309,12 @@ class real(numbers.Rational):
 
 	def __floor__(a):
 		"""math.floor(a)"""
-		return real(a.numerator // a.denominator, 1, _normalise = False)
+		return real(a.numerator // a.denominator)
 
 	def __ceil__(a):
 		"""math.ceil(a)"""
 		# The negations cleverly convince floordiv to return the ceiling.
-		return real(-(-a.numerator // a.denominator), 1, _normalise = False)
+		return real(-(-a.numerator // a.denominator))
 
 	def __round__(self):
 		"""round(self)"""
@@ -343,9 +324,9 @@ class real(numbers.Rational):
 		if floor < 0: # Normalise negative reals
 			da += 1
 		if remainder * 2 >= da:
-			return real(floor + 1, 1, _normalise = False)
+			return real(floor + 1)
 		else:
-			return real(floor, 1, _normalise = False)
+			return real(floor)
 
 	def __hash__(self):
 		"""hash(self)"""

@@ -1,10 +1,5 @@
 {
   "null": {
-    "type": {
-      "type": "type",
-      "member": null,
-      "length": null
-    },
     "sophia_null": {
       "signature": [
         {
@@ -35,11 +30,6 @@
     }
   },
   "untyped": {
-    "type": {
-      "type": "type",
-      "member": null,
-      "length": null
-    },
     "sophia_untyped": {
       "signature": [
         {
@@ -69,12 +59,37 @@
       }
     }
   },
-  "type": {
-    "type": {
-      "type": "type",
-      "member": null,
-      "length": null
+  "routine": {
+    "sophia_routine": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "routine",
+        "member": null,
+        "length": null
+      }
     },
+    "subtype": {
+      "signature": [
+        {
+          "type": "routine",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "routine",
+        "member": null,
+        "length": null
+      }
+    }
+  },
+  "type": {
     "sophia_type": {
       "signature": [
         {
@@ -105,11 +120,6 @@
     }
   },
   "event": {
-    "type": {
-      "type": "type",
-      "member": null,
-      "length": null
-    },
     "sophia_event": {
       "signature": [
         {
@@ -140,11 +150,6 @@
     }
   },
   "function": {
-    "type": {
-      "type": "type",
-      "member": null,
-      "length": null
-    },
     "sophia_function": {
       "signature": [
         {
@@ -175,11 +180,6 @@
     }
   },
   "boolean": {
-    "type": {
-      "type": "type",
-      "member": null,
-      "length": null
-    },
     "sophia_boolean": {
       "signature": [
         {
@@ -210,11 +210,6 @@
     }
   },
   "number": {
-    "type": {
-      "type": "type",
-      "member": null,
-      "length": null
-    },
     "sophia_number": {
       "signature": [
         {
@@ -245,11 +240,6 @@
     }
   },
   "integer": {
-    "type": {
-      "type": "type",
-      "member": null,
-      "length": null
-    },
     "sophia_integer": {
       "signature": [
         {
@@ -279,12 +269,37 @@
       }
     }
   },
-  "string": {
-    "type": {
-      "type": "type",
-      "member": null,
-      "length": null
+  "sequence": {
+    "sophia_sequence": {
+      "signature": [
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "sequence",
+        "member": null,
+        "length": null
+      }
     },
+    "subtype": {
+      "signature": [
+        {
+          "type": "sequence",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "sequence",
+        "member": null,
+        "length": null
+      }
+    }
+  },
+  "string": {
     "sophia_string": {
       "signature": [
         {
@@ -315,11 +330,6 @@
     }
   },
   "list": {
-    "type": {
-      "type": "type",
-      "member": null,
-      "length": null
-    },
     "sophia_list": {
       "signature": [
         {
@@ -350,11 +360,6 @@
     }
   },
   "record": {
-    "type": {
-      "type": "type",
-      "member": null,
-      "length": null
-    },
     "sophia_record": {
       "signature": [
         {
@@ -385,11 +390,6 @@
     }
   },
   "slice": {
-    "type": {
-      "type": "type",
-      "member": null,
-      "length": null
-    },
     "sophia_slice": {
       "signature": [
         {
@@ -420,11 +420,6 @@
     }
   },
   "future": {
-    "type": {
-      "type": "type",
-      "member": null,
-      "length": null
-    },
     "sophia_future": {
       "signature": [
         {
@@ -455,11 +450,6 @@
     }
   },
   "+": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "u_add": {
       "signature": [
         {
@@ -495,11 +485,6 @@
     }
   },
   "-": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "u_sub": {
       "signature": [
         {
@@ -535,11 +520,6 @@
     }
   },
   "*": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "u_rsv": {
       "signature": [
         {
@@ -575,11 +555,6 @@
     }
   },
   "/": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "b_div": {
       "signature": [
         {
@@ -601,11 +576,6 @@
     }
   },
   "^": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "b_exp": {
       "signature": [
         {
@@ -627,11 +597,6 @@
     }
   },
   "%": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "b_mod": {
       "signature": [
         {
@@ -653,11 +618,6 @@
     }
   },
   "=": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "b_eql": {
       "signature": [
         {
@@ -679,11 +639,6 @@
     }
   },
   "!=": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "b_neq": {
       "signature": [
         {
@@ -705,11 +660,6 @@
     }
   },
   "<": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "b_ltn": {
       "signature": [
         {
@@ -731,11 +681,6 @@
     }
   },
   ">": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "n_rcv": {
       "signature": [],
       "final": {
@@ -765,11 +710,6 @@
     }
   },
   "<=": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "b_leq": {
       "signature": [
         {
@@ -791,11 +731,6 @@
     }
   },
   ">=": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "b_geq": {
       "signature": [
         {
@@ -817,11 +752,6 @@
     }
   },
   "in": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "b_sbs_string": {
       "signature": [
         {
@@ -900,11 +830,6 @@
     }
   },
   "not": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "u_lnt": {
       "signature": [
         {
@@ -921,11 +846,6 @@
     }
   },
   "and": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "b_lnd": {
       "signature": [
         {
@@ -947,11 +867,6 @@
     }
   },
   "or": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "b_lor": {
       "signature": [
         {
@@ -973,11 +888,6 @@
     }
   },
   "xor": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "b_lxr": {
       "signature": [
         {
@@ -999,11 +909,6 @@
     }
   },
   "&": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "b_ins_string": {
       "signature": [
         {
@@ -1101,11 +1006,6 @@
     }
   },
   "|": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "b_uni_string": {
       "signature": [
         {
@@ -1203,11 +1103,6 @@
     }
   },
   ":": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "b_slc": {
       "signature": [
         {
@@ -1253,11 +1148,6 @@
     }
   },
   "?": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "u_sfe_null": {
       "signature": [
         {
@@ -1326,11 +1216,6 @@
     }
   },
   "!": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "u_usf": {
       "signature": [
         {
@@ -1347,11 +1232,6 @@
     }
   },
   "->": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "b_snd": {
       "signature": [
         {
@@ -1373,11 +1253,6 @@
     }
   },
   "new": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "u_new": {
       "signature": [
         {
@@ -1394,11 +1269,6 @@
     }
   },
   ".": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "b_cmp": {
       "signature": [
         {
@@ -1420,11 +1290,6 @@
     }
   },
   ".alias": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "alias_type": {
       "signature": [
         {
@@ -1455,11 +1320,6 @@
     }
   },
   ".assert": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "assert_null": {
       "signature": [
         {
@@ -1490,11 +1350,6 @@
     }
   },
   ".bind": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "bind_untyped": {
       "signature": [
         {
@@ -1530,11 +1385,6 @@
     }
   },
   ".branch": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "branch_null": {
       "signature": [],
       "final": {
@@ -1559,11 +1409,6 @@
     }
   },
   ".break": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "break_untyped": {
       "signature": [
         {
@@ -1580,11 +1425,6 @@
     }
   },
   ".concatenate": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "concatenate_untyped": {
       "signature": [
         {
@@ -1594,15 +1434,15 @@
         }
       ],
       "final": {
-        "type": "untyped",
+        "type": "sequence",
         "member": null,
         "length": 1
       }
     },
-    "concatenate_untyped_untyped": {
+    "concatenate_sequence_untyped": {
       "signature": [
         {
-          "type": "untyped",
+          "type": "sequence",
           "member": null,
           "length": null
         },
@@ -1613,18 +1453,13 @@
         }
       ],
       "final": {
-        "type": "untyped",
+        "type": "sequence",
         "member": null,
         "length": null
       }
     }
   },
   ".constraint": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "constraint_boolean": {
       "signature": [
         {
@@ -1641,11 +1476,6 @@
     }
   },
   ".event": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "event_null": {
       "signature": [],
       "final": {
@@ -1656,11 +1486,6 @@
     }
   },
   ".function": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "function_null": {
       "signature": [],
       "final": {
@@ -1671,11 +1496,6 @@
     }
   },
   ".index": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "index_string_integer": {
       "signature": [
         {
@@ -1830,29 +1650,10 @@
     }
   },
   ".iterator": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
-    "iterator_string": {
+    "iterator_sequence": {
       "signature": [
         {
-          "type": "string",
-          "member": null,
-          "length": null
-        }
-      ],
-      "final": {
-        "type": "untyped",
-        "member": "string",
-        "length": null
-      }
-    },
-    "iterator_list": {
-      "signature": [
-        {
-          "type": "list",
+          "type": "sequence",
           "member": null,
           "length": null
         }
@@ -1860,44 +1661,11 @@
       "final": {
         "type": "untyped",
         "member": null,
-        "length": null
-      }
-    },
-    "iterator_record": {
-      "signature": [
-        {
-          "type": "record",
-          "member": null,
-          "length": null
-        }
-      ],
-      "final": {
-        "type": "untyped",
-        "member": null,
-        "length": null
-      }
-    },
-    "iterator_slice": {
-      "signature": [
-        {
-          "type": "slice",
-          "member": null,
-          "length": null
-        }
-      ],
-      "final": {
-        "type": "untyped",
-        "member": "integer",
         "length": null
       }
     }
   },
   ".link": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "link_null": {
       "signature": [],
       "final": {
@@ -1908,11 +1676,6 @@
     }
   },
   ".loop": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "loop_null": {
       "signature": [],
       "final": {
@@ -1923,11 +1686,6 @@
     }
   },
   ".meta": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "meta_string": {
       "signature": [
         {
@@ -1944,11 +1702,6 @@
     }
   },
   ".next": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "next_untyped": {
       "signature": [
         {
@@ -1965,11 +1718,6 @@
     }
   },
   ".return": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "return_null": {
       "signature": [
         {
@@ -2000,11 +1748,6 @@
     }
   },
   ".sequence": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "sequence_untyped": {
       "signature": [
         {
@@ -2021,11 +1764,6 @@
     }
   },
   ".skip": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "skip_untyped": {
       "signature": [
         {
@@ -2042,11 +1780,6 @@
     }
   },
   ".type": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "type_type": {
       "signature": [
         {
@@ -2082,11 +1815,6 @@
     }
   },
   ".unloop": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "unloop_null": {
       "signature": [
         {
@@ -2154,33 +1882,7 @@
       }
     }
   },
-  "stdin": {
-    "type": {
-      "type": "future",
-      "member": null,
-      "length": null
-    }
-  },
-  "stdout": {
-    "type": {
-      "type": "future",
-      "member": null,
-      "length": null
-    }
-  },
-  "stderr": {
-    "type": {
-      "type": "future",
-      "member": null,
-      "length": null
-    }
-  },
   "input": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "input_string": {
       "signature": [
         {
@@ -2197,11 +1899,6 @@
     }
   },
   "print": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "print_string": {
       "signature": [
         {
@@ -2218,11 +1915,6 @@
     }
   },
   "error": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "error_string": {
       "signature": [
         {
@@ -2239,11 +1931,6 @@
     }
   },
   "abs": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "abs_number": {
       "signature": [
         {
@@ -2260,11 +1947,6 @@
     }
   },
   "cast": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "cast_type_untyped": {
       "signature": [
         {
@@ -2286,11 +1968,6 @@
     }
   },
   "ceiling": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "ceiling_number": {
       "signature": [
         {
@@ -2307,11 +1984,6 @@
     }
   },
   "dispatch": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "dispatch_function_list": {
       "signature": [
         {
@@ -2333,11 +2005,6 @@
     }
   },
   "floor": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "floor_number": {
       "signature": [
         {
@@ -2354,11 +2021,6 @@
     }
   },
   "filter": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "filter_function_list": {
       "signature": [
         {
@@ -2380,11 +2042,6 @@
     }
   },
   "format": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "format_string_list": {
       "signature": [
         {
@@ -2406,11 +2063,6 @@
     }
   },
   "hash": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "hash_untyped": {
       "signature": [
         {
@@ -2427,11 +2079,6 @@
     }
   },
   "join": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "join_list_string": {
       "signature": [
         {
@@ -2453,11 +2100,6 @@
     }
   },
   "length": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "length_string": {
       "signature": [
         {
@@ -2516,11 +2158,6 @@
     }
   },
   "map": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "map_function_list": {
       "signature": [
         {
@@ -2542,11 +2179,6 @@
     }
   },
   "namespace": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "namespace_null": {
       "signature": [],
       "final": {
@@ -2557,11 +2189,6 @@
     }
   },
   "reduce": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "reduce_function_list": {
       "signature": [
         {
@@ -2583,11 +2210,6 @@
     }
   },
   "reverse": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "reverse_slice": {
       "signature": [
         {
@@ -2604,11 +2226,6 @@
     }
   },
   "round": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "round_number": {
       "signature": [
         {
@@ -2625,11 +2242,6 @@
     }
   },
   "sign": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "sign_number": {
       "signature": [
         {
@@ -2646,11 +2258,6 @@
     }
   },
   "signature": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "signature_function_list": {
       "signature": [
         {
@@ -2672,11 +2279,6 @@
     }
   },
   "split": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "split_string_string": {
       "signature": [
         {
@@ -2698,11 +2300,6 @@
     }
   },
   "sum": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "sum_list": {
       "signature": [
         {
@@ -2733,11 +2330,6 @@
     }
   },
   "typeof": {
-    "type": {
-      "type": "function",
-      "member": null,
-      "length": null
-    },
     "typeof_untyped": {
       "signature": [
         {

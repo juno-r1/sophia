@@ -6,41 +6,9 @@ import hemera
 from aletheia import descriptor, infer
 from mathos import real
 
-characters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz' # Sorted by position in UTF-8
-parens = '()[]{}'
-comment = '//'
-structure_tokens = ('if', 'while', 'for', 'else', 'assert', 'return', 'link', 'start')
-keyword_tokens = ('continue', 'break', 'is', 'with', 'extends', 'awaits')
-keyword_operators = ('not', 'or', 'and', 'xor', 'in', 'new')
-trailing = (';', ',')
-sub_types = {'bool': 'boolean', # Lookup table for type names
-			 'int': 'integer',
-			 'num': 'number',
-			 'str': 'string'}
-sub_values = {'true': True, # Lookup table for special values
-			  'false': False,
-			  'null': None}
-binding_power = (('(', ')', '[', ']', '{', '}'), # The left-binding power of a binary operator is expressed by its position in this tuple of tuples
-				 (',',),
-				 (':',),
-				 ('->',),
-				 ('if',),
-				 ('else',),
-				 ('or', '||',),
-				 ('and', '&&',),
-				 ('xor', '^^'),
-				 ('=', '!=', 'in'),
-				 ('<', '>', '<=', '>='),
-				 ('&', '|'),
-				 ('+', '-'),
-				 ('*', '/', '%'),
-				 ('^',),
-				 ('?',),
-				 ('.'))
-
 class instruction:
 	"""Instruction used in the virtual machine"""
-	__slots__ = ('name', 'register', 'args', 'line', 'label')
+	__slots__ = ('name', 'register', 'args', 'line', 'label', 'arity')
 
 	def __init__(self, name, register, args = (), line = 0, label = []):
 
@@ -49,6 +17,7 @@ class instruction:
 		self.args = args
 		self.line = line
 		self.label = label
+		self.arity = len(args)
 
 	def __str__(self): # Convert instruction to string
 
@@ -207,7 +176,7 @@ class node:
 								token.branch = True
 					else:
 						if symbol[0] in '.0123456789': # Terrible way to check for a number without using a try/except block
-							token = literal(real(symbol)) # Type of literals is known at parse time
+							token = literal(real.read(symbol)) # Type of literals is known at parse time
 							token.type = infer(token.value) # Number or integer
 						elif symbol in sub_values:
 							token = literal(sub_values[symbol]) # Interpret booleans and null
@@ -1005,3 +974,35 @@ def generate_x_function(name, args):
 			instruction(name, '0', args = args),
 			instruction('.return', '0', '0'),
 			instruction('END', '')]
+
+characters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz' # Sorted by position in UTF-8
+parens = '()[]{}'
+comment = '//'
+structure_tokens = ('if', 'while', 'for', 'else', 'assert', 'return', 'link', 'start')
+keyword_tokens = ('continue', 'break', 'is', 'with', 'extends', 'awaits')
+keyword_operators = ('not', 'or', 'and', 'xor', 'in', 'new')
+trailing = (';', ',')
+sub_types = {'bool': 'boolean', # Lookup table for type names
+			 'int': 'integer',
+			 'num': 'number',
+			 'str': 'string'}
+sub_values = {'true': True, # Lookup table for special values
+			  'false': False,
+			  'null': None}
+binding_power = (('(', ')', '[', ']', '{', '}'), # The left-binding power of a binary operator is expressed by its position in this tuple of tuples
+				 (',',),
+				 (':',),
+				 ('->',),
+				 ('if',),
+				 ('else',),
+				 ('or', '||',),
+				 ('and', '&&',),
+				 ('xor', '^^'),
+				 ('=', '!=', 'in'),
+				 ('<', '>', '<=', '>='),
+				 ('&', '|'),
+				 ('+', '-'),
+				 ('*', '/', '%'),
+				 ('^',),
+				 ('?',),
+				 ('.'))
