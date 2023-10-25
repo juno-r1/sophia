@@ -1,10 +1,6 @@
 to do
 
----
-
-cache problem
-caching only works for loops right now
-caching *should* also work for function calls but the cache gets wiped every time a new method is defined
+0.6.2
 
 ---
 
@@ -17,13 +13,39 @@ i would be inclined to use angle brackets (e.g. list<str, 1>) but this introduce
 
 ---
 
-input is bugged
-multiprocessing shuts off stdin for all spawned processes
-requires message to supervisor
+are meta-statements really worth it?
+consider eval/exec
+eval has valid uses for namespace tricks, string manipulation, et cetera
+exec is kind of dangerous and absolutely ruins the type system
 
-known bug with dispatch tree generation
-for example, t_slc and b_slc are distinguished by 0 supertype num instead of 2 supertype untyped
-prioritise arity over supertype
+make meta-statements occupy their own scope; cannot affect external scope except by messaging
+compensate by adding apply
+wow, sophia is surprisingly functional, huh?
+
+---
+
+change register allocation so that constants are assigned negative numbers / hash registers / figure out a way to give every register a unique hash
+
+---
+
+0.7
+
+---
+
+anonymous functions
+(num x, num y) => x + y
+the return type of an anonymous function must be inferred
+this is going to do some terrible things to metis, isn't it
+
+---
+
+use statement
+analogous to import statements or rust use statement
+sophia needs a mechanism for extending namespaces regardless of how useful linking is
+
+the use statement extends the current namespace with all top-level routine definitions in the target file
+files targeted by the use statement are *not* executed
+code other than routine definitions is completely ignored
 
 ---
 
@@ -78,6 +100,8 @@ this is not just running the program
 
 the checker should remove unnecessary instructions after performing constant folding
 
+every constant is unique (apart from null), which means there's no problem deleting or overwriting constant registers that aren't &0
+
 ---
 
 pre-evaluated dispatch
@@ -101,76 +125,50 @@ it also means that there's no need for dedicated bind instructions; these can be
 
 in addition, some assertions can now be decided at compile time
 
-CAUTION: this is strongly affected by the behaviour of meta-statements
-in order for this to be able to work, meta-statements *must* occupy a different scope to where they are invoked
+conditional control flow is no problem; we only care about what names are reserved
+use union type checking for conditional branching; assume union type of all bindings
 
----
+function scope presents a problem
+sophia reserves all names in the calling scope (no shadowing) *but* allows referencing of names defined after the function definition
+therefore, the only way to know what names are reserved are to evaluate at the scope of every call
+keep a list of every register that a function writes to and compare against its calling scope
 
-3/10(!) of all function calls and 7% of time are taken up by dispatch
+here's a fun hack: all final registers can be considered as "bound to"
+therefore you can tell what names are being bound solely by looking at instruction registers
 
-to do:
-fix the bug with dispatch
-figure out how metis should work
-change register allocation so that constants are assigned negative numbers / hash registers / figure out a way to give every register a unique hash
+forget everything that was written here; shadowing is allowed now and only built-ins are reserved
 
-980215 function calls in 0.977 seconds
+because metis doesn't alter the initial namespace, the values dict provides all of the reserved names
 
-   Ordered by: internal time
+every routine, including the main routine, should be represented by an object that stores:
+- the registers that are referenced as arguments
+- the registers that are bound to
+- the functions that are called
+fortunately, this is equivalent to, you know, the whole instruction
+for every instruction, simply put all of its information into the current scope
 
-   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
-        1    0.489    0.489    0.977    0.977 sophia.py:192(run)			    half of the runtime is spent purely inside run without calling anything else
-    20004    0.045    0.000    0.062    0.000 arche.py:738(bind_untyped_type)	optimise out binds with metis
-    70016    0.038    0.000    0.038    0.000 aletheia.py:86(describe)			occurs once per run cycle; find a way to get the needed type information closer to run
-    20002    0.037    0.000    0.063    0.000 mathos.py:189(__add__)			rationals
-   100023    0.034    0.000    0.034    0.000 aletheia.py:35(__gt__)			optimise out dispatch with metis; 1/10 of all function calls are supertype checking
-    80017    0.032    0.000    0.032    0.000 aletheia.py:11(__init__)			---
-    10002    0.032    0.000    0.044    0.000 mathos.py:267(__mod__)			rationals
-    70016    0.031    0.000    0.031    0.000 aletheia.py:72(complete)			completing is better now; avoid inferring and also avoid calling this
-    30004    0.029    0.000    0.035    0.000 mathos.py:42(__new__)			    rationals
-    10001    0.024    0.000    0.033    0.000 arche.py:1115(unloop_untyped)		optimise out binds with metis
-    80017    0.023    0.000    0.023    0.000 sophia.py:210(<listcomp>)			necessary
-    10001    0.020    0.000    0.020    0.000 arche.py:961(loop_null)			necessary
-    80017    0.020    0.000    0.020    0.000 sophia.py:217(<listcomp>)			necessary, despite appearances; many instructions need to know the signature
-    60016    0.019    0.000    0.019    0.000 aletheia.py:119(supertype)		optimise out dispatch with metis
-    30006    0.016    0.000    0.026    0.000 aletheia.py:68(merge)			    *please* find a different way to do this
-    10001    0.011    0.000    0.061    0.000 arche.py:265(__new__)			    optimise out type checks with metis
-    10002    0.010    0.000    0.041    0.000 mathos.py:445(__iter__)			rationals
-    30006    0.010    0.000    0.010    0.000 {method 'update' of 'dict' objects}	see merge
-    80017    0.010    0.000    0.010    0.000 aletheia.py:202(__bool__)			optimise out dispatch with metis
-    70018    0.009    0.000    0.009    0.000 aletheia.py:115(__bool__)			optimise out dispatch with metis
-    10001    0.006    0.000    0.042    0.000 arche.py:373(b_add)			    necessary
-    30004    0.006    0.000    0.006    0.000 {built-in method __new__ of type object at 0x00007FF9225ECC60}	optimise out type checks with metis
-    10002    0.006    0.000    0.051    0.000 arche.py:991(next_untyped)		necessary
-    10002    0.005    0.000    0.005    0.000 mathos.py:383(__eq__)			    rationals
-    10002    0.005    0.000    0.046    0.000 {built-in method builtins.next}	necessary
-    10002    0.004    0.000    0.004    0.000 mathos.py:401(__le__)			    rationals
-    20002    0.003    0.000    0.003    0.000 {built-in method math.gcd}		rationals
-    10003    0.002    0.000    0.002    0.000 aletheia.py:260(subtype)			optimise out type checks with metis
-        1    0.000    0.000    0.000    0.000 arche.py:1108(unloop_null)
-        1    0.000    0.000    0.000    0.000 arche.py:943(iterator_slice)
-        1    0.000    0.000    0.000    0.000 aletheia.py:234(infer_type)
-        1    0.000    0.000    0.000    0.000 arche.py:573(t_slc)
-        1    0.000    0.000    0.000    0.000 mathos.py:405(__ge__)
-        1    0.000    0.000    0.000    0.000 sophia.py:247(branch)
-        1    0.000    0.000    0.000    0.000 {built-in method builtins.iter}
-        1    0.000    0.000    0.000    0.000 mathos.py:434(__init__)
-        1    0.000    0.000    0.000    0.000 arche.py:1011(return_untyped)
-        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+...let's just go ahead and assume that loop variables persist after unlooping, too
+just so we don't have to deal with temporary state
+this way, only routines create new scope
 
+unfortunately the namespace still *changes* so we can't do this all at the end
+fortunately, you can only call functions that, you know, exist
+which allows you to evaluate the namespace at the calling site
+alternatively, attach the current namespace in the local scope to *every* instance of a call
 
-         197 function calls in 1.228 seconds
+what happens if, for some godforsaken reason, the user decides to shadow their own functions?
+ooh babey it's time for another damn tree
 
----
+what if, for some godforsaken reason, the user decides to *overwrite* their own functions?
+well now i want to tear my face off
+i am in hell!
+guess we can just. you know. replicate the runtime environment. that works too. no halting problem in my language
+with cut-off for recursive and mutually recursive functions, naturally
+okay fuck it we're hashing functions based on their line number
+that *has* to be unique
+look. if you manage to define an infinite non-repeating series of functions then that's on you, really
+this is precisely why sophia doesn't have a way to define functions as expressions - what about anonymous functions in meta-statements - shut the fuck up they don't break scope
+there are no shortcuts. just do it
 
-inferral of member/length
-oh my god
-
-member and length should be inferred for sequences, but *not* for other values
-therefore, either:
-    enormous amounts of time are wasted inferring these values for non-sequences (current solution)
-or:
-    the interpreter has to know when it's returning a sequence
-*or*:
-    change the default values of descriptors so that non-sequences have member null and length 0
-**or**
-    create 2 virtual types, unit and sequence, that indicate this information
+lol. lmao. name checking requires dispatch
+type checking and name checking have to happen concurrently. fuck my stupid baka life, et cetera

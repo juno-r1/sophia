@@ -333,7 +333,7 @@ class type_statement(coroutine):
 					instruction('START', '', label = [self.name]))
 
 	def execute(self): return (instruction('.return', '0', (self.name,)),
-							   instruction('END', ''))
+							   instruction('END', '', label = [self.name]))
 
 class event_statement(coroutine):
 	"""Defines an event definition."""
@@ -358,7 +358,7 @@ class event_statement(coroutine):
 					instruction('END', ''))
 		else:
 			return (instruction('.return', '0', ('&0',)),
-					instruction('END', ''))
+					instruction('END', '', label = [self.name]))
 
 class function_statement(coroutine):
 	"""Defines a function definition."""
@@ -387,7 +387,7 @@ class function_statement(coroutine):
 					instruction('END', ''))
 		else:
 			return (instruction('.return', '0', ('&0',)),
-					instruction('END', ''))
+					instruction('END', '', label = [self.name]))
 
 class assignment(statement):
 	"""Defines an assignment."""
@@ -472,14 +472,14 @@ class for_statement(statement):
 			return (instruction('.iterator', self.register, (self.nodes[0].register,)),
 					instruction('ELSE' if self.branch else 'START', '', line = self.line),
 					instruction('.next', adjacent, (self.register,)),
-					instruction('.unloop', '0', (adjacent, self.value.type), label = [self.value.value]), # Equivalent to Python's StopIteration check
+					instruction('.unloop', '0', (adjacent, self.value.type)), # Equivalent to Python's StopIteration check
 					instruction('.bind', self.value.value, ('0', self.value.type), label = [self.value.value]),
 					instruction(self.value.type, self.value.value, (self.value.value,)))
 		else:
 			return (instruction('.iterator', self.register, (self.nodes[0].register,)),
 					instruction('ELSE' if self.branch else 'START', '', line = self.line),
 					instruction('.next', adjacent, (self.register,)),
-					instruction('.unloop', self.value.value, (adjacent,), label = [self.value.value]),) # Equivalent to Python's StopIteration check
+					instruction('.unloop', self.value.value, (adjacent,)))
 
 	def execute(self): return instruction('.loop', '0'),
 

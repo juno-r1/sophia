@@ -1727,7 +1727,7 @@
         }
       ],
       "final": {
-        "type": "null",
+        "type": "!",
         "member": null,
         "length": null
       }
@@ -1741,7 +1741,7 @@
         }
       ],
       "final": {
-        "type": null,
+        "type": "!",
         "member": null,
         "length": null
       }

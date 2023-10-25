@@ -4,6 +4,7 @@ This includes type checking, constant folding/propagation, and dispatch verifica
 '''
 
 import arche, hemera
+from aletheia import descriptor
 from kadmos import instruction
 
 class processor:
@@ -12,68 +13,56 @@ class processor:
 
 		self.name = instructions[0].label[0] if instructions else ''
 		self.instructions = instructions
-		self.values = arche.builtins | values
+		self.result = [self.instructions[0]]
+		self.values = arche.builtins | values # Constant in this application
 		self.types = arche.types | {k: v.describe(self) for k, v in types.items()}
-		self.cache = [None for i in instructions]
+		self.cache = [None for _ in instructions]
+		self.path = int(bool(instructions))
 		self.op = None
+		self.signature = []
 
-	def analyse(self): # Disabled until I can figure out how this is meant to work
+	#def analyse(self): # Disabled until I can figure out how this is meant to work
 		
-		instructions, cache, reserved = [], [], [list(self.values.keys())]
-		scope = 0
-		for i, op in enumerate(self.instructions): # No backtracking required
-			"""
-			Prepare instruction, method, and signature.
-			"""
-			self.op = op # Only used for error handling in Metis
-			if not op.register: # Labels
-				if op.name == 'START':
-					scope = scope + 1
-				elif op.name == 'END':
-					scope = scope - 1
-				instructions.append(op)
-				cache.append(None)
-				continue
-			try:
-				method, args = self.values[op.name], op.args
-				tree = method.tree.true if args else method.tree.false # Here's tree
-				signature = [self.types[arg] for arg in args]
-			except KeyError:
-				self.error('FIND', op.name)
-				break
-			"""
-			Perform dispatch algorithm using known types.
-			"""
-			while tree: # Traverse tree; terminates upon reaching leaf node
-				try:
-					tree = tree.true if tree.op(signature[tree.index]) else tree.false
-				except IndexError:
-					tree = tree.false
-			if tree is None:
-				self.error('DISP', method.name, signature)
-				break
-			routine, final, types = tree.routine, tree.final, tree.signature
-			if len(args) != len(types): # Check arity
-				break
-			for i, item in enumerate(signature): # Verify type signature
-				if item > types[i]:
-					self.error('DISP', method.name, signature)
-					break
-			"""
-			Analyse characteristics of instruction.
-			"""
-			if final.type != '!': # Suppress write
-				self.types[op.register] = final.describe(self)
-			if cache[-1] is not None and cache[-1].final.type is None:
-				instructions.append(op)
-				cache.append(None)
-			else:
-				instructions.append(op)
-				cache.append(tree)
-		#[print(i) for i in cache]
-		self.instructions, self.cache = instructions, cache
-		return self
+	#	scope = routine(self.name)
+	#	"""
+	#	Initial pass to validate registers and check for reserved binds.
+	#	"""
+	#	for op in self.instructions:
+	#		if op.register:
+	#			if op.register in arche.builtins:
+	#				self.op = op
+	#				return self.error('BIND', op.register)
+	#			scope.add(op)
+	#	for name in scope.references:
+	#		if name not in self.values:
+	#			self.op = op
+	#			return self.error('FIND', name)
+	#	return self
+	#	lol. lmao
 
 	def error(self, status, *args):
 		
 		hemera.debug_error(self.name, self.op.line, status, args)
+
+class routine:
+	"""Routine object that stores data describing its scope."""
+	def __init__(self, name, instruction = None):
+
+		self.name = name
+		self.namespace = {} # Namespace of the routine at each call site
+		self.calls = {} # Instructions that this routine calls that aren't built-ins
+		self.addresses = {instruction.register} | set(instruction.label[1::2]) if instruction else set() # Registers that this routine binds to that *are* in the current scope
+		self.references = set() # Registers that this routine reads from that *aren't* in the current scope
+
+	def add(self, instruction):
+		
+		if instruction.name not in self.namespace:
+			self.namespace[instruction.name] = self.addresses.copy()
+		if instruction.name not in arche.builtins and instruction.name not in self.calls:
+			self.calls[instruction.name] = routine(instruction.name, instruction)
+		self.references = self.references | set((arg for arg in instruction.args if arg not in self.addresses))
+		self.addresses = self.addresses | {instruction.register}
+
+	def __str__(self):
+
+		return '{0}\nCalls\t\t{1}\nAddresses\t{2}\nReferences\t{3}'.format(self.name, self.calls, self.addresses, self.references)

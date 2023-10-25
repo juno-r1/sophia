@@ -10,6 +10,7 @@ import aletheia, hemera, iris, kadmos, metis
 import multiprocessing as mp
 import os
 from queue import Empty
+import hemera
 
 class runtime:
 	"""
@@ -80,6 +81,13 @@ class runtime:
 			self.tasks[pid].calls.send(self.tasks[reference.pid].result.get())
 		else:
 			self.tasks[reference.pid].requests.append(pid) # Submit request for return value
+
+	def read(self, pid, message):
+		"""
+		Multiprocessing disables input for all child processes,
+		so it has to be handled by the supervisor.
+		"""
+		self.tasks[pid].calls.send(hemera.stream_in(message))
 
 	def link(self, pid, name):
 		
@@ -166,7 +174,6 @@ class task:
 		self.cache = processor.cache # Instruction cache
 		self.values = processor.values
 		self.types = processor.types
-		self.reserved = tuple(self.values)
 		self.signature = [] # Current type signature
 		self.properties = aletheia.descriptor() # Final type properties
 		self.final = aletheia.descriptor() # Return type of routine
@@ -213,8 +220,8 @@ class task:
 				hemera.debug_task(self)
 			self.path = self.path + 1
 			if (address := self.op.register):
-				method, addresses = self.values[self.op.name], self.op.args
-				args = [self.values[arg] for arg in addresses]
+				method, registers = self.values[self.op.name], self.op.args
+				args = [self.values[arg] for arg in registers]
 			else: # Labels
 				continue
 			"""
@@ -222,9 +229,9 @@ class task:
 			https://github.com/JeffBezanson/phdthesis
 			Binary search tree yields closest key for method, then key is verified.
 			"""
-			self.signature = [self.types[arg] for arg in addresses]
+			self.signature = [self.types[arg] for arg in registers]
 			if cache is None:
-				tree = method.tree.true if addresses else method.tree.false # Here's tree
+				tree = method.tree.true if registers else method.tree.false # Here's tree
 				while tree: # Traverse tree; terminates upon reaching leaf node
 					tree = tree.true if (tree.index < self.op.arity) and tree.op(self.signature[tree.index]) else tree.false
 				if tree is None:
@@ -258,7 +265,10 @@ class task:
 		while True:
 			op, path = self.instructions[path], path + 1
 			if not op.register:
-				scope = scope - 1 if op.name == 'END' else scope + 1
+				if op.name == 'START' or op.name == 'ELSE':
+					scope = scope + 1
+				elif op.name == 'END':
+					scope = scope - 1
 				if scope == 0 and (skip or self.instructions[path].name != 'ELSE'):
 					if move:
 						self.path = path
@@ -279,7 +289,6 @@ class task:
 		return {'name': self.name,
 				'values': self.values.copy(),
 				'types': self.types.copy(),
-				'reserved': self.reserved,
 				'instructions': self.instructions,
 				'path': self.path,
 				'op': self.op,

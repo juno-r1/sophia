@@ -4,14 +4,14 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>77ea40b1-1af6-4971-ad30-ff261d0da3cb</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>harmonia.py</StartupFile>
+    <StartupFile>run.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <Name>sophia</Name>
     <RootNamespace>sophia</RootNamespace>
-    <InterpreterId>Global|PythonCore|3.9</InterpreterId>
+    <InterpreterId>Global|PythonCore|3.12</InterpreterId>
     <IsWindowsApplication>False</IsWindowsApplication>
     <TestFramework>unittest</TestFramework>
   </PropertyGroup>
@@ -68,7 +68,7 @@
     <Content Include="sophia\test.sph" />
   </ItemGroup>
   <ItemGroup>
-    <InterpreterReference Include="Global|PythonCore|3.9" />
+    <InterpreterReference Include="Global|PythonCore|3.12" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="harmonia\" />

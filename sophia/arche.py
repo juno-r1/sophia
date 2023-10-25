@@ -67,7 +67,6 @@ class type_definition(definition):
 		task.caller = task.state()
 		task.final = self.final
 		task.values[self.name], task.types[self.name] = value, self.signature[0]
-		task.reserved = tuple(task.values)
 		task.instructions = self.instructions
 		task.cache = [None for _ in self.instructions]
 		task.path = 1
@@ -91,7 +90,6 @@ class event_definition(definition):
 			task.final = self.final
 			task.values = task.values | dict(zip(self.params, args))
 			task.types = task.types | dict(zip(self.params, self.signature))
-			task.reserved = tuple(task.values)
 			task.instructions = self.instructions
 			task.cache = [None for _ in self.instructions]
 			task.path = 1
@@ -109,7 +107,6 @@ class function_definition(definition):
 			task.final = self.final
 			task.values = task.values | dict(zip(self.params, args))
 			task.types = task.types | dict(zip(self.params, self.signature))
-			task.reserved = tuple(task.values)
 			task.instructions = self.instructions
 			task.cache = [None for _ in self.instructions]
 			task.path = 1
@@ -123,7 +120,7 @@ class sophia_null: # Null type
 	name = 'null'
 	types = type(None)
 
-	def __new__(cls, task, value): return
+	def __new__(cls, task, value): return value is None
 
 cls_null = type_method('null', [], None)
 cls_null.retrieve(sophia_null)
@@ -397,7 +394,7 @@ arche_sub.retrieve(b_sub)
 def u_rsv(task, x):
 	
 	task.message('resolve', x)
-	task.properties.merge(x.check)
+	task.properties.type = x.check
 	return task.calls.recv()
 
 def b_mul(_, x, y):	return x * y
@@ -739,20 +736,13 @@ def bind_untyped(task, value):
 	while task.instructions[task.path + offset].register != name:
 		offset = offset + 1
 	task.instructions[task.path + offset].name = task.types[name].type if name in task.types else signature.type
-	if name in task.reserved:
-		return task.error('BIND', name)
-	else:
-		task.properties.__dict__.update(signature.__dict__)
-		return value
+	task.properties.__dict__.update(signature.__dict__)
+	return value
 
 def bind_untyped_type(task, value, type_routine):
 	
-	name, signature = task.op.label[0], task.signature[0]
-	if name in task.reserved:
-		return task.error('BIND', name)
-	else:
-		task.properties.__dict__.update(signature.__dict__)
-		return value
+	task.properties.__dict__.update(task.signature[0].__dict__)
+	return value
 
 arche_bind = function_method('.bind')
 arche_bind.retrieve(bind_untyped)
@@ -959,7 +949,10 @@ def loop_null(task): # Reverse branch
 		task.path = task.path - 1
 		op = task.instructions[task.path]
 		if not op.register:
-			scope = scope + 1 if op.name == 'END' else scope - 1
+			if op.name == 'START':
+				scope = scope - 1
+			elif op.name == 'END':
+				scope = scope + 1
 			if scope == 0:
 				return
 
@@ -1009,6 +1002,7 @@ def return_untyped(task, sentinel):
 		task.restore(task.caller) # Restore namespace of calling routine
 	else:
 		task.path = 0 # End task
+	task.values[task.op.register] = sentinel # Different return address
 	return sentinel
 
 arche_return = function_method('.return')
@@ -1101,25 +1095,17 @@ arche_type.retrieve(type_type_untyped)
 
 def unloop_null(task, value):
 
-	iterator, name = str(int(task.op.args[0]) - 1), task.op.label[0]
-	task.values[iterator] = None # Sanitise registers
-	del task.values[name], task.types[name]
+	task.values[str(int(task.op.args[0]) - 1)] = None # Sanitise registers
 	return task.branch(1, False, True)
 
 def unloop_untyped(task, value):
 	
-	name, signature = task.op.label[0], task.signature[0]
-	if name in task.reserved:
-		return task.error('BIND', name)
-	else:
-		task.properties.__dict__.update(signature.__dict__)
-		return value
+	task.properties.__dict__.update(task.signature[0].__dict__)
+	return value
 
 def unloop_null_type(task, value, routine):
 	
-	iterator, name = str(int(task.op.args[0]) - 1), task.op.label[0]
-	task.values[iterator] = None # Sanitise registers
-	del task.values[name], task.types[name]
+	task.values[str(int(task.op.args[0]) - 1)] = None # Sanitise registers
 	return task.branch(1, False, True)
 
 def unloop_untyped_type(task, value, routine):
@@ -1137,16 +1123,17 @@ Standard streams and I/O operations. These futures are abstract interfaces
 with stdin, stdout, and stderr.
 """
 
-stdin = reference(None)
-stdin.name, stdin.pid = 'stdin', 0
-stdout = reference(None)
-stdout.name, stdout.pid = 'stdout', 1
 stderr = reference(None)
-stderr.name, stderr.pid = 'stderr', 2
+stderr.name, stderr.pid = 'stderr', 0
+stdin = reference(None)
+stdin.name, stdin.pid = 'stdin', 1
+stdout = reference(None)
+stdout.name, stdout.pid = 'stdout', 2
 
 def input_string(task, value):
 	
-	return input(value)
+	task.message('read', value)
+	return task.calls.recv()
 
 arche_input = function_method('input')
 arche_input.retrieve(input_string)
@@ -1335,7 +1322,7 @@ arche_map.retrieve(map_function_list)
 
 def namespace_null(task): # Do not let the user read working registers
 
-	return {k: v for k, v in task.values.items() if k not in task.reserved}
+	return {k: v for k, v in task.values.items() if k not in builtins} # ABOVE COMMENT IS LYING
 
 arche_namespace = function_method('namespace')
 arche_namespace.retrieve(namespace_null)
