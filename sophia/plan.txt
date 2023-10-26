@@ -40,12 +40,18 @@ this is going to do some terrible things to metis, isn't it
 ---
 
 use statement
-analogous to import statements or rust use statement
+analogous to import statements or rust use statements
 sophia needs a mechanism for extending namespaces regardless of how useful linking is
 
 the use statement extends the current namespace with all top-level routine definitions in the target file
-files targeted by the use statement are *not* executed
+files targeted by the use statement are *not* executed, only compiled
 code other than routine definitions is completely ignored
+
+---
+
+iteration over streams
+the for statement just gets the next element from any given iterable
+it stands to reason that this could work for infinite streams too
 
 ---
 
@@ -115,60 +121,20 @@ this allows us to partially build the instruction cache *at compile time*
 
 ---
 
-name checking
+metis
 
-because the analyser needs to retrieve the type information of every register for every instruction
-it is possible to check that every register exists and is not reserved when invoked
-this obviates the need to check for these errors at runtime
+forget everything that was written here before
+just write the simplest static analyser possible
+no scopes, no conditional branching, no routine operators
+just bind the damn addresses
 
-it also means that there's no need for dedicated bind instructions; these can be made into labels
+the namespace framework has to operate differently here so as to preserve the registers for runtime
+keep track of types, no values
 
-in addition, some assertions can now be decided at compile time
+---
 
-conditional control flow is no problem; we only care about what names are reserved
-use union type checking for conditional branching; assume union type of all bindings
+should the user be allowed not to specify the type of a bind?
 
-function scope presents a problem
-sophia reserves all names in the calling scope (no shadowing) *but* allows referencing of names defined after the function definition
-therefore, the only way to know what names are reserved are to evaluate at the scope of every call
-keep a list of every register that a function writes to and compare against its calling scope
-
-here's a fun hack: all final registers can be considered as "bound to"
-therefore you can tell what names are being bound solely by looking at instruction registers
-
-forget everything that was written here; shadowing is allowed now and only built-ins are reserved
-
-because metis doesn't alter the initial namespace, the values dict provides all of the reserved names
-
-every routine, including the main routine, should be represented by an object that stores:
-- the registers that are referenced as arguments
-- the registers that are bound to
-- the functions that are called
-fortunately, this is equivalent to, you know, the whole instruction
-for every instruction, simply put all of its information into the current scope
-
-...let's just go ahead and assume that loop variables persist after unlooping, too
-just so we don't have to deal with temporary state
-this way, only routines create new scope
-
-unfortunately the namespace still *changes* so we can't do this all at the end
-fortunately, you can only call functions that, you know, exist
-which allows you to evaluate the namespace at the calling site
-alternatively, attach the current namespace in the local scope to *every* instance of a call
-
-what happens if, for some godforsaken reason, the user decides to shadow their own functions?
-ooh babey it's time for another damn tree
-
-what if, for some godforsaken reason, the user decides to *overwrite* their own functions?
-well now i want to tear my face off
-i am in hell!
-guess we can just. you know. replicate the runtime environment. that works too. no halting problem in my language
-with cut-off for recursive and mutually recursive functions, naturally
-okay fuck it we're hashing functions based on their line number
-that *has* to be unique
-look. if you manage to define an infinite non-repeating series of functions then that's on you, really
-this is precisely why sophia doesn't have a way to define functions as expressions - what about anonymous functions in meta-statements - shut the fuck up they don't break scope
-there are no shortcuts. just do it
-
-lol. lmao. name checking requires dispatch
-type checking and name checking have to happen concurrently. fuck my stupid baka life, et cetera
+allowing sophia to infer the initialised type of a name was meant to make it easier
+but in practice, sophia is so dependent on knowing the type of every name
+that it just introduces weird errors that are difficult to understand

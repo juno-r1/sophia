@@ -242,8 +242,6 @@ def infer_member(value): # Infers member type of value
 	except AttributeError:
 		return reduce(supertype, [infer_type(item) for item in value]) if value else 'untyped'
 
-def subtype(task, value): return value
-
 def supertype(a, b): # Must be named function due to limitations of multiprocessing
 
 	return [i for i in supertypes[a] if i in supertypes[b]][0]

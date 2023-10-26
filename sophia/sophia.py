@@ -29,7 +29,7 @@ class runtime:
 		initial = kadmos.module(address, root = root)
 		if 'tree' in flags:
 			hemera.debug_tree(initial) # Here's tree
-		processor = metis.processor(*kadmos.translator(initial).generate())
+		processor = metis.processor(*kadmos.translator(initial).generate()).analyse()
 		self.root = root
 		self.stream = mp.Queue() # Supervisor message stream
 		self.pool = mp.Pool(initializer = self.initialise)
@@ -219,10 +219,17 @@ class task:
 			if debug_task:
 				hemera.debug_task(self)
 			self.path = self.path + 1
-			if (address := self.op.register):
+			if (address := self.op.register): # Instructions
 				method, registers = self.values[self.op.name], self.op.args
 				args = [self.values[arg] for arg in registers]
-			else: # Labels
+			else: # Labels and pseudo-instructions
+				if self.op.name == 'BIND':
+					address, register = self.op.label[0], self.op.args[0]
+					value, signature = self.values[register], self.types[register]
+					self.properties.type = self.op.label[1]
+					self.values[address] = value
+					self.types[address], self.properties = self.complete(self.properties, signature, value), self.types[address] if address in self.types else aletheia.descriptor()
+					self.properties.type, self.properties.member, self.properties.length = None, None, None
 				continue
 			"""
 			Multiple dispatch algorithm, with help from Julia:

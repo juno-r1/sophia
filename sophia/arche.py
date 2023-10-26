@@ -2,7 +2,7 @@
 The Arche module defines the standard library of Sophia.
 '''
 
-from aletheia import descriptor, dispatch, infer, subtype
+from aletheia import descriptor, dispatch, infer
 from iris import reference
 from mathos import real, slice, element
 from math import copysign
@@ -42,6 +42,7 @@ class type_method(method):
 		super().__init__(name)
 		self.supertypes = [name] + supertypes
 		self.prototype = prototype
+		self.descriptor = descriptor(name, prepare = True)
 
 class event_method(method): pass
 class function_method(method): pass
@@ -124,7 +125,6 @@ class sophia_null: # Null type
 
 cls_null = type_method('null', [], None)
 cls_null.retrieve(sophia_null)
-cls_null.retrieve(subtype)
 
 class sophia_untyped: # Non-abstract base class
 
@@ -170,7 +170,6 @@ class sophia_untyped: # Non-abstract base class
 
 cls_untyped = type_method('untyped', [], None)
 cls_untyped.retrieve(sophia_untyped)
-cls_untyped.retrieve(subtype)
 
 class sophia_routine(sophia_untyped): # Routine abstract type
 	
@@ -179,7 +178,6 @@ class sophia_routine(sophia_untyped): # Routine abstract type
 
 cls_type = type_method('routine', ['untyped'], None)
 cls_type.retrieve(sophia_routine)
-cls_type.retrieve(subtype)
 
 class sophia_type(sophia_untyped): # Type type
 	
@@ -188,7 +186,6 @@ class sophia_type(sophia_untyped): # Type type
 
 cls_type = type_method('type', ['routine', 'untyped'], None)
 cls_type.retrieve(sophia_type)
-cls_type.retrieve(subtype)
 
 class sophia_event(sophia_untyped): # Event type
 
@@ -197,7 +194,6 @@ class sophia_event(sophia_untyped): # Event type
 
 cls_event = type_method('event', ['routine', 'untyped'], None)
 cls_event.retrieve(sophia_event)
-cls_event.retrieve(subtype)
 
 class sophia_function(sophia_untyped): # Function type
 
@@ -206,7 +202,6 @@ class sophia_function(sophia_untyped): # Function type
 
 cls_function = type_method('function', ['routine', 'untyped'], None)
 cls_function.retrieve(sophia_function)
-cls_function.retrieve(subtype)
 
 class sophia_boolean(sophia_untyped): # Boolean type
 
@@ -233,7 +228,6 @@ class sophia_boolean(sophia_untyped): # Boolean type
 
 cls_boolean = type_method('boolean', ['untyped'], False)
 cls_boolean.retrieve(sophia_boolean)
-cls_boolean.retrieve(subtype)
 
 class sophia_number(sophia_untyped): # Abstract number type
 
@@ -254,7 +248,6 @@ class sophia_number(sophia_untyped): # Abstract number type
 
 cls_number = type_method('number', ['untyped'], real())
 cls_number.retrieve(sophia_number)
-cls_number.retrieve(subtype)
 
 class sophia_integer(sophia_number): # Integer type
 
@@ -270,7 +263,6 @@ class sophia_integer(sophia_number): # Integer type
 
 cls_integer = type_method('integer', ['number', 'untyped'], real())
 cls_integer.retrieve(sophia_integer)
-cls_integer.retrieve(subtype)
 
 class sophia_sequence(sophia_untyped): # Sequence abstract type
 	
@@ -279,7 +271,6 @@ class sophia_sequence(sophia_untyped): # Sequence abstract type
 
 cls_type = type_method('sequence', ['untyped'], None)
 cls_type.retrieve(sophia_sequence)
-cls_type.retrieve(subtype)
 
 class sophia_string(sophia_untyped): # String type
 
@@ -321,7 +312,6 @@ class sophia_string(sophia_untyped): # String type
 
 cls_string = type_method('string', ['sequence', 'untyped'], '')
 cls_string.retrieve(sophia_string)
-cls_string.retrieve(subtype)
 
 class sophia_list(sophia_untyped): # List type
 
@@ -342,7 +332,6 @@ class sophia_list(sophia_untyped): # List type
 
 cls_list = type_method('list', ['untyped'], [])
 cls_list.retrieve(sophia_list)
-cls_list.retrieve(subtype)
 
 class sophia_record(sophia_untyped): # Record type
 
@@ -351,7 +340,6 @@ class sophia_record(sophia_untyped): # Record type
 
 cls_record = type_method('record', ['sequence', 'untyped'], {})
 cls_record.retrieve(sophia_record)
-cls_record.retrieve(subtype)
 
 class sophia_slice(sophia_untyped): # Slice type
 
@@ -360,7 +348,6 @@ class sophia_slice(sophia_untyped): # Slice type
 
 cls_slice = type_method('slice', ['sequence', 'untyped'], slice((real(), real(), real(1))))
 cls_slice.retrieve(sophia_slice)
-cls_slice.retrieve(subtype)
 
 class sophia_future(sophia_untyped): # Process type
 	
@@ -369,7 +356,6 @@ class sophia_future(sophia_untyped): # Process type
 
 cls_future = type_method('future', ['sequence', 'untyped'], None)
 cls_future.retrieve(sophia_future)
-cls_future.retrieve(subtype)
 
 """
 Built-in operators.
@@ -513,7 +499,6 @@ def b_ins_type(task, x, y):
 	type_tag, final_tag, super_tag = descriptor(name), descriptor(name), descriptor(supername).describe(task)
 	type_tag.supertypes = [name] + super_tag.supertypes
 	routine = type_method(name, x.supertypes[index:], x.prototype)
-	routine.register(subtype, final_tag, (type_tag,))
 	lhs, rhs = kadmos.generate_intersection(name, x.name), kadmos.generate_intersection(name, y.name)
 	check = lhs + rhs
 	start, end = kadmos.generate_labels(name)
@@ -552,7 +537,6 @@ def b_uni_type(task, x, y):
 	type_tag, final_tag, super_tag = descriptor(name), descriptor(name), descriptor(supername).describe(task)
 	type_tag.supertypes = [name] + super_tag.supertypes
 	routine = type_method(name, x.supertypes[index:], x.prototype)
-	routine.register(subtype, final_tag, (type_tag,))
 	check = kadmos.generate_union(name, x.name, y.name)
 	start, end = kadmos.generate_labels(name)
 	tree = supertype.tree.true
@@ -697,7 +681,6 @@ def alias_type(task, routine): # Type alias
 									 if isinstance(value, type_definition)
 									 else value, name, key[0]), final_tag, key)
 		tree = tree.true
-	new.register(subtype, final_tag, (new_tag,))
 	return new
 
 def alias_function(task, routine): # Function alias
@@ -729,24 +712,6 @@ def assert_untyped(task, value): # Non-null assertion
 arche_assert = function_method('.assert')
 arche_assert.retrieve(assert_null)
 arche_assert.retrieve(assert_untyped)
-
-def bind_untyped(task, value):
-	
-	name, signature, offset = task.op.label[0], task.signature[0], 0
-	while task.instructions[task.path + offset].register != name:
-		offset = offset + 1
-	task.instructions[task.path + offset].name = task.types[name].type if name in task.types else signature.type
-	task.properties.__dict__.update(signature.__dict__)
-	return value
-
-def bind_untyped_type(task, value, type_routine):
-	
-	task.properties.__dict__.update(task.signature[0].__dict__)
-	return value
-
-arche_bind = function_method('.bind')
-arche_bind.retrieve(bind_untyped)
-arche_bind.retrieve(bind_untyped_type)
 
 def branch_null(task): # Unconditional branch
 	
@@ -1060,7 +1025,6 @@ def type_type(task, supertype):
 			routine.register(type_definition(definition, name, key[0]), final_tag, key)
 			tree = tree.true
 		routine.register(type_definition(instructions, name, super_tag), final_tag, (super_tag,))
-	routine.register(subtype, final_tag, (type_tag,))
 	return routine
 
 def type_type_untyped(task, supertype, prototype):
@@ -1086,7 +1050,6 @@ def type_type_untyped(task, supertype, prototype):
 			routine.register(type_definition(definition, name, key[0]), final_tag, key)
 			tree = tree.true
 		routine.register(type_definition(instructions, name, super_tag), final_tag, (super_tag,))
-	routine.register(subtype, final_tag, (type_tag,))
 	return routine
 
 arche_type = function_method('.type')
