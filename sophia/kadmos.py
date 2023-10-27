@@ -66,6 +66,10 @@ class translator:
 														 (self.node.register,),
 														 line = self.node.line,
 														 label = [self.node.head.value[0].value] if self.path[-2] == self.node.head.length - 1 else []))
+				elif isinstance(self.node.head, sequence_literal) and self.node.value != ':':
+					self.instructions.append(instruction(',',
+														 self.node.head.register,
+														 (self.node.head.register, self.node.head.nodes[self.path[-2]].register)))
 				self.node = self.node.head # Walk upward
 				if self.node:
 					self.path.pop()
@@ -412,8 +416,8 @@ class assignment(statement):
 
 	def __str__(self): return 'assignment ' + str([item.value for item in self.value])
 
-	def execute(self): return [instruction('.bind',
-										   str(int(self.register) + i),
+	def execute(self): return [instruction('BIND',
+										   '',
 										   (self.nodes[i].register, item.type) if item.type else (self.nodes[i].register,),
 										   label = [item.value])
 										   for i, item in enumerate(self.value)] + \
@@ -719,15 +723,7 @@ class concatenator(operator):
 		self.nodes = [left] + n.nodes if n.value == self.value else [left, n]
 		return self
 
-	def execute(self):
-
-		if self.value == ':':
-			return instruction(':', self.register, tuple(item.register for item in self.nodes)),
-		else:
-			return [instruction('.concatenate',
-								self.register,
-								(self.nodes[0].register,) if i == 0 else (self.register, item.register))
-								for i, item in enumerate(self.nodes)]
+	def execute(self): return instruction(',', self.head.register, tuple([self.head.register] + [item.register for item in self.nodes])),
 
 class left_bracket(operator):
 	"""Generic bracket node."""
@@ -790,12 +786,34 @@ class sequence_index(left_bracket):
 
 class sequence_literal(left_bracket):
 	"""Defines a sequence constructor."""
-	def execute(self):
+	def __init__(self, value):
+
+		super().__init__(value)
+		self.active = 0
+
+	def nud(self, lex): # For normal parentheses
+		
+		self.nodes = [] if isinstance(lex.peek, right_bracket) else [lex.parse(self.lbp)] # Accounts for empty brackets
+		if self.nodes and self.nodes[0].value == ',': # Unpack concatenator
+			self.nodes = self.nodes[0].nodes
+		lex.use()
+		return self # The bracketed sub-expression as a whole is essentially a literal
+
+	def start(self):
 		
 		if self.nodes and self.nodes[0].value == ':' and len(self.nodes[0].nodes) == 3:
-			return instruction('cast', self.register, ('list', self.nodes[0].register)),
+			return ()
+		elif self.nodes and self.nodes[0].value == ':':
+			return instruction('.record', self.register, ()),
 		elif self.nodes:
-			return instruction('.sequence', self.register, (self.nodes[0].register,)),
+			return instruction('.list', self.register, ()),
+		else:
+			return ()
+
+	def execute(self):
+
+		if self.nodes and self.nodes[0].value == ':' and len(self.nodes[0].nodes) == 3:
+			return instruction('cast', self.register, ('list', self.nodes[0].register)),
 		else:
 			return ()
 

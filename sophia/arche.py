@@ -4,10 +4,10 @@ The Arche module defines the standard library of Sophia.
 
 from aletheia import descriptor, dispatch, infer
 from iris import reference
-from mathos import real, slice, element
+from mathos import real, slice
 from math import copysign
 from functools import reduce
-import aletheia, kadmos
+import aletheia, kadmos, hemera
 
 import json
 with open('kleio.json') as kleio:
@@ -299,10 +299,10 @@ class sophia_string(sophia_untyped): # String type
 	def __string__(cls, value): return value
 
 	@classmethod
-	def __list__(cls, value): return '[' + ', '.join([cast_type_untyped(cls, i) for i in value]) + ']'
+	def __list__(cls, value): return '[' + ', '.join([cast_untyped_type(i, cls) for i in value]) + ']'
 
 	@classmethod
-	def __record__(cls, value): return '[' + ', '.join([cast_type_untyped(cls, k) + ': ' + cast_type_untyped(cls, v) for k, v in value.items()]) + ']'
+	def __record__(cls, value): return '[' + ', '.join([cast_untyped_type(k, cls) + ': ' + cast_untyped_type(v, cls) for k, v in value.items()]) + ']'
 
 	@classmethod
 	def __slice__(cls, value): return '{0}:{1}:{2}'.format(value.start, value.stop, value.step)
@@ -330,7 +330,7 @@ class sophia_list(sophia_untyped): # List type
 	@classmethod
 	def __slice__(cls, value): return tuple(value)
 
-cls_list = type_method('list', ['untyped'], [])
+cls_list = type_method('list', ['sequence', 'untyped'], [])
 cls_list.retrieve(sophia_list)
 
 class sophia_record(sophia_untyped): # Record type
@@ -559,12 +559,60 @@ arche_uni.retrieve(b_uni_record)
 arche_uni.retrieve(b_uni_slice)
 arche_uni.retrieve(b_uni_type)
 
-def b_slc(_, x, y): return element((x, y))
+def concatenate_sequence_untyped(task, sequence, value):
+	
+	sequence_type, member_type = task.signature[0], task.signature[1]
+	task.properties.length = sequence_type.length + 1
+	if sequence_type.member == member_type.type:
+		task.properties.member = sequence_type.member
+	else:
+		sequence_type, member_type = task.values[sequence_type.member], task.values[member_type.type]
+		task.properties.member = [i for i in sequence_type.supertypes if i in member_type.supertypes][0]
+	return sequence + [value]
+
+def b_cct(task, sequence, value):
+	
+	sequence_type, member_type = task.signature[0], task.signature[1]
+	task.properties.length = sequence_type.length + 1
+	if sequence_type.member == member_type.type:
+		task.properties.member = sequence_type.member
+	else:
+		sequence_type, member_type = task.values[sequence_type.member], task.values[member_type.type]
+		task.properties.member = [i for i in sequence_type.supertypes if i in member_type.supertypes][0]
+	return tuple(list(sequence) + [value])
+
+def b_cct_0(task, sequence, value):
+
+	task.properties.member = task.signature[1].type
+	return (value,)
+
+def t_cct(task, sequence, key, value):
+	
+	sequence_type, member_type = task.signature[0], task.signature[2]
+	task.properties.length = sequence_type.length + 1
+	if not sequence:
+		task.properties.member = member_type.type
+	elif sequence_type.member == member_type.type:
+		task.properties.member = sequence_type.member
+	else:
+		sequence_type, member_type = task.values[sequence_type.member], task.values[member_type.type]
+		task.properties.member = [i for i in sequence_type.supertypes if i in member_type.supertypes][0]
+	return sequence | {key: value}
+
+def t_cct_0(task, sequence, key, value):
+
+	task.properties.member = task.signature[2].type
+	return {key: value}
+
+arche_cct = function_method(',')
+arche_cct.retrieve(b_cct)
+arche_cct.retrieve(b_cct_0)
+arche_cct.retrieve(t_cct)
+arche_cct.retrieve(t_cct_0)
 
 def t_slc(_, x, y, z): return slice((x, y, z))
 
 arche_slc = function_method(':')
-arche_slc.retrieve(b_slc)
 arche_slc.retrieve(t_slc)
 
 def u_sfe_null(_, x): return False
@@ -737,26 +785,6 @@ def break_untyped(task, value): # Loop break
 arche_break = function_method('.break')
 arche_break.retrieve(break_untyped)
 
-def concatenate_untyped(task, value):
-	
-	task.properties.member = task.signature[0].type
-	return [value]
-
-def concatenate_sequence_untyped(task, sequence, value):
-	
-	sequence_type, member_type = task.signature[0], task.signature[1]
-	task.properties.length = sequence_type.length + 1
-	if sequence_type.member == member_type.type:
-		task.properties.member = sequence_type.member
-	else:
-		sequence_type, member_type = task.values[sequence_type.member], task.values[member_type.type]
-		task.properties.member = [i for i in sequence_type.supertypes if i in member_type.supertypes][0]
-	return sequence + [value]
-
-arche_concatenate = function_method('.concatenate')
-arche_concatenate.retrieve(concatenate_untyped)
-arche_concatenate.retrieve(concatenate_sequence_untyped)
-
 def constraint_boolean(task, constraint):
 	
 	name = task.instructions[0].label[0]
@@ -907,6 +935,13 @@ def link_null(task):
 arche_link = function_method('.link')
 arche_link.retrieve(link_null)
 
+def list_null(task):
+
+	return ()
+
+arche_list = function_method('.list')
+arche_list.retrieve(list_null)
+
 def loop_null(task): # Reverse branch
 	
 	scope = 1
@@ -952,6 +987,13 @@ def next_untyped(task, iterator):
 arche_next = function_method('.next')
 arche_next.retrieve(next_untyped)
 
+def record_null(task):
+
+	return {}
+
+arche_record = function_method('.record')
+arche_record.retrieve(record_null)
+
 def return_null(task, sentinel):
 	
 	if task.caller:
@@ -973,20 +1015,6 @@ def return_untyped(task, sentinel):
 arche_return = function_method('.return')
 arche_return.retrieve(return_null)
 arche_return.retrieve(return_untyped)
-
-def sequence_untyped(task, sequence):
-	
-	signature = task.signature[0]
-	task.properties.member, task.properties.length = signature.member, signature.length
-	if not isinstance(sequence, list):
-		sequence = [sequence]
-	if sequence and isinstance(sequence[0], element): # If items is a key-item pair in a record
-		return dict(iter(sequence))
-	else: # If list:
-		return tuple(sequence)
-
-arche_sequence = function_method('.sequence')
-arche_sequence.retrieve(sequence_untyped)
 
 def skip_untyped(task, value):
 
@@ -1128,7 +1156,7 @@ def abs_number(task, value):
 arche_abs = function_method('abs')
 arche_abs.retrieve(abs_number)
 
-def cast_type_untyped(task, target, value):
+def cast_untyped_type(task, value, target):
 	
 	try:
 		result = getattr(globals()['sophia_' + target.name], '__{0}__'.format(aletheia.names[type(value).__name__]), None)(value)
@@ -1140,7 +1168,7 @@ def cast_type_untyped(task, target, value):
 		return result
 
 arche_cast = function_method('cast')
-arche_cast.retrieve(cast_type_untyped)
+arche_cast.retrieve(cast_untyped_type)
 
 def ceiling_number(task, value):
 

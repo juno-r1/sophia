@@ -30,6 +30,8 @@ class runtime:
 		if 'tree' in flags:
 			hemera.debug_tree(initial) # Here's tree
 		processor = metis.processor(*kadmos.translator(initial).generate()).analyse()
+		if not processor:
+			raise SystemExit
 		self.root = root
 		self.stream = mp.Queue() # Supervisor message stream
 		self.pool = mp.Pool(initializer = self.initialise)

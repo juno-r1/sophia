@@ -28,6 +28,15 @@ change register allocation so that constants are assigned negative numbers / has
 
 ---
 
+find a way to build sequences that doesn't suck
+
+get the parser to detect the difference between a list and a record
+hint: records always have : directly under the head node
+instead of building a sequence and then converting it into a list or record -
+create an empty list or record first and then concatenate to it
+
+---
+
 0.7
 
 ---
@@ -131,10 +140,63 @@ just bind the damn addresses
 the namespace framework has to operate differently here so as to preserve the registers for runtime
 keep track of types, no values
 
+aliasing can be performed at compile time simply by keeping a record of synonyms
+there's no need to do anything to the data itself; just rewrite the instructions
+
 ---
 
-should the user be allowed not to specify the type of a bind?
+binding implemented as normal
 
-allowing sophia to infer the initialised type of a name was meant to make it easier
-but in practice, sophia is so dependent on knowing the type of every name
-that it just introduces weird errors that are difficult to understand
+some internal instructions have a return type that must be inferred from the value (dependent type?)
+this is a problem for metis, which does not have access to such a value
+in these cases, what is the most consistent behaviour for metis?
+
+metis should be conservative in its analysis
+if a function's return type cannot be determined:
+there should exist a signal that forces any further instruction reading from that return register to fail to cache
+
+if at any point you don't know the return type of a function, how do you stop that from invalidating the rest of the program?
+as it is, extremely common operations can cause the state of a whole program to become unknown
+
+in practice, not so much
+basically all data ends up either being bound, which always resolves the type, or being sent outside the routine
+it's probably fine
+
+---
+
+operations that cause this state:
+
+receive (n_rcv)
+return type is determined by sending routine
+
+resolve (u_rsv)
+return type is determined by sending routine
+
+binary safety operators (b_sfe)
+return type is the type of the non-null operand
+
+unsafety operator (u_usf)
+return type is either the type of the operand or null
+
+prototype constructor (u_new)
+return type is the operand by definition
+
+index for lists and records (.index)
+return type is the member type of the sequence
+
+iterator control (.next)
+return type is the member type of the iterator or null
+
+sequence constructor (.sequence)
+return type is either list or record, but its operands fall outside of the type system
+
+skip (.skip)
+return type is the return type of the first function in the composition
+
+cast (cast)
+return type is the return type of the operand or null
+
+reduce (reduce)
+return type is the return type of the reducing function
+
+consider rolling .next and .unloop into a single function

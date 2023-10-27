@@ -892,9 +892,52 @@
       }
     }
   },
-  ":": {
-    "b_slc": {
+  ",": {
+    "b_cct_0": {
       "signature": [
+        {
+          "type": "list",
+          "member": null,
+          "length": 0
+        },
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "list",
+        "member": null,
+        "length": 1
+      }
+    },
+    "b_cct": {
+      "signature": [
+        {
+          "type": "list",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "list",
+        "member": null,
+        "length": null
+      }
+    },
+    "t_cct_0": {
+      "signature": [
+        {
+          "type": "record",
+          "member": null,
+          "length": 0
+        },
         {
           "type": "untyped",
           "member": null,
@@ -907,11 +950,37 @@
         }
       ],
       "final": {
-        "type": "untyped",
+        "type": "record",
+        "member": null,
+        "length": 1
+      }
+    },
+    "t_cct": {
+      "signature": [
+        {
+          "type": "record",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "untyped",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "record",
         "member": null,
         "length": null
       }
-    },
+    }
+  },
+  ":": {
     "t_slc": {
       "signature": [
         {
@@ -1179,41 +1248,6 @@
       }
     }
   },
-  ".concatenate": {
-    "concatenate_untyped": {
-      "signature": [
-        {
-          "type": "untyped",
-          "member": null,
-          "length": null
-        }
-      ],
-      "final": {
-        "type": "sequence",
-        "member": null,
-        "length": 1
-      }
-    },
-    "concatenate_sequence_untyped": {
-      "signature": [
-        {
-          "type": "sequence",
-          "member": null,
-          "length": null
-        },
-        {
-          "type": "untyped",
-          "member": null,
-          "length": null
-        }
-      ],
-      "final": {
-        "type": "sequence",
-        "member": null,
-        "length": null
-      }
-    }
-  },
   ".constraint": {
     "constraint_boolean": {
       "signature": [
@@ -1430,6 +1464,16 @@
       }
     }
   },
+  ".list": {
+    "list_null": {
+      "signature": [],
+      "final": {
+        "type": "list",
+        "member": "untyped",
+        "length": 0
+      }
+    }
+  },
   ".loop": {
     "loop_null": {
       "signature": [],
@@ -1472,6 +1516,16 @@
       }
     }
   },
+  ".record": {
+    "record_null": {
+      "signature": [],
+      "final": {
+        "type": "record",
+        "member": "untyped",
+        "length": 0
+      }
+    }
+  },
   ".return": {
     "return_null": {
       "signature": [
@@ -1497,22 +1551,6 @@
       ],
       "final": {
         "type": "!",
-        "member": null,
-        "length": null
-      }
-    }
-  },
-  ".sequence": {
-    "sequence_untyped": {
-      "signature": [
-        {
-          "type": "untyped",
-          "member": null,
-          "length": null
-        }
-      ],
-      "final": {
-        "type": null,
         "member": null,
         "length": null
       }
@@ -1702,15 +1740,15 @@
     }
   },
   "cast": {
-    "cast_type_untyped": {
+    "cast_untyped_type": {
       "signature": [
         {
-          "type": "type",
+          "type": "untyped",
           "member": null,
           "length": null
         },
         {
-          "type": "untyped",
+          "type": "type",
           "member": null,
           "length": null
         }

@@ -12,7 +12,6 @@ class processor:
 
 		self.name = instructions[0].label[0] if instructions else ''
 		self.instructions = instructions
-		self.result = [self.instructions[0]]
 		self.values = arche.builtins | values # Constant in this application
 		self.types = arche.types | {k: v.describe(self) for k, v in types.items()}
 		self.routines = self.values.copy()
@@ -24,13 +23,14 @@ class processor:
 
 	def analyse(self): # Disabled until I can figure out how this is meant to work
 	
+		[print(i) for i in self.instructions]
 		while self.path < len(self.instructions): # This can and does change
 			"""
 			Initial stage to validate registers and check for reserved binds.
 			"""
 			self.op = self.instructions[self.path]
 			self.path = self.path + 1
-			if self.op.name == '.bind':
+			if self.op.name == 'BIND':
 				self.bind()
 				continue
 			elif (address := self.op.register):
@@ -48,6 +48,7 @@ class processor:
 			https://github.com/JeffBezanson/phdthesis
 			Binary search tree yields closest key for method, then key is verified.
 			"""
+			print(self.op, self.signature)
 			tree = method.tree.true if registers else method.tree.false # Here's tree
 			while tree: # Traverse tree; terminates upon reaching leaf node
 				tree = tree.true if (tree.index < self.op.arity) and tree.op(self.signature[tree.index]) else tree.false
@@ -70,22 +71,6 @@ class processor:
 			self.namespace[address] = final
 		[print(i) for i in self.cache]
 		return self
-	#	scope = routine(self.name)
-	#	"""
-	#	Initial pass to validate registers and check for reserved binds.
-	#	"""
-	#	for op in self.instructions:
-	#		if op.register:
-	#			if op.register in arche.builtins:
-	#				self.op = op
-	#				return self.error('BIND', op.register)
-	#			scope.add(op)
-	#	for name in scope.references:
-	#		if name not in self.values:
-	#			self.op = op
-	#			return self.error('FIND', name)
-	#	return self
-	#	lol. lmao
 
 	def complete(self, descriptor, final, value): # Completes descriptor with properties and inferred type of value
 		
@@ -113,13 +98,9 @@ class processor:
 			typed = False
 		if not (typed or name in self.namespace): # Untyped, unbound
 			final = signature
-			self.op.name = 'BIND'
-			self.op.register = ''
 			self.op.label.append(signature.type)
 		elif check_type.name in item_type.supertypes: # Successful type check
 			final = check_type.descriptor
-			self.op.name = 'BIND'
-			self.op.register = ''
 			self.op.label.append(check_type.name)
 		else: # Unsuccessful type check (delegates check to runtime)
 			final = check_type.descriptor

@@ -5,7 +5,7 @@ The Aletheia module defines built-in types and type operations.
 from functools import reduce
 
 class descriptor:
-	"""Type descriptor that holds the properties of a given value."""
+	"""Type descriptor that holds the properties of a given name."""
 
 	def __init__(self, type = None, member = None, length = None, prepare = False):
 
@@ -54,9 +54,9 @@ class descriptor:
 	def __str__(self):
 		
 		attributes = [self.type or 'null']
-		if self.member and self.member != 'untyped':
+		if self.member is not None:
 			attributes.append(self.member)
-		if self.length:
+		if self.length is not None:
 			attributes.append(str(self.length))
 		return '.'.join(attributes)
 
