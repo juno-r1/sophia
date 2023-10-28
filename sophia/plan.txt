@@ -64,6 +64,20 @@ it stands to reason that this could work for infinite streams too
 
 ---
 
+table type
+implements a mutable collection of records with typed fields
+take from sql, cobb's operators for table querying and manipulation
+
+not using oop is all very well and good, but sophia lacks for useful complex data structures
+custom tables should resolve this issue quite nicely
+combined with the distributed functionalities of sophia, some powerful rdms capabilities are possible
+
+tables should be "mutable" only in well-defined operations (insertion, deletion), like any other sequence
+table operations and message passing should return copy, not reference
+need to adhere to acid principles
+
+---
+
 extended static checker for sophia
 
 type checking

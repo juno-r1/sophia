@@ -939,8 +939,13 @@ def list_null(task):
 
 	return ()
 
+def list_integer_integer_integer(task, x, y, z):
+
+	return tuple(slice((x, y, z)))
+
 arche_list = function_method('.list')
 arche_list.retrieve(list_null)
+arche_list.retrieve(list_integer_integer_integer)
 
 def loop_null(task): # Reverse branch
 	

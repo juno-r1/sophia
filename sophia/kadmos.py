@@ -10,7 +10,7 @@ class instruction:
 	"""Instruction used in the virtual machine"""
 	__slots__ = ('name', 'register', 'args', 'line', 'label', 'arity')
 
-	def __init__(self, name, register, args = (), line = 0, label = []):
+	def __init__(self, name, register = '', args = (), line = 0, label = []):
 
 		self.name = name
 		self.register = register
@@ -46,7 +46,7 @@ class translator:
 		self.node = node
 		self.path = [0]
 		self.constant = constants # Constant register counter
-		self.instructions = [instruction('START', '', label = [node.name])]
+		self.instructions = [instruction('START', label = [node.name])]
 		self.values = {'0': None, '&0': None} # Register namespace
 		self.types = {'0': descriptor(prepare = True), '&0': descriptor(prepare = True)} # Register types
 
@@ -85,9 +85,9 @@ class translator:
 				self.path.append(0)
 				if not isinstance(self.node, for_statement):
 					if self.node.branch:
-						self.instructions.append(instruction('ELSE', '', line = self.node.line))
+						self.instructions.append(instruction('ELSE', line = self.node.line))
 					elif self.node.block:
-						self.instructions.append(instruction('START', '', line = self.node.line))
+						self.instructions.append(instruction('START', line = self.node.line))
 				if isinstance(self.node, event_statement):
 					self.node.value = self.node.value + self.node.nodes[0].value
 			if self.path[-1] == self.node.active:
@@ -100,10 +100,10 @@ class translator:
 				x.line = self.node.line
 			self.instructions.extend(instructions)
 			if self.path[-1] == self.node.length and self.node.block:
-				self.instructions.append(instruction('END', '', line = self.node.line))
+				self.instructions.append(instruction('END', line = self.node.line))
 		if len(self.instructions) == 1: # Adds instruction for empty program
 			self.instructions.extend(self.start.execute())
-		self.instructions.append(instruction('END', ''))
+		self.instructions.append(instruction('END'))
 		return self.instructions, self.values, self.types
 
 	def register(self, offset):
@@ -331,13 +331,13 @@ class type_statement(coroutine):
 		if self.active: # Necessary to check type of prototype
 			return (instruction(self.supertype, self.register, (self.nodes[0].register,)),
 					instruction('.type', self.name, (self.supertype, self.register)),
-					instruction('START', '', label = [self.name]))
+					instruction('START', label = [self.name]))
 		else:
 			return (instruction('.type', self.name, (self.supertype,)),
-					instruction('START', '', label = [self.name]))
+					instruction('START', label = [self.name]))
 
 	def execute(self): return (instruction('.return', '0', (self.name,)),
-							   instruction('END', '', label = [self.name]))
+							   instruction('END', label = [self.name]))
 
 class event_statement(coroutine):
 	"""Defines an event definition."""
@@ -352,17 +352,17 @@ class event_statement(coroutine):
 		names = [item.value for item in self.value]
 		types = [item.type if item.type else 'untyped' for item in self.value]
 		return (instruction('.event', self.name, label = [i for pair in zip(types, names) for i in pair] + [self.message.type, self.message.value]),
-				instruction('START', '', label = [self.name]))
+				instruction('START', label = [self.name]))
 
 	def execute(self):
 
 		if self.type:
 			return (instruction(self.type, self.register, ('&0',)),
 					instruction('.return', '0', ('&0',)),
-					instruction('END', ''))
+					instruction('END'))
 		else:
 			return (instruction('.return', '0', ('&0',)),
-					instruction('END', '', label = [self.name]))
+					instruction('END', label = [self.name]))
 
 class function_statement(coroutine):
 	"""Defines a function definition."""
@@ -381,17 +381,17 @@ class function_statement(coroutine):
 		names = [item.value for item in self.value]
 		types = [item.type if item.type else 'untyped' for item in self.value]
 		return (instruction('.function', self.name, label = [i for pair in zip(types, names) for i in pair]),
-				instruction('START', '', label = [self.name]))
+				instruction('START', label = [self.name]))
 
 	def execute(self): 
 		
 		if self.type:
 			return (instruction(self.type, self.register, ('&0',)),
 					instruction('.return', '0', ('&0',)),
-					instruction('END', ''))
+					instruction('END'))
 		else:
 			return (instruction('.return', '0', ('&0',)),
-					instruction('END', '', label = [self.name]))
+					instruction('END', label = [self.name]))
 
 class assignment(statement):
 	"""Defines an assignment."""
@@ -416,15 +416,13 @@ class assignment(statement):
 
 	def __str__(self): return 'assignment ' + str([item.value for item in self.value])
 
-	def execute(self): return [instruction('BIND',
-										   '',
-										   (self.nodes[i].register, item.type) if item.type else (self.nodes[i].register,),
+	def execute(self): return [instruction('BIND')] + \
+							  [instruction(item.type if item.type else 'null',
+										   str(int(self.register) + i),
+										   (self.nodes[i].register,),
 										   label = [item.value])
 										   for i, item in enumerate(self.value)] + \
-							  [instruction(item.type if item.type else 'untyped',
-										   item.value,
-										   (str(int(self.register) + i),))
-										   for i, item in enumerate(self.value)] # Single-line function!
+							  [instruction('BIND', label = [item.value for item in self.value])]
 
 class alias(statement):
 	"""Defines a type alias."""
@@ -474,14 +472,14 @@ class for_statement(statement):
 		adjacent = str(int(self.register) + 1) # Uses the register of the first enclosed statement
 		if self.value.type:
 			return (instruction('.iterator', self.register, (self.nodes[0].register,)),
-					instruction('ELSE' if self.branch else 'START', '', line = self.line),
+					instruction('ELSE' if self.branch else 'START', line = self.line),
 					instruction('.next', adjacent, (self.register,)),
 					instruction('.unloop', '0', (adjacent, self.value.type)), # Equivalent to Python's StopIteration check
 					instruction('.bind', self.value.value, ('0', self.value.type), label = [self.value.value]),
 					instruction(self.value.type, self.value.value, (self.value.value,)))
 		else:
 			return (instruction('.iterator', self.register, (self.nodes[0].register,)),
-					instruction('ELSE' if self.branch else 'START', '', line = self.line),
+					instruction('ELSE' if self.branch else 'START', line = self.line),
 					instruction('.next', adjacent, (self.register,)),
 					instruction('.unloop', self.value.value, (adjacent,)))
 
@@ -550,8 +548,8 @@ class start_statement(statement):
 	def __str__(self): return 'start ' + str([item.value for item in self.value])
 
 	def execute(self): return (instruction('.return', '0', ('&0',)),
-							   instruction('END', ''),
-							   instruction('EVENT', '', label = [self.head.message.value]),
+							   instruction('END'),
+							   instruction('EVENT', label = [self.head.message.value]),
 							   instruction(self.head.message.type, self.head.message.value, (self.head.message.value,)))
 
 class else_statement(statement):
@@ -699,8 +697,8 @@ class right_conditional(infix):
 
 	def start(self): return (instruction('untyped', self.head.register, (self.nodes[0].register,)),
 						     instruction('.branch', self.register),
-							 instruction('END', '', line = self.line),
-							 instruction('ELSE', '', line = self.line)) # Enclosed by labels of left conditional
+							 instruction('END', line = self.line),
+							 instruction('ELSE', line = self.line)) # Enclosed by labels of left conditional
 
 	def execute(self): return instruction('untyped', self.head.register, (self.nodes[1].register,)),
 
@@ -723,7 +721,12 @@ class concatenator(operator):
 		self.nodes = [left] + n.nodes if n.value == self.value else [left, n]
 		return self
 
-	def execute(self): return instruction(',', self.head.register, tuple([self.head.register] + [item.register for item in self.nodes])),
+	def execute(self):
+		
+		if self.value == ':' and len(self.nodes) == 3:
+			return instruction(':', self.register, tuple(item.register for item in self.nodes)),
+		else:
+			return instruction(',', self.head.register, tuple([self.head.register] + [item.register for item in self.nodes])),
 
 class left_bracket(operator):
 	"""Generic bracket node."""
@@ -813,7 +816,7 @@ class sequence_literal(left_bracket):
 	def execute(self):
 
 		if self.nodes and self.nodes[0].value == ':' and len(self.nodes[0].nodes) == 3:
-			return instruction('cast', self.register, ('list', self.nodes[0].register)),
+			return instruction('.list', self.register, tuple(i.register for i in self.nodes[0].nodes)),
 		else:
 			return ()
 
@@ -822,8 +825,8 @@ class meta_statement(left_bracket):
 	def __init__(self, value): super().__init__(value)
 
 	def execute(self): return (instruction('.meta', self.register, (self.nodes[0].register)),
-							   instruction('START', '', label = ['.meta']),
-							   instruction('END', ''))
+							   instruction('START', label = ['.meta']),
+							   instruction('END'))
 
 class right_bracket(operator):
 	"""Defines a right bracket."""
@@ -982,16 +985,16 @@ def generate_union(name, x_name, y_name):
 
 def generate_y_function(name, args, register):
 
-	return [instruction('START', '', label = [name]),
+	return [instruction('START', label = [name]),
 			instruction(name, register, args = args),
-			instruction('END', '')]
+			instruction('END')]
 
 def generate_x_function(name, args):
 
-	return [instruction('START', '', label = [name]),
+	return [instruction('START', label = [name]),
 			instruction(name, '0', args = args),
 			instruction('.return', '0', '0'),
-			instruction('END', '')]
+			instruction('END')]
 
 characters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz' # Sorted by position in UTF-8
 parens = '()[]{}'

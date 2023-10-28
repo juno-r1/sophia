@@ -984,17 +984,17 @@
     "t_slc": {
       "signature": [
         {
-          "type": "number",
+          "type": "integer",
           "member": null,
           "length": null
         },
         {
-          "type": "number",
+          "type": "integer",
           "member": null,
           "length": null
         },
         {
-          "type": "number",
+          "type": "integer",
           "member": null,
           "length": null
         }
@@ -1471,6 +1471,30 @@
         "type": "list",
         "member": "untyped",
         "length": 0
+      }
+    },
+    "list_integer_integer_integer": {
+      "signature": [
+        {
+          "type": "integer",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "integer",
+          "member": null,
+          "length": null
+        },
+        {
+          "type": "integer",
+          "member": null,
+          "length": null
+        }
+      ],
+      "final": {
+        "type": "list",
+        "member": "integer",
+        "length": null
       }
     }
   },

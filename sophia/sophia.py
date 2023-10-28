@@ -226,12 +226,16 @@ class task:
 				args = [self.values[arg] for arg in registers]
 			else: # Labels and pseudo-instructions
 				if self.op.name == 'BIND':
-					address, register = self.op.label[0], self.op.args[0]
-					value, signature = self.values[register], self.types[register]
-					self.properties.type = self.op.label[1]
-					self.values[address] = value
-					self.types[address], self.properties = self.complete(self.properties, signature, value), self.types[address] if address in self.types else aletheia.descriptor()
-					self.properties.type, self.properties.member, self.properties.length = None, None, None
+					names = self.op.label[0::2]
+					types = [self.values[item].descriptor for item in self.op.label[1::2]]
+					args = [self.values[arg] for arg in self.op.args]
+					signature = [self.types[arg] for arg in self.op.args]
+					for i, name in enumerate(names):
+						value = args[i]
+						self.properties.type = types[i].type
+						self.values[name] = value
+						self.types[name], self.properties = self.complete(self.properties, signature[i], value), self.types[name] if name in self.types else aletheia.descriptor()
+						self.properties.type, self.properties.member, self.properties.length = None, None, None
 				continue
 			"""
 			Multiple dispatch algorithm, with help from Julia:

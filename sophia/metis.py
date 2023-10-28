@@ -48,7 +48,6 @@ class processor:
 			https://github.com/JeffBezanson/phdthesis
 			Binary search tree yields closest key for method, then key is verified.
 			"""
-			print(self.op, self.signature)
 			tree = method.tree.true if registers else method.tree.false # Here's tree
 			while tree: # Traverse tree; terminates upon reaching leaf node
 				tree = tree.true if (tree.index < self.op.arity) and tree.op(self.signature[tree.index]) else tree.false
@@ -69,7 +68,7 @@ class processor:
 			"""
 			self.cache[self.path - 1] = cache(tree)
 			self.namespace[address] = final
-		[print(i) for i in self.cache]
+		#[print(i) for i in self.cache]
 		return self
 
 	def complete(self, descriptor, final, value): # Completes descriptor with properties and inferred type of value
@@ -87,29 +86,31 @@ class processor:
 		Evaluates type checking for name binding, removing instructions
 		if the type check is known to succeed.
 		"""
-		name, signature, offset = self.op.label[0], self.namespace[self.op.args[0]], 0
-		while self.instructions[self.path + offset].register != name:
-			offset = offset + 1
-		try:
-			item_type, check_type = self.routines[signature.type], self.routines[self.op.args[1]]
-			typed = True
-		except IndexError:
-			item_type, check_type = self.routines[signature.type], self.routines[self.namespace[name].type] if name in self.namespace else self.routines[signature.type]
-			typed = False
-		if not (typed or name in self.namespace): # Untyped, unbound
-			final = signature
-			self.op.label.append(signature.type)
-		elif check_type.name in item_type.supertypes: # Successful type check
-			final = check_type.descriptor
-			self.op.label.append(check_type.name)
-		else: # Unsuccessful type check (delegates check to runtime)
-			final = check_type.descriptor
-			self.op.name = check_type.name
-			self.op.register = self.op.label[0]
-			self.op.label = []
-		self.op.args = (self.op.args[0],)
-		self.namespace[name] = final
-		del self.instructions[self.path + offset], self.cache[self.path + offset]
+		i, addresses = 0, []
+		while (op := self.instructions[self.path + i]).name != 'BIND':
+			register, name = op.args[0], op.label[0]
+			signature = self.namespace[register]
+			item_type = self.routines[signature.type]
+			check_type = (self.routines[self.namespace[name].type] if name in self.namespace else item_type) if op.name == 'null' else self.routines[op.name]
+			if op.name == 'null' and name not in self.namespace: # Untyped, unbound
+				final = signature
+				del self.instructions[self.path + i], self.cache[self.path + i]
+			elif check_type.name in item_type.supertypes: # Successful type check
+				final = check_type.descriptor
+				del self.instructions[self.path + i], self.cache[self.path + i]
+			else: # Unsuccessful type check (delegates check to runtime)
+				final = check_type.descriptor
+				op.name = final.type
+				register = op.register
+				i = i + 1
+			self.namespace[name] = final
+			addresses.append(register)
+			op.label = [] # Clear name from label
+		else:
+			op.args = tuple(addresses)
+			op.label = [i for pair in zip(op.label, [self.namespace[name].type for name in op.label]) for i in pair]
+			del self.instructions[self.path - 1], self.cache[self.path - 1]
+			self.path = self.path + i
 
 	def error(self, status, *args):
 		
