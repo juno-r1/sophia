@@ -75,6 +75,7 @@ combined with the distributed functionalities of sophia, some powerful rdms capa
 tables should be "mutable" only in well-defined operations (insertion, deletion), like any other sequence
 table operations and message passing should return copy, not reference
 need to adhere to acid principles
+tables should behave like bona-fide 2-dimensional structures and be appropriately easy to access
 
 ---
 

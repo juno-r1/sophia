@@ -66,10 +66,6 @@ class translator:
 														 (self.node.register,),
 														 line = self.node.line,
 														 label = [self.node.head.value[0].value] if self.path[-2] == self.node.head.length - 1 else []))
-				elif isinstance(self.node.head, sequence_literal) and self.node.value != ':':
-					self.instructions.append(instruction(',',
-														 self.node.head.register,
-														 (self.node.head.register, self.node.head.nodes[self.path[-2]].register)))
 				self.node = self.node.head # Walk upward
 				if self.node:
 					self.path.pop()
@@ -726,7 +722,7 @@ class concatenator(operator):
 		if self.value == ':' and len(self.nodes) == 3:
 			return instruction(':', self.register, tuple(item.register for item in self.nodes)),
 		else:
-			return instruction(',', self.head.register, tuple([self.head.register] + [item.register for item in self.nodes])),
+			return ()
 
 class left_bracket(operator):
 	"""Generic bracket node."""
@@ -789,10 +785,6 @@ class sequence_index(left_bracket):
 
 class sequence_literal(left_bracket):
 	"""Defines a sequence constructor."""
-	def __init__(self, value):
-
-		super().__init__(value)
-		self.active = 0
 
 	def nud(self, lex): # For normal parentheses
 		
@@ -802,21 +794,17 @@ class sequence_literal(left_bracket):
 		lex.use()
 		return self # The bracketed sub-expression as a whole is essentially a literal
 
-	def start(self):
-		
-		if self.nodes and self.nodes[0].value == ':' and len(self.nodes[0].nodes) == 3:
-			return ()
-		elif self.nodes and self.nodes[0].value == ':':
-			return instruction('.record', self.register, ()),
-		elif self.nodes:
-			return instruction('.list', self.register, ()),
-		else:
-			return ()
-
 	def execute(self):
 
 		if self.nodes and self.nodes[0].value == ':' and len(self.nodes[0].nodes) == 3:
 			return instruction('.list', self.register, tuple(i.register for i in self.nodes[0].nodes)),
+		elif self.nodes and self.nodes[0].value == ':':
+			registers = []
+			for item in self.nodes:
+				registers = registers + [item.nodes[0].register, item.nodes[1].register]
+			return instruction('RECORD', '', tuple(registers), label = [self.register]),
+		elif self.nodes:
+			return instruction('LIST', '', tuple(i.register for i in self.nodes), label = [self.register]),
 		else:
 			return ()
 

@@ -6,11 +6,13 @@ This is the root module and the only module the user should need to access.
 
 # ☉ 0.6.1 30-09-2023
 
-import aletheia, hemera, iris, kadmos, metis
+import hemera, iris, kadmos, metis
 import multiprocessing as mp
 import os
+from aletheia import descriptor, infer, infer_type, infer_member
+
+from functools import reduce
 from queue import Empty
-import hemera
 
 class runtime:
 	"""
@@ -47,7 +49,7 @@ class runtime:
 	def future(self, pid, routine, args, method):
 
 		args = self.values | {routine.name: method} | dict(zip(routine.params, args))
-		types = self.types | {routine.name: aletheia.infer(method)} | dict(zip(routine.params, routine.signature))
+		types = self.types | {routine.name: infer(method)} | dict(zip(routine.params, routine.signature))
 		new = task(routine.instructions, args, types, self.flags)
 		self.tasks[new.pid] = iris.proxy(new)
 		if types[routine.name].type == 'event':
@@ -100,7 +102,7 @@ class runtime:
 		self.tasks[routine.pid].result = self.pool.apply_async(routine.execute)
 		self.tasks[routine.pid].count = self.tasks[routine.pid].count + 1
 		self.tasks[pid].references.append(routine.pid) # Mark reference to process
-		self.tasks[pid].calls.send(iris.reference(routine, aletheia.descriptor('untyped', prepare = True))) # Return reference to process
+		self.tasks[pid].calls.send(iris.reference(routine, descriptor('untyped', prepare = True))) # Return reference to process
 
 	def terminate(self, pid):
 		
@@ -177,8 +179,8 @@ class task:
 		self.values = processor.values
 		self.types = processor.types
 		self.signature = [] # Current type signature
-		self.properties = aletheia.descriptor() # Final type properties
-		self.final = aletheia.descriptor() # Return type of routine
+		self.properties = descriptor() # Final type properties
+		self.final = descriptor() # Return type of routine
 
 	def execute(self):
 		"""
@@ -225,17 +227,8 @@ class task:
 				method, registers = self.values[self.op.name], self.op.args
 				args = [self.values[arg] for arg in registers]
 			else: # Labels and pseudo-instructions
-				if self.op.name == 'BIND':
-					types = [self.values[item].descriptor for item in self.op.label[0::2]]
-					names = self.op.label[1::2]
-					args = [self.values[arg] for arg in self.op.args]
-					signature = [self.types[arg] for arg in self.op.args]
-					for i, name in enumerate(names):
-						value = args[i]
-						self.properties.type = signature[0].type if types[i].type == 'null' else types[i].type
-						self.values[name] = value
-						self.types[name], self.properties = self.complete(self.properties, signature[i], value), self.types[name] if name in self.types else aletheia.descriptor()
-						self.properties.type, self.properties.member, self.properties.length = None, None, None
+				if (name := self.op.name) in interns:
+					interns[name](self)
 				continue
 			"""
 			Multiple dispatch algorithm, with help from Julia:
@@ -266,7 +259,7 @@ class task:
 			value = instance(self, *args)
 			if final.type != '!': # Suppress write
 				self.values[address] = value # Hot-swap descriptors; there's always 1 spare in the system
-				self.types[address], self.properties = self.complete(self.properties, final, value), self.types[address] if address in self.types else aletheia.descriptor()
+				self.types[address], self.properties = self.complete(self.properties, final, value), self.types[address] if address in self.types else descriptor()
 				self.properties.type, self.properties.member, self.properties.length = None, None, None
 		else:
 			return value
@@ -288,10 +281,10 @@ class task:
 
 	def complete(self, descriptor, final, value): # Completes descriptor with properties and inferred type of value
 		
-		descriptor.type = descriptor.type or final.type or aletheia.infer_type(value)
+		descriptor.type = descriptor.type or final.type or infer_type(value)
 		descriptor.supertypes = self.values[descriptor.type or 'null'].supertypes
 		if 'sequence' in descriptor.supertypes:
-			descriptor.member = descriptor.member or final.member or aletheia.infer_member(value)
+			descriptor.member = descriptor.member or final.member or infer_member(value)
 			descriptor.length = descriptor.length or final.length or len(value)
 		descriptor.supermember = self.values[descriptor.member or 'null'].supertypes
 		return descriptor
@@ -323,7 +316,7 @@ class task:
 				if scope == 1 and op.name == 'EVENT':
 					name = op.label[0]
 					break
-		self.values[name], self.types[name] = message, aletheia.descriptor('untyped').describe(self)
+		self.values[name], self.types[name] = message, descriptor('untyped').describe(self)
 
 	def message(self, instruction = None, *args):
 		
@@ -339,3 +332,52 @@ class task:
 				hemera.debug_error(self.name, self.op.line, status, args)
 			self.values['0'] = None
 			self.path = 0
+
+"""
+Internal pseudo-instructions.
+"""
+
+def intern_bind(task):
+	
+	types = [task.values[item].descriptor for item in task.op.label[0::2]]
+	names = task.op.label[1::2]
+	args = [task.values[arg] for arg in task.op.args]
+	signature = [task.types[arg] for arg in task.op.args]
+	for i, name in enumerate(names):
+		value = args[i]
+		task.properties.type = signature[0].type if types[i].type == 'null' else types[i].type
+		task.values[name] = value
+		task.types[name], task.properties = task.complete(task.properties, signature[i], value), task.types[name] if name in task.types else descriptor()
+		task.properties.type, task.properties.member, task.properties.length = None, None, None
+
+def intern_list(task):
+
+	address = task.op.label[0]
+	value = tuple(task.values[arg] for arg in task.op.args)
+	task.properties.type = 'list'
+	task.properties.member = reduce(descriptor.mutual, [task.types[arg] for arg in task.op.args]).type
+	task.properties.length = len(value)
+	task.properties.supertypes = task.values[task.properties.type or 'null'].supertypes
+	task.properties.supermember = task.values[task.properties.member or 'null'].supertypes
+	task.values[address] = value
+	task.types[address], task.properties = task.properties, task.types[address] if address in task.types else descriptor()
+	task.properties.type, task.properties.member, task.properties.length = None, None, None
+
+def intern_record(task):
+
+	address = task.op.label[0]
+	keys = tuple(task.values[arg] for arg in task.op.args[0::2])
+	values = tuple(task.values[arg] for arg in task.op.args[1::2])
+	value = dict(zip(keys, values))
+	task.properties.type = 'record'
+	task.properties.member = reduce(descriptor.mutual, [task.types[arg] for arg in task.op.args[1::2]]).type
+	task.properties.length = len(value)
+	task.properties.supertypes = task.values[task.properties.type or 'null'].supertypes
+	task.properties.supermember = task.values[task.properties.member or 'null'].supertypes
+	task.values[address] = value
+	task.types[address], task.properties = task.properties, task.types[address] if address in task.types else descriptor()
+	task.properties.type, task.properties.member, task.properties.length = None, None, None
+
+interns = {'BIND': intern_bind,
+		   'LIST': intern_list,
+		   'RECORD': intern_record}

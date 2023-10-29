@@ -1,8 +1,8 @@
-// 3.2.5, 3.2.6
+// 5.1
 
-//slice x: 0:10:2
-//int a: x[0:2:2, 1]
-bool b: true if true else false
-bool c: false if false else true
-return c
-//return a = 4 and b and c
+if true:
+	bool a: true
+else:
+	bool b: false
+
+return a

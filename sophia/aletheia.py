@@ -76,10 +76,9 @@ class descriptor:
 
 	def mutual(self, other): # Implements mutual supertype relation
 		
-		mutuals = [i for i in self.supertypes if i in other.supertypes]
-		final = descriptor(mutuals[0])
-		final.supertypes = mutuals
-		return final
+		self.supertypes = [i for i in self.supertypes if i in other.supertypes]
+		self.type = self.supertypes[0]
+		return self
 
 class dispatch:
 	"""

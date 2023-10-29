@@ -3,7 +3,9 @@ The Metis module performs static analysis of a compiled program.
 This includes type checking, constant folding/propagation, and dispatch verification.
 '''
 
-import aletheia, arche, hemera
+import arche, hemera
+from aletheia import descriptor
+from functools import reduce
 
 class processor:
 	"""Static analysis processor for generated instructions."""
@@ -17,11 +19,9 @@ class processor:
 		self.path = int(bool(instructions))
 		self.op = None
 		self.signature = []
-		self.properties = aletheia.descriptor()
+		self.properties = descriptor()
 		# Active state of the program
 		self.state = None
-		self.routines = {}
-		self.namespace = {}
 		self.scope()
 
 	def analyse(self): # Disabled until I can figure out how this is meant to work
@@ -37,7 +37,7 @@ class processor:
 			self.path = self.path + 1
 			if self.op.name == 'BIND':
 				if self.op.label: # Special case for conditional register assignment
-					self.namespace[self.op.label[1]] = self.namespace[self.op.args[0]]
+					self.state.namespace[self.op.label[1]] = self.state.namespace[self.op.args[0]]
 				else:
 					self.bind()
 				continue
@@ -46,14 +46,21 @@ class processor:
 					return self.error('BIND', address)
 				try:
 					method, registers = self.values[self.op.name], self.op.args
-					self.signature = [self.namespace[arg] for arg in registers]
+					self.signature = [self.state.namespace[arg] for arg in registers]
 				except KeyError as e: # Capture unbound name
 					return self.error('FIND', e.args[0])
 			else: # Labels
 				if self.op.name == 'START' or self.op.name == 'ELSE':
 					self.scope()
 				elif self.op.name == 'END' and self.path < len(self.instructions):
-					self.unscope()
+					try:
+						self.unscope()
+					except KeyError as e:
+						self.error('COND', e.args[0])
+				elif self.op.name == 'LIST':
+					self.sequence(self.op.label[0], self.op.args)
+				elif self.op.name == 'RECORD':
+					self.sequence(self.op.label[0], self.op.args[1::2])
 				continue
 			"""
 			Multiple dispatch algorithm, with help from Julia:
@@ -83,7 +90,7 @@ class processor:
 					self.properties.type = self.signature[0].member
 			if final.type != '!': # Suppress write
 				final = self.complete(self.properties, final)
-				self.namespace[address], self.properties = final, self.namespace[address] if address in self.types else aletheia.descriptor()
+				self.state.namespace[address], self.properties = final, self.state.namespace[address] if address in self.types else descriptor()
 				self.properties.type, self.properties.member, self.properties.length = None, None, None
 		#[print(i) for i in self.cache]
 		return self
@@ -91,26 +98,28 @@ class processor:
 	def complete(self, descriptor, final): # Completes descriptor with properties and inferred type of value
 		
 		descriptor.type = descriptor.type or final.type
-		descriptor.supertypes = self.values[descriptor.type or 'null'].supertypes
+		descriptor.supertypes = self.state.routines[descriptor.type or 'null'].supertypes
 		if 'sequence' in descriptor.supertypes:
 			descriptor.member = descriptor.member or final.member
 			descriptor.length = descriptor.length if descriptor.length is not None else final.length
-		descriptor.supermember = self.values[descriptor.member or 'null'].supertypes
+		descriptor.supermember = self.state.routines[descriptor.member or 'null'].supertypes
 		return descriptor
 
 	def scope(self): # Creates new state
-
+		
 		if self.state:
 			self.state = state(self.state)
 		else:
 			self.state = state()
 			self.state.routines = self.values.copy()
 			self.state.namespace = self.types.copy()
-		self.routines, self.namespace = self.state.routines, self.state.namespace
 
 	def unscope(self): # Resolves inner states and unwinds to outer state
 
+		self.state.outer.inner.append(self.state) # Lol. Lmao
 		self.state = self.state.outer
+		if self.instructions[self.path].name != 'ELSE':
+			self.state.resolve()
 
 	def bind(self):
 		"""
@@ -120,10 +129,10 @@ class processor:
 		i, addresses = 0, []
 		while (op := self.instructions[self.path + i]).name != 'BIND':
 			register, name = op.args[0], op.label[0]
-			signature = self.namespace[register]
-			item_type = self.routines[signature.type]
-			check_type = (self.routines[self.namespace[name].type] if name in self.namespace else item_type) if op.name == 'null' else self.routines[op.name]
-			if op.name == 'null' and name not in self.namespace: # Untyped, unbound
+			signature = self.state.namespace[register]
+			item_type = self.state.routines[signature.type]
+			check_type = (self.state.routines[self.state.namespace[name].type] if name in self.state.namespace else item_type) if op.name == 'null' else self.state.routines[op.name]
+			if op.name == 'null' and name not in self.state.namespace: # Untyped, unbound
 				final = signature
 				del self.instructions[self.path + i], self.cache[self.path + i]
 			elif check_type.name in item_type.supertypes: # Successful type check
@@ -134,14 +143,23 @@ class processor:
 				op.name = final.type
 				register = op.register
 				i = i + 1
-			self.namespace[name] = final
+			self.state.namespace[name] = final
 			addresses.append(register)
 			op.label = [] # Clear name from label
 		else:
 			op.args = tuple(addresses)
-			op.label = [i for pair in zip([self.namespace[name].type for name in op.label], op.label) for i in pair]
+			op.label = [i for pair in zip([self.state.namespace[name].type for name in op.label], op.label) for i in pair]
 			del self.instructions[self.path - 1], self.cache[self.path - 1]
 			self.path = self.path + i
+
+	def sequence(self, address, registers):
+		
+		signature = [self.state.namespace[i] for i in registers]
+		member = reduce(descriptor.mutual, signature).type
+		signature = descriptor('list', member, len(signature))
+		signature.supertypes = self.state.routines['list'].supertypes
+		signature.supermember = self.state.routines[signature.member].supertypes
+		self.state.namespace[address] = signature
 
 	def error(self, status, *args):
 		
@@ -160,6 +178,25 @@ class state:
 			self.namespace = {}
 			self.outer = None
 		self.inner = [] # Inner states are collected after they are complete
+
+	def resolve(self):
+
+		namespace = {}
+		length = len(self.inner)
+		for item in self.inner:
+			for name, option in item.namespace.items():
+				if name in arche.builtins:
+					continue
+				if name in namespace:
+					namespace[name].append(option)
+				else:
+					namespace[name] = [option]
+		for name in namespace:
+			if len(namespace[name]) < length: # Name not defined in all branches
+				raise KeyError(name)
+			namespace[name] = reduce(descriptor.mutual, namespace[name])
+		self.namespace.update(namespace)
+		self.inner = []
 
 class cache:
 	"""Cache object describing the pre-determined properties of an instruction."""
