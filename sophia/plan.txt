@@ -157,6 +157,13 @@ keep track of types, no values
 aliasing can be performed at compile time simply by keeping a record of synonyms
 there's no need to do anything to the data itself; just rewrite the instructions
 
+basic binding is complete; most operations now work
+weirdly, conditional expressions actually work with the naive approach because they only bind to unnamed registers
+
+there needs to be some way of encoding the current state of a program
+states should point to the state directly above them
+states should work for both compound statements and routines
+
 ---
 
 binding implemented as normal
@@ -201,11 +208,9 @@ return type is the member type of the sequence
 iterator control (.next)
 return type is the member type of the iterator or null
 
-sequence constructor (.sequence)
-return type is either list or record, but its operands fall outside of the type system
-
 skip (.skip)
 return type is the return type of the first function in the composition
+actually, it can just be the type of the parameter it's chaining into
 
 cast (cast)
 return type is the return type of the operand or null

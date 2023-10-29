@@ -305,7 +305,7 @@ class module(coroutine):
 
 	def __str__(self): return 'module ' + self.name
 
-	def execute(self): return instruction('.return', '0', ('&0',)), # Default end of module
+	def execute(self): return instruction('.return', '0'), # Default end of module
 
 class type_statement(coroutine):
 	"""Defines a type definition."""
@@ -358,10 +358,10 @@ class event_statement(coroutine):
 
 		if self.type:
 			return (instruction(self.type, self.register, ('&0',)),
-					instruction('.return', '0', ('&0',)),
+					instruction('.return', '0'),
 					instruction('END'))
 		else:
-			return (instruction('.return', '0', ('&0',)),
+			return (instruction('.return', '0'),
 					instruction('END', label = [self.name]))
 
 class function_statement(coroutine):
@@ -387,10 +387,10 @@ class function_statement(coroutine):
 		
 		if self.type:
 			return (instruction(self.type, self.register, ('&0',)),
-					instruction('.return', '0', ('&0',)),
+					instruction('.return', '0'),
 					instruction('END'))
 		else:
-			return (instruction('.return', '0', ('&0',)),
+			return (instruction('.return', '0'),
 					instruction('END', label = [self.name]))
 
 class assignment(statement):
@@ -526,9 +526,9 @@ class return_statement(statement):
 		type_name = routine.type
 		if type_name and not isinstance(routine, module):
 			return (instruction(type_name, self.register, (self.nodes[0].register if self.nodes else self.register,)),
-					instruction('.return', '0', (self.nodes[0].register if self.nodes else '&0',)))
+					instruction('.return', '0', (self.nodes[0].register,) if self.nodes else ()))
 		else:
-			return instruction('.return', '0', (self.nodes[0].register if self.nodes else '&0',)),
+			return instruction('.return', '0', (self.nodes[0].register,) if self.nodes else ()),
 
 class link_statement(statement):
 	"""Defines a link."""
@@ -547,7 +547,7 @@ class start_statement(statement):
 
 	def __str__(self): return 'start ' + str([item.value for item in self.value])
 
-	def execute(self): return (instruction('.return', '0', ('&0',)),
+	def execute(self): return (instruction('.return', '0'),
 							   instruction('END'),
 							   instruction('EVENT', label = [self.head.message.value]),
 							   instruction(self.head.message.type, self.head.message.value, (self.head.message.value,)))
@@ -695,12 +695,12 @@ class right_conditional(infix):
 		super().__init__(value)
 		self.active = 1
 
-	def start(self): return (instruction('untyped', self.head.register, (self.nodes[0].register,)),
+	def start(self): return (instruction('BIND', '', (self.nodes[0].register,), label = ['null', self.head.register]),
 						     instruction('.branch', self.register),
 							 instruction('END', line = self.line),
 							 instruction('ELSE', line = self.line)) # Enclosed by labels of left conditional
 
-	def execute(self): return instruction('untyped', self.head.register, (self.nodes[1].register,)),
+	def execute(self): return instruction('BIND', '', (self.nodes[1].register,), label = ['null', self.head.register]),
 
 class infix_r(operator):
 	"""Defines a right-binding infix."""
@@ -993,7 +993,7 @@ def generate_x_function(name, args):
 
 	return [instruction('START', label = [name]),
 			instruction(name, '0', args = args),
-			instruction('.return', '0', '0'),
+			instruction('.return', '0', ('0',)),
 			instruction('END')]
 
 characters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz' # Sorted by position in UTF-8

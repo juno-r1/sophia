@@ -121,7 +121,7 @@ class sophia_null: # Null type
 	name = 'null'
 	types = type(None)
 
-	def __new__(cls, task, value): return value is None
+	def __new__(cls, task, value): return
 
 cls_null = type_method('null', [], None)
 cls_null.retrieve(sophia_null)
@@ -999,13 +999,13 @@ def record_null(task):
 arche_record = function_method('.record')
 arche_record.retrieve(record_null)
 
-def return_null(task, sentinel):
+def return_null(task):
 	
 	if task.caller:
 		task.restore(task.caller) # Restore namespace of calling routine
 	else:
 		task.path = 0 # End task
-	return sentinel # Returns null
+	return None # Returns null
 
 def return_untyped(task, sentinel):
 	

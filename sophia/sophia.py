@@ -226,13 +226,13 @@ class task:
 				args = [self.values[arg] for arg in registers]
 			else: # Labels and pseudo-instructions
 				if self.op.name == 'BIND':
-					names = self.op.label[0::2]
-					types = [self.values[item].descriptor for item in self.op.label[1::2]]
+					types = [self.values[item].descriptor for item in self.op.label[0::2]]
+					names = self.op.label[1::2]
 					args = [self.values[arg] for arg in self.op.args]
 					signature = [self.types[arg] for arg in self.op.args]
 					for i, name in enumerate(names):
 						value = args[i]
-						self.properties.type = types[i].type
+						self.properties.type = signature[0].type if types[i].type == 'null' else types[i].type
 						self.values[name] = value
 						self.types[name], self.properties = self.complete(self.properties, signature[i], value), self.types[name] if name in self.types else aletheia.descriptor()
 						self.properties.type, self.properties.member, self.properties.length = None, None, None
@@ -254,8 +254,7 @@ class task:
 				try:
 					for i, item in enumerate(self.signature): # Verify type signature
 						if item > signature[i]:
-							self.error('DISP', method.name, self.signature)
-							continue
+							raise IndexError
 				except IndexError:
 					self.error('DISP', method.name, self.signature)
 					continue

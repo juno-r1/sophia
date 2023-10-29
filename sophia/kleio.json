@@ -1552,13 +1552,7 @@
   },
   ".return": {
     "return_null": {
-      "signature": [
-        {
-          "type": "null",
-          "member": null,
-          "length": null
-        }
-      ],
+      "signature": [],
       "final": {
         "type": "!",
         "member": null,
