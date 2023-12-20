@@ -1,6 +1,6 @@
-import sophia
+from sophia.runtime import runtime
 
 if __name__ == '__main__':
 	
-	runtime = sophia.runtime('main.sph', 'task', 'instructions')
-	print(runtime.debug())
+	main = runtime('main.sph', 'task', 'instructions')
+	#print(main.debug())

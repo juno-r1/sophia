@@ -1,0 +1,669 @@
+{
+  "u_add": {
+    "signature": [
+      "number"
+    ],
+    "final": "number"
+  },
+  "b_add": {
+    "signature": [
+      "number",
+      "number"
+    ],
+    "final": "number"
+  },
+  "u_sub": {
+    "signature": [
+      "number"
+    ],
+    "final": "number"
+  },
+  "b_sub": {
+    "signature": [
+      "number",
+      "number"
+    ],
+    "final": "number"
+  },
+  "u_rsv": {
+    "signature": [
+      "future"
+    ],
+    "final": "?"
+  },
+  "b_mul": {
+    "signature": [
+      "number",
+      "number"
+    ],
+    "final": "number"
+  },
+  "b_div": {
+    "signature": [
+      "number",
+      "number"
+    ],
+    "final": "number"
+  },
+  "b_exp": {
+    "signature": [
+      "number",
+      "number"
+    ],
+    "final": "number"
+  },
+  "b_mod": {
+    "signature": [
+      "number",
+      "number"
+    ],
+    "final": "number"
+  },
+  "b_eql": {
+    "signature": [
+      "any",
+      "any"
+    ],
+    "final": "boolean"
+  },
+  "b_neq": {
+    "signature": [
+      "any",
+      "any"
+    ],
+    "final": "boolean"
+  },
+  "b_ltn": {
+    "signature": [
+      "number",
+      "number"
+    ],
+    "final": "boolean"
+  },
+  "n_rcv": {
+    "signature": [],
+    "final": "?"
+  },
+  "b_gtn": {
+    "signature": [
+      "number",
+      "number"
+    ],
+    "final": "boolean"
+  },
+  "b_leq": {
+    "signature": [
+      "number",
+      "number"
+    ],
+    "final": "boolean"
+  },
+  "b_geq": {
+    "signature": [
+      "number",
+      "number"
+    ],
+    "final": "boolean"
+  },
+  "b_sbs_string": {
+    "signature": [
+      "any",
+      "string"
+    ],
+    "final": "boolean"
+  },
+  "b_sbs_list": {
+    "signature": [
+      "any",
+      "list"
+    ],
+    "final": "boolean"
+  },
+  "b_sbs_record": {
+    "signature": [
+      "any",
+      "record"
+    ],
+    "final": "boolean"
+  },
+  "b_sbs_slice": {
+    "signature": [
+      "any",
+      "slice"
+    ],
+    "final": "boolean"
+  },
+  "u_lnt": {
+    "signature": [
+      "boolean"
+    ],
+    "final": "boolean"
+  },
+  "b_lnd": {
+    "signature": [
+      "boolean",
+      "boolean"
+    ],
+    "final": "boolean"
+  },
+  "b_lor": {
+    "signature": [
+      "boolean",
+      "boolean"
+    ],
+    "final": "boolean"
+  },
+  "b_lxr": {
+    "signature": [
+      "boolean",
+      "boolean"
+    ],
+    "final": "boolean"
+  },
+  "b_ins_string": {
+    "signature": [
+      "string",
+      "string"
+    ],
+    "final": "string"
+  },
+  "b_ins_list": {
+    "signature": [
+      "list",
+      "list"
+    ],
+    "final": "list"
+  },
+  "b_ins_record": {
+    "signature": [
+      "record",
+      "record"
+    ],
+    "final": "record"
+  },
+  "b_ins_slice": {
+    "signature": [
+      "slice",
+      "slice"
+    ],
+    "final": "slice"
+  },
+  "b_ins_type": {
+    "signature": [
+      "type",
+      "type"
+    ],
+    "final": "type"
+  },
+  "b_uni_string": {
+    "signature": [
+      "string",
+      "string"
+    ],
+    "final": "string"
+  },
+  "b_uni_list": {
+    "signature": [
+      "list",
+      "list"
+    ],
+    "final": "list"
+  },
+  "b_uni_record": {
+    "signature": [
+      "record",
+      "record"
+    ],
+    "final": "record"
+  },
+  "b_uni_slice": {
+    "signature": [
+      "slice",
+      "slice"
+    ],
+    "final": "slice"
+  },
+  "b_uni_type": {
+    "signature": [
+      "type",
+      "type"
+    ],
+    "final": "type"
+  },
+  "b_cct_0": {
+    "signature": [
+      "list.length:0",
+      "any"
+    ],
+    "final": "list.length:1"
+  },
+  "b_cct": {
+    "signature": [
+      "list",
+      "any"
+    ],
+    "final": "list"
+  },
+  "t_cct_0": {
+    "signature": [
+      "record.length:0",
+      "any",
+      "any"
+    ],
+    "final": "record.length:1"
+  },
+  "t_cct": {
+    "signature": [
+      "record",
+      "any",
+      "any"
+    ],
+    "final": "record"
+  },
+  "t_slc": {
+    "signature": [
+      "integer",
+      "integer",
+      "integer"
+    ],
+    "final": "slice"
+  },
+  "u_sfe_none": {
+    "signature": [
+      "none"
+    ],
+    "final": "boolean"
+  },
+  "u_sfe_some": {
+    "signature": [
+      "some"
+    ],
+    "final": "boolean"
+  },
+  "b_sfe_some_some": {
+    "signature": [
+      "some",
+      "some"
+    ],
+    "final": "boolean"
+  },
+  "b_sfe_none_some": {
+    "signature": [
+      "none",
+      "some"
+    ],
+    "final": "boolean"
+  },
+  "u_usf": {
+    "signature": [
+      "any"
+    ],
+    "final": "?"
+  },
+  "b_snd": {
+    "signature": [
+      "any",
+      "future"
+    ],
+    "final": "future"
+  },
+  "u_new": {
+    "signature": [
+      "type"
+    ],
+    "final": "?"
+  },
+  "b_cmp": {
+    "signature": [
+      "function",
+      "function"
+    ],
+    "final": "function"
+  },
+  "assert_none": {
+    "signature": [
+      "none"
+    ],
+    "final": "none"
+  },
+  "assert_some": {
+    "signature": [
+      "some"
+    ],
+    "final": "none"
+  },
+  "branch_none": {
+    "signature": [],
+    "final": "none"
+  },
+  "branch_boolean": {
+    "signature": [
+      "boolean"
+    ],
+    "final": "none"
+  },
+  "constraint_boolean": {
+    "signature": [
+      "boolean"
+    ],
+    "final": "none"
+  },
+  "event_none": {
+    "signature": [],
+    "final": "event"
+  },
+  "function_none": {
+    "signature": [],
+    "final": "function"
+  },
+  "index_string_integer": {
+    "signature": [
+      "string",
+      "integer"
+    ],
+    "final": "string.element:string.length:1"
+  },
+  "index_string_slice": {
+    "signature": [
+      "string",
+      "slice"
+    ],
+    "final": "string.element:string"
+  },
+  "index_list_integer": {
+    "signature": [
+      "list",
+      "integer"
+    ],
+    "final": "?"
+  },
+  "index_list_slice": {
+    "signature": [
+      "list",
+      "slice"
+    ],
+    "final": "list"
+  },
+  "index_record_any": {
+    "signature": [
+      "record",
+      "any"
+    ],
+    "final": "?"
+  },
+  "index_record_slice": {
+    "signature": [
+      "record",
+      "slice"
+    ],
+    "final": "record"
+  },
+  "index_slice_integer": {
+    "signature": [
+      "slice",
+      "integer"
+    ],
+    "final": "integer"
+  },
+  "index_slice_slice": {
+    "signature": [
+      "slice",
+      "slice"
+    ],
+    "final": "list.element:integer"
+  },
+  "iterator_sequence": {
+    "signature": [
+      "sequence"
+    ],
+    "final": "any"
+  },
+  "link_none": {
+    "signature": [],
+    "final": "future"
+  },
+  "meta_string": {
+    "signature": [
+      "string"
+    ],
+    "final": "none"
+  },
+  "next_any": {
+    "signature": [
+      "any"
+    ],
+    "final": "?"
+  },
+  "range_integer_integer_integer": {
+    "signature": [
+      "integer",
+      "integer",
+      "integer"
+    ],
+    "final": "list.element:integer"
+  },
+  "return_none": {
+    "signature": [],
+    "final": "none"
+  },
+  "return_some": {
+    "signature": [
+      "some"
+    ],
+    "final": "none"
+  },
+  "skip_any": {
+    "signature": [
+      "any"
+    ],
+    "final": "?"
+  },
+  "type_type": {
+    "signature": [
+      "type"
+    ],
+    "final": "type"
+  },
+  "type_type_any": {
+    "signature": [
+      "type",
+      "any"
+    ],
+    "final": "type"
+  },
+  "unloop_none": {
+    "signature": [
+      "none"
+    ],
+    "final": "none"
+  },
+  "unloop_some": {
+    "signature": [
+      "some"
+    ],
+    "final": "some"
+  },
+  "unloop_none_type": {
+    "signature": [
+      "none",
+      "type"
+    ],
+    "final": "type"
+  },
+  "unloop_some_type": {
+    "signature": [
+      "some",
+      "type"
+    ],
+    "final": "some"
+  },
+  "abs_number": {
+    "signature": [
+      "number"
+    ],
+    "final": "number"
+  },
+  "cast_any_type": {
+    "signature": [
+      "any",
+      "type"
+    ],
+    "final": "?"
+  },
+  "ceiling_number": {
+    "signature": [
+      "number"
+    ],
+    "final": "integer"
+  },
+  "dispatch_function_list": {
+    "signature": [
+      "function",
+      "list.element:type"
+    ],
+    "final": "function"
+  },
+  "error_string": {
+    "signature": [
+      "string"
+    ],
+    "final": "none"
+  },
+  "floor_number": {
+    "signature": [
+      "number"
+    ],
+    "final": "integer"
+  },
+  "filter_function_list": {
+    "signature": [
+      "function",
+      "list"
+    ],
+    "final": "list"
+  },
+  "format_string_list": {
+    "signature": [
+      "string",
+      "list.element:string"
+    ],
+    "final": "string.element:string"
+  },
+  "hash_any": {
+    "signature": [
+      "any"
+    ],
+    "final": "integer"
+  },
+  "input_string": {
+    "signature": [
+      "string"
+    ],
+    "final": "string.element:string"
+  },
+  "join_list_string": {
+    "signature": [
+      "list.element:string",
+      "string"
+    ],
+    "final": "string.element:string"
+  },
+  "length_string": {
+    "signature": [
+      "string"
+    ],
+    "final": "integer"
+  },
+  "length_list": {
+    "signature": [
+      "list"
+    ],
+    "final": "integer"
+  },
+  "length_record": {
+    "signature": [
+      "record"
+    ],
+    "final": "integer"
+  },
+  "length_slice": {
+    "signature": [
+      "slice"
+    ],
+    "final": "integer"
+  },
+  "map_function_list": {
+    "signature": [
+      "function",
+      "list"
+    ],
+    "final": "list"
+  },
+  "namespace_none": {
+    "signature": [],
+    "final": "record"
+  },
+  "print_string": {
+    "signature": [
+      "string"
+    ],
+    "final": "string.element:string"
+  },
+  "reduce_function_list": {
+    "signature": [
+      "function",
+      "list"
+    ],
+    "final": "?"
+  },
+  "reverse_slice": {
+    "signature": [
+      "slice"
+    ],
+    "final": "slice.element:integer"
+  },
+  "round_number": {
+    "signature": [
+      "number"
+    ],
+    "final": "integer"
+  },
+  "sign_number": {
+    "signature": [
+      "number"
+    ],
+    "final": "integer"
+  },
+  "signature_function_list": {
+    "signature": [
+      "function",
+      "list.element:type"
+    ],
+    "final": "boolean"
+  },
+  "split_string_string": {
+    "signature": [
+      "string",
+      "string"
+    ],
+    "final": "list.element:string"
+  },
+  "sum_list": {
+    "signature": [
+      "list.element:number"
+    ],
+    "final": "number"
+  },
+  "sum_slice": {
+    "signature": [
+      "slice"
+    ],
+    "final": "integer"
+  },
+  "typeof_any": {
+    "signature": [
+      "any"
+    ],
+    "final": "type"
+  }
+}

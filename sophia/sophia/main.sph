@@ -1,8 +1,0 @@
-// 5.1
-
-if true:
-	bool a: true
-else:
-	bool b: false
-
-return a

@@ -1,8 +1,5 @@
-﻿'''
-The Mathos module defines internal data types.
-'''
-
-import numbers, operator, re, sys
+﻿import numbers, operator, re, sys
+from dataclasses import dataclass
 from math import gcd
 
 # Constants related to the hash implementation;  hash(x) is based
@@ -13,6 +10,7 @@ _PyHASH_MODULUS = sys.hash_info.modulus
 _PyHASH_INF = sys.hash_info.inf
 
 _RATIONAL_FORMAT = re.compile(r"""
+	(?P<real>
 	\A\s*                                 # optional whitespace at the start,
 	(?P<sign>[-+]?)                       # an optional sign, then
 	(?=\d|\.\d)                           # lookahead for digit or .digit
@@ -23,6 +21,7 @@ _RATIONAL_FORMAT = re.compile(r"""
 	   (?:\.(?P<decimal>d*|\d+(_\d+)*))?  # an optional fractional part
 	)
 	\s*\Z                                 # and optional whitespace to finish
+	)
 """, re.VERBOSE | re.IGNORECASE)
 
 class real(numbers.Rational):
@@ -44,6 +43,8 @@ class real(numbers.Rational):
 		with defaults set to 0/1.
 		Sophia requires this constructor to be as fast as possible,
 		so it is assumed that the input is already normalised.
+		This assumption works because all class methods automatically
+		normalise their result.
 		"""
 		self = numbers.Rational.__new__(cls) # Superclass reference already there
 		self.numerator = numerator
@@ -408,13 +409,12 @@ class real(numbers.Rational):
 			return self     # My components are also immutable
 		return self.__class__(self.numerator, self.denominator)
 
+@dataclass(slots = True)
 class slice:
 	"""Implements an arithmetic slice with inclusive range."""
-	__slots__ = ('start', 'end', 'step')
-
-	def __init__(self, indices):
-		
-		self.start, self.end, self.step = indices
+	start: int = 0
+	end: int = 0
+	step: int = 1
 
 	def __getitem__(self, index): # Enables O(1) indexing of slices
 		
