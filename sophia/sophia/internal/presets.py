@@ -49,12 +49,14 @@ KEYWORDS_CONTROL = (
 	'extends',
 	'awaits'
 )
-KEYWORDS_OPERATOR = (
-	'not',
+KEYWORDS_INFIX = (
 	'or',
 	'and',
 	'xor',
 	'in',
+)
+KEYWORDS_PREFIX = (
+	'not',
 	'new'
 )
 KEYWORDS_STRUCTURE = (
@@ -175,4 +177,6 @@ TOKENS = {
 	'r_parens':	r'(?P<r_parens>[\)\]\}])',
 	'operator':	r'(?P<operator>[^(\s\d\w\.\(\[\{)]+)' # Any other symbol
 }
+TOKENS_NAMESPACE = '|'.join((TOKENS['literal'], TOKENS['operator']))
 TOKENS_PATTERN = '|'.join(TOKENS.values())
+TRAILING = r'[;,\'\"\(\[\{]'

@@ -459,3 +459,18 @@ multimethod format
 
 special properties must be present in types and properties of a typedef
 make a universal check that checks the presence of a property and checks against its value
+
+---
+
+type check functions need to compare equal. somehow
+anonymous functions by definition do not do this
+it is essential to know what attributes any type check has without calling it
+
+generic functions associated with a specific value can work here
+
+hell, use different classes for type checks and property checks if you want
+precise tools to solve specific problems
+
+type_method		user-defined types
+type			built-in types
+?				built-in properties

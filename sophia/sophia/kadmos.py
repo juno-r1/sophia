@@ -1,6 +1,5 @@
 import re
 
-from . import hemera
 from .datatypes import mathos
 from .internal import expressions, presets, statements
 from .internal.instructions import instruction
@@ -45,7 +44,6 @@ class parser:
 		provide sufficient context to deterministically tokenise any valid
 		Sophia program.
 		"""
-
 		line, column, scope = 1, 1, 1
 		tokens = [[]]
 		last = None
@@ -53,6 +51,7 @@ class parser:
 		for symbol in re.finditer(presets.TOKENS_PATTERN, source):
 			value = symbol.group()
 			column = column + len(value)
+			print(value)
 			if trail: # Skip whitespace after trailing line
 				if re.match(r'\s', value):
 					continue
@@ -67,19 +66,25 @@ class parser:
 				case 'indent':
 					scope = scope + 1
 					continue
-				case 'newline' if re.match(presets.TRAILING, last.value):
+				case 'newline' if last and re.match(presets.TRAILING, str(last.value)):
 					trail = True
 					column = 1
 					continue
 				case 'newline': # Logical line end
+					last = None
 					comment = False
 					line, column, scope = line + 1, 1, 1
-					tokens.append([])
+					if tokens[-1]:
+						tokens.append([])
 					continue
 				case 'number':
 					token = expressions.literal(mathos.real.read(value))
 				case 'string':
 					token = expressions.literal(bytes(value[1:-1], 'utf-8').decode('unicode_escape'))
+				case 'literal' if value in presets.KEYWORDS_INFIX:
+					token = expressions.infix(value)
+				case 'literal' if value in presets.KEYWORDS_PREFIX:
+					token = expressions.prefix(value)
 				case 'literal' if value in presets.CONSTANTS:
 					token = expressions.literal(value)
 				case 'literal' if value in ('if', 'else') and last and last.value != 'else':
@@ -87,13 +92,15 @@ class parser:
 				case 'literal' if value in presets.KEYWORDS_STRUCTURE or value in presets.KEYWORDS_CONTROL:
 					token = expressions.keyword(value)
 					if last and last.value == 'else':
-						tokens.pop()
+						tokens[-1].pop()
 						token.branch = True
 				case 'literal':
-					token = expressions.name(symbol)
 					if last and isinstance(last, expressions.name): # Checks for type
-						token_type = tokens.pop().value # Sets type of identifier
-						token.type = presets.ALIASES[token_type] if token_type in presets.ALIASES else token_type # Expands name of type
+						typename = tokens[-1].pop().value # Sets type of identifier
+						typename = presets.ALIASES[typename] if typename in presets.ALIASES else typename # Expands name of type
+					else:
+						typename = None
+					token = expressions.name(value, typename)
 				case 'l_parens' if value == '(':
 					token = expressions.function_call(value) if last and isinstance(last, expressions.name) else expressions.parenthesis(value)
 				case 'l_parens' if value == '[':
@@ -104,16 +111,16 @@ class parser:
 					token = expressions.right_bracket(value)
 				case 'operator' if value in '\'\"': # Unclosed quote
 					return hemera.error('sophia', line, 'UQTE', ())
-				case 'operator' if not last or re.fullmatch(presets.TOKENS['operator'], last.value): # Prefixes
+				case 'operator' if value in (':', ','): # Same regardless of context
+					token = expressions.concatenator(value)
+				case 'operator' if not last or re.fullmatch(presets.TOKENS['operator'], str(last.value)): # Prefixes
 					if value == '>':
 						token = expressions.receive(value)
 					elif value == '*':
 						token = expressions.resolve(value)
 					else:
 						token = expressions.prefix(value) # NEGATION TAKES PRECEDENCE OVER EXPONENTIATION - All unary operators have the highest possible left-binding power
-				case 'operator' if value in (':', ','): # Infixes
-					token = expressions.concatenator(value)
-				case 'operator' if value in ('^', '->', '=>'):
+				case 'operator' if value in ('^', '->', '=>'): # Infixes
 					token = expressions.infix_r(value)
 				case 'operator' if value == '<-':
 					bind_name = tokens.pop()
@@ -122,7 +129,7 @@ class parser:
 				case 'operator':
 					token = expressions.infix(value)
 				case _:
-					raise SystemExit('Oh no!')
+					raise SystemExit('Oh no!') # Unserious default case
 				#case 'operator' if len(tokens[-1]) == 1 and isinstance(tokens[-1][-1], name) and ('=>' in line or line[-1] == ':'): # Special case for operator definition
 				#	pass
 				#	token = nodes.name(value)
@@ -130,12 +137,11 @@ class parser:
 				#	token = name(symbol)
 				#	token_type = tokens[-1].pop().value # Sets return type of operator
 				#	token.type = sub_types[token_type] if token_type in sub_types else token_type
-			if comment:
-				continue
-			token.line, token.column = line, column
-			token.scope = scope
-			tokens[-1].append(token)
-			last = token
+			if not comment:
+				token.line, token.column = line, column
+				token.scope = scope
+				tokens[-1].append(token)
+				last = token
 		return tokens
 
 	def link(
@@ -146,7 +152,6 @@ class parser:
 		Recursively descends into madness and links logical lines to
 		create an AST from tokens.
 		"""
-		
 		lines = []
 		for line in tokens: # Tokenises whole lines
 			if line[0].value in presets.KEYWORDS_STRUCTURE:

@@ -1,6 +1,9 @@
+from typing import Self
+
 from .stdlib import arche
 from .datatypes import aletheia
 from .internal.instructions import instruction
+from .internal.presets import STDLIB_NAMES
 
 class processor:
 	"""
@@ -12,20 +15,35 @@ class processor:
 		namespace: dict
 		) -> None:
 
+		"""
+		Static attributes for the task to access.
+		"""
 		self.name = instructions[0].label[0] if instructions else ''
-		self.instructions = instructions
 		self.values = arche.stdvalues | namespace
 		self.types = arche.stdtypes | {k: aletheia.infer(v) for k, v in namespace.items()}
+		"""
+		Mutable attributes for the processor to access.
+		"""
+		self.instructions = instructions
 		self.cache = [None for _ in instructions]
-		#self.path = int(bool(instructions))
-		#self.op = None
+		self.path = int(bool(instructions))
+		self.op = None
 		#self.signature = []
 		#self.properties = {}
-		## Active state of the program
 		#self.state = None
 		#self.scope()
 
-#	def analyse(self): # Disabled until I can figure out how this is meant to work
+	def analyse( # Disabled until I can figure out how this is meant to work
+		self
+		) -> Self | None:
+
+		[print(i) for i in self.instructions]
+		while self.path < len(self.instructions): # This can and does change
+			self.op = self.instructions[self.path]
+			self.path = self.path + 1
+			if self.op.name == 'BIND':
+				self.bind()
+		return self
 	
 #		#[print(i) for i in self.instructions]
 #		#print('---')
@@ -43,7 +61,7 @@ class processor:
 #					self.bind()
 #				continue
 #			elif (address := self.op.register):
-#				if address in stdlib.builtins:
+#				if address in STDLIB_NAMES:
 #					return self.error('BIND', address)
 #				try:
 #					method, registers = self.values[self.op.name], self.op.args
@@ -122,36 +140,26 @@ class processor:
 #		if self.instructions[self.path].name != 'ELSE':
 #			self.state.resolve()
 
-#	def bind(self):
-#		"""
-#		Evaluates type checking for name binding, removing instructions
-#		if the type check is known to succeed.
-#		"""
-#		i, addresses = 0, []
-#		while (op := self.instructions[self.path + i]).name != 'BIND':
-#			register, name = op.args[0], op.label[0]
-#			signature = self.state.namespace[register]
-#			item_type = self.state.routines[signature.type]
-#			check_type = (self.state.routines[self.state.namespace[name].type] if name in self.state.namespace else item_type) if op.name == 'null' else self.state.routines[op.name]
-#			if op.name == 'null' and name not in self.state.namespace: # Untyped, unbound
-#				final = signature
-#				del self.instructions[self.path + i], self.cache[self.path + i]
-#			elif check_type.name in item_type.supertypes: # Successful type check
-#				final = check_type.descriptor
-#				del self.instructions[self.path + i], self.cache[self.path + i]
-#			else: # Unsuccessful type check (delegates check to runtime)
-#				final = check_type.descriptor
-#				op.name = final.type
-#				register = op.register
-#				i = i + 1
-#			self.state.namespace[name] = final
-#			addresses.append(register)
-#			op.label = [] # Clear name from label
-#		else:
-#			op.args = tuple(addresses)
-#			op.label = [i for pair in zip([self.state.namespace[name].type for name in op.label], op.label) for i in pair]
-#			del self.instructions[self.path - 1], self.cache[self.path - 1]
-#			self.path = self.path + i
+	def bind(self):
+		"""
+		Evaluates type checking for name binding, removing instructions
+		if the type check is known to succeed.
+		Currently does not bother to remove unnecessary type checks.
+		"""
+		i, checks, addresses = self.path, [], []
+		while self.instructions[i].name != 'BIND':
+			i = i + 1
+		binds = self.instructions[self.path:i]
+		names = [item.label[0] for item in binds]
+		for n, item in enumerate(binds):
+			if item.name == '?':
+				checks.append(instruction('TYPE', '', item.args, label = [item.register, names[n]]))
+				addresses.append(item.register)
+			else:
+				checks.append(item)
+				addresses.append(item.register)
+		self.instructions[self.path - 1:i + 1] = checks + [instruction('BIND', '', tuple(addresses), label = names)]
+		self.path = i
 
 #	def sequence(self, address, registers):
 		

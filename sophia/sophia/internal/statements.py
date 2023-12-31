@@ -55,7 +55,7 @@ class type_statement(coroutine):
 			prototype = True
 		if i < len(tokens) and values[i] == '=>':
 			self.nodes, i = self.nodes + [lexer(tokens[i + 1:]).parse()], len(tokens)
-		self.supertype, self.active = supertype if supertype else 'untyped', int(prototype)
+		self.supertype, self.active = supertype if supertype else 'any', int(prototype)
 
 	def start(
 		self
@@ -92,7 +92,7 @@ class event_statement(coroutine):
 		) -> tuple[ins, ...]:
 
 		names = [item.value for item in self.value]
-		types = [item.type if item.type else 'untyped' for item in self.value]
+		types = [item.type if item.type else 'any' for item in self.value]
 		return (ins('.event', self.name, label = [i for pair in zip(types, names) for i in pair] + [self.message.type, self.message.value]),
 				ins('START', label = [self.name]))
 
@@ -128,7 +128,7 @@ class function_statement(coroutine):
 		) -> tuple[ins, ...]:
 		
 		names = [item.value for item in self.value]
-		types = [item.type if item.type else 'untyped' for item in self.value]
+		types = [item.type if item.type else 'any' for item in self.value]
 		return (ins('.function', self.name, label = [i for pair in zip(types, names) for i in pair]),
 				ins('START', label = [self.name]))
 
@@ -175,29 +175,29 @@ class assignment(statement):
 		) -> tuple[ins, ...]:
 		
 		return [ins('BIND')] + \
-			   [ins(item.type if item.type else 'null',
+			   [ins(item.type if item.type else '?',
 				str(int(self.register) + i),
 				(self.nodes[i].register,),
 				label = [item.value])
 				for i, item in enumerate(self.value)] + \
 			   [ins('BIND', label = [item.value for item in self.value])]
 
-class alias(statement):
-	"""Defines a type alias."""
-	def __init__(
-		self,
-		tokens: list[node]
-		) -> None:
+#class alias(statement):
+#	"""Defines a type alias."""
+#	def __init__(
+#		self,
+#		tokens: list[node]
+#		) -> None:
 		
-		super().__init__(tokens[0], lexer(tokens[2:]).parse())
+#		super().__init__(tokens[0], lexer(tokens[2:]).parse())
 
-	def __str__(self) -> str: return 'alias ' + str(self.value.value)
+#	def __str__(self) -> str: return 'alias ' + str(self.value.value)
 
-	def execute(
-		self
-		) -> tuple[ins, ...]:
+#	def execute(
+#		self
+#		) -> tuple[ins, ...]:
 		
-		return ins('.alias', self.value.value, (self.nodes[0].register,)),
+#		return ins('.alias', self.value.value, (self.nodes[0].register,)),
 
 class if_statement(statement):
 	"""Defines an if statement."""

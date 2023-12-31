@@ -1,10 +1,12 @@
 from functools import reduce
 from multiprocessing import current_process
+from re import match
+from sys import stderr
 from typing import Any
 
-from .datatypes.aletheia import typedef
+from .datatypes import aletheia
+from .internal.presets import ERRORS, TOKENS_NAMESPACE
 from .metis import processor
-from .hemera import debug
 
 class task:
 	"""
@@ -12,9 +14,11 @@ class task:
 	A task handles synchronous program execution and passes messages to and
 	from the supervisor.
 	"""
-	def __init__(self, # God objects? What is she objecting to?
-				 processor: processor,
-				 flags: tuple[str, ...]) -> None:
+	def __init__( # God objects? What is she objecting to?
+		self,
+		processor: processor,
+		flags: tuple[str, ...]
+		) -> None:
 		
 		self.name = processor.name
 		self.pid = id(self) # Guaranteed not to collide with other task PIDs; not the same as the PID of the pool process
@@ -27,8 +31,8 @@ class task:
 		self.values = processor.values
 		self.types = processor.types
 		self.signature = [] # Current type signature
-		self.properties = typedef() # Final type properties
-		self.final = typedef() # Return type of routine
+		self.properties = None # Final type override
+		self.final = aletheia.std_any # Return type of routine
 
 	def execute(self) -> Any:
 		"""
@@ -36,7 +40,7 @@ class task:
 		Executes flags, then launches runtime loop.
 		"""
 		if 'instructions' in self.flags:
-			debug.debug_instructions(self)
+			self.debug_instructions()
 		if 'profile' in self.flags:
 			from cProfile import Profile
 			pr = Profile()
@@ -49,7 +53,7 @@ class task:
 			pr.disable()
 			pr.print_stats(sort = 'cumtime')
 		if 'namespace' in self.flags:
-			debug.debug_namespace(self)
+			self.debug_namespace()
 		if 'debug' in self.flags:
 			return value
 		else:
@@ -66,18 +70,13 @@ class task:
 		while self.path:
 			self.op, cache = self.instructions[self.path], self.cache[self.path]
 			if debug_task:
-				debug.debug_task(self)
+				self.debug_task()
 			self.path = self.path + 1
-			if (address := self.op.register): # Instructions
-				routine, registers = self.values[self.op.name], self.op.args
+			if self.op.register: # Instructions
+				registers = self.op.args
 				args = [self.values[arg] for arg in registers]
 				self.signature = [self.types[arg] for arg in registers]
-				instance, final, signature = (cache.routine, cache.final, cache.signature) if cache else routine(self, *self.signature)
-				value = instance(self, *args)
-				if final.type != '!': # Suppress write
-					self.values[address] = value # Hot-swap descriptors; there's always 1 spare in the system
-					self.types[address], self.properties = self.complete(self.properties, final, value), self.types[address] if address in self.types else descriptor()
-					self.properties.__dict__ = {}
+				value = (cache if cache else self.values[self.op.name])(self, *args)
 			elif (name := self.op.name) in interns: # Pseudo-instructions
 				interns[name](self)
 		else:
@@ -101,18 +100,18 @@ class task:
 						self.path = path
 					return path
 
-	#def complete(self, # Completes descriptor with properties and inferred type of value
-	#			 descriptor: descriptor,
-	#			 final: descriptor,
-	#			 value: Any):
+#	#def complete(self, # Completes descriptor with properties and inferred type of value
+#	#			 descriptor: descriptor,
+#	#			 final: descriptor,
+#	#			 value: Any):
 		
-	#	descriptor.type = descriptor.type or final.type or infer_type(value)
-	#	descriptor.supertypes = self.values[descriptor.type or 'null'].supertypes
-	#	if 'sequence' in descriptor.supertypes:
-	#		descriptor.member = descriptor.member or final.member or infer_member(value)
-	#		descriptor.length = descriptor.length or final.length or len(value)
-	#	descriptor.supermember = self.values[descriptor.member or 'null'].supertypes
-	#	return descriptor
+#	#	descriptor.type = descriptor.type or final.type or infer_type(value)
+#	#	descriptor.supertypes = self.values[descriptor.type or 'null'].supertypes
+#	#	if 'sequence' in descriptor.supertypes:
+#	#		descriptor.member = descriptor.member or final.member or infer_member(value)
+#	#		descriptor.length = descriptor.length or final.length or len(value)
+#	#	descriptor.supermember = self.values[descriptor.member or 'null'].supertypes
+#	#	return descriptor
 
 	def state(self) -> dict: # Get current state of task as subset of __dict__
 
@@ -126,128 +125,182 @@ class task:
 				'final': self.final,
 				'cache': self.cache}
 
-	def restore(self, # Restore previous state of task
-			    state: dict) -> None:
+#	def restore(self, # Restore previous state of task
+#			    state: dict) -> None:
 
-		self.__dict__.update(state)
+#		self.__dict__.update(state)
 
-	def prepare(self, # Sets up task for event execution
-				namespace: dict,
-				message: Any) -> None:
+#	def prepare(self, # Sets up task for event execution
+#				namespace: dict,
+#				message: Any) -> None:
 		
-		self.restore(namespace)
-		self.path, scope = 0, 0
-		while True:
-			op, self.path = self.instructions[self.path], self.path + 1
-			if not op.register:
-				scope = scope - 1 if op.name == 'END' else scope + 1
-				if scope == 1 and op.name == 'EVENT':
-					name = op.label[0]
-					break
-		self.values[name], self.types[name] = message, descriptor('untyped').describe(self)
+#		self.restore(namespace)
+#		self.path, scope = 0, 0
+#		while True:
+#			op, self.path = self.instructions[self.path], self.path + 1
+#			if not op.register:
+#				scope = scope - 1 if op.name == 'END' else scope + 1
+#				if scope == 1 and op.name == 'EVENT':
+#					name = op.label[0]
+#					break
+#		self.values[name], self.types[name] = message, descriptor('untyped').describe(self)
 
-	def message(self,
-				instruction: str | None = None,
-				*args: tuple) -> None:
+#	def message(self,
+#				instruction: str | None = None,
+#				*args: tuple) -> None:
 		
-		current_process().stream.put([instruction, self.pid] + list(args) if instruction else None)
+#		current_process().stream.put([instruction, self.pid] + list(args) if instruction else None)
 
-	def error(self, # Error handler
-			  status: str,
-			  *args: tuple) -> None:
-		
-		self.properties.type = 'null'
-		self.properties.member = None
-		self.properties.length = None
+	def error( # Error handler
+		self,
+		status: str,
+		*args: tuple
+		) -> None:
+				
+		self.properties = aletheia.std_none
 		if self.op.register != '0': # Suppresses error for assertions
 			if 'suppress' not in self.flags:
-				debug.debug_error(self.name, self.op.line, status, args)
+				print('===',
+					  '{0} (line {1})'.format(self.name, self.op.line),
+					  ERRORS[status].format(*args) if args else ERRORS[status],
+					  '===',
+					  sep = '\n',
+					  file = stderr)
 			self.values['0'] = None
 			self.path = 0
 
-"""
-Internal pseudo-instructions.
-"""
+	"""
+	Debug operations.
+	"""
 
-def intern_bind(task) -> None:
+	def debug_instructions(self) -> None:
 	
-	types = [task.values[item].descriptor for item in task.op.label[0::2]]
-	names = task.op.label[1::2]
-	args = [task.values[arg] for arg in task.op.args]
-	signature = [task.types[arg] for arg in task.op.args]
-	for i, name in enumerate(names):
-		value = args[i]
-		task.properties.type = signature[0].type if types[i].type == 'null' else types[i].type
-		task.values[name] = value
-		task.types[name], task.properties = task.complete(task.properties, signature[i], value), task.types[name] if name in task.types else descriptor()
-		task.properties.type, task.properties.member, task.properties.length = None, None, None
+		print('===', file = stderr)
+		for i, instruction in enumerate(self.instructions):
+			print(i,
+				  instruction,
+				  sep = '\t',
+				  file = stderr)
+		print('===', file = stderr)
 
-def intern_list(task) -> None:
-
-	address = task.op.label[0]
-	value = tuple(task.values[arg] for arg in task.op.args)
-	task.properties.type = 'list'
-	task.properties.member = reduce(descriptor.mutual, [task.types[arg] for arg in task.op.args]).type
-	task.properties.length = len(value)
-	task.properties.supertypes = task.values[task.properties.type or 'null'].supertypes
-	task.properties.supermember = task.values[task.properties.member or 'null'].supertypes
-	task.values[address] = value
-	task.types[address], task.properties = task.properties, task.types[address] if address in task.types else descriptor()
-	task.properties.type, task.properties.member, task.properties.length = None, None, None
-
-def intern_record(task) -> None:
-
-	address = task.op.label[0]
-	keys = tuple(task.values[arg] for arg in task.op.args[0::2])
-	values = tuple(task.values[arg] for arg in task.op.args[1::2])
-	value = dict(zip(keys, values))
-	task.properties.type = 'record'
-	task.properties.member = reduce(descriptor.mutual, [task.types[arg] for arg in task.op.args[1::2]]).type
-	task.properties.length = len(value)
-	task.properties.supertypes = task.values[task.properties.type or 'null'].supertypes
-	task.properties.supermember = task.values[task.properties.member or 'null'].supertypes
-	task.values[address] = value
-	task.types[address], task.properties = task.properties, task.types[address] if address in task.types else descriptor()
-	task.properties.type, task.properties.member, task.properties.length = None, None, None
-
-def intern_loop(task) -> None:
+	def debug_namespace(self) -> None:
 	
-	scope = 1
-	while True:
-		task.path = task.path - 1
-		if not (op := task.instructions[task.path]).register:
-			if op.name == 'START':
-				scope = scope - 1
-			elif op.name == 'END':
-				scope = scope + 1
-			if scope == 0:
-				return
+		print('===',
+			  self.name,
+			  '---',
+			  '\n---\n'.join(('{0} {1} {2}'.format(name, self.types[name], value) for name, value in self.values.items() if match(TOKENS_NAMESPACE, name))),
+			  '===',
+			  sep = '\n',
+			  file = stderr)
 
-def intern_break(task) -> None: # BUGGED: ONLY SKIPS TO NEXT CONTINUE
-
-	task.values[task.op.register], task.values[task.op.args[0]] = None, None # Sanitise registers
-	while True:
-		op, task.path = task.instructions[task.path], task.path + 1
-		if op.name == 'LOOP' and not op.register:
-			return
-
-def intern_skip(task) -> None:
+	def debug_task(self) -> None:
 	
-	value, address = task.values[task.op.args[0]], task.op.label[0]
-	signature, final = task.signature[0], task.properties
-	final.type, final.member, final.length = signature.type, signature.member, signature.length
-	path = task.path
-	while True:
-		op, path = task.instructions[path], path + 1
-		if not op.register and op.name == 'RETURN':
-			task.path = path
-			task.values[address] = value
-			#task.types[address] = None
-			return
+		print(str(self.path),
+			  self.op,
+			  sep = '\t',
+			  file = stderr)
 
-interns = {'BIND': intern_bind,
-		   'LIST': intern_list,
-		   'RECORD': intern_record,
-		   'LOOP': intern_loop,
-		   'BREAK': intern_break,
-		   'SKIP': intern_skip}
+	"""
+	Internal pseudo-instructions.
+	"""
+
+	def intern_bind(self) -> None:
+	
+		args = [self.values[arg] for arg in self.op.args]
+		types = [self.types[arg] for arg in self.op.args]
+		for i, name in enumerate(self.op.label):
+			self.values[name] = args[i]
+			self.types[name] = aletheia.typedef(types[i])
+
+	def intern_type(self) -> None:
+		"""
+		Delegates a type check based on the known type of a bound name.
+		A variable command name is not possible in the current
+		task architecture.
+		"""
+		register = self.op.args[0]
+		value = self.values[register]
+		address, name = self.op.label
+		if name in self.types:
+			check = self.types[name]
+			check(self, value)
+		else:
+			check = self.types[register]
+		self.values[address] = value
+		self.types[address] = aletheia.typedef(check)
+
+	def intern_list(self) -> None:
+
+		address = self.op.label[0]
+		value = tuple(self.values[arg] for arg in self.op.args)
+		element = reduce(aletheia.mutual, (self.types[arg] for arg in self.op.args))
+		length = len(value)
+		self.values[address] = value
+		self.types[address] = aletheia.typedef(
+			aletheia.std_list,
+			aletheia.cls_element(element),
+			aletheia.cls_length(length)
+		)
+
+	def intern_record(self) -> None:
+
+		address = self.op.label[0]
+		keys = tuple(self.values[arg] for arg in self.op.args[0::2])
+		values = tuple(self.values[arg] for arg in self.op.args[1::2])
+		value = dict(zip(keys, values))
+		element = reduce(aletheia.mutual, (self.types[arg] for arg in self.op.args[0::2]))
+		length = len(value)
+		self.values[address] = value
+		self.types[address] = aletheia.typedef(
+			aletheia.std_record,
+			aletheia.cls_element(element),
+			aletheia.cls_length(length)
+		)
+
+	def intern_loop(self) -> None:
+	
+		pass
+		#scope = 1
+		#while True:
+		#	task.path = task.path - 1
+		#	if not (op := task.instructions[task.path]).register:
+		#		if op.name == 'START':
+		#			scope = scope - 1
+		#		elif op.name == 'END':
+		#			scope = scope + 1
+		#		if scope == 0:
+		#			return
+
+	def intern_break(self) -> None: # BUGGED: ONLY SKIPS TO NEXT CONTINUE
+
+		pass
+		#task.values[task.op.register], task.values[task.op.args[0]] = None, None # Sanitise registers
+		#while True:
+		#	op, task.path = task.instructions[task.path], task.path + 1
+		#	if op.name == 'LOOP' and not op.register:
+		#		return
+
+	def intern_skip(self) -> None:
+	
+		pass
+		#value, address = task.values[task.op.args[0]], task.op.label[0]
+		#signature, final = task.signature[0], task.properties
+		#final.type, final.member, final.length = signature.type, signature.member, signature.length
+		#path = task.path
+		#while True:
+		#	op, path = task.instructions[path], path + 1
+		#	if not op.register and op.name == 'RETURN':
+		#		task.path = path
+		#		task.values[address] = value
+		#		#task.types[address] = None
+		#		return
+
+interns = {
+	'BIND': task.intern_bind,
+	'TYPE': task.intern_type,
+	'LIST': task.intern_list,
+	'RECORD': task.intern_record,
+	'LOOP': task.intern_loop,
+	'BREAK': task.intern_break,
+	'SKIP': task.intern_skip
+}

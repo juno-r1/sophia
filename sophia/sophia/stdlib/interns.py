@@ -230,7 +230,7 @@ def return_none(task):
 
 def return_some(task, sentinel):
 	
-	task.properties.merge(task.final)
+	task.properties = typedef(task.final)
 	if task.caller:
 		task.restore(task.caller) # Restore namespace of calling routine
 	else:

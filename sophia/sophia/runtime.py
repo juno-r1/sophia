@@ -2,16 +2,12 @@
 
 import multiprocessing as mp
 import os
-#from queue import Empty
-#from typing import Any
+from queue import Empty
+from typing import Any
 
 from . import kadmos, metis
-#from .aletheia.descriptor import descriptor
-#from .hemera import debug, streams
-#from .iris import proxy
-#from .iris.reference import reference
-#from .metis.processor import processor
-#from .task import task
+from .datatypes.iris import proxy
+from .task import task
 
 class runtime:
 	"""
@@ -27,6 +23,9 @@ class runtime:
 		root: str = 'user'
 		) -> None:
 		
+		"""
+		Set MP context and read the source file.
+		"""
 		mp.freeze_support()
 		try:
 			mp.set_start_method('spawn' if os.name == 'nt' else 'fork')
@@ -34,29 +33,30 @@ class runtime:
 			pass
 		with open('{0}/{1}'.format(root, address), 'r') as f:
 			source = f.read() # Binds file data to runtime object
+		"""
+		Compile stage. Yields a processor object containing optimised instructions.
+		"""
 		parser = kadmos.parser(address.split('.')[0])
 		ast, instructions, namespace = parser.parse(source)
+		if 'tree' in flags:
+			ast.debug() # Here's tree
 		processor = metis.processor(instructions, namespace)
+		if not processor.analyse():
+			raise SystemExit
 		"""
-		Parsing step that takes the source address and returns an AST. 
+		Build the supervisor. Main task is initialised and awaiting execution.
 		"""
-#		initial = module(address, root = root)
-#		if 'tree' in flags:
-#			debug.debug_tree(initial) # Here's tree
-#		prepared = processor(*translator(initial).generate())
-#		if not prepared:
-#			raise SystemExit
-#		self.root = root
-#		self.stream = mp.Queue() # Supervisor message stream
-#		self.pool = mp.Pool(initializer = self.initialise)
-#		self.main = task(prepared, flags) # Initial task
-#		self.tasks = {self.main.pid: proxy(self.main)} # Proxies of tasks
-#		self.events = {} # Persistent event tasks
-#		self.flags = flags
+		self.flags = flags
+		self.root = root
+		self.stream = mp.Queue() # Supervisor message stream
+		self.pool = mp.Pool(initializer = self.initialise)
+		self.main = task(processor, flags) # Initial task
+		self.tasks = {self.main.pid: proxy(self.main)} # Proxies of tasks
+		self.events = {} # Persistent event tasks
 
-#	def initialise(self) -> None: # Cheeky way to sneak a queue into a task
+	def initialise(self) -> None: # Cheeky way to sneak a queue into a task
 	
-#		mp.current_process().stream = self.stream
+		mp.current_process().stream = self.stream
 
 #	#def future(self, pid, routine, args, method):
 
@@ -145,10 +145,10 @@ class runtime:
 #		elif self.tasks[pid].count == 0: # Free own task
 #			del self.tasks[pid]
 
-#	def debug(self) -> Any: # Function for testing tasks with error handling and without multiprocessing
+	def debug(self) -> Any: # Function for testing tasks with error handling and without multiprocessing
 
-#		self.main.flags = tuple(list(self.main.flags) + ['debug']) # Suppresses terminate message
-#		return self.main.execute()
+		self.main.flags = tuple(list(self.main.flags) + ['debug']) # Suppresses terminate message
+		return self.main.execute()
 
 #	def run(self) -> Any: # Supervisor process and pool management
 

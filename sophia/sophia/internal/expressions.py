@@ -2,7 +2,7 @@ from typing import Any
 
 from .nodes import node, lexer
 from .instructions import instruction as ins
-from .presets import CONSTANTS
+from .presets import ALIASES, CONSTANTS
 
 class expression(node):
 	"""Base expression node."""
@@ -44,11 +44,12 @@ class name(identifier):
 	"""Defines a name."""
 	def __init__(
 		self,
-		tokens: str
+		tokens: str,
+		typename: str
 		) -> None:
 		
-		super().__init__(node.sub_types[tokens] if tokens in node.sub_types else tokens)
-		self.type = None
+		super().__init__(ALIASES[tokens] if tokens in ALIASES else tokens)
+		self.type = typename
 
 	def nud(
 		self,
