@@ -3,6 +3,7 @@ Built-in operators.
 '''
 
 from ..datatypes.aletheia import funcdef
+from ..datatypes.mathos import slice
 
 def u_add(_, x): return +x
 
@@ -150,38 +151,17 @@ def b_ins_slice(_, x, y):
 		lower, upper = ranges[1], ranges[2]
 		lower = lower - (lower % step) + step # Gets highest lower bound
 		upper = upper - (upper % step) # Gets lowest upper bound
-		return slice((lower, upper, m))
+		return slice(lower, upper, m)
 
-#def b_ins_type(task, x, y):
-	
-#	name, supername = '<{0}&{1}>'.format(x.name, y.name), [i for i in x.supertypes if i in y.supertypes][0] # Use closest mutual supertype
-#	supertype, index = task.values[supername], x.supertypes.index(supername)
-#	type_tag, final_tag, super_tag = descriptor(name), descriptor(name), descriptor(supername).describe(task)
-#	type_tag.supertypes = [name] + super_tag.supertypes
-#	routine = typedef(name, x.supertypes[index:], x.prototype)
-#	lhs, rhs = instructions.generate_intersection(name, x.name), instructions.generate_intersection(name, y.name)
-#	check = lhs + rhs
-#	start, end = instructions.generate_labels(name)
-#	tree = supertype.tree.true
-#	while tree: # Rewrite methods with own type name
-#		key, value = tree.false.signature, tree.false.routine
-#		if isinstance(value, type_method):
-#			definition = [instructions.instruction.rewrite(i, supername, name) for i in value.instructions]
-#			definition[-2:-2] = check # Add user constraints to instructions
-#			routine.register(type_method(definition, name, key[0]), final_tag, key)
-#		else: # Built-in definition
-#			routine.register(type_method(start + check + end, name, key[0]), final_tag, key)
-#		tree = tree.true
-#	routine.register(type_method(start + rhs + end, name, super_tag), final_tag, (type_tag,))
-#	return routine
+def b_ins_type(_, x, y): return x & y
 
 std_ins = funcdef(
 	b_ins_string,
 	b_ins_list,
 	b_ins_record,
-	b_ins_slice
+	b_ins_slice,
+	b_ins_type
 )
-#std_ins.retrieve(b_ins_type)
 
 def b_uni_string(_, x, y): return x + y
 
@@ -191,77 +171,18 @@ def b_uni_record(_, x, y): return x | y
 
 def b_uni_slice(_, x, y): return tuple((list(x) + list(y)).sort())
 
-#def b_uni_type(task, x, y):
-	
-#	name, supername = '<{0}|{1}>'.format(x.name, y.name), [i for i in x.supertypes if i in y.supertypes][0] # Use closest mutual supertype
-#	supertype, index = task.values[supername], x.supertypes.index(supername)
-#	type_tag, final_tag, super_tag = descriptor(name), descriptor(name), descriptor(supername).describe(task)
-#	type_tag.supertypes = [name] + super_tag.supertypes
-#	routine = typedef(name, x.supertypes[index:], x.prototype)
-#	check = instructions.generate_union(name, x.name, y.name)
-#	start, end = instructions.generate_labels(name)
-#	tree = supertype.tree.true
-#	while tree: # Rewrite methods with own type name
-#		key, value = tree.false.signature, tree.false.routine
-#		if isinstance(value, type_method): # Built-in supertype
-#			definition = [instructions.instruction.rewrite(i, supername, name) for i in value.instructions]
-#			definition[-2:-2] = check # Add user constraints to instructions
-#			routine.register(type_method(definition, name, key[0]), final_tag, key)
-#		else:
-#			routine.register(type_method(start + check + end, name, key[0]), final_tag, key)
-#		tree = tree.true
-#	routine.register(type_method(start + end, name, super_tag), final_tag, (type_tag,))
-#	return routine
+def b_uni_type(_, x, y): return x | y
 
 std_uni = funcdef(
 	b_uni_string,
 	b_uni_list,
 	b_uni_record,
-	b_uni_slice
+	b_uni_slice,
+	b_uni_type
 )
 #std_uni.retrieve(b_uni_type)
 
-#def b_cct(task, sequence, value):
-	
-#	sequence_type, member_type = task.signature[0], task.signature[1]
-#	task.properties.length = sequence_type.length + 1
-#	if sequence_type.member == member_type.type:
-#		task.properties.member = sequence_type.member
-#	else:
-#		sequence_type, member_type = task.values[sequence_type.member], task.values[member_type.type]
-#		task.properties.member = [i for i in sequence_type.supertypes if i in member_type.supertypes][0]
-#	return tuple(list(sequence) + [value])
-
-#def b_cct_0(task, sequence, value):
-
-#	task.properties.member = task.signature[1].type
-#	return (value,)
-
-#def t_cct(task, sequence, key, value):
-	
-#	sequence_type, member_type = task.signature[0], task.signature[2]
-#	task.properties.length = sequence_type.length + 1
-#	if not sequence:
-#		task.properties.member = member_type.type
-#	elif sequence_type.member == member_type.type:
-#		task.properties.member = sequence_type.member
-#	else:
-#		sequence_type, member_type = task.values[sequence_type.member], task.values[member_type.type]
-#		task.properties.member = [i for i in sequence_type.supertypes if i in member_type.supertypes][0]
-#	return sequence | {key: value}
-
-#def t_cct_0(task, sequence, key, value):
-
-#	task.properties.member = task.signature[2].type
-#	return {key: value}
-
-#std_cct = funcdef(',')
-#std_cct.retrieve(b_cct)
-#std_cct.retrieve(b_cct_0)
-#std_cct.retrieve(t_cct)
-#std_cct.retrieve(t_cct_0)
-
-def t_slc(_, x, y, z): return slice((x, y, z))
+def t_slc(_, x, y, z): return slice(x, y, z)
 
 std_slc = funcdef(
 	t_slc

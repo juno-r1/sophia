@@ -166,8 +166,9 @@ class task:
 					  '===',
 					  sep = '\n',
 					  file = stderr)
-			self.values['0'] = None
 			self.path = 0
+		self.values['0'] = None
+		self.types['0'] = aletheia.std_none
 
 	"""
 	Debug operations.
@@ -233,7 +234,7 @@ class task:
 
 		address = self.op.label[0]
 		value = tuple(self.values[arg] for arg in self.op.args)
-		element = reduce(aletheia.mutual, (self.types[arg] for arg in self.op.args))
+		element = reduce(aletheia.typedef.__or__, (self.types[arg] for arg in self.op.args))
 		length = len(value)
 		self.values[address] = value
 		self.types[address] = aletheia.typedef(
@@ -248,7 +249,7 @@ class task:
 		keys = tuple(self.values[arg] for arg in self.op.args[0::2])
 		values = tuple(self.values[arg] for arg in self.op.args[1::2])
 		value = dict(zip(keys, values))
-		element = reduce(aletheia.mutual, (self.types[arg] for arg in self.op.args[0::2]))
+		element = reduce(aletheia.typedef.__or__, (self.types[arg] for arg in self.op.args[0::2]))
 		length = len(value)
 		self.values[address] = value
 		self.types[address] = aletheia.typedef(
@@ -257,28 +258,26 @@ class task:
 			aletheia.cls_length(length)
 		)
 
-	def intern_loop(self) -> None:
+	def intern_loop(self) -> None: # Continue is just an early loop
 	
-		pass
-		#scope = 1
-		#while True:
-		#	task.path = task.path - 1
-		#	if not (op := task.instructions[task.path]).register:
-		#		if op.name == 'START':
-		#			scope = scope - 1
-		#		elif op.name == 'END':
-		#			scope = scope + 1
-		#		if scope == 0:
-		#			return
+		scope = 1
+		while True:
+			self.path = self.path - 1
+			if not (op := self.instructions[self.path]).register:
+				if op.name == 'START':
+					scope = scope - 1
+				elif op.name == 'END':
+					scope = scope + 1
+				if scope == 0:
+					return
 
-	def intern_break(self) -> None: # BUGGED: ONLY SKIPS TO NEXT CONTINUE
-
-		pass
-		#task.values[task.op.register], task.values[task.op.args[0]] = None, None # Sanitise registers
-		#while True:
-		#	op, task.path = task.instructions[task.path], task.path + 1
-		#	if op.name == 'LOOP' and not op.register:
-		#		return
+	def intern_break(self) -> None:
+		
+		op = self.instructions[self.path]
+		iterator, index = self.op.args # Registers for the iterator and loop index
+		self.values[iterator], self.values[index] = None, None # Sanitise registers
+		while not (op.name == 'LOOP' and not op.register):
+			op, self.path = self.instructions[self.path], self.path + 1
 
 	def intern_skip(self) -> None:
 	
@@ -301,6 +300,7 @@ interns = {
 	'LIST': task.intern_list,
 	'RECORD': task.intern_record,
 	'LOOP': task.intern_loop,
+	'CONTINUE': task.intern_loop,
 	'BREAK': task.intern_break,
 	'SKIP': task.intern_skip
 }

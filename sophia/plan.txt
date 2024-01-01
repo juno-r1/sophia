@@ -462,15 +462,42 @@ make a universal check that checks the presence of a property and checks against
 
 ---
 
-type check functions need to compare equal. somehow
-anonymous functions by definition do not do this
-it is essential to know what attributes any type check has without calling it
+type properties are presenting another problem
+keeping them well-encapsulated makes them very hard to expose
+the only way to find a sequence's length is to search all of its type properties to see if its length is defined and then get the length from the property
+that's fine, though
+the real kicker is that not all sequences *have* a defined length
+sure, sequence literals are defined with element and length
+but methods that return sequences have statically defined return types can't guarantee these properties
 
-generic functions associated with a specific value can work here
+to guarantee correct functionality, all data must have all possible properties defined for them
+if you want to call length() on any sequence, which is extremely reasonable,
+then you... need to know its length in advance?
+that doesn't seem right
 
-hell, use different classes for type checks and property checks if you want
-precise tools to solve specific problems
+there's a semantic misunderstanding here
+the typedef of a value does *not* describe every property that it has
+it describes the properties that the user has guaranteed for it
+if the user is unable to guarantee a given property for a type, they don't get to use it
+dispatch depends on the properties it knows its arguments have
+it does *not* attempt to downcast any arguments
 
-type_method		user-defined types
-type			built-in types
-?				built-in properties
+for example:
+
+[1, 2, 3]
+> list.element:int.length:3
+
+a: [1, 2, 3]
+> list.element:int.length:3
+user has allowed the dynamic type inference to determine a's properties
+
+list a: [1, 2, 3]
+> list
+user has explicitly chosen not to guarantee properties; a could be reassigned any list
+
+type triple: list[int][3]
+triple a: [1, 2, 3]
+> list.element:int.length:3
+user has explicitly chosen to guarantee properties
+
+in sophia, the user just has to do some more work to explicitly describe the properties of their data

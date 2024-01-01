@@ -90,7 +90,6 @@ STDLIB_NAMES = {
 	'return': '.return',
 	'skip': '.skip',
 	'type': '.type',
-	'unloop': '.unloop',
 	# Streams
 	'stdin': 'stdin',
 	'stdout': 'stdout',
@@ -132,7 +131,6 @@ STDLIB_NAMES = {
 	'lxr': 'xor',
 	'ins': '&',
 	'uni': '|',
-	'cct': ',',
 	'slc': ':',
 	'sfe': '?',
 	'usf': '!',

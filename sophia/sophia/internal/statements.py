@@ -182,23 +182,6 @@ class assignment(statement):
 				for i, item in enumerate(self.value)] + \
 			   [ins('BIND', label = [item.value for item in self.value])]
 
-#class alias(statement):
-#	"""Defines a type alias."""
-#	def __init__(
-#		self,
-#		tokens: list[node]
-#		) -> None:
-		
-#		super().__init__(tokens[0], lexer(tokens[2:]).parse())
-
-#	def __str__(self) -> str: return 'alias ' + str(self.value.value)
-
-#	def execute(
-#		self
-#		) -> tuple[ins, ...]:
-		
-#		return ins('.alias', self.value.value, (self.nodes[0].register,)),
-
 class if_statement(statement):
 	"""Defines an if statement."""
 	def __init__(
@@ -263,19 +246,12 @@ class for_statement(statement):
 		self
 		) -> tuple[ins, ...]: 
 		
-		adjacent = str(int(self.register) + 1) # Uses the register of the first enclosed statement
-		if self.value.type:
-			return (ins('.iterator', self.register, (self.nodes[0].register,)),
-					ins('ELSE' if self.branch else 'START', line = self.line),
-					ins('.next', adjacent, (self.register,)),
-					ins('.unloop', '0', (adjacent, self.value.type)), # Equivalent to Python's StopIteration check
-					ins('.bind', self.value.value, ('0', self.value.type), label = [self.value.value]),
-					ins(self.value.type, self.value.value, (self.value.value,)))
-		else:
-			return (ins('.iterator', self.register, (self.nodes[0].register,)),
-					ins('ELSE' if self.branch else 'START', line = self.line),
-					ins('.next', adjacent, (self.register,)),
-					ins('.unloop', self.value.value, (adjacent,)))
+		return (ins('.iterator', self.register, (self.nodes[0].register,)),
+				ins('ELSE' if self.branch else 'START', line = self.line),
+				ins('.next', '0', (self.register,)),
+				ins('BIND'),
+				ins(self.value.type if self.value.type else '?', '0', ('0',), label = [self.value.value]),
+				ins('BIND', label = [self.value.value]))
 
 	def execute(self): return ins('LOOP'),
 

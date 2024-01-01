@@ -51,7 +51,6 @@ class parser:
 		for symbol in re.finditer(presets.TOKENS_PATTERN, source):
 			value = symbol.group()
 			column = column + len(value)
-			print(value)
 			if trail: # Skip whitespace after trailing line
 				if re.match(r'\s', value):
 					continue
@@ -113,7 +112,9 @@ class parser:
 					return hemera.error('sophia', line, 'UQTE', ())
 				case 'operator' if value in (':', ','): # Same regardless of context
 					token = expressions.concatenator(value)
-				case 'operator' if not last or re.fullmatch(presets.TOKENS['operator'], str(last.value)): # Prefixes
+				case 'operator' if not last or \
+								   re.fullmatch(presets.TOKENS['operator'], str(last.value)) and \
+								   not re.fullmatch(presets.TOKENS['r_parens'], str(last.value)): # Prefixes
 					if value == '>':
 						token = expressions.receive(value)
 					elif value == '*':
@@ -172,6 +173,7 @@ class parser:
 			else: # Tokenises expressions
 				token = lexer(line).parse() # Passes control to a lexer object that returns an expression tree when parse() is called
 			token.line = line[0].line
+			token.scope = line[0].scope
 			lines.append(token)
 		head, last = self.node, self.node # Head token and last line
 		for i, line in enumerate(lines): # Group lines based on scope

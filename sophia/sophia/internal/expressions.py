@@ -95,7 +95,7 @@ class keyword(identifier):
 		while type(loop).__name__ not in ('for_statement', 'while_statement'):
 			loop = loop.head
 		if self.value == 'continue':
-			return ins('LOOP'),
+			return ins('CONTINUE'),
 		elif self.value == 'break':
 			return ins('BREAK', '', (loop.register, loop.value.value if loop.value else '0')),
 
@@ -269,7 +269,9 @@ class right_conditional(infix):
 		self
 		) -> tuple[ins, ...]:
 		
-		return (ins('BIND', '', (self.nodes[0].register,), label = ['null', self.head.register]),
+		return (ins('BIND'),
+				ins('?', self.register, (self.nodes[0].register,), label = [self.head.register]),
+				ins('BIND', label = [self.head.register]),
 				ins('.branch', self.register),
 				ins('END', line = self.line),
 				ins('ELSE', line = self.line)) # Enclosed by labels of left conditional
@@ -278,7 +280,9 @@ class right_conditional(infix):
 		self
 		) -> tuple[ins, ...]:
 		
-		return ins('BIND', '', (self.nodes[1].register,), label = ['null', self.head.register]),
+		return (ins('BIND'),
+				ins('?', self.register, (self.nodes[1].register,), label = [self.head.register]),
+				ins('BIND', label = [self.head.register]))
 
 class infix_r(operator):
 	"""Defines a right-binding infix."""

@@ -4,6 +4,7 @@ them inaccessible to the user.
 '''
 
 from ..datatypes.aletheia import funcdef, eventdef, typedef
+from ..datatypes.mathos import real, slice
 
 def assert_none(task, value): # Null assertion
 	
@@ -77,82 +78,66 @@ std_constraint = funcdef(
 
 def index_string_integer(task, sequence, index):
 	
-	length = task.signature[0].length
+	length = len(sequence)
 	if -length <= index < length:
 		return sequence[int(index)] # Sophia's integer type is abstract, Python's isn't
 	else:
-		task.properties.type = 'null'
 		return task.error('INDX', index)
 
 def index_string_slice(task, sequence, index):
 
-	length = task.signature[0].length
+	length = len(sequence)
 	if (-length <= index.start < length) and (-length <= index.end < length):
-		task.properties.length = task.signature[1].length
 		return ''.join(sequence[int(n)] for n in iter(index)) # Constructs slice of string using range
 	else:
-		task.properties.type = 'null'
 		return task.error('INDX', index)
 
 def index_list_integer(task, sequence, index):
 	
-	length = task.signature[0].length
+	length = len(sequence)
 	if -length <= index < length:
-		task.properties.type = task.signature[0].member
 		return sequence[int(index)]
 	else:
-		task.properties.type = 'null'
 		return task.error('INDX', index)
 
 def index_list_slice(task, sequence, index):
 	
-	length = task.signature[0].length
+	length = len(sequence)
 	if (-length <= index.start < length) and (-length <= index.end < length):
-		task.properties.member = task.signature[0].member
-		task.properties.length = task.signature[1].length
 		return tuple(sequence[int(n)] for n in iter(index))
 	else:
-		task.properties.type = 'null'
 		return task.error('INDX', index)
 
 def index_record_any(task, sequence, index):
 	
 	if index in sequence:
-		task.properties.type = task.signature[0].member
 		return sequence[index]
 	else:
-		task.properties.type = 'null'
 		return task.error('INDX', index)
 
 def index_record_slice(task, sequence, index):
 
-	length = task.signature[0].length
+	length = len(sequence)
 	if (-length <= index.start < length) and (-length <= index.end < length):
-		task.properties.member = task.signature[0].member
-		task.properties.length = task.signature[1].length
 		items = tuple(sequence.items())
 		return dict(items[int(n)] for n in iter(index))
 	else:
-		task.properties.type = 'null'
 		return task.error('INDX', index)
 
 def index_slice_integer(task, sequence, index):
 
-	length = task.signature[0].length
+	length = len(sequence)
 	if -length <= index < length:
 		return sequence[int(index)]
 	else:
-		task.properties.type = 'null'
 		return task.error('INDX', index)
 
 def index_slice_slice(task, sequence, index):
 	
-	length = task.signature[0].length
+	length = len(sequence)
 	if (-length <= index.start < length) and (-length <= index.end < length):
-		task.properties.length = task.signature[1].length
 		return tuple(sequence[int(n)] for n in iter(index))
 	else:
-		task.properties.type = 'null'
 		return task.error('INDX', index)
 
 std_index = funcdef(
@@ -167,8 +152,7 @@ std_index = funcdef(
 )
 
 def iterator_sequence(task, sequence):
-
-	task.properties.member = task.signature[0].member
+	
 	return iter(sequence)
 
 std_iterator = funcdef(
@@ -202,11 +186,10 @@ std_link = funcdef(
 def next_any(task, iterator):
 	
 	try:
-		task.properties.type = task.signature[0].member
 		return next(iterator)
 	except StopIteration:
-		task.properties.type = 'null'
-		return None
+		task.values[task.op.args[0]] = None # Sanitise register
+		return task.branch(1, False, True)
 
 std_next = funcdef(
 	next_any
@@ -294,29 +277,3 @@ std_return = funcdef(
 #std_type = funcdef('.type')
 #std_type.retrieve(type_type)
 #std_type.retrieve(type_type_untyped)
-
-def unloop_none(task, value):
-
-	task.values[str(int(task.op.args[0]) - 1)] = None # Sanitise registers
-	return task.branch(1, False, True)
-
-def unloop_some(task, value):
-	
-	task.properties.__dict__.update(task.signature[0].__dict__)
-	return value
-
-def unloop_none_type(task, value, routine):
-	
-	task.values[str(int(task.op.args[0]) - 1)] = None # Sanitise registers
-	return task.branch(1, False, True)
-
-def unloop_some_type(task, value, routine):
-	
-	return value
-
-std_unloop = funcdef(
-	unloop_none,
-	unloop_some,
-	unloop_none_type,
-	unloop_some_type
-)

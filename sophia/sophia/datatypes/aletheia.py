@@ -104,9 +104,12 @@ class typedef:
 	#		return None
 	#	return typedef(self.type, self.__dict__ | other.__dict__)
 
-	#def __or__(self, other): # Implements type union / mutual supertype
-		
-	#	return descriptor(None, **{k: v for k, v in self.__dict__.items() if k in other.__dict__ and other.__dict__[k] == v})
+	def __or__( # Implements type union / mutual supertype
+		self,
+		other: Self
+		) -> Self:
+
+		return typedef(None, *[i for i in self.types if i in other.types])
 
 	def __str__(self) -> str:
 
@@ -121,13 +124,6 @@ class typedef:
 
 		shared = [i for i in self.types if i not in other.types]
 		return shared[-1] if shared else None
-
-	def complete(
-		self,
-		other: Self
-		) -> Self:
-
-		pass
 
 	@classmethod
 	def read( # Creates a typedef from a type descriptor
@@ -273,7 +269,7 @@ class multimethod:
 
 	def __bool__(self): return True
 
-	def __str__(self): return '{0} {1} {2}'.format(self.property.name, self.index, self.value)
+	def __str__(self): return '{0} {1}'.format(self.property.name, self.index)
 
 	def set( # Set check attributes
 		self,
@@ -281,12 +277,13 @@ class multimethod:
 		false: method,
 		check: typedef,
 		index: int,
-		) -> None:
+		) -> Self:
 
 		self.true = true
 		self.false = false
 		self.property = check
 		self.index = index
+		return self
 
 	def extend( # Add node to tree
 		self,
@@ -319,20 +316,18 @@ class multimethod:
 		new_length, other_length = len(new.signature), len(other.signature)
 		node = type(self)() # Get new instance of subclass
 		if new_length > other_length:
-			node.set(new, other, cls_any, other_length)
+			return node.set(new, other, cls_any, other_length)
 		elif new_length < other_length:
-			node.set(other, new, cls_any, new_length)
+			return node.set(other, new, cls_any, new_length)
 		else: # Prioritise unmatched arity over unmatched signatures
 			for i in range(new_length): # Signatures guaranteed not to match
 				new_item, other_item = new.signature[i], other.signature[i]
 				new_criterion = new_item.criterion(other_item)
 				other_criterion = other_item.criterion(new_item)
 				if new_criterion is not None: # If new has a property that other doesn't
-					node.set(new, other, new_criterion, i)
-					break
+					return node.set(new, other, new_criterion, i)
 				elif other_criterion is not None: # If other has a property that new doesn't, just in case
-					node.set(other, new, other_criterion, i)
-					break
+					return node.set(other, new, other_criterion, i)
 		return node
 
 	def check( # Universal dispatch check exploiting properties of structural typing
@@ -663,7 +658,8 @@ class generator(type):
 	@classmethod
 	def element(
 		cls,
-		value,
+		task,
+		value: Any,
 		) -> bool:
 
 		return all(cls.property(i) for i in value)
@@ -671,7 +667,8 @@ class generator(type):
 	@classmethod
 	def length(
 		cls,
-		value,
+		task,
+		value: Any,
 		) -> bool:
 
 		return len(value) == cls.property
@@ -724,15 +721,6 @@ def infer( # Infers typedef of value
 #		return reduce(descriptor.__or__, [infer_type(item) for item in value.values()]) if value else 'untyped'
 #	except AttributeError:
 #		return reduce(descriptor.__or__, [infer_type(item) for item in value]) if value else 'untyped'
-
-def mutual(
-	self: typedef,
-	other: typedef
-	) -> typedef:
-
-	new = typedef(self)
-	new.types = [i for i in new.types if i in other.types]
-	return new
 
 types = {
 	'any': std_any,
