@@ -501,3 +501,28 @@ triple a: [1, 2, 3]
 user has explicitly chosen to guarantee properties
 
 in sophia, the user just has to do some more work to explicitly describe the properties of their data
+
+side note: is it useful to retain all of a name's properties when reassigned?
+for instance, in the above example, is a now restricted to the type list.element:int.length:3?
+change the behaviour of untyped assignment so that it binds the type of the assigned value no matter what
+for example:
+
+a: [1, 2, 3]
+> list.element:int.length:3
+a: 1
+> integer
+
+this matches the behaviour of assignment in dynamic languages
+which is what the user will be expecting when using untyped assignment
+
+so this also works?
+
+int a: 1
+> integer
+a: '1'
+> string.element:string.length:1
+
+i mean, i guess
+it's not that hard to write the type explicitly anyway
+since the user must alias any given type before it can be used in assignment
+better not to make assignment context-dependent

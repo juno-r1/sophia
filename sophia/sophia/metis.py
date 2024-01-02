@@ -44,6 +44,26 @@ class processor:
 			if self.op.name == 'BIND':
 				self.bind()
 		return self
+
+	def bind(self):
+		"""
+		Evaluates type checking for name binding, removing instructions
+		if the type check is known to succeed.
+		Currently does not bother to remove unnecessary type checks.
+		"""
+		i, checks, addresses = self.path, [], []
+		while self.instructions[i].name != 'BIND':
+			i = i + 1
+		binds = self.instructions[self.path:i]
+		names = [item.label[0] for item in binds]
+		for item in binds:
+			if item.name == '?':
+				addresses.append(item.args[0])
+			else:
+				checks.append(item)
+				addresses.append(item.register)
+		self.instructions[self.path - 1:i + 1] = checks + [instruction('BIND', '', tuple(addresses), label = names)]
+		self.path = self.path + len(checks)
 	
 #		#[print(i) for i in self.instructions]
 #		#print('---')
@@ -139,27 +159,6 @@ class processor:
 #		self.state = self.state.outer
 #		if self.instructions[self.path].name != 'ELSE':
 #			self.state.resolve()
-
-	def bind(self):
-		"""
-		Evaluates type checking for name binding, removing instructions
-		if the type check is known to succeed.
-		Currently does not bother to remove unnecessary type checks.
-		"""
-		i, checks, addresses = self.path, [], []
-		while self.instructions[i].name != 'BIND':
-			i = i + 1
-		binds = self.instructions[self.path:i]
-		names = [item.label[0] for item in binds]
-		for n, item in enumerate(binds):
-			if item.name == '?':
-				checks.append(instruction('TYPE', '', item.args, label = [item.register, names[n]]))
-				addresses.append(item.register)
-			else:
-				checks.append(item)
-				addresses.append(item.register)
-		self.instructions[self.path - 1:i + 1] = checks + [instruction('BIND', '', tuple(addresses), label = names)]
-		self.path = i
 
 #	def sequence(self, address, registers):
 		

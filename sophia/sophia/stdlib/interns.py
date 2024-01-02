@@ -78,11 +78,8 @@ std_constraint = funcdef(
 
 def index_string_integer(task, sequence, index):
 	
-	length = len(sequence)
-	if -length <= index < length:
-		return sequence[int(index)] # Sophia's integer type is abstract, Python's isn't
-	else:
-		return task.error('INDX', index)
+	length = len(sequence) # Sophia's integer type is abstract, Python's isn't
+	return sequence[int(index)] if -length <= index < length else task.error('INDX', index)
 
 def index_string_slice(task, sequence, index):
 
@@ -95,10 +92,7 @@ def index_string_slice(task, sequence, index):
 def index_list_integer(task, sequence, index):
 	
 	length = len(sequence)
-	if -length <= index < length:
-		return sequence[int(index)]
-	else:
-		return task.error('INDX', index)
+	return sequence[int(index)] if -length <= index < length else task.error('INDX', index)
 
 def index_list_slice(task, sequence, index):
 	
@@ -110,10 +104,7 @@ def index_list_slice(task, sequence, index):
 
 def index_record_any(task, sequence, index):
 	
-	if index in sequence:
-		return sequence[index]
-	else:
-		return task.error('INDX', index)
+	return sequence[index] if index in sequence else task.error('INDX', index)
 
 def index_record_slice(task, sequence, index):
 
@@ -127,10 +118,7 @@ def index_record_slice(task, sequence, index):
 def index_slice_integer(task, sequence, index):
 
 	length = len(sequence)
-	if -length <= index < length:
-		return sequence[int(index)]
-	else:
-		return task.error('INDX', index)
+	return sequence[int(index)] if -length <= index < length else task.error('INDX', index)
 
 def index_slice_slice(task, sequence, index):
 	
