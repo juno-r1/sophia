@@ -40,9 +40,7 @@ class runtime:
 		ast, instructions, namespace = parser.parse(source)
 		if 'tree' in flags:
 			ast.debug() # Here's tree
-		processor = metis.processor(instructions, namespace)
-		if not processor.analyse():
-			raise SystemExit
+		processor = metis.processor(instructions, namespace).analyse()
 		"""
 		Build the supervisor. Main task is initialised and awaiting execution.
 		"""
@@ -145,9 +143,11 @@ class runtime:
 #		elif self.tasks[pid].count == 0: # Free own task
 #			del self.tasks[pid]
 
-	def debug(self) -> Any: # Function for testing tasks with error handling and without multiprocessing
-
-		self.main.flags = tuple(list(self.main.flags) + ['debug']) # Suppresses terminate message
+	def debug(self) -> Any:
+		"""
+		Function for testing tasks with error handling and without multiprocessing.
+		"""
+		self.main.handler.flags = tuple(list(self.main.handler.flags) + ['debug']) # Suppresses terminate message
 		return self.main.execute()
 
 #	def run(self) -> Any: # Supervisor process and pool management

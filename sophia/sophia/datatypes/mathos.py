@@ -442,3 +442,20 @@ class slice:
 	def __str__(self):
 
 		return '{0}:{1}:{2}'.format(self.start, self.end, self.step)
+
+	def __and__(self, other):
+
+		n, m = self.step, other.step
+		while m != 0: # Euclidean algorithm for greatest common divisor
+			n, m = m, n % m
+		if n % (other.start - self.start) == 0: # Solution for intersection of slices
+			step = (self.step * other.step) / n # Step of intersection
+			ranges = [self.start, self.end, other.start, other.end].sort()
+			lower, upper = ranges[1], ranges[2]
+			lower = lower - (lower % step) + step # Gets highest lower bound
+			upper = upper - (upper % step) # Gets lowest upper bound
+			return slice(lower, upper, m)
+
+	def __or__(self, other):
+
+		return tuple((list(self) + list(other)).sort())

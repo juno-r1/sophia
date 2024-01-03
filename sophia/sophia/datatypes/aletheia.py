@@ -65,7 +65,7 @@ class typedef:
 		Instead, a custom dispatch is performed based on the known
 		properties of the argument's type.
 		"""
-		address, definition = task.op.register, task.signature[0]
+		address, definition = task.op.address, task.signature[0]
 		if definition < self: # Value is subtype
 			task.values[address] = value
 			task.types[address] = typedef(self)
@@ -242,7 +242,7 @@ class multimethod:
 		https://github.com/JeffBezanson/phdthesis
 		Binary search tree yields closest key for method, then key is verified.
 		"""
-		address, signature = task.op.register, task.signature
+		address, signature = task.op.address, task.signature
 		instance = self.true if signature else self.false
 		while instance: # Traverse tree; terminates upon reaching leaf node
 			instance = instance.true if instance.index < task.op.arity and instance.check(signature) else instance.false

@@ -1,6 +1,7 @@
 import re
 
 from .datatypes import mathos
+from .hemera import handler
 from .internal import expressions, presets, statements
 from .internal.instructions import instruction
 from .internal.nodes import node, lexer
@@ -21,14 +22,17 @@ class parser:
 		self.constant = offset # Constant register counter
 		self.instructions = [instruction('START', label = [name])]
 		self.values = {'0': None, '&0': None} # Register namespace
+		self.handler = handler() # Error handler
 
 	def parse(
 		self,
 		source: str
 		) -> tuple[statements.module, list[instruction], dict]:
 
-		if not (source and parser.balanced(source)):
+		if not source:
 			raise SystemExit # End immediately
+		if not parser.balanced(source):
+			pass
 		tokens = self.tokenise(source)
 		ast = self.link(tokens)
 		instructions, namespace = self.generate()
@@ -139,7 +143,7 @@ class parser:
 				#	token_type = tokens[-1].pop().value # Sets return type of operator
 				#	token.type = sub_types[token_type] if token_type in sub_types else token_type
 			if not comment:
-				token.line, token.column = line, column
+				#token.line, token.column = line, column
 				token.scope = scope
 				tokens[-1].append(token)
 				last = token
@@ -172,7 +176,7 @@ class parser:
 				token = statements.alias(line)
 			else: # Tokenises expressions
 				token = lexer(line).parse() # Passes control to a lexer object that returns an expression tree when parse() is called
-			token.line = line[0].line
+			#token.line = line[0].line
 			token.scope = line[0].scope
 			lines.append(token)
 		head, last = self.node, self.node # Head token and last line
@@ -204,10 +208,9 @@ class parser:
 				if isinstance(self.node.head, statements.assert_statement) and self.path[-2] < self.node.head.active: # Insert assertion
 					self.instructions.append(
 						instruction(
-							'.assert',
+							'assert',
 							'0',
-							(self.node.register,),
-							line = self.node.line
+							(self.node.register,)
 						)
 					)
 				elif isinstance(self.node.head, statements.type_statement) and self.path[-2] >= self.node.head.active: # Insert constraint
@@ -216,7 +219,6 @@ class parser:
 							'.constraint',
 							'0',
 							(self.node.register,),
-							line = self.node.line,
 							label = [self.node.head.value[0].value] if self.path[-2] == self.node.head.length - 1 else []
 						)
 					)
@@ -235,9 +237,9 @@ class parser:
 				self.path.append(0)
 				if not isinstance(self.node, statements.for_statement):
 					if self.node.branch:
-						self.instructions.append(instruction('ELSE', line = self.node.line))
+						self.instructions.append(instruction('ELSE'))
 					elif self.node.block:
-						self.instructions.append(instruction('START', line = self.node.line))
+						self.instructions.append(instruction('START'))
 				if isinstance(self.node, statements.event_statement):
 					self.node.value = self.node.value + self.node.nodes[0].value
 			if self.path[-1] == self.node.active:
@@ -246,11 +248,11 @@ class parser:
 				instructions = self.node.execute()
 			else:
 				instructions = []
-			for x in instructions:
-				x.line = self.node.line
+			#for x in instructions:
+			#	x.line = self.node.line
 			self.instructions.extend(instructions)
 			if self.path[-1] == self.node.length and self.node.block:
-				self.instructions.append(instruction('END', line = self.node.line))
+				self.instructions.append(instruction('END'))
 		self.instructions.append(instruction('END'))
 		return self.instructions, self.values
 

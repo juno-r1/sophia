@@ -95,9 +95,9 @@ class keyword(identifier):
 		while type(loop).__name__ not in ('for_statement', 'while_statement'):
 			loop = loop.head
 		if self.value == 'continue':
-			return ins('CONTINUE'),
+			return ins('.continue', '0'),
 		elif self.value == 'break':
-			return ins('BREAK', '', (loop.register, loop.value.value if loop.value else '0')),
+			return ins('.break', '0', (loop.register, loop.value.value if loop.value else '0')),
 
 class operator(expression):
 	"""Generic operator node."""
@@ -270,19 +270,19 @@ class right_conditional(infix):
 		) -> tuple[ins, ...]:
 		
 		return (ins('BIND'),
-				ins('?', self.register, (self.nodes[0].register,), label = [self.head.register]),
-				ins('BIND', label = [self.head.register]),
+				ins('?', self.register, (self.nodes[0].register,)),
+				ins('.bind', '0', label = [self.head.register]),
 				ins('.branch', self.register),
-				ins('END', line = self.line),
-				ins('ELSE', line = self.line)) # Enclosed by labels of left conditional
+				ins('END'),
+				ins('ELSE')) # Enclosed by labels of left conditional
 
 	def execute(
 		self
 		) -> tuple[ins, ...]:
 		
 		return (ins('BIND'),
-				ins('?', self.register, (self.nodes[1].register,), label = [self.head.register]),
-				ins('BIND', label = [self.head.register]))
+				ins('?', self.register, (self.nodes[1].register,)),
+				ins('.bind', '0', label = [self.head.register]))
 
 class infix_r(operator):
 	"""Defines a right-binding infix."""
@@ -318,7 +318,7 @@ class concatenator(operator):
 		) -> tuple[ins, ...]:
 		
 		if self.value == ':' and len(self.nodes) == 3:
-			return ins(':', self.register, tuple(item.register for item in self.nodes)),
+			return ins('.slice', self.register, tuple(item.register for item in self.nodes)),
 		else:
 			return ()
 
@@ -362,12 +362,9 @@ class function_call(left_bracket):
 		) -> tuple[ins, ...]:
 		
 		args = tuple(item.register for item in self.nodes[1:])
-		if isinstance(self.head, bind):
-			return ins(self.nodes[0].value, self.register, args, label = ['.bind', self.head.value]),
-		else:
-			names = self.nodes[0].value.split('.')[::-1]
-			return [ins(names[0], self.register, args)] + \
-				   [ins(item, self.register, (self.register,)) for item in names[1:]]
+		names = self.nodes[0].value.split('.')[::-1]
+		return [ins(names[0], self.register, args)] + \
+				[ins(item, self.register, (self.register,)) for item in names[1:]]
 
 class parenthesis(left_bracket):
 	"""Defines a set of parentheses."""
@@ -398,10 +395,10 @@ class sequence_index(left_bracket):
 		self
 		) -> tuple[ins, ...]:
 		
-		return [ins('.index', # Own register is not guaranteed to be the same as the register of the first index
+		return [ins('[', # Own register is not guaranteed to be the same as the register of the first index
 					self.register,
 					(self.nodes[0].register, self.nodes[1].register))] + \
-			   [ins('.index',
+			   [ins('[',
 					self.register,
 					(self.register, item.register))
 				for item in self.nodes[2:]]
@@ -427,12 +424,9 @@ class sequence_literal(left_bracket):
 		if self.nodes and self.nodes[0].value == ':' and len(self.nodes[0].nodes) == 3:
 			return ins('.range', self.register, tuple(i.register for i in self.nodes[0].nodes)),
 		elif self.nodes and self.nodes[0].value == ':':
-			registers = []
-			for item in self.nodes:
-				registers = registers + [item.nodes[0].register, item.nodes[1].register]
-			return ins('RECORD', '', tuple(registers), label = [self.register]),
+			return ins('.record', self.register, tuple(i.nodes[1].register for i in self.nodes), label = [i.nodes[0].register for i in self.nodes]),
 		elif self.nodes:
-			return ins('LIST', '', tuple(i.register for i in self.nodes), label = [self.register]),
+			return ins('.list', self.register, tuple(i.register for i in self.nodes)),
 		else:
 			return ()
 

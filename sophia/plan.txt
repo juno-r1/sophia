@@ -526,3 +526,37 @@ i mean, i guess
 it's not that hard to write the type explicitly anyway
 since the user must alias any given type before it can be used in assignment
 better not to make assignment context-dependent
+
+---
+
+better instruction format
+this. sucks
+it *works*, but the register and the arguments randomly flip for labels
+among other things
+also they encode line numbers, which isn't really ideal
+
+instructions need to be perfectly representable as a string
+there needs to be a better way to distinguish between:
+	instructions
+	non-dispatch instructions
+	labels
+
+instructions
+	name
+	address
+	args
+	label
+
+pseudo-instructions
+	name
+	address
+	args
+	label
+
+label
+	name
+	label
+
+an identifier cannot have an operator symbol in it
+therefore, pseudo-instructions can be identified by sticking an operator symbol in them
+labels are easily identifiable by the fact that they have no return address

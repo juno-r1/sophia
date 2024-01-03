@@ -4,8 +4,10 @@ The test suite is used to validate the implementation of the language specificat
 Users can use this tool to verify the integrity of their installation.
 '''
 
-import sophia, os
-from mathos import real
+import os
+
+from sophia.datatypes.mathos import real
+from sophia.runtime import runtime
 
 if __name__ == '__main__':
 
@@ -40,8 +42,8 @@ if __name__ == '__main__':
 	print('', 'Pass', 'Fail', sep = '\t')
 	successes, failures = 0, 0
 	for i, path in enumerate(os.listdir('harmonia')):
-		runtime = sophia.runtime(path, root = 'harmonia')
-		result = runtime.run()
+		main = runtime(path, root = 'harmonia')
+		result = main.debug()
 		result = True if result == target[i] else False
 		if result:
 			successes = successes + 1

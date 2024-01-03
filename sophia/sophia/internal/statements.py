@@ -33,7 +33,7 @@ class module(coroutine):
 
 	def execute(self) -> tuple[ins, ...]:
 		
-		return ins('.return', '0'), # Default end of module
+		return ins('return', '0'), # Default end of module
 
 class type_statement(coroutine):
 	"""Defines a type definition."""
@@ -73,7 +73,7 @@ class type_statement(coroutine):
 		self
 		) -> tuple[ins, ...]:
 		
-		return (ins('.return', '0', (self.name,)),
+		return (ins('return', '0', (self.name,)),
 				ins('END', label = [self.name]))
 
 class event_statement(coroutine):
@@ -93,7 +93,7 @@ class event_statement(coroutine):
 
 		names = [item.value for item in self.value]
 		types = [item.type if item.type else 'any' for item in self.value]
-		return (ins('.event', self.name, label = [i for pair in zip(types, names) for i in pair] + [self.message.type, self.message.value]),
+		return (ins('event', self.name, label = [i for pair in zip(types, names) for i in pair] + [self.message.type, self.message.value]),
 				ins('START', label = [self.name]))
 
 	def execute(
@@ -102,10 +102,10 @@ class event_statement(coroutine):
 
 		if self.type:
 			return (ins(self.type, self.register, ('&0',)),
-					ins('.return', '0'),
+					ins('return', '0'),
 					ins('END'))
 		else:
-			return (ins('.return', '0'),
+			return (ins('return', '0'),
 					ins('END', label = [self.name]))
 
 class function_statement(coroutine):
@@ -138,10 +138,10 @@ class function_statement(coroutine):
 		
 		if self.type:
 			return (ins(self.type, self.register, ('&0',)),
-					ins('.return', '0'),
+					ins('return', '0'),
 					ins('END'))
 		else:
-			return (ins('.return', '0'),
+			return (ins('return', '0'),
 					ins('END', label = [self.name]))
 
 class assignment(statement):
@@ -177,10 +177,9 @@ class assignment(statement):
 		return [ins('BIND')] + \
 			   [ins(item.type if item.type else '?',
 				str(int(self.register) + i),
-				(self.nodes[i].register,),
-				label = [item.value])
+				(self.nodes[i].register,))
 				for i, item in enumerate(self.value)] + \
-			   [ins('BIND', label = [item.value for item in self.value])]
+			   [ins('.bind', '0', label = [item.value for item in self.value])]
 
 class if_statement(statement):
 	"""Defines an if statement."""
@@ -198,13 +197,13 @@ class if_statement(statement):
 		self
 		) -> tuple[ins, ...]:
 		
-		return ins('.branch', self.register, (self.nodes[0].register,)),
+		return ins('if', self.register, (self.nodes[0].register,)),
 
 	def execute(
 		self
 		) -> tuple[ins, ...]:
 		
-		return ins('.branch', self.register),
+		return ins('if', self.register),
 
 class while_statement(statement):
 	"""Defines a while statement."""
@@ -222,13 +221,13 @@ class while_statement(statement):
 		self
 		) -> tuple[ins, ...]:
 		
-		return ins('.branch', self.register, (self.nodes[0].register,)),
+		return ins('if', self.register, (self.nodes[0].register,)),
 
 	def execute(
 		self
 		) -> tuple[ins, ...]:
 		
-		return ins('LOOP'),
+		return ins('.loop', '0'),
 
 class for_statement(statement):
 	"""Defines a for statement."""
@@ -247,13 +246,13 @@ class for_statement(statement):
 		) -> tuple[ins, ...]: 
 		
 		return (ins('.iterator', self.register, (self.nodes[0].register,)),
-				ins('ELSE' if self.branch else 'START', line = self.line),
+				ins('ELSE' if self.branch else 'START'),
 				ins('.next', '0', (self.register,)),
 				ins('BIND'),
 				ins(self.value.type if self.value.type else '?', '0', ('0',), label = [self.value.value]),
-				ins('BIND', label = [self.value.value]))
+				ins('.bind', '0', label = [self.value.value]))
 
-	def execute(self): return ins('LOOP'),
+	def execute(self): return ins('.loop', '0'),
 
 class assert_statement(statement):
 	"""Defines an assertion."""
@@ -290,7 +289,7 @@ class assert_statement(statement):
 		self
 		) -> tuple[ins, ...]:
 		
-		return ins('.branch', self.register),
+		return ins('if', self.register),
 
 class return_statement(statement):
 	"""Defines a return statement."""
@@ -312,9 +311,9 @@ class return_statement(statement):
 		type_name = routine.type
 		if type_name and not isinstance(routine, module):
 			return (ins(type_name, self.register, (self.nodes[0].register if self.nodes else self.register,)),
-					ins('.return', '0', (self.nodes[0].register,) if self.nodes else ()))
+					ins('return', '0', (self.nodes[0].register,) if self.nodes else ()))
 		else:
-			return ins('.return', '0', (self.nodes[0].register,) if self.nodes else ()),
+			return ins('return', '0', (self.nodes[0].register,) if self.nodes else ()),
 
 class link_statement(statement):
 	"""Defines a link."""
@@ -349,7 +348,7 @@ class start_statement(statement):
 		self
 		) -> tuple[ins, ...]:
 		
-		return (ins('.return', '0'),
+		return (ins('return', '0'),
 				ins('END'),
 				ins('EVENT', label = [self.head.message.value]),
 				ins(self.head.message.type, self.head.message.value, (self.head.message.value,)))

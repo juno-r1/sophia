@@ -75,21 +75,6 @@ PARENS = {
 	'{': '}'
 }
 STDLIB_NAMES = {
-	# Interns
-	'assert': '.assert',
-	'branch': '.branch',
-	'constraint': '.constraint',
-	'event': '.event',
-	'function': '.function',
-	'index': '.index',
-	'iterator': '.iterator',
-	'link': '.link',
-	'meta': '.meta',
-	'next': '.next',
-	'range': '.range',
-	'return': '.return',
-	'skip': '.skip',
-	'type': '.type',
 	# Streams
 	'stdin': 'stdin',
 	'stdout': 'stdout',
@@ -131,7 +116,7 @@ STDLIB_NAMES = {
 	'lxr': 'xor',
 	'ins': '&',
 	'uni': '|',
-	'slc': ':',
+	'idx': '[',
 	'sfe': '?',
 	'usf': '!',
 	'snd': '->',
@@ -139,6 +124,7 @@ STDLIB_NAMES = {
 	'cmp': '.',
 	# Built-ins
 	'abs': 'abs',
+	'assert': 'assert',
 	'cast': 'cast',
 	'ceiling': 'ceiling',
 	'dispatch': 'dispatch',
@@ -147,6 +133,7 @@ STDLIB_NAMES = {
 	'filter': 'filter',
 	'format': 'format',
 	'hash': 'hash',
+	'if': 'if',
 	'input': 'input',
 	'join': 'join',
 	'length': 'length',
@@ -154,6 +141,7 @@ STDLIB_NAMES = {
 	'namespace': 'namespace',
 	'print': 'print',
 	'reduce': 'reduce',
+	'return': 'return',
 	'reverse': 'reverse',
 	'round': 'round',
 	'sign': 'sign',

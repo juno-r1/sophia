@@ -30,7 +30,6 @@
     <Compile Include="sophia\hemera.py" />
     <Compile Include="sophia\datatypes\aletheia.py" />
     <Compile Include="sophia\stdlib\builtins.py" />
-    <Compile Include="sophia\stdlib\interns.py" />
     <Compile Include="sophia\stdlib\operators.py" />
     <Compile Include="sophia\datatypes\iris.py" />
     <Compile Include="sophia\internal\nodes.py" />

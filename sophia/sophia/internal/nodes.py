@@ -13,8 +13,6 @@ class node:
 		self.nodes = [i for i in nodes] # For operands that should be evaluated
 		self.length = 0 # Performance optimisation
 		self.register = '0' # Register that this node returns to
-		self.line = 0
-		self.column = 0
 		self.scope = 0
 		self.active = -1 # Indicates path index for activation of start()
 		self.branch = False # Else statement
@@ -63,11 +61,15 @@ class lexer:
 		except StopIteration:
 			self.peek = eol()
 
-	def parse( # LBP stands for "left-binding power"
+	def parse(
 		self,
 		lbp: int = 0
 		) -> node:
-
+		"""
+		LBP: left-binding power
+		NUD: null denotation (prefixes)
+		LED: left denotation (infixes)
+		"""
 		self.use()
 		if isinstance(self.peek, eol): # Detects end of expression
 			return self.token # End-of-line token

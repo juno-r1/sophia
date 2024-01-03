@@ -33,12 +33,12 @@ class processor:
 		#self.state = None
 		#self.scope()
 
-	def analyse( # Disabled until I can figure out how this is meant to work
+	def analyse(
 		self
 		) -> Self | None:
 
-		[print(i) for i in self.instructions]
-		while self.path < len(self.instructions): # This can and does change
+		#[print(i) for i in self.instructions]
+		while 0 < self.path < len(self.instructions): # This can and does change
 			self.op = self.instructions[self.path]
 			self.path = self.path + 1
 			if self.op.name == 'BIND':
@@ -52,17 +52,17 @@ class processor:
 		Currently does not bother to remove unnecessary type checks.
 		"""
 		i, checks, addresses = self.path, [], []
-		while self.instructions[i].name != 'BIND':
+		while self.instructions[i].name != '.bind':
 			i = i + 1
 		binds = self.instructions[self.path:i]
-		names = [item.label[0] for item in binds]
 		for item in binds:
 			if item.name == '?':
 				addresses.append(item.args[0])
 			else:
 				checks.append(item)
-				addresses.append(item.register)
-		self.instructions[self.path - 1:i + 1] = checks + [instruction('BIND', '', tuple(addresses), label = names)]
+				addresses.append(item.address)
+		self.instructions[i].args = tuple(addresses)
+		self.instructions[self.path - 1:i] = checks
 		self.path = self.path + len(checks)
 	
 #		#[print(i) for i in self.instructions]
@@ -80,7 +80,7 @@ class processor:
 #				else:
 #					self.bind()
 #				continue
-#			elif (address := self.op.register):
+#			elif (address := self.op.address):
 #				if address in STDLIB_NAMES:
 #					return self.error('BIND', address)
 #				try:

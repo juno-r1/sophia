@@ -4,7 +4,7 @@ Built-in functions.
 from functools import reduce
 from math import copysign
 
-from ..datatypes.aletheia import funcdef
+from ..datatypes.aletheia import funcdef, typedef
 from ..datatypes.mathos import real
 
 def abs_number(task, value):
@@ -13,6 +13,19 @@ def abs_number(task, value):
 
 std_abs = funcdef(
 	abs_number
+)
+
+def assert_none(task, value): # Null assertion
+	
+	return task.branch(1, True, True)
+
+def assert_some(task, value): # Non-null assertion
+	
+	return value
+
+std_assert = funcdef(
+	assert_none,
+	assert_some
 )
 
 #def cast_any_type(task, value, target):
@@ -127,6 +140,20 @@ def hash_any(task, value):
 
 std_hash = funcdef(
 	hash_any
+)
+
+def if_none(task): # Unconditional branch
+	
+	return task.branch(1, False, True)
+
+def if_boolean(task, condition): # Conditional branch
+
+	if not condition:
+		return task.branch(1, True, True)
+
+std_if = funcdef(
+	if_none,
+	if_boolean
 )
 
 def input_string(task, value):
@@ -249,6 +276,29 @@ std_print = funcdef(
 
 #std_reduce = funcdef('reduce')
 #std_reduce.retrieve(reduce_function_list)
+
+def return_none(task):
+	
+	if task.caller:
+		task.restore(task.caller) # Restore namespace of calling routine
+	else:
+		task.path = 0 # End task
+	return None # Returns null
+
+def return_some(task, sentinel):
+	
+	task.properties = typedef(task.final)
+	if task.caller:
+		task.restore(task.caller) # Restore namespace of calling routine
+	else:
+		task.path = 0 # End task
+	task.values[task.op.address] = sentinel # Different return address
+	return sentinel
+
+std_return = funcdef(
+	return_none,
+	return_some
+)
 
 def reverse_slice(task, value):
 		

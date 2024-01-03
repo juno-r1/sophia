@@ -230,13 +230,61 @@
     ],
     "final": "type"
   },
-  "t_slc": {
+  "b_idx_string_integer": {
     "signature": [
-      "integer",
-      "integer",
+      "string",
       "integer"
     ],
-    "final": "slice"
+    "final": "string.element:string.length:1"
+  },
+  "b_idx_string_slice": {
+    "signature": [
+      "string",
+      "slice"
+    ],
+    "final": "string.element:string"
+  },
+  "b_idx_list_integer": {
+    "signature": [
+      "list",
+      "integer"
+    ],
+    "final": "?"
+  },
+  "b_idx_list_slice": {
+    "signature": [
+      "list",
+      "slice"
+    ],
+    "final": "list"
+  },
+  "b_idx_record_any": {
+    "signature": [
+      "record",
+      "any"
+    ],
+    "final": "?"
+  },
+  "b_idx_record_slice": {
+    "signature": [
+      "record",
+      "slice"
+    ],
+    "final": "record"
+  },
+  "b_idx_slice_integer": {
+    "signature": [
+      "slice",
+      "integer"
+    ],
+    "final": "integer"
+  },
+  "b_idx_slice_slice": {
+    "signature": [
+      "slice",
+      "slice"
+    ],
+    "final": "list.element:integer"
   },
   "u_sfe_none": {
     "signature": [
@@ -290,6 +338,12 @@
     ],
     "final": "function"
   },
+  "abs_number": {
+    "signature": [
+      "number"
+    ],
+    "final": "number"
+  },
   "assert_none": {
     "signature": [
       "none"
@@ -301,151 +355,6 @@
       "some"
     ],
     "final": "none"
-  },
-  "branch_none": {
-    "signature": [],
-    "final": "none"
-  },
-  "branch_boolean": {
-    "signature": [
-      "boolean"
-    ],
-    "final": "none"
-  },
-  "constraint_boolean": {
-    "signature": [
-      "boolean"
-    ],
-    "final": "none"
-  },
-  "event_none": {
-    "signature": [],
-    "final": "event"
-  },
-  "function_none": {
-    "signature": [],
-    "final": "function"
-  },
-  "index_string_integer": {
-    "signature": [
-      "string",
-      "integer"
-    ],
-    "final": "string.element:string.length:1"
-  },
-  "index_string_slice": {
-    "signature": [
-      "string",
-      "slice"
-    ],
-    "final": "string.element:string"
-  },
-  "index_list_integer": {
-    "signature": [
-      "list",
-      "integer"
-    ],
-    "final": "?"
-  },
-  "index_list_slice": {
-    "signature": [
-      "list",
-      "slice"
-    ],
-    "final": "list"
-  },
-  "index_record_any": {
-    "signature": [
-      "record",
-      "any"
-    ],
-    "final": "?"
-  },
-  "index_record_slice": {
-    "signature": [
-      "record",
-      "slice"
-    ],
-    "final": "record"
-  },
-  "index_slice_integer": {
-    "signature": [
-      "slice",
-      "integer"
-    ],
-    "final": "integer"
-  },
-  "index_slice_slice": {
-    "signature": [
-      "slice",
-      "slice"
-    ],
-    "final": "list.element:integer"
-  },
-  "iterator_sequence": {
-    "signature": [
-      "sequence"
-    ],
-    "final": "any"
-  },
-  "link_none": {
-    "signature": [],
-    "final": "future"
-  },
-  "meta_string": {
-    "signature": [
-      "string"
-    ],
-    "final": "none"
-  },
-  "next_any": {
-    "signature": [
-      "any"
-    ],
-    "final": "?"
-  },
-  "range_integer_integer_integer": {
-    "signature": [
-      "integer",
-      "integer",
-      "integer"
-    ],
-    "final": "list.element:integer"
-  },
-  "return_none": {
-    "signature": [],
-    "final": "none"
-  },
-  "return_some": {
-    "signature": [
-      "some"
-    ],
-    "final": "none"
-  },
-  "skip_any": {
-    "signature": [
-      "any"
-    ],
-    "final": "?"
-  },
-  "type_type": {
-    "signature": [
-      "type"
-    ],
-    "final": "type"
-  },
-  "type_type_any": {
-    "signature": [
-      "type",
-      "any"
-    ],
-    "final": "type"
-  },
-  "abs_number": {
-    "signature": [
-      "number"
-    ],
-    "final": "number"
   },
   "cast_any_type": {
     "signature": [
@@ -498,6 +407,16 @@
       "any"
     ],
     "final": "integer"
+  },
+  "if_none": {
+    "signature": [],
+    "final": "none"
+  },
+  "if_boolean": {
+    "signature": [
+      "boolean"
+    ],
+    "final": "none"
   },
   "input_string": {
     "signature": [
@@ -559,6 +478,16 @@
       "list"
     ],
     "final": "?"
+  },
+  "return_none": {
+    "signature": [],
+    "final": "none"
+  },
+  "return_some": {
+    "signature": [
+      "some"
+    ],
+    "final": "none"
   },
   "reverse_slice": {
     "signature": [

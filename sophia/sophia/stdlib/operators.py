@@ -140,18 +140,7 @@ def b_ins_list(_, x, y): return tuple(i for i in x if i in y)
 
 def b_ins_record(_, x, y): return tuple(k for k in x if k in y)
 
-def b_ins_slice(_, x, y):
-	
-	n, m = x.step, y.step
-	while m != 0: # Euclidean algorithm for greatest common divisor
-		n, m = m, n % m
-	if n % (y.start - x.start) == 0: # Solution for intersection of slices
-		step = (x.step * y.step) / n # Step of intersection
-		ranges = [x.start, x.end, y.start, y.end].sort()
-		lower, upper = ranges[1], ranges[2]
-		lower = lower - (lower % step) + step # Gets highest lower bound
-		upper = upper - (upper % step) # Gets lowest upper bound
-		return slice(lower, upper, m)
+def b_ins_slice(_, x, y): return x & y
 
 def b_ins_type(_, x, y): return x & y
 
@@ -169,7 +158,7 @@ def b_uni_list(_, x, y): return tuple(list(x) + list(y))
 
 def b_uni_record(_, x, y): return x | y
 
-def b_uni_slice(_, x, y): return tuple((list(x) + list(y)).sort())
+def b_uni_slice(_, x, y): return x | y
 
 def b_uni_type(_, x, y): return x | y
 
@@ -180,12 +169,68 @@ std_uni = funcdef(
 	b_uni_slice,
 	b_uni_type
 )
-#std_uni.retrieve(b_uni_type)
 
-def t_slc(_, x, y, z): return slice(x, y, z)
+def b_idx_string_integer(task, sequence, index):
+	
+	length = len(sequence) # Sophia's integer type is abstract, Python's isn't
+	return sequence[int(index)] if -length <= index < length else task.error('INDX', index)
 
-std_slc = funcdef(
-	t_slc
+def b_idx_string_slice(task, sequence, index):
+
+	length = len(sequence)
+	if (-length <= index.start < length) and (-length <= index.end < length):
+		return ''.join(sequence[int(n)] for n in iter(index)) # Constructs slice of string using range
+	else:
+		return task.error('INDX', index)
+
+def b_idx_list_integer(task, sequence, index):
+	
+	length = len(sequence)
+	return sequence[int(index)] if -length <= index < length else task.error('INDX', index)
+
+def b_idx_list_slice(task, sequence, index):
+	
+	length = len(sequence)
+	if (-length <= index.start < length) and (-length <= index.end < length):
+		return tuple(sequence[int(n)] for n in iter(index))
+	else:
+		return task.error('INDX', index)
+
+def b_idx_record_any(task, sequence, index):
+	
+	return sequence[index] if index in sequence else task.error('INDX', index)
+
+def b_idx_record_slice(task, sequence, index):
+
+	length = len(sequence)
+	if (-length <= index.start < length) and (-length <= index.end < length):
+		items = tuple(sequence.items())
+		return dict(items[int(n)] for n in iter(index))
+	else:
+		return task.error('INDX', index)
+
+def b_idx_slice_integer(task, sequence, index):
+
+	length = len(sequence)
+	return sequence[int(index)] if -length <= index < length else task.error('INDX', index)
+
+def b_idx_slice_slice(task, sequence, index):
+	
+	length = len(sequence)
+	if (-length <= index.start < length) and (-length <= index.end < length):
+		return tuple(sequence[int(n)] for n in iter(index))
+	else:
+		return task.error('INDX', index)
+
+std_idx = funcdef(
+	b_idx_string_integer,
+	b_idx_string_slice,
+	b_idx_list_integer,
+	b_idx_list_slice,
+	b_idx_record_any,
+	b_idx_record_slice,
+	b_idx_slice_integer,
+	b_idx_slice_slice
 )
 
 def u_sfe_none(_, x): return False
