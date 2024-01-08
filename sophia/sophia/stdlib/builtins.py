@@ -15,19 +15,6 @@ std_abs = funcdef(
 	abs_number
 )
 
-def assert_none(task, value): # Null assertion
-	
-	return task.branch(1, True, True)
-
-def assert_some(task, value): # Non-null assertion
-	
-	return value
-
-std_assert = funcdef(
-	assert_none,
-	assert_some
-)
-
 #def cast_any_type(task, value, target):
 	
 #	try:
@@ -81,8 +68,7 @@ std_ceiling = funcdef(
 
 def error_string(task, status):
 	
-	task.error('USER', status)
-	return None
+	task.handler.error('USER', status)
 
 std_error = funcdef(
 	error_string
@@ -280,16 +266,16 @@ std_print = funcdef(
 def return_none(task):
 	
 	if task.caller:
-		task.restore(task.caller) # Restore namespace of calling routine
+		task.restore() # Restore namespace of calling routine
 	else:
 		task.path = 0 # End task
 	return None # Returns null
 
-def return_some(task, sentinel):
+def return_any(task, sentinel):
 	
 	task.properties = typedef(task.final)
 	if task.caller:
-		task.restore(task.caller) # Restore namespace of calling routine
+		task.restore() # Restore namespace of calling routine
 	else:
 		task.path = 0 # End task
 	task.values[task.op.address] = sentinel # Different return address
@@ -297,7 +283,7 @@ def return_some(task, sentinel):
 
 std_return = funcdef(
 	return_none,
-	return_some
+	return_any
 )
 
 def reverse_slice(task, value):
@@ -369,7 +355,7 @@ std_sum = funcdef(
 
 def typeof_any(task, value):
 	
-	return task.values[task.types[task.op.args[0]].type]
+	return typedef(task.signature[0])
 
 std_typeof = funcdef(
 	typeof_any

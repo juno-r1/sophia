@@ -1,5 +1,6 @@
 from typing import Self
 
+from .hemera import handler
 from .stdlib import arche
 from .datatypes import aletheia
 from .internal.instructions import instruction
@@ -12,7 +13,8 @@ class processor:
 	def __init__(
 		self,
 		instructions: list[instruction],
-		namespace: dict
+		namespace: dict,
+		handler: handler
 		) -> None:
 
 		"""
@@ -21,6 +23,7 @@ class processor:
 		self.name = instructions[0].label[0] if instructions else ''
 		self.values = arche.stdvalues | namespace
 		self.types = arche.stdtypes | {k: aletheia.infer(v) for k, v in namespace.items()}
+		self.handler = handler
 		"""
 		Mutable attributes for the processor to access.
 		"""
@@ -37,7 +40,7 @@ class processor:
 		self
 		) -> Self | None:
 
-		#[print(i) for i in self.instructions]
+		self.handler.processor(self)
 		while 0 < self.path < len(self.instructions): # This can and does change
 			self.op = self.instructions[self.path]
 			self.path = self.path + 1
@@ -54,13 +57,14 @@ class processor:
 		i, checks, addresses = self.path, [], []
 		while self.instructions[i].name != '.bind':
 			i = i + 1
+		for name in self.instructions[i].label:
+			if name in STDLIB_NAMES:
+				self.handler.error('BIND', name)
 		binds = self.instructions[self.path:i]
 		for item in binds:
-			if item.name == '?':
-				addresses.append(item.args[0])
-			else:
+			addresses.append(item.args[0])
+			if item.args[1] != '?':
 				checks.append(item)
-				addresses.append(item.address)
 		self.instructions[i].args = tuple(addresses)
 		self.instructions[self.path - 1:i] = checks
 		self.path = self.path + len(checks)

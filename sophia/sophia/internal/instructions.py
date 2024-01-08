@@ -20,7 +20,10 @@ class instruction:
 	def __str__(self) -> str:
 
 		if self.address:
-			return '{0} {1} {2}; {3}'.format(self.name, self.address, ' '.join(self.args), ' '.join(self.label))
+			if self.args:
+				return '{0} {1} {2}; {3}'.format(self.name, self.address, ' '.join(self.args), ' '.join(self.label))
+			else:
+				return '{0} {1}; {2}'.format(self.name, self.address, ' '.join(self.label))
 		else:
 			return '{0}; {1}'.format(self.name, ' '.join(self.label))
 

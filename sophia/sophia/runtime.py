@@ -2,10 +2,11 @@
 
 import multiprocessing as mp
 import os
+import signal
 from queue import Empty
 from typing import Any
 
-from . import kadmos, metis
+from . import hemera, kadmos, metis
 from .datatypes.iris import proxy
 from .task import task
 
@@ -33,24 +34,27 @@ class runtime:
 			pass
 		with open('{0}/{1}'.format(root, address), 'r') as f:
 			source = f.read() # Binds file data to runtime object
-		"""
-		Compile stage. Yields a processor object containing optimised instructions.
-		"""
-		parser = kadmos.parser(address.split('.')[0])
-		ast, instructions, namespace = parser.parse(source)
-		if 'tree' in flags:
-			ast.debug() # Here's tree
-		processor = metis.processor(instructions, namespace).analyse()
-		"""
-		Build the supervisor. Main task is initialised and awaiting execution.
-		"""
-		self.flags = flags
-		self.root = root
-		self.stream = mp.Queue() # Supervisor message stream
-		self.pool = mp.Pool(initializer = self.initialise)
-		self.main = task(processor, flags) # Initial task
-		self.tasks = {self.main.pid: proxy(self.main)} # Proxies of tasks
-		self.events = {} # Persistent event tasks
+		try:
+			"""
+			Compile stage. Yields a processor object containing optimised instructions.
+			"""
+			self.handler = hemera.handler(source, flags)
+			parser = kadmos.parser(address.split('.')[0], self.handler)
+			instructions, namespace = parser.parse(source)
+			processor = metis.processor(instructions, namespace, self.handler).analyse()
+			"""
+			Build the supervisor. Main task is initialised and awaiting execution.
+			"""
+			self.root = root
+			self.stream = mp.Queue() # Supervisor message stream
+			self.pool = mp.Pool(initializer = self.initialise)
+			self.main = task(processor) # Initial task
+			self.tasks = {self.main.pid: proxy(self.main)} # Proxies of tasks
+			self.events = {} # Persistent event tasks
+		except SystemExit: # Catches any compile-time error
+			if not hasattr(self, 'handler'): # In case the handler faulted
+				self.handler = hemera.handler(source, ())
+			self.handler.lock = True # Lock runtime
 
 	def initialise(self) -> None: # Cheeky way to sneak a queue into a task
 	
@@ -147,15 +151,18 @@ class runtime:
 		"""
 		Function for testing tasks with error handling and without multiprocessing.
 		"""
+		if self.handler.lock:
+			return
 		self.main.handler.flags = tuple(list(self.main.handler.flags) + ['debug']) # Suppresses terminate message
-		return self.main.execute()
+		try:
+			return self.main.execute()
+		finally: # Manage MP resources
+			self.pool.close()
 
 #	def run(self) -> Any: # Supervisor process and pool management
 
-#		if 'profile' in self.flags:
-#			from cProfile import Profile
-#			pr = Profile()
-#			pr.enable()
+#		if self.handler.lock:
+#			return
 #		message = True
 #		interval = 10 if 'timeout' in self.flags or self.root == 'harmonia' else None # Timeout interval
 #		self.tasks[self.main.pid].result = self.pool.apply_async(self.main.execute) # Start execution of initial module
@@ -175,7 +182,4 @@ class runtime:
 #				message = True
 #		self.pool.close()
 #		self.pool.join()
-#		if 'profile' in self.flags:
-#			pr.disable()
-#			pr.print_stats(sort = 'cumtime')
 #		return self.tasks[self.main.pid].result.get()['values']['0']

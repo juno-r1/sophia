@@ -5,7 +5,6 @@ from typing import Any
 from .datatypes import aletheia
 from .datatypes.aletheia import typedef
 from .datatypes.mathos import real, slice
-from .hemera import handler
 from .metis import processor
 
 class task:
@@ -17,7 +16,6 @@ class task:
 	def __init__( # God objects? What is she objecting to?
 		self,
 		processor: processor,
-		flags: tuple[str, ...]
 		) -> None:
 		"""
 		Task identifiers.
@@ -43,7 +41,7 @@ class task:
 		"""
 		self.caller = None # State of the calling routine
 		self.final = aletheia.std_any # Return type of routine
-		self.handler = handler(*flags) # Error handler
+		self.handler = processor.handler # Error handler
 
 	def execute(self) -> Any:
 		"""
@@ -51,7 +49,10 @@ class task:
 		Executes flags and runtime loop.
 		"""
 		self.handler.initial(self)
-		value = self.run()
+		try:
+			value = self.run()
+		except SystemExit:
+			return
 		return self.handler.final(self, value)
 
 	def run(self) -> Any:
@@ -67,13 +68,16 @@ class task:
 				self.handler.debug_task(self)
 			self.path = self.path + 1
 			if self.op.address: # Skip labels
-				registers = self.op.args
-				args = [self.values[arg] for arg in registers]
-				self.signature = [self.types[arg] for arg in registers]
-				if (name := self.op.name) in task.interns: # Internal instructions
-					task.interns[name](self, *args)
-				else:
-					value = (cache if cache else self.values[name])(self, *args)
+				try:
+					registers = self.op.args
+					args = [self.values[arg] for arg in registers]
+					self.signature = [self.types[arg] for arg in registers]
+					if (name := self.op.name) in task.interns: # Internal instructions
+						task.interns[name](self, *args)
+					else:
+						value = (cache if cache else self.values[name])(self, *args)
+				except KeyError as e:
+					self.handler.error('FIND', e.args[0])
 		else:
 			return value
 
@@ -107,10 +111,12 @@ class task:
 				'final': self.final,
 				'cache': self.cache}
 
-#	def restore(self, # Restore previous state of task
-#			    state: dict) -> None:
+	def restore( # Restore previous state of task
+		self,
+		state: dict | None = None
+		) -> None:
 
-#		self.__dict__.update(state)
+		self.__dict__.update(state if state else self.caller)
 
 #	def prepare(self, # Sets up task for event execution
 #				namespace: dict,
@@ -158,6 +164,16 @@ class task:
 		while not op.name == '.loop':
 			op, self.path = self.instructions[self.path], self.path + 1
 
+	def intern_check(
+		self,
+		value: Any,
+		check: typedef
+		) -> None:
+		"""
+		Type check wrapper for when a failed type check requires an error condition.
+		"""
+		return value if check(self, value) else self.handler.error('TYPE', check, value)
+
 	def intern_constraint(
 		self,
 		constraint: bool
@@ -167,7 +183,7 @@ class task:
 		#name = task.instructions[0].label[0]
 		#if not constraint:
 		#	value = task.values[name]
-		#	task.restore(task.caller)
+		#	task.restore()
 		#	task.error('CAST', name, str(value))
 		#elif task.op.label and task.op.label[0] != name: # Update type of checked value for subsequent constraints
 		#	task.types[name].type = task.op.label[0]
@@ -216,10 +232,11 @@ class task:
 		self,
 		) -> None:
 	
-		address = self.op.address
-		self.message('link', task.op.address + '.sph')
-		self.values[address] = self.calls.recv()
-		self.types[address] = typedef(aletheia.std_future)
+		pass
+		#address = self.op.address
+		#self.message('link', task.op.address + '.sph')
+		#self.values[address] = self.calls.recv()
+		#self.types[address] = typedef(aletheia.std_future)
 	
 	def intern_list(
 		self,
@@ -383,6 +400,8 @@ class task:
 	interns = {
 		'.bind': intern_bind,
 		'.break': intern_break,
+		'.check': intern_check,
+		'.constraint': intern_constraint,
 		'.continue': intern_loop,
 		'.event': intern_event,
 		'.function': intern_function,

@@ -1,4 +1,7 @@
-from .nodes import node, lexer
+import re
+
+from .expressions import lexer
+from .nodes import node
 from .instructions import instruction as ins
 
 class statement(node):
@@ -9,12 +12,16 @@ class coroutine(statement):
 	"""Base coroutine node."""
 	def __init__(
 		self,
-		value: list[node] | None
+		name: str,
+		final: str,
+		params: dict[str, str]
 		) -> None:
 
-		super().__init__(value)
+		super().__init__()
 		self.active = 0
-		self.type = None
+		self.name = name
+		self.final = final
+		self.params = params
 
 	def __str__(self) -> str: return str(['{0} {1}'.format(item.type, item.value) for item in self.value])
 
@@ -25,7 +32,7 @@ class module(coroutine):
 		name: str
 		) -> None:
 
-		super().__init__(None) # Sets initial node to self
+		super().__init__(name, 'any', {})
 		self.active = -1
 		self.name = name
 
@@ -39,34 +46,31 @@ class type_statement(coroutine):
 	"""Defines a type definition."""
 	def __init__(
 		self, 
-		tokens: list[node]
+		string: str
 		) -> None:
-		
-		super().__init__([tokens[0]]) # Sets name as value
-		self.name, self.type = tokens[0].value, tokens[0].value
-		values = [token.value for token in tokens]
-		i, supertype, prototype = 1, None, False
-		if i < len(tokens) and values[i] == 'extends':
-			supertype = values[i + 1]
-			supertype, i = node.sub_types[supertype] if supertype in node.sub_types else supertype, i + 2
-		if i < len(tokens) and values[i] == 'with':
-			j = values.index('=>') if '=>' in values else len(tokens)
-			self.nodes, i = [lexer(tokens[i + 1:j]).parse()], j
-			prototype = True
-		if i < len(tokens) and values[i] == '=>':
-			self.nodes, i = self.nodes + [lexer(tokens[i + 1:]).parse()], len(tokens)
-		self.supertype, self.active = supertype if supertype else 'any', int(prototype)
+
+		# Regex
+		string, expression = re.split(r'=>\s*', string, 1) if '=>' in string else (string[:-1], None)
+		name = re.split(' ', re.search(r'type \w+', string).group(), 1)[1]
+		supertype = re.split(' ', re.search(r'extends \w+', string).group(), 1)[1] if 'extends' in string else 'any'
+		prototype = re.split(' ', re.search(r'with .+', string).group(), 1)[1] if 'with' in string else ''
+		super().__init__(name, name, {name: supertype})
+		if prototype:
+			self.nodes.append(lexer(prototype).parse())
+		if expression:
+			self.nodes.append(lexer(expression).parse())
+		self.active = int(bool(prototype))
 
 	def start(
 		self
 		) -> tuple[ins, ...]:
 
 		if self.active: # Necessary to check type of prototype
-			return (ins(self.supertype, self.register, (self.nodes[0].register,)),
-					ins('.type', self.name, (self.supertype, self.register)),
+			return (ins(self.params[self.name], self.register, (self.nodes[0].register,)),
+					ins('.type', self.name, (self.params[self.name], self.register)),
 					ins('START', label = [self.name]))
 		else:
-			return (ins('.type', self.name, (self.supertype,)),
+			return (ins('.type', self.name, (self.params[self.name],)),
 					ins('START', label = [self.name]))
 
 	def execute(
@@ -80,20 +84,30 @@ class event_statement(coroutine):
 	"""Defines an event definition."""
 	def __init__(
 		self,
-		tokens: list[node]
+		string: str
 		) -> None:
 
-		super().__init__([tokens[0]]) # Sets name and message parameter as self.value
-		self.name, self.type = tokens[0].value, tokens[0].type
-		self.message = tokens[2]
+		string, expression = re.split(r'=>\s*', string, 1) if '=>' in string else (string, None)
+		name, string = re.split(r' awaits ', string, 1)
+		final, name = re.split(r' ', name, 1) if ' ' in name else ('any', name)
+		message, string = re.split(r'\s*\(', string, 1)
+		check, name = re.split(r' ', message, 1) if ' ' in message else ('any', message)
+		params = {name: final, message: check}
+		for value in re.finditer(r'\w+( \w+)?', string):
+			param = value.group()
+			typename, param = re.split(r' ', param, 1) if ' ' in param else ('any', param)
+			params[param] = typename
+		super().__init__(name, final, params)
+		if expression:
+			self.nodes = [return_statement('return ' + expression)]
+		self.message = message
+		self.check = check
 
 	def start(
 		self
 		) -> tuple[ins, ...]:
-
-		names = [item.value for item in self.value]
-		types = [item.type if item.type else 'any' for item in self.value]
-		return (ins('event', self.name, label = [i for pair in zip(types, names) for i in pair] + [self.message.type, self.message.value]),
+		
+		return (ins('.event', self.name, label = [i for pair in zip(self.params.keys(), self.params.values()) for i in pair]),
 				ins('START', label = [self.name]))
 
 	def execute(
@@ -101,7 +115,7 @@ class event_statement(coroutine):
 		) -> tuple[ins, ...]:
 
 		if self.type:
-			return (ins(self.type, self.register, ('&0',)),
+			return (ins(self.final, self.register, ('&0',)),
 					ins('return', '0'),
 					ins('END'))
 		else:
@@ -112,24 +126,26 @@ class function_statement(coroutine):
 	"""Defines a function definition."""
 	def __init__(
 		self,
-		tokens: list[node]
+		string: str
 		) -> None:
-
-		try: # Single-line function definition
-			i = [token.value for token in tokens].index('=>')
-			super().__init__([token for token in tokens[0:i:2] if token.value != ')'])
-			self.nodes = [return_statement(tokens[i::])]
-		except ValueError:
-			super().__init__([token for token in tokens[0:-1:2] if token.value != ')']) # Sets name and a list of parameters as self.value
-		self.name, self.type = tokens[0].value, tokens[0].type
+		
+		string, expression = re.split(r'=>\s*', string, 1) if '=>' in string else (string, None)
+		name, string = re.split(r'\s*\(', string, 1)
+		final, name = re.split(r' ', name, 1) if ' ' in name else ('any', name)
+		params = {name: final}
+		for value in re.finditer(r'\w+( \w+)?', string):
+			param = value.group()
+			typename, param = re.split(r' ', param, 1) if ' ' in param else ('any', param)
+			params[param] = typename
+		super().__init__(name, final, params)
+		if expression:
+			self.nodes = [return_statement('return ' + expression)]
 
 	def start(
 		self
 		) -> tuple[ins, ...]:
 		
-		names = [item.value for item in self.value]
-		types = [item.type if item.type else 'any' for item in self.value]
-		return (ins('.function', self.name, label = [i for pair in zip(types, names) for i in pair]),
+		return (ins('.function', self.name, label = [i for pair in zip(self.params.keys(), self.params.values()) for i in pair]),
 				ins('START', label = [self.name]))
 
 	def execute(
@@ -137,7 +153,7 @@ class function_statement(coroutine):
 		) -> tuple[ins, ...]: 
 		
 		if self.type:
-			return (ins(self.type, self.register, ('&0',)),
+			return (ins(self.final, self.register, ('&0',)),
 					ins('return', '0'),
 					ins('END'))
 		else:
@@ -145,52 +161,48 @@ class function_statement(coroutine):
 					ins('END', label = [self.name]))
 
 class assignment(statement):
-	"""Defines an assignment."""
-	def __init__( # Supports multiple assignment
+	"""Defines an assignment. Supports multiple assignment."""
+	def __init__(
 		self,
-		tokens: list[node]
+		string: str
 		) -> None:
 		
-		tokens = tokens.copy()
-		names, expressions, stack = [], [], []
-		names.append(tokens.pop(0)) # Name
-		tokens.pop(0) # Colon
-		while tokens:
-			token = tokens.pop(0)
-			if token.value == ';':
-				expressions.append(lexer(stack).parse())
-				names.append(tokens.pop(0))
-				tokens.pop(0)
-				stack = []
+		binds, expressions = {}, []
+		while string:
+			name, string = re.split(r':\s*', string, 1)
+			typename, name = re.split(r' ', name, 1) if ' ' in name else ('?', name)
+			binds[name] = typename
+			if ';' in string:
+				expression, string = re.split(r';\s*', string, 1)
 			else:
-				stack.append(token)
-		else:
-			expressions.append(lexer(stack).parse())
-			super().__init__(names, *expressions)
+				expression, string = string, ''
+			expressions.append(lexer(expression).parse())
+		super().__init__(*expressions)
+		self.binds = binds
 
-	def __str__(self) -> str: return 'assignment ' + str([item.value for item in self.value])
+	def __str__(self) -> str: return 'assignment ' + ' '.join(('{0} {1}'.format(typename, name) for name, typename in self.binds.items()))
 
 	def execute(
 		self
 		) -> tuple[ins, ...]:
 		
 		return [ins('BIND')] + \
-			   [ins(item.type if item.type else '?',
+			   [ins('.check',
 				str(int(self.register) + i),
-				(self.nodes[i].register,))
-				for i, item in enumerate(self.value)] + \
-			   [ins('.bind', '0', label = [item.value for item in self.value])]
+				(self.nodes[i].register, typename))
+				for i, typename in enumerate(self.binds.values())] + \
+			   [ins('.bind', '0', label = list(self.binds.keys()))]
 
 class if_statement(statement):
 	"""Defines an if statement."""
 	def __init__(
 		self,
-		tokens: list[node]
+		string: str
 		) -> None:
 
-		super().__init__(None, lexer(tokens[1:-1]).parse())
+		expression = re.split(r' ', string, 1)[1][:-1] # Strip colon
+		super().__init__(lexer(expression).parse())
 		self.active = 1
-		self.branch = tokens[0].branch
 		self.block = True
 
 	def start(
@@ -209,12 +221,12 @@ class while_statement(statement):
 	"""Defines a while statement."""
 	def __init__(
 		self,
-		tokens: list[node]
+		string: str
 		) -> None:
 
-		super().__init__(None, lexer(tokens[1:-1]).parse())
+		expression = re.split(r' ', string, 1)[1][:-1] # Strip colon
+		super().__init__(lexer(expression).parse())
 		self.active = 1
-		self.branch = tokens[0].branch
 		self.block = True
 
 	def start(
@@ -233,13 +245,16 @@ class for_statement(statement):
 	"""Defines a for statement."""
 	def __init__(
 		self,
-		tokens: list[node]
+		string: str
 		) -> None:
 
-		super().__init__(tokens[1], lexer(tokens[3:-1]).parse())
+		string = re.split(r' ', string, 1)[1][:-1] # Strip colon
+		index, iterator = re.split(r' in ', string, 1)
+		typename, index = re.split(r' ', index, 1) if ' ' in index else ('?', index)
+		super().__init__(lexer(iterator).parse())
 		self.active = 1
-		self.branch = tokens[0].branch
-		self.block = True
+		self.index = index
+		self.typename = typename
 
 	def start(
 		self
@@ -249,57 +264,23 @@ class for_statement(statement):
 				ins('ELSE' if self.branch else 'START'),
 				ins('.next', '0', (self.register,)),
 				ins('BIND'),
-				ins(self.value.type if self.value.type else '?', '0', ('0',), label = [self.value.value]),
-				ins('.bind', '0', label = [self.value.value]))
+				ins('.check', '0', ('0', self.typename)),
+				ins('.bind', '0', label = [self.index]))
 
-	def execute(self): return ins('.loop', '0'),
-
-class assert_statement(statement):
-	"""Defines an assertion."""
-	def __init__(
-		self,
-		tokens: list[node]
-		) -> None:
-		
-		nodes, sequence, parens = [], [], 0
-		for token in tokens[1:-1]: # Collects all expressions in head statement
-			if token in node.parens.keys():
-				parens = parens + 1
-			elif token in node.parens.values():
-				parens = parens - 1
-			if token.value == ',' and parens == 0:
-				nodes.append(lexer(sequence).parse())
-				sequence = []
-			else:
-				sequence.append(token)
-		else:
-			nodes.append(lexer(sequence).parse())
-		super().__init__(None, *nodes)
-		self.active = len(nodes)
-		self.branch = tokens[0].branch
-		self.block = True
-
-	def start(
-		self
-		) -> tuple[ins, ...]:
-		
-		return ()
-
-	def execute(
-		self
-		) -> tuple[ins, ...]:
-		
-		return ins('if', self.register),
+	def execute(self): return ins('.loop', '0'), ins('END')
 
 class return_statement(statement):
 	"""Defines a return statement."""
 	def __init__(
 		self,
-		tokens: list[node]
+		string: str
 		) -> None:
 		
-		super().__init__(None, lexer(tokens[1:]).parse()) if len(tokens) > 1 else super().__init__(None)
-		self.branch = tokens[0].branch
+		if ' ' in string:
+			expression = re.split(r' ', string, 1)[1]
+			super().__init__(lexer(expression).parse())
+		else:
+			super().__init__()
 
 	def execute(
 		self
@@ -308,7 +289,7 @@ class return_statement(statement):
 		routine = self
 		while not isinstance(routine, coroutine):
 			routine = routine.head
-		type_name = routine.type
+		type_name = routine.final
 		if type_name and not isinstance(routine, module):
 			return (ins(type_name, self.register, (self.nodes[0].register if self.nodes else self.register,)),
 					ins('return', '0', (self.nodes[0].register,) if self.nodes else ()))
@@ -319,35 +300,29 @@ class link_statement(statement):
 	"""Defines a link."""
 	def __init__(
 		self,
-		tokens: list[node]
+		string: str
 		) -> None:
+		
+		super().__init__()
+		string = re.split(r' ', string, 1)[1]
+		self.links = re.split(r',\s*', string)
 
-		super().__init__(tokens[1::2]) # Allows multiple links
-		self.branch = tokens[0].branch
-
-	def __str__(self) -> str: return ('else ' if self.branch else '') + 'link_statement ' + str([item.value for item in self.nodes])
+	def __str__(self) -> str: return ('else ' if self.branch else '') + 'link_statement ' + ' '.join(self.links)
 
 	def execute(
 		self
 		) -> tuple[ins, ...]:
 		
-		return [ins('.link', item.value) for item in self.value]
+		return ins('.link', '0', tuple(self.links)),
 
 class start_statement(statement):
 	"""Defines an initial."""
-	def __init__(
-		self,
-		tokens: list[node]
-		) -> None:
-		
-		super().__init__(tokens[2::2])
-
 	def __str__(self) -> str: return 'start ' + str([item.value for item in self.value])
 
 	def execute(
 		self
 		) -> tuple[ins, ...]:
-		
+
 		return (ins('return', '0'),
 				ins('END'),
 				ins('EVENT', label = [self.head.message.value]),
@@ -356,12 +331,10 @@ class start_statement(statement):
 class else_statement(statement):
 	"""Defines an else statement."""
 	def __init__(
-		self,
-		tokens: list[node]
+		self
 		) -> None:
 
-		super().__init__(None)
-		self.branch = True
+		super().__init__()
 		self.block = True
 
 	def execute(

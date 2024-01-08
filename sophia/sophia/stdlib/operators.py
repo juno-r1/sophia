@@ -2,7 +2,7 @@
 Built-in operators.
 '''
 
-from ..datatypes.aletheia import funcdef
+from ..datatypes.aletheia import funcdef, typedef, cls_element, cls_length
 from ..datatypes.mathos import slice
 
 def u_add(_, x): return +x
@@ -173,7 +173,7 @@ std_uni = funcdef(
 def b_idx_string_integer(task, sequence, index):
 	
 	length = len(sequence) # Sophia's integer type is abstract, Python's isn't
-	return sequence[int(index)] if -length <= index < length else task.error('INDX', index)
+	return sequence[int(index)] if -length <= index < length else task.handler.error('INDX', index)
 
 def b_idx_string_slice(task, sequence, index):
 
@@ -181,12 +181,12 @@ def b_idx_string_slice(task, sequence, index):
 	if (-length <= index.start < length) and (-length <= index.end < length):
 		return ''.join(sequence[int(n)] for n in iter(index)) # Constructs slice of string using range
 	else:
-		return task.error('INDX', index)
+		return task.handler.error('INDX', index)
 
 def b_idx_list_integer(task, sequence, index):
 	
 	length = len(sequence)
-	return sequence[int(index)] if -length <= index < length else task.error('INDX', index)
+	return sequence[int(index)] if -length <= index < length else task.handler.error('INDX', index)
 
 def b_idx_list_slice(task, sequence, index):
 	
@@ -194,11 +194,11 @@ def b_idx_list_slice(task, sequence, index):
 	if (-length <= index.start < length) and (-length <= index.end < length):
 		return tuple(sequence[int(n)] for n in iter(index))
 	else:
-		return task.error('INDX', index)
+		return task.handler.error('INDX', index)
 
 def b_idx_record_any(task, sequence, index):
 	
-	return sequence[index] if index in sequence else task.error('INDX', index)
+	return sequence[index] if index in sequence else task.handler.error('INDX', index)
 
 def b_idx_record_slice(task, sequence, index):
 
@@ -207,12 +207,12 @@ def b_idx_record_slice(task, sequence, index):
 		items = tuple(sequence.items())
 		return dict(items[int(n)] for n in iter(index))
 	else:
-		return task.error('INDX', index)
+		return task.handler.error('INDX', index)
 
 def b_idx_slice_integer(task, sequence, index):
 
 	length = len(sequence)
-	return sequence[int(index)] if -length <= index < length else task.error('INDX', index)
+	return sequence[int(index)] if -length <= index < length else task.handler.error('INDX', index)
 
 def b_idx_slice_slice(task, sequence, index):
 	
@@ -220,7 +220,15 @@ def b_idx_slice_slice(task, sequence, index):
 	if (-length <= index.start < length) and (-length <= index.end < length):
 		return tuple(sequence[int(n)] for n in iter(index))
 	else:
-		return task.error('INDX', index)
+		return task.handler.error('INDX', index)
+
+def b_idx_type_type(task, definition, element):
+
+	return typedef(definition, cls_element(element))
+
+def b_idx_type_integer(task, definition, length):
+
+	return typedef(definition, cls_length(length))
 
 std_idx = funcdef(
 	b_idx_string_integer,
@@ -230,7 +238,9 @@ std_idx = funcdef(
 	b_idx_record_any,
 	b_idx_record_slice,
 	b_idx_slice_integer,
-	b_idx_slice_slice
+	b_idx_slice_slice,
+	b_idx_type_type,
+	b_idx_type_integer
 )
 
 def u_sfe_none(_, x): return False

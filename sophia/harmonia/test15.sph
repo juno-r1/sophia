@@ -10,14 +10,14 @@ if ?null:
 else:
 	bool b: true
 
-assert !true:
-	bool c: true
-else:
+if !true = null:
 	bool c: false
-
-assert !false:
-	bool d: false
 else:
+	bool c: true
+
+if !false = null:
 	bool d: true
+else:
+	bool d: false
 
 return a and b and c and d

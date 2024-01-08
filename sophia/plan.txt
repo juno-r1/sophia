@@ -529,34 +529,92 @@ better not to make assignment context-dependent
 
 ---
 
-better instruction format
-this. sucks
-it *works*, but the register and the arguments randomly flip for labels
-among other things
-also they encode line numbers, which isn't really ideal
+operations that return to address 0
 
-instructions need to be perfectly representable as a string
-there needs to be a better way to distinguish between:
-	instructions
-	non-dispatch instructions
-	labels
+typed names in assertions
+continue
+break
+return
 
-instructions
-	name
-	address
-	args
-	label
+basically, we're safe to assume that setting assertions to return to 0 will work
 
-pseudo-instructions
-	name
-	address
-	args
-	label
+assertions what?
 
-label
-	name
-	label
+aghhh
 
-an identifier cannot have an operator symbol in it
-therefore, pseudo-instructions can be identified by sticking an operator symbol in them
-labels are easily identifiable by the fact that they have no return address
+assertions are a natural consequence of a LBYL philosophy
+equivalent to an if statement but for some/none, and also catches errors
+
+result types?
+
+what are assertions used for?
+
+type checking
+	<type>(value) now returns boolean; redundant
+some/none branching
+	use the safety operator
+catching unbound names
+	don't reference unbound names, idiot
+bounds checking
+	use length types
+	instead of going a[2] without knowing if that index is valid
+	go list[2](a) to guarantee it
+dispatch checking
+	signature(<routine>) returns boolean; redundant
+catching exceptions
+	bad practice; exceptions aren't meant to be caught
+	exceptions only kill the task anyway
+
+assertions are unnecessary
+
+---
+
+new error model for sophia
+
+functions can either return successfully or fail to execute
+a failed function returns null
+null is the value that represents that an exception occurred
+
+if a single failure value is insufficient to represent your failure state,
+that's your problem, not the language's
+this problem can be solved with proper separation of concerns
+any given function should only fail in 1 expected way
+
+for instance, division can return null, but only on division by 0
+therefore, the user always knows what exception has occurred
+
+function signatures do not have to declare that they are able to return null
+any function is expected to be able to return null
+
+errors represent unexpected, unrecoverable problems
+errors terminate their task, but *not* the program as a whole
+this allows you to use a supervisor to restart a failed task, should you so choose
+like in erlang, tasks are allowed to fail, and you should account for this
+errors are severe faults, which incentivises LBYL
+
+---
+
+new parser regime
+
+start with regex matches for statements
+then match for expressions inside statements
+
+regex is go
+i have to rebuild the entire model of the parser
+the parser assumes that the tree is being built bottom-up;
+this approach is going top-down
+tokens are now instantiated *inside* other token inits
+i mean, that was always the case for expressions, wasn't it
+
+statements go
+sort out the lexer
+
+type checks currently return any | error
+type checks need to return boolean
+the rest of the language needs to operate around that assumption
+
+assignments need to be able to see where type checks write to so they can catch a wrong type
+there just aren't enough registers to make this work
+what to do instead?
+
+special type check that uses the any | error paradigm

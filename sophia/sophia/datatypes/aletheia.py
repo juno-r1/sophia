@@ -1,12 +1,13 @@
 import json
 from dataclasses import dataclass
+from functools import reduce
 from sys import stderr
 from typing import Any, Callable, Self
 
 from .iris import reference, std_stdin
 from .mathos import real, slice
 from ..internal.instructions import instruction
-from ..internal.presets import DATATYPES
+from ..internal.presets import DATATYPES, PROPERTIES, STDLIB_NAMES
 
 with open('sophia/stdlib/kleio.json', 'r') as kleio:
 	metadata = json.load(kleio)
@@ -67,15 +68,17 @@ class typedef:
 		"""
 		address, definition = task.op.address, task.signature[0]
 		if definition < self: # Value is subtype
-			task.values[address] = value
-			task.types[address] = typedef(self)
-			return value
-		for item in self.types:
-			if item not in definition.types and not item(task, value):
-				return task.error('CAST', item.name, value)
-		task.values[address] = value
-		task.types[address] = typedef(self)
-		return value
+			check = True
+		else:
+			for item in self.types:
+				if item not in definition.types and not item(task, value):
+					check = False
+					break
+			else:
+				check = True
+		task.values[address] = check
+		task.types[address] = typedef(std_boolean)
+		return check
 
 	def __eq__( # Implements equality
 		self,
@@ -113,7 +116,15 @@ class typedef:
 
 	def __str__(self) -> str:
 
-		return '.'.join(getattr(item, 'name', item.__name__) for item in self.types)
+		if not self.types:
+			return '?'
+		properties = []
+		for item in self.types:
+			if (name := getattr(item, 'name', item.__name__)) in STDLIB_NAMES and name not in PROPERTIES:
+				datatype = name # Get most specific data type
+			else:
+				properties.append('{0}:{1}'.format(name, item.property))
+		return '.'.join([datatype] + properties)
 
 	__repr__ = __str__
 
@@ -247,24 +258,22 @@ class multimethod:
 		while instance: # Traverse tree; terminates upon reaching leaf node
 			instance = instance.true if instance.index < task.op.arity and instance.check(signature) else instance.false
 		if instance is None:
-			return task.error('DISP', task.op.name, signature)
+			return task.handler.error('DISP', task.op.name, signature)
 		try:
 			for i, item in enumerate(signature): # Verify type signature
 				if item > instance.signature[i]:
 					raise IndexError
 		except IndexError:
-			return task.error('DISP', task.op.name, signature)
+			return task.handler.error('DISP', task.op.name, signature)
 		final = instance.final
 		value = instance.routine(task, *args)
-		if final == std_none: # Null return; write to address 0
-			task.values['0'] = None
-			task.types['0'] = std_none
+		task.values[address] = value
+		if value is None: # Null return override
+			task.types[address] = std_none
+		elif final.types:
+			task.types[address], task.properties = task.properties or final, None
 		else:
-			task.values[address] = value
-			if final.types:
-				task.types[address], task.properties = task.properties or final, None
-			else:
-				task.types[address] = infer(value)
+			task.types[address] = infer(value)
 		return value
 
 	def __bool__(self): return True
@@ -702,9 +711,25 @@ def infer( # Infers typedef of value
 	name = DATATYPES[name] if name in DATATYPES else 'any'
 	if name == 'number' and value % 1 == 0:
 		return typedef(std_integer)
-	definition = typedef(types[name])
-	# Add property inferences later
+	datatype = types[name]
+	properties = []
+	if cls_sequence in datatype.types:
+		if name == 'string':
+			element = std_string
+		elif name == 'slice':
+			element = std_integer
+		else:
+			element = infer_element(value)
+		properties.append(cls_element(element))
+		properties.append(cls_length(len(value)))
+	definition = typedef(types[name], *properties)
 	return definition
+
+def infer_element( # Infers element type of value
+	value: Any
+	) -> typedef:
+
+	return reduce(typedef.__or__, [infer(i) for i in value], typedef(std_any))
 
 #def infer_type(value): # Infers type of value
 

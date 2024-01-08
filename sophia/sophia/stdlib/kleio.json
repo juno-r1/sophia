@@ -286,6 +286,20 @@
     ],
     "final": "list.element:integer"
   },
+  "b_idx_type_type": {
+    "signature": [
+      "type",
+      "type"
+    ],
+    "final": "type"
+  },
+  "b_idx_type_integer": {
+    "signature": [
+      "type",
+      "integer"
+    ],
+    "final": "type"
+  },
   "u_sfe_none": {
     "signature": [
       "none"
@@ -343,18 +357,6 @@
       "number"
     ],
     "final": "number"
-  },
-  "assert_none": {
-    "signature": [
-      "none"
-    ],
-    "final": "none"
-  },
-  "assert_some": {
-    "signature": [
-      "some"
-    ],
-    "final": "none"
   },
   "cast_any_type": {
     "signature": [
@@ -483,9 +485,9 @@
     "signature": [],
     "final": "none"
   },
-  "return_some": {
+  "return_any": {
     "signature": [
-      "some"
+      "any"
     ],
     "final": "none"
   },

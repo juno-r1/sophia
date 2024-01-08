@@ -1,5 +1,8 @@
-def x(y: int) -> int:
+import re
 
-	return 0
-
-print(x.__annotations__)
+unmatched = r'(?P<unmatched>(\'[^\']*$)|(\"[^\"]*$))' # Detects unmatched quotes
+single = r'\'[^\']*$'
+notquote = r'\'[^\']*(?!\')$'
+string = '\'\''
+for item in re.finditer(single, string):
+	print(item)

@@ -1,10 +1,9 @@
 import re
 
-from .datatypes import mathos
 from .hemera import handler
 from .internal import expressions, presets, statements
 from .internal.instructions import instruction
-from .internal.nodes import node, lexer
+from .internal.nodes import node
 
 class parser:
 	"""
@@ -14,172 +13,133 @@ class parser:
 	def __init__(
 		self,
 		name: str,
+		handler: handler,
 		offset: int = 0
 		) -> None:
 		
-		self.node = statements.module(name)
+		self.head = statements.module(name)
+		self.node = self.head
 		self.path = [0]
 		self.constant = offset # Constant register counter
 		self.instructions = [instruction('START', label = [name])]
 		self.values = {'0': None, '&0': None} # Register namespace
-		self.handler = handler() # Error handler
+		self.handler = handler # Error handler
 
 	def parse(
 		self,
 		source: str
-		) -> tuple[statements.module, list[instruction], dict]:
-
-		if not source:
-			raise SystemExit # End immediately
-		if not parser.balanced(source):
-			pass
-		tokens = self.tokenise(source)
+		) -> tuple[list[instruction], dict]:
+		
+		if re.fullmatch(presets.EMPTY, source):
+			raise SystemExit # End immediately without error
+		if not self.matched(source):
+			self.handler.error('UQTE')
+		if not self.balanced(source):
+			self.handler.error('UPRN')
+		lines = self.split(source)
+		tokens = self.tokenise(lines)
 		ast = self.link(tokens)
 		instructions, namespace = self.generate()
-		return ast, instructions, namespace
+		if 'tree' in self.handler.flags:
+			ast.debug() # Here's tree
+		return instructions, namespace
+
+	def split(
+		self,
+		source: str
+		) -> list[str]:
+		"""
+		Uncomments and splits the source into logical lines.
+		"""
+		source = re.sub(presets.COMMENT, '\n', source)
+		source = re.sub(presets.REGEX_LITERAL, self.alias, source)
+		line = ''
+		lines = []
+		for symbol in re.finditer(presets.REGEX_SPLIT, source):
+			value = symbol.group()
+			match symbol.lastgroup:
+				case 'trailing': # Lookbehind seems to work just fine with re.finditer
+					continue
+				case 'final':
+					lines.append(line)
+					line = ''
+				case 'line':
+					line = line + value
+				case _:
+					self.handler.error('SNTX', value)
+		return lines
 
 	def tokenise(
 		self,
-		source: str
-		) -> list[list[node]] | None:
+		lines: list[str]
+		) -> list[node] | None:
 		"""
 		Regex tokenises the source, returning logical lines of tokens.
 		Functions as an LL(1) parser, since the current and last symbols
 		provide sufficient context to deterministically tokenise any valid
 		Sophia program.
 		"""
-		line, column, scope = 1, 1, 1
-		tokens = [[]]
-		last = None
-		comment, trail = False, False
-		for symbol in re.finditer(presets.TOKENS_PATTERN, source):
-			value = symbol.group()
-			column = column + len(value)
-			if trail: # Skip whitespace after trailing line
-				if re.match(r'\s', value):
-					continue
-				else:
-					trail = False
-			match symbol.lastgroup:
-				case 'space':
-					continue
-				case 'comment':
-					comment = True
-					continue
-				case 'indent':
-					scope = scope + 1
-					continue
-				case 'newline' if last and re.match(presets.TRAILING, str(last.value)):
-					trail = True
-					column = 1
-					continue
-				case 'newline': # Logical line end
-					last = None
-					comment = False
-					line, column, scope = line + 1, 1, 1
-					if tokens[-1]:
-						tokens.append([])
-					continue
-				case 'number':
-					token = expressions.literal(mathos.real.read(value))
-				case 'string':
-					token = expressions.literal(bytes(value[1:-1], 'utf-8').decode('unicode_escape'))
-				case 'literal' if value in presets.KEYWORDS_INFIX:
-					token = expressions.infix(value)
-				case 'literal' if value in presets.KEYWORDS_PREFIX:
-					token = expressions.prefix(value)
-				case 'literal' if value in presets.CONSTANTS:
-					token = expressions.literal(value)
-				case 'literal' if value in ('if', 'else') and last and last.value != 'else':
-					token = expressions.left_conditional(value) if value == 'if' else expressions.right_conditional(value)
-				case 'literal' if value in presets.KEYWORDS_STRUCTURE or value in presets.KEYWORDS_CONTROL:
-					token = expressions.keyword(value)
-					if last and last.value == 'else':
-						tokens[-1].pop()
-						token.branch = True
-				case 'literal':
-					if last and isinstance(last, expressions.name): # Checks for type
-						typename = tokens[-1].pop().value # Sets type of identifier
-						typename = presets.ALIASES[typename] if typename in presets.ALIASES else typename # Expands name of type
-					else:
-						typename = None
-					token = expressions.name(value, typename)
-				case 'l_parens' if value == '(':
-					token = expressions.function_call(value) if last and isinstance(last, expressions.name) else expressions.parenthesis(value)
-				case 'l_parens' if value == '[':
-					token = expressions.sequence_index(value) if last and isinstance(last, expressions.name) else expressions.sequence_literal(value)
-				case 'l_parens' if value == '{':
-					token = expressions.meta_statement(value)
-				case 'r_parens':
-					token = expressions.right_bracket(value)
-				case 'operator' if value in '\'\"': # Unclosed quote
-					return hemera.error('sophia', line, 'UQTE', ())
-				case 'operator' if value in (':', ','): # Same regardless of context
-					token = expressions.concatenator(value)
-				case 'operator' if not last or \
-								   re.fullmatch(presets.TOKENS['operator'], str(last.value)) and \
-								   not re.fullmatch(presets.TOKENS['r_parens'], str(last.value)): # Prefixes
-					if value == '>':
-						token = expressions.receive(value)
-					elif value == '*':
-						token = expressions.resolve(value)
-					else:
-						token = expressions.prefix(value) # NEGATION TAKES PRECEDENCE OVER EXPONENTIATION - All unary operators have the highest possible left-binding power
-				case 'operator' if value in ('^', '->', '=>'): # Infixes
-					token = expressions.infix_r(value)
-				case 'operator' if value == '<-':
-					bind_name = tokens.pop()
-					token = expressions.bind(bind_name.value)
-					token.type = bind_name.type
-				case 'operator':
-					token = expressions.infix(value)
-				case _:
-					raise SystemExit('Oh no!') # Unserious default case
-				#case 'operator' if len(tokens[-1]) == 1 and isinstance(tokens[-1][-1], name) and ('=>' in line or line[-1] == ':'): # Special case for operator definition
-				#	pass
-				#	token = nodes.name(value)
-				#if len(tokens[-1]) == 1 and isinstance(tokens[-1][-1], name) and ('=>' in line or line[-1] == ':'): # Special case for operator definition
-				#	token = name(symbol)
-				#	token_type = tokens[-1].pop().value # Sets return type of operator
-				#	token.type = sub_types[token_type] if token_type in sub_types else token_type
-			if not comment:
-				#token.line, token.column = line, column
+		tokens = []
+		scope, branch = 1, False
+		for line in lines:
+			for symbol in re.finditer(presets.REGEX_STATEMENT, line):
+				value = symbol.group()
+				match symbol.lastgroup:
+					case 'sentinel':
+						scope, branch = 1, False
+						continue
+					case 'space':
+						continue
+					case 'indent':
+						scope = value.count('\t') + 1
+						continue
+					case 'else':
+						branch = True
+						token = statements.else_statement()
+					case 'branch':
+						branch = True
+						continue
+					case 'continue':
+						token = expressions.keyword_continue(value)
+					case 'break':
+						token = expressions.keyword_break(value)
+					case 'if':
+						token = statements.if_statement(value)
+					case 'while':
+						token = statements.while_statement(value)
+					case 'for':
+						token = statements.for_statement(value)
+					case 'return':
+						token = statements.return_statement(value)
+					case 'link':
+						token = statements.link_statement(value)
+					case 'start':
+						token = statements.start_statement()
+					case 'type':
+						token = statements.type_statement(value)
+					case 'event':
+						token = statements.event_statement(value)
+					case 'function':
+						token = statements.function_statement(value)
+					case 'assign':
+						token = statements.assignment(value)
+					case 'expression':
+						token = expressions.lexer(value).parse()
+					case _:
+						self.handler.error('SNTX', value)
 				token.scope = scope
-				tokens[-1].append(token)
-				last = token
+				token.branch = branch
+				tokens.append(token)
 		return tokens
 
 	def link(
 		self,
-		tokens: list[list[node]]
+		lines: list[node]
 		) -> statements.module:
 		"""
-		Recursively descends into madness and links logical lines to
-		create an AST from tokens.
+		Links logical lines to create an AST.
 		"""
-		lines = []
-		for line in tokens: # Tokenises whole lines
-			if line[0].value in presets.KEYWORDS_STRUCTURE:
-				token = statements.__dict__[line[0].value + '_statement'](line) # Cheeky little hack that makes a node for whatever structure keyword is specified
-			elif line[0].value in presets.KEYWORDS_CONTROL:
-				token = line[0] # Keywords will get special handling later
-			elif line[-1].value == ':' or '=>' in [token.value for token in line]:
-				if line[0].type == 'type' and '(' not in [token.value for token in line[:line.index('=>') if '=>' in line else -1]]:
-					token = statements.type_statement(line)
-				elif line[1].value == 'awaits':
-					token = statements.event_statement(line)
-				else:
-					token = statements.function_statement(line)
-			elif len(line) > 1 and line[1].value == ':':
-				token = statements.assignment(line)
-			elif len(line) > 1 and line[1].value == 'is':
-				token = statements.alias(line)
-			else: # Tokenises expressions
-				token = lexer(line).parse() # Passes control to a lexer object that returns an expression tree when parse() is called
-			#token.line = line[0].line
-			token.scope = line[0].scope
-			lines.append(token)
-		head, last = self.node, self.node # Head token and last line
+		head, last = self.head, self.head # Head token and last line
 		for i, line in enumerate(lines): # Group lines based on scope
 			if line.scope > head.scope + 1: # If entering scope
 				head = last # Last line becomes the head node
@@ -190,38 +150,28 @@ class parser:
 							head = n # Make it the head node
 							break
 				else: # If statement is in global scope:
-					head = self.node # Resets head to main node
+					head = self.head # Resets head to main node
 			head.nodes.append(line) # Link nodes
 			last = line
-		return self.node
+		return self.head
 
 	def generate(
 		self,
 		offset: int = 0
 		) -> tuple[list[instruction], dict]:
 		
-		self.node.length = len(self.node.nodes)
-		if not self.node.nodes:
-			self.instructions.extend(self.node.execute())
+		self.head.length = len(self.head.nodes)
 		while self.node: # Pre-runtime generation of instructions
 			if self.path[-1] == self.node.length: # Walk up
-				if isinstance(self.node.head, statements.assert_statement) and self.path[-2] < self.node.head.active: # Insert assertion
-					self.instructions.append(
-						instruction(
-							'assert',
-							'0',
-							(self.node.register,)
-						)
-					)
-				elif isinstance(self.node.head, statements.type_statement) and self.path[-2] >= self.node.head.active: # Insert constraint
-					self.instructions.append(
-						instruction(
-							'.constraint',
-							'0',
-							(self.node.register,),
-							label = [self.node.head.value[0].value] if self.path[-2] == self.node.head.length - 1 else []
-						)
-					)
+				#if isinstance(self.node.head, statements.type_statement) and self.path[-2] >= self.node.head.active: # Insert constraint
+				#	self.instructions.append(
+				#		instruction(
+				#			'.constraint',
+				#			'0',
+				#			(self.node.register,),
+				#			label = [self.node.head.value[0].value] if self.path[-2] == self.node.head.length - 1 else []
+				#		)
+				#	)
 				self.node = self.node.head # Walk upward
 				if self.node:
 					self.path.pop()
@@ -233,21 +183,18 @@ class parser:
 				self.node = self.node.nodes[self.path[-1]] # Set value to child node
 				self.node.register = self.register(offset)
 				self.node.length = len(self.node.nodes)
-				self.node.scope = len(self.path)
 				self.path.append(0)
 				if not isinstance(self.node, statements.for_statement):
 					if self.node.branch:
 						self.instructions.append(instruction('ELSE'))
 					elif self.node.block:
 						self.instructions.append(instruction('START'))
-				if isinstance(self.node, statements.event_statement):
-					self.node.value = self.node.value + self.node.nodes[0].value
 			if self.path[-1] == self.node.active:
 				instructions = self.node.start()
 			elif self.path[-1] == self.node.length:
 				instructions = self.node.execute()
 			else:
-				instructions = []
+				instructions = ()
 			#for x in instructions:
 			#	x.line = self.node.line
 			self.instructions.extend(instructions)
@@ -261,54 +208,72 @@ class parser:
 		offset: int
 		) -> str:
 		
-		if self.node.nodes: # Temporary register
-			if isinstance(self.node.head, statements.assert_statement):
-				return '0' # 0 is the return register and is assumed to be nullable
-			elif isinstance(self.node.head, expressions.bind):
-				return self.node.head.value # Sure, I guess
-			else:
-				index = str(sum(self.path) + offset + 1) # Sum of path is a pretty good way to minimise registers
-				self.values[index] = None
-				return index
-		else:
-			if isinstance(self.node, expressions.name): # Variable register
-				return self.node.value
-			elif isinstance(self.node, expressions.receive):
-				return self.node.value.value
-			elif self.node.value is None: # Null value is interned so that instructions can reliably take null as an operand
-				return '&0'
-			else: # Constant register
-				self.constant = self.constant + 1
-				index = '&' + str(self.constant)
-				self.values[index] = () if isinstance(self.node, expressions.sequence_literal) else self.node.value
-				return index
-
-	@classmethod
+		if isinstance(self.node.head, expressions.bind):
+			return self.node.head.value # Sure, I guess
+		elif isinstance(self.node, expressions.name): # Variable register
+			return self.node.value
+		#elif isinstance(self.node, expressions.receive):
+		#	return self.node.value.value
+		elif isinstance(self.node, expressions.constant) and self.node.value is None: # Null value is interned so that instructions can reliably take null as an operand
+			return '&0'
+		elif isinstance(self.node, expressions.sequence_literal) and not self.node.nodes: # Empty list
+			self.constant = self.constant + 1
+			index = '&' + str(self.constant)
+			self.values[index] = ()
+			return index
+		elif isinstance(self.node, expressions.literal): # Constant register
+			self.constant = self.constant + 1
+			index = '&' + str(self.constant)
+			self.values[index] = self.node.value
+			return index
+		else: # Temporary register
+			index = str(sum(self.path) + offset + 1) # Sum of path is a pretty good way to minimise registers
+			self.values[index] = None
+			return index
+			
 	def balanced(
-		cls,
-		tokens: str
+		self,
+		string: str
 		) -> bool:
 		"""
 		Takes a string and checks if its parentheses are balanced.
+		This check permits parentheses over newlines.
 		https://stackoverflow.com/questions/6701853/parentheses-pairing-issue
 		"""
-		opening, closing = presets.PARENS.keys(), presets.PARENS.values() # Gets all opening parentheses from string
-		string, stack = '', []
-		for token in tokens:
-			if string:
-				if token == string:
-					string = ''
-				else:
+		stack = []
+		for symbol in re.finditer(presets.REGEX_BALANCED, string):
+			value = symbol.group()
+			match symbol.lastgroup:
+				case 'string':
 					continue
-			elif token in '\'\"':
-				string = token
-			if token in opening: # If character is an opening parenthesis:
-				stack.append(token) # Add to stack
-			elif token in closing: # If character is a closing parenthesis:
-				if not stack or token != presets.PARENS[stack.pop()]: # If the stack is empty or c doesn't match the item popped off the stack:
-					hemera.error('sophia', 0, 'UPRN', ())
-					return False # Parentheses are unbalanced
-		else:
-			if stack:
-				hemera.error('sophia', 0, 'UPRN', ())
-			return not stack # Interprets stack as a boolean, where an empty stack is falsy
+				case 'l_parens': # If character is an opening parenthesis:
+					stack.append(value) # Add to stack
+				case 'r_parens': # If character is a closing parenthesis:
+					if not stack or value != presets.PARENS[stack.pop()]: # If the stack is empty or c doesn't match the item popped off the stack:
+						return False # Parentheses are unbalanced
+		return not stack # Interprets stack as a boolean, where an empty stack is falsy
+		
+	def matched(
+		self,
+		string: str
+		) -> bool:
+		"""
+		Takes a string and checks if its quotes are matched.
+		This check does not permit quotes over newlines.
+		"""
+		for symbol in re.finditer(presets.REGEX_MATCHED, string, flags = re.MULTILINE):
+			match symbol.lastgroup:
+				case 'string':
+					continue
+				case 'unmatched':
+					return False
+		return True
+
+	def alias(
+		self,
+		match: re.Match
+		) -> str:
+		"""
+		Substitutes aliased names for their canonical names.
+		"""
+		return presets.ALIASES[string] if (string := match.group()) in presets.ALIASES else string

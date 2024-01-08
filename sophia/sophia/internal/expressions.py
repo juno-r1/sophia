@@ -1,32 +1,141 @@
+import re
 from typing import Any
 
-from .nodes import node, lexer
+from . import presets
+from .nodes import node
 from .instructions import instruction as ins
-from .presets import ALIASES, CONSTANTS
+from ..datatypes.mathos import real
+
+class lexer:
+	"""
+	Implements a Pratt parser for expressions.
+	These sources helped with expression parsing:
+	https://eli.thegreenplace.net/2010/01/02/top-down-operator-precedence-parsing
+	https://abarker.github.io/typped/pratt_parsing_intro.html
+	https://web.archive.org/web/20150228044653/http://effbot.org/zone/simple-top-down-parsing.htm
+	https://matklad.github.io/2020/04/13/simple-but-powerful-pratt-parsing.html
+	"""
+	def __init__(
+		self,
+		string: str
+		) -> None:
+		
+		self.iterator = re.finditer(presets.REGEX_LEXER, string.strip())
+		self.token = None
+		self.peek = None
+		self.use()
+
+	def use(
+		self
+		) -> None:
+		"""
+		Gets the next tokens, ignoring whitespace.
+		The iterator has a guaranteed sentinel value, so no exception will be raised.
+		"""
+		self.token, self.peek = self.peek, next(self.iterator)
+		value = self.peek.group()
+		match self.peek.lastgroup:
+			case 'sentinel': # End of string
+				token = eol()
+			case 'number':
+				token = number(value)
+			case 'string':
+				token = string(value)
+			case 'literal' if value in presets.KEYWORDS_INFIX:
+				token = infix(value)
+			case 'literal' if value in presets.KEYWORDS_PREFIX:
+				token = prefix(value)
+			case 'literal' if value in presets.CONSTANTS:
+				token = constant(value)
+			case 'literal' if value == 'if':
+				token = left_conditional(value)
+			case 'literal' if value == 'else':	
+				token = right_conditional(value)
+			case 'literal':
+				token = name(value)
+			case 'l_parens' if value == '(':
+				token = function_call(value) if isinstance(self.token, name) else parenthesis(value)
+			case 'l_parens' if value == '[':
+				token = sequence_index(value) if isinstance(self.token, name) else sequence_literal(value)
+			case 'l_parens' if value == '{':
+				token = meta_statement(value)
+			case 'r_parens':
+				token = right_bracket(value)
+			case 'operator' if value in (':', ','): # Same regardless of context
+				token = concatenator(value)
+			case 'operator' if not self.token or isinstance(self.token, operator) and not isinstance(self.token, right_bracket): # Prefixes
+				if value == '>':
+					token = receive(value)
+				elif value == '*':
+					token = resolve(value)
+				else:
+					token = prefix(value) # NEGATION TAKES PRECEDENCE OVER EXPONENTIATION - All unary operators have the highest possible left-binding power
+			case 'operator' if value in ('^', '->', '=>'): # Infixes
+				token = infix_r(value)
+			#case 'operator' if value == '<-':
+			#	bind_name = tokens.pop()
+			#	token = bind(bind_name.value)
+			#	token.type = bind_name.type
+			case 'operator':
+				token = infix(value)
+		self.peek = token
+			#case 'operator' if len(tokens[-1]) == 1 and isinstance(tokens[-1][-1], name) and ('=>' in line or line[-1] == ':'): # Special case for operator definition
+			#	pass
+			#	token = nodes.name(value)
+			#if len(tokens[-1]) == 1 and isinstance(tokens[-1][-1], name) and ('=>' in line or line[-1] == ':'): # Special case for operator definition
+			#	token = name(symbol)
+			#	token_type = tokens[-1].pop().value # Sets return type of operator
+			#	token.type = sub_types[token_type] if token_type in sub_types else token_type
+
+	def parse(
+		self,
+		lbp: int = 0
+		) -> node:
+		"""
+		LBP: left-binding power
+		NUD: null denotation (prefixes)
+		LED: left denotation (infixes)
+		"""
+		self.use()
+		if isinstance(self.peek, eol): # Detects end of expression
+			return self.token # End-of-line token
+		left = self.token.nud(self) # Executes null denotation of current token
+		while lbp < self.peek.lbp:
+			self.use()
+			left = self.token.led(self, left) # Executes left denotation of current token
+			if isinstance(self.peek, eol): # Detects end of expression
+				return left # Returns expression tree
+		else:
+			return left # Preserves state of next_token for higher-level calls
+
+class eol:
+	"""Sentinel object for the lexer."""
+	def __init__(self) -> None: self.lbp = -1
 
 class expression(node):
 	"""Base expression node."""
-	pass
+	def __init__(
+		self,
+		value: str
+		) -> None:
+
+		super().__init__()
+		self.value = value # Node representation
+
+	def __str__(self) -> str: return self.value
 
 class identifier(expression):
 	"""Generic identifier node."""
 	def __init__(
 		self,
-		tokens: Any | None
+		value: Any
 		) -> None:
 		
-		super().__init__(tokens)
+		super().__init__(value)
 		self.lbp = 0
 
 class literal(identifier):
 	"""Defines a literal."""
-	def __init__(
-		self,
-		tokens: Any | None
-		) -> None:
-		
-		super().__init__(CONSTANTS[tokens] if tokens in CONSTANTS else tokens)
-
 	def nud(
 		self,
 		lex: lexer
@@ -40,16 +149,45 @@ class literal(identifier):
 		
 		return ()
 
+class number(literal):
+	"""Defines a number."""
+	def __init__(
+		self,
+		value: str
+		) -> None:
+
+		super().__init__(real.read(value))
+
+	def __str__(self) -> str: return str(self.value)
+
+class string(literal):
+	"""Defines a string."""
+	def __init__(
+		self,
+		value: str
+		) -> None:
+
+		super().__init__(bytes(value[1:-1], 'utf-8').decode('unicode_escape'))
+
+class constant(literal):
+	"""Defines a constant literal."""
+	def __init__(
+		self,
+		value: str
+		) -> None:
+
+		super().__init__(presets.CONSTANTS[value])
+
+	def __str__(self) -> str: return str(self.value)
+
 class name(identifier):
 	"""Defines a name."""
 	def __init__(
 		self,
-		tokens: str,
-		typename: str
+		value: str
 		) -> None:
 		
-		super().__init__(ALIASES[tokens] if tokens in ALIASES else tokens)
-		self.type = typename
+		super().__init__(presets.ALIASES[value] if value in presets.ALIASES else value)
 
 	def nud(
 		self,
@@ -66,20 +204,10 @@ class name(identifier):
 		self
 		) -> tuple[ins, ...]:
 		
-		if self.type and self.register == '0':
-			return ins(self.type, '0', (self.value,)),
-		else:
-			return ()
+		return ()
 
 class keyword(identifier):
 	"""Defines a keyword."""
-	def __init__(
-		self,
-		tokens: str
-		) -> None:
-
-		super().__init__(tokens)
-
 	def nud(
 		self,
 		lex: lexer
@@ -87,6 +215,8 @@ class keyword(identifier):
 		
 		return self
 
+class keyword_continue(keyword):
+	"""Defines the continue keyword."""
 	def execute(
 		self
 		) -> tuple[ins, ...]:
@@ -94,10 +224,18 @@ class keyword(identifier):
 		loop = self
 		while type(loop).__name__ not in ('for_statement', 'while_statement'):
 			loop = loop.head
-		if self.value == 'continue':
-			return ins('.continue', '0'),
-		elif self.value == 'break':
-			return ins('.break', '0', (loop.register, loop.value.value if loop.value else '0')),
+		return ins('.continue', '0'),
+
+class keyword_break(identifier):
+	"""Defines the break keyword."""
+	def execute(
+		self
+		) -> tuple[ins, ...]:
+
+		loop = self
+		while type(loop).__name__ not in ('for_statement', 'while_statement'):
+			loop = loop.head
+		return ins('.break', '0', (loop.register, loop.index if hasattr(loop, 'index') else '0')),
 
 class operator(expression):
 	"""Generic operator node."""
@@ -138,10 +276,10 @@ class prefix(operator):
 	"""Defines a prefix."""
 	def __init__(
 		self,
-		tokens: str
+		value: str
 		) -> None:
 
-		super().__init__(tokens)
+		super().__init__(value)
 		self.lbp = len(operator.binding_power) + 1 # Highest possible binding power
 
 	def nud(
@@ -164,10 +302,10 @@ class bind(prefix):
 	"""Defines the bind operator."""
 	def __init__(
 		self,
-		tokens: str
+		value: str
 		) -> None:
 
-		super().__init__(tokens)
+		super().__init__(value)
 		self.type = None
 
 	def __str__(self) -> str: return 'bind ' + self.value
@@ -247,7 +385,7 @@ class left_conditional(infix):
 		self
 		) -> tuple[ins, ...]:
 		
-		return ins('.branch', self.register, (self.nodes[0].register,)),
+		return ins('if', self.register, (self.nodes[0].register,)),
 
 	def execute(
 		self
@@ -272,7 +410,7 @@ class right_conditional(infix):
 		return (ins('BIND'),
 				ins('?', self.register, (self.nodes[0].register,)),
 				ins('.bind', '0', label = [self.head.register]),
-				ins('.branch', self.register),
+				ins('if', self.register),
 				ins('END'),
 				ins('ELSE')) # Enclosed by labels of left conditional
 
@@ -395,13 +533,8 @@ class sequence_index(left_bracket):
 		self
 		) -> tuple[ins, ...]:
 		
-		return [ins('[', # Own register is not guaranteed to be the same as the register of the first index
-					self.register,
-					(self.nodes[0].register, self.nodes[1].register))] + \
-			   [ins('[',
-					self.register,
-					(self.register, item.register))
-				for item in self.nodes[2:]]
+		return [ins('[', self.register, (self.nodes[0].register, self.nodes[1].register))] + \
+			   [ins('[', self.register, (self.register, item.register)) for item in self.nodes[2:]]
 
 class sequence_literal(left_bracket):
 	"""Defines a sequence constructor."""
@@ -420,7 +553,7 @@ class sequence_literal(left_bracket):
 	def execute(
 		self
 		) -> tuple[ins, ...]:
-
+		
 		if self.nodes and self.nodes[0].value == ':' and len(self.nodes[0].nodes) == 3:
 			return ins('.range', self.register, tuple(i.register for i in self.nodes[0].nodes)),
 		elif self.nodes and self.nodes[0].value == ':':
@@ -428,7 +561,7 @@ class sequence_literal(left_bracket):
 		elif self.nodes:
 			return ins('.list', self.register, tuple(i.register for i in self.nodes)),
 		else:
-			return ()
+			return () # Empty list is a constant
 
 class meta_statement(left_bracket):
 	"""Defines a meta-statement."""

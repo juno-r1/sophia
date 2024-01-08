@@ -3,24 +3,29 @@ from re import match
 from sys import stderr
 from typing import Any
 
-from .internal.presets import ERRORS, TOKENS_NAMESPACE
+from .internal.presets import ERRORS, FLAGS, REGEX_NAMESPACE
 
 class handler:
 	"""
 	Error handler class.
-	Stores information about the current state of the program,
+	Stores information about the state of the program and the source file
 	and performs a clean exit when an error is thrown.
 	"""
 	def __init__(
 		self,
-		*flags: tuple[str, ...]
+		source: str,
+		flags: tuple[str, ...]
 		) -> None:
 		
+		self.source = source
 		self.flags = flags
-		self.throw = True
-		self.profiler = Profile()
+		self.lock = False # Locks program execution
+		self.profiler = None # Profiles are created within their tasks
+		for flag in flags:
+			if flag not in FLAGS:
+				self.error('FLAG', flag) # Complete __init__ before potential exception
 
-	def initial( # Initial flags
+	def initial( # Initial task flags
 		self,
 		task,
 		) -> None:
@@ -30,9 +35,10 @@ class handler:
 		if 'instructions' in self.flags:
 			self.debug_instructions(task)
 		if 'profile' in self.flags:
+			self.profiler = Profile()
 			self.profiler.enable()
 
-	def final( # Final flags
+	def final( # Final task flags
 		self,
 		task,
 		value: Any
@@ -50,6 +56,14 @@ class handler:
 		else:
 			task.message('terminate')
 			return task.state() # Return mutable state to supervisor
+
+	def processor( # Processor flags
+		self,
+		task
+		) -> None:
+
+		if 'processor' in self.flags:
+			self.debug_instructions(task)
 
 	def debug_instructions(
 		self,
@@ -79,7 +93,7 @@ class handler:
 			  '\n---\n'.join(('{0} {1} {2}'.format(
 				  name,
 				  task.types[name],
-				  value) for name, value in task.values.items() if match(TOKENS_NAMESPACE, name))
+				  value) for name, value in task.values.items() if match(REGEX_NAMESPACE, name))
 			  ),
 			  '===',
 			  sep = '\n',
@@ -97,20 +111,20 @@ class handler:
 			  sep = '\t',
 			  file = stderr)
 
-	def runtime_error(
+	def error(
 		self,
 		status: str,
 		*args: tuple
 		) -> None:
 		"""
-		Throws an error and performs a system exit unless suppressed.
+		Throws an error and terminates the current task.
 		"""
-		if self.throw: # Suppresses error for assertions
-			if 'suppress' not in self.flags:
-				print('===',
-					  '{0} (line {1})'.format(self.name, self.op.line),
-					  ERRORS[status].format(*args) if args else ERRORS[status],
-					  '===',
-					  sep = '\n',
-					  file = stderr)
-			raise SystemExit
+		if 'suppress' not in self.flags:
+			print('===',
+					#'{0} (line {1})'.format(self.name, self.op.line),
+					ERRORS[status].format(*args) if args else ERRORS[status],
+					'===',
+					sep = '\n',
+					file = stderr)
+		self.lock = True
+		raise SystemExit
