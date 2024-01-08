@@ -4,7 +4,7 @@ x: [1, 2, 3]
 
 bool a: str('a')
 bool b: not int('b')
-bool c: list[2](x)
+bool c: list[3](x)
 bool d: list[int](x)
 bool e: signature(print, [str])
 

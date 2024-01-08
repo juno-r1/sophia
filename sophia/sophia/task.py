@@ -63,7 +63,7 @@ class task:
 		debug_task = 'task' in self.handler.flags # Debug runtime loop
 		self.caller = None # Reset caller
 		while self.path:
-			self.op, cache = self.instructions[self.path], self.cache[self.path]
+			self.op = self.instructions[self.path]
 			if debug_task:
 				self.handler.debug_task(self)
 			self.path = self.path + 1
@@ -75,7 +75,7 @@ class task:
 					if (name := self.op.name) in task.interns: # Internal instructions
 						task.interns[name](self, *args)
 					else:
-						value = (cache if cache else self.values[name])(self, *args)
+						value = self.values[name](self, *args)
 				except KeyError as e:
 					self.handler.error('FIND', e.args[0])
 		else:
@@ -172,7 +172,7 @@ class task:
 		"""
 		Type check wrapper for when a failed type check requires an error condition.
 		"""
-		return value if check(self, value) else self.handler.error('TYPE', check, value)
+		return value if check(self, value, write = False) else self.handler.error('TYPE', check, value)
 
 	def intern_constraint(
 		self,

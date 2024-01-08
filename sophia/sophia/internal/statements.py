@@ -113,14 +113,10 @@ class event_statement(coroutine):
 	def execute(
 		self
 		) -> tuple[ins, ...]:
-
-		if self.type:
-			return (ins(self.final, self.register, ('&0',)),
-					ins('return', '0'),
-					ins('END'))
-		else:
-			return (ins('return', '0'),
-					ins('END', label = [self.name]))
+		
+		return (ins(self.final, self.register, ('&0',)),
+				ins('return', '0'),
+				ins('END'))
 
 class function_statement(coroutine):
 	"""Defines a function definition."""
@@ -152,13 +148,9 @@ class function_statement(coroutine):
 		self
 		) -> tuple[ins, ...]: 
 		
-		if self.type:
-			return (ins(self.final, self.register, ('&0',)),
-					ins('return', '0'),
-					ins('END'))
-		else:
-			return (ins('return', '0'),
-					ins('END', label = [self.name]))
+		return (ins(self.final, self.register, ('&0',)),
+				ins('return', '0'),
+				ins('END'))
 
 class assignment(statement):
 	"""Defines an assignment. Supports multiple assignment."""

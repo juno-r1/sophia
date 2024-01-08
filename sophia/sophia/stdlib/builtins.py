@@ -312,21 +312,14 @@ std_sign = funcdef(
 
 def signature_function_list(task, routine, signature):
 
-	tree = routine.tree.true if signature else routine.tree.false
-	while tree:
-		try:
-			tree = tree.true if tree.op(signature[tree.index]) else tree.false
-		except IndexError:
-			tree = tree.false
-	try:
-		if tree is None:
-			raise KeyError
-		for i, item in enumerate(signature): # Verify type signature
-			if not item < tree.signature[i]:
-				raise KeyError
-		return True
-	except (IndexError, KeyError):
+	while routine: # Just do dispatch
+		routine = routine.true if routine.index < task.op.arity and routine.check(signature) else routine.false
+	if routine is None or routine.arity != len(signature):
 		return False
+	for i, item in enumerate(signature):
+		if item > routine.signature[i]:
+			return False
+	return True
 
 std_signature = funcdef(
 	signature_function_list

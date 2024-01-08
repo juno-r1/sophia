@@ -618,3 +618,12 @@ there just aren't enough registers to make this work
 what to do instead?
 
 special type check that uses the any | error paradigm
+
+type properties are so close to working. i just need a way to conveniently access them
+refactor types list as dict
+
+type properties can now be conveniently accessed
+unfortunately, type properties still don't compare equal despite having an explicitly defined __eq__
+i can't be bothered to figure out why
+also i'm pretty sure they won't pickle
+so instead i'm going to change the data structure that represents them. again

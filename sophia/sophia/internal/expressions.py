@@ -54,16 +54,16 @@ class lexer:
 			case 'literal':
 				token = name(value)
 			case 'l_parens' if value == '(':
-				token = function_call(value) if isinstance(self.token, name) else parenthesis(value)
+				token = parenthesis(value) if self.prefix() else function_call(value)
 			case 'l_parens' if value == '[':
-				token = sequence_index(value) if isinstance(self.token, name) else sequence_literal(value)
+				token = sequence_literal(value) if self.prefix() else sequence_index(value)
 			case 'l_parens' if value == '{':
 				token = meta_statement(value)
 			case 'r_parens':
 				token = right_bracket(value)
 			case 'operator' if value in (':', ','): # Same regardless of context
 				token = concatenator(value)
-			case 'operator' if not self.token or isinstance(self.token, operator) and not isinstance(self.token, right_bracket): # Prefixes
+			case 'operator' if self.prefix(): # Prefixes
 				if value == '>':
 					token = receive(value)
 				elif value == '*':
@@ -107,6 +107,16 @@ class lexer:
 				return left # Returns expression tree
 		else:
 			return left # Preserves state of next_token for higher-level calls
+
+	def prefix(
+		self,
+		) -> bool:
+		"""
+		Determines whether a symbol is a prefix based on the properties of the last token.
+		"""
+		return not self.token \
+			   or isinstance(self.token, operator) \
+			   and not isinstance(self.token, right_bracket)
 
 class eol:
 	"""Sentinel object for the lexer."""
@@ -407,9 +417,7 @@ class right_conditional(infix):
 		self
 		) -> tuple[ins, ...]:
 		
-		return (ins('BIND'),
-				ins('?', self.register, (self.nodes[0].register,)),
-				ins('.bind', '0', label = [self.head.register]),
+		return (ins('.bind', '0', (self.nodes[0].register,), label = [self.head.register]),
 				ins('if', self.register),
 				ins('END'),
 				ins('ELSE')) # Enclosed by labels of left conditional
@@ -418,9 +426,7 @@ class right_conditional(infix):
 		self
 		) -> tuple[ins, ...]:
 		
-		return (ins('BIND'),
-				ins('?', self.register, (self.nodes[1].register,)),
-				ins('.bind', '0', label = [self.head.register]))
+		return ins('.bind', '0', (self.nodes[1].register,), label = [self.head.register]),
 
 class infix_r(operator):
 	"""Defines a right-binding infix."""
@@ -499,10 +505,7 @@ class function_call(left_bracket):
 		self
 		) -> tuple[ins, ...]:
 		
-		args = tuple(item.register for item in self.nodes[1:])
-		names = self.nodes[0].value.split('.')[::-1]
-		return [ins(names[0], self.register, args)] + \
-				[ins(item, self.register, (self.register,)) for item in names[1:]]
+		return ins(self.nodes[0].register, self.register, tuple(item.register for item in self.nodes[1:])),
 
 class parenthesis(left_bracket):
 	"""Defines a set of parentheses."""

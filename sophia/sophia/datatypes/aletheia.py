@@ -1,5 +1,4 @@
 import json
-from dataclasses import dataclass
 from functools import reduce
 from sys import stderr
 from typing import Any, Callable, Self
@@ -13,17 +12,30 @@ with open('sophia/stdlib/kleio.json', 'r') as kleio:
 	metadata = json.load(kleio)
 del kleio
 
-@dataclass(repr = False, frozen = True)
-class type_method:
+class type_property:
 	"""
-	Implements a user-defined type property.
+	Implements a type property.
 	"""
-	instructions: list[instruction]
-	name: str
-	initial: Any # typedef
-	final: Any # typedef
+	def __init__(
+		self,
+		name: str,
+		value: Any = None,
+		) -> None:
+		
+		self.name = name
+		self.check = self.__check__ if name in type_property.builtins else self.__user__
+		self.property = value
 
-	def __call__( # Type checks only take 1 argument
+	def __eq__(
+		self,
+		other
+		) -> bool:
+
+		return self.name == other.name and self.property == other.property
+
+	def __str__(self) -> str: return self.name
+
+	def __user__(
 		self,
 		task,
 		value: Any
@@ -35,7 +47,181 @@ class type_method:
 		task.instructions = self.instructions
 		task.path = 1
 
-	def __str__(self) -> str: return str(self.final)
+	def __check__(
+		self,
+		task,
+		value: Any
+		) -> None:
+
+		return getattr(self, '__{0}__'.format(self.name))(task, value)
+
+	def __any__(
+		self,
+		task,
+		value: Any
+		) -> bool:
+
+		return True
+
+	def __none__(
+		self,
+		task,
+		value: Any
+		) -> bool:
+
+		return value is None
+
+	def __some__(
+		self,
+		task,
+		value: Any
+		) -> bool:
+
+		return value is not None
+
+	def __routine__(
+		self,
+		task,
+		value: Any
+		) -> bool:
+
+		return hasattr(value, '__call__')
+
+	def __type__(
+		self,
+		task,
+		value: Any
+		) -> bool:
+
+		return isinstance(value, typedef)
+
+	def __event__(
+		self,
+		task,
+		value: Any
+		) -> bool:
+
+		return isinstance(value, eventdef)
+
+	def __function__(
+		self,
+		task,
+		value: Any
+		) -> bool:
+
+		return isinstance(value, funcdef)
+
+	def __boolean__(
+		self,
+		task,
+		value: Any
+		) -> bool:
+
+		return value is True or value is False
+
+	def __number__(
+		self,
+		task,
+		value: Any
+		) -> bool:
+
+		return isinstance(value, real)
+
+	def __integer__( # Safe to assume that value is of type number
+		self,
+		task,
+		value: real
+		) -> bool:
+
+		return value % 1 == 0
+
+	def __sequence__(
+		self,
+		task,
+		value: Any
+		) -> bool:
+
+		return hasattr(value, '__iter__')
+
+	def __string__(
+		self,
+		task,
+		value: Any
+		) -> bool:
+
+		return isinstance(value, str)
+
+	def __list__(
+		self,
+		task,
+		value: Any
+		) -> bool:
+
+		return isinstance(value, tuple)
+
+	def __record__(
+		self,
+		task,
+		value: Any
+		) -> bool:
+
+		return isinstance(value, dict)
+
+	def __slice__(
+		self,
+		task,
+		value: Any
+		) -> bool:
+
+		return isinstance(value, slice)
+
+	def __future__(
+		self,
+		task,
+		value: Any
+		) -> bool:
+
+		return isinstance(value, reference)
+
+	def __element__(
+		self,
+		task,
+		value: Any
+		) -> bool:
+
+		if isinstance(value, dict):
+			return all(self.property(task, i) for i in value.values())
+		else:
+			return all(self.property(task, i) for i in value)
+
+	def __length__(
+		self,
+		task,
+		value: Any
+		) -> bool:
+
+		return len(value) == self.property
+
+	builtins = [
+		'any',
+		'none',
+		'some',
+		'routine',
+		'type',
+		'event',
+		'function',
+		'boolean',
+		'number',
+		'integer',
+		'sequence',
+		'string',
+		'list',
+		'record',
+		'slice',
+		'future',
+		'element',
+		'length'
+	]
 
 class typedef:
 	"""
@@ -45,7 +231,7 @@ class typedef:
 	def __init__(
 		self,
 		supertype: Self | None = None,
-		*methods: tuple[type_method | type, ...],
+		*methods: tuple[type_property | type, ...],
 		prototype: Any = None
 		) -> None:
 		
@@ -53,14 +239,14 @@ class typedef:
 			self.types = supertype.types.copy()
 			self.prototype = supertype.prototype
 		else:
-			self.types = []
+			self.types = {}
 			self.prototype = None
 		if methods:
-			self.types.extend(methods)
+			self.types.update({i.name: i for i in methods})
 		if prototype:
 			self.prototype = prototype
 
-	def __call__(self, task, value):
+	def __call__(self, task, value, *, write = True):
 		"""
 		Types do not use the same dispatch as other routines.
 		Instead, a custom dispatch is performed based on the known
@@ -70,14 +256,15 @@ class typedef:
 		if definition < self: # Value is subtype
 			check = True
 		else:
-			for item in self.types:
-				if item not in definition.types and not item(task, value):
+			for item in self.types.values():
+				if item not in definition.types.values() and not item.check(task, value):
 					check = False
 					break
 			else:
 				check = True
-		task.values[address] = check
-		task.types[address] = typedef(std_boolean)
+		if write:
+			task.values[address] = check
+			task.types[address] = typedef(std_boolean)
 		return check
 
 	def __eq__( # Implements equality
@@ -92,14 +279,14 @@ class typedef:
 		other: Self
 		) -> bool:
 		
-		return not bool([i for i in other.types if i not in self.types])
+		return not bool([i for i in other.types.values() if i not in self.types.values()])
 
 	def __gt__( # Implements negative subtype relation
 		self,
 		other: Self
 		) -> bool:
-
-		return bool([i for i in other.types if i not in self.types])
+		
+		return bool([i for i in other.types.values() if i not in self.types.values()])
 
 	#def __and__(self, other): # Implements type intersection
 
@@ -112,15 +299,15 @@ class typedef:
 		other: Self
 		) -> Self:
 
-		return typedef(None, *[i for i in self.types if i in other.types])
+		return typedef(None, *[i for i in self.types.values() if i in other.types.values()])
 
 	def __str__(self) -> str:
 
 		if not self.types:
 			return '?'
 		properties = []
-		for item in self.types:
-			if (name := getattr(item, 'name', item.__name__)) in STDLIB_NAMES and name not in PROPERTIES:
+		for item in self.types.values():
+			if (name := item.name) in STDLIB_NAMES and name not in PROPERTIES:
 				datatype = name # Get most specific data type
 			else:
 				properties.append('{0}:{1}'.format(name, item.property))
@@ -131,9 +318,9 @@ class typedef:
 	def criterion( # Gets the most specific property that two typedefs don't share (non-commutative)
 		self,
 		other: Self
-		) -> type_method | None:
+		) -> type_property | None:
 
-		shared = [i for i in self.types if i not in other.types]
+		shared = [i for i in self.types.values() if i not in other.types.values()]
 		return shared[-1] if shared else None
 
 	@classmethod
@@ -166,6 +353,7 @@ class method:
 		body: list[instruction] | Callable,
 		names: list[str],
 		types: list[typedef],
+		*,
 		user = False
 		) -> None:
 		
@@ -179,6 +367,7 @@ class method:
 		self.params = names[1:]
 		self.final = types[0]
 		self.signature = types[1:]
+		self.arity = len(self.signature)
 
 	def __bool__(self) -> bool: return False
 
@@ -189,7 +378,7 @@ class method:
 		level: int = 0
 		) -> str:
 		
-		print(('  ' * level) + str(self), file = stderr)
+		print(('.' * level) + str(self), file = stderr)
 
 class function_method(method):
 
@@ -257,14 +446,11 @@ class multimethod:
 		instance = self.true if signature else self.false
 		while instance: # Traverse tree; terminates upon reaching leaf node
 			instance = instance.true if instance.index < task.op.arity and instance.check(signature) else instance.false
-		if instance is None:
-			return task.handler.error('DISP', task.op.name, signature)
-		try:
-			for i, item in enumerate(signature): # Verify type signature
-				if item > instance.signature[i]:
-					raise IndexError
-		except IndexError:
-			return task.handler.error('DISP', task.op.name, signature)
+		if instance is None or instance.arity != task.op.arity:
+			task.handler.error('DISP', task.op.name, signature)
+		for i, item in enumerate(signature): # Verify type signature
+			if item > instance.signature[i]:
+				task.handler.error('DISP', task.op.name, signature)
 		final = instance.final
 		value = instance.routine(task, *args)
 		task.values[address] = value
@@ -344,7 +530,7 @@ class multimethod:
 		signature: list[typedef]
 		) -> bool: 
 
-		return self.property in signature[self.index].types
+		return self.property in signature[self.index].types.values()
 
 	def collect(self) -> list[method]: # Collect all leaf nodes (order not important)
 
@@ -358,7 +544,7 @@ class multimethod:
 		level: int = 0
 		) -> None:
 	
-		print(('  ' * level) + str(self), file = stderr)
+		print(('.' * level) + str(self), file = stderr)
 		if self:
 			if self.true is not None:
 				self.true.debug(level + 1)
@@ -391,313 +577,55 @@ Types are expressed by a Boolean predicate which is true for that type's
 set of values. This predicate also functions as a type check.
 """
 
-class cls_any:
-	"""
-	Base template for built-in types, equivalent to none | some.
-	"""
-	name = 'any'
-	data = object, type(None)
-
-	def __new__( # Type check constructor disguised as an object constructor
-		cls,
-		task,
-		value: Any
-		) -> bool:
-
-		return True
-
-	@classmethod
-	def __null__(cls, value): return
-
-	@classmethod
-	def __type__(cls, value): return
-
-	@classmethod
-	def __event__(cls, value): return
-
-	@classmethod
-	def __function__(cls, value): return
-
-	@classmethod
-	def __boolean__(cls, value): return
-
-	@classmethod
-	def __number__(cls, value): return
-
-	@classmethod
-	def __string__(cls, value): return
-
-	@classmethod
-	def __list__(cls, value): return
-
-	@classmethod
-	def __record__(cls, value): return
-
-	@classmethod
-	def __slice__(cls, value): return
-
-	@classmethod
-	def __future__(cls, value): return
-
-std_any = typedef(None, cls_any)
-
-class cls_none(cls_any): # Null type
-	
-	name = 'none'
-	data = type(None)
-
-	def __new__(
-		cls,
-		task,
-		value: Any
-		) -> bool:
-
-		return value is None
-
-std_none = typedef(std_any, cls_none)
-
-class cls_some(cls_any): # Non-null type
-	
-	name = 'some'
-	data = object
-
-	def __new__(
-		cls,
-		task,
-		value: Any
-		) -> bool:
-		
-		return isinstance(value, cls.data)
-
-std_some = typedef(std_any, cls_some)
-
-class cls_routine(cls_some):
-	
-	name = 'routine'
-	data = funcdef, eventdef, typedef
-
-std_routine = typedef(std_some, cls_routine)
-
-class cls_type(cls_routine):
-	
-	name = 'type'
-	data = typedef
-
-std_type = typedef(std_routine, cls_type, prototype = std_any)
-
-class cls_event(cls_routine):
-	
-	name = 'event'
-	data = eventdef
-
-std_event = typedef(std_routine, cls_event)
-
-class cls_function(cls_routine):
-	
-	name = 'function'
-	data = funcdef
-
-std_function = typedef(std_routine, cls_function)
-
-class cls_boolean(cls_some):
-	
-	name = 'boolean'
-	data = bool
-
-	@classmethod
-	def __boolean__(cls, value): return value
-
-	@classmethod
-	def __number__(cls, value): return value != 0
-
-	@classmethod
-	def __string__(cls, value): return value != ''
-
-	@classmethod
-	def __list__(cls, value): return value != []
-
-	@classmethod
-	def __record__(cls, value): return value != {}
-
-	@classmethod
-	def __slice__(cls, value): return len(value) != 0
-
-std_boolean = typedef(std_some, cls_boolean, prototype = False)
-
-class cls_number(cls_some):
-	
-	name = 'number'
-	data = real
-
-	@classmethod
-	def __boolean__(cls, value): return real(int(value))
-
-	@classmethod
-	def __number__(cls, value): return value
-
-	@classmethod
-	def __string__(cls, value): return real.read(value)
-
-	@classmethod
-	def __future__(cls, value): return real(value.pid)
-
-std_number = typedef(std_some, cls_number, prototype = real())
-
-class cls_integer(cls_number):
-
-	name = 'integer'
-
-	def __new__( # Sophia now does these sequentially, so no need to check the data type
-		cls,
-		task,
-		value: real
-		) -> bool:
-
-		return value % 1 == 0
-
-std_integer = typedef(std_number, cls_integer) # Inherits prototype from std_number
-
-class cls_sequence(cls_some):
-	
-	name = 'sequence'
-	data = str, list, dict, slice
-
-std_sequence = typedef(std_some, cls_sequence)
-
-class cls_string(cls_sequence):
-	
-	name = 'string'
-	data = str
-
-	@classmethod
-	def __null__(cls, value): return 'null'
-
-	@classmethod
-	def __type__(cls, value): return value.name
-
-	@classmethod
-	def __event__(cls, value): return value.name
-
-	@classmethod
-	def __function__(cls, value): return value.name
-
-	@classmethod
-	def __boolean__(cls, value): return 'true' if value else 'false'
-
-	@classmethod
-	def __number__(cls, value): return str(value)
-
-	@classmethod
-	def __string__(cls, value): return value
-
-	#@classmethod
-	#def __list__(cls, value): return '[' + ', '.join([cast_std_some(i, cls) for i in value]) + ']'
-
-	#@classmethod
-	#def __record__(cls, value): return '[' + ', '.join([cast_std_some(k, cls) + ': ' + cast_std_some(v, cls) for k, v in value.items()]) + ']'
-
-	@classmethod
-	def __slice__(cls, value): return '{0}:{1}:{2}'.format(value.start, value.stop, value.step)
-
-	@classmethod
-	def __future__(cls, value): return value.name
-
-std_string = typedef(std_sequence, cls_string, prototype = '')
-
-class cls_list(cls_sequence):
-	
-	name = 'list'
-	data = tuple
-
-	@classmethod
-	def __string__(cls, value): return tuple(i for i in value)
-
-	@classmethod
-	def __list__(cls, value): return value
-
-	@classmethod
-	def __record__(cls, value): return tuple(value.items())
-
-	@classmethod
-	def __slice__(cls, value): return tuple(value)
-
-std_list = typedef(std_sequence, cls_list, prototype = ())
-
-class cls_record(cls_sequence):
-	
-	name = 'record'
-	data = dict
-
-std_record = typedef(std_sequence, cls_record, prototype = {})
-
-class cls_slice(cls_sequence):
-	
-	name = 'slice'
-	data = slice
-	
-std_slice = typedef(std_sequence, cls_slice, prototype = slice())
-
-class cls_future(cls_some):
-	
-	name = 'future'
-	data = reference
-
-std_future = typedef(std_some, cls_future, prototype = std_stdin)
-
-class generator(type):
-	"""
-	Metaclass that generates type properties.
-	"""
-	def __new__(
-		meta,
-		name,
-		value
-		) -> type:
-
-		return type(name, (), {'__new__': properties[name], '__eq__': meta.eq, 'property': value})
-
-	@classmethod
-	def eq(
-		cls,
-		other
-		) -> bool:
-
-		return cls.__new__ is other.__new__ and cls.property == other.property
-
-	@classmethod
-	def element(
-		cls,
-		task,
-		value: Any,
-		) -> bool:
-
-		return all(cls.property(i) for i in value)
-		
-	@classmethod
-	def length(
-		cls,
-		task,
-		value: Any,
-		) -> bool:
-
-		return len(value) == cls.property
-
-	properties = {
-		'element': element,
-		'length': length
-	}
+cls_any			= type_property('any')
+cls_none		= type_property('none')
+cls_some		= type_property('some')
+cls_routine		= type_property('routine')
+cls_type		= type_property('type')
+cls_event		= type_property('event')
+cls_function	= type_property('function')
+cls_boolean		= type_property('boolean')
+cls_number		= type_property('number')
+cls_integer		= type_property('integer')
+cls_sequence	= type_property('sequence')
+cls_string		= type_property('string')
+cls_list		= type_property('list')
+cls_record		= type_property('record')
+cls_slice		= type_property('slice')
+cls_future		= type_property('future')
 
 def cls_element(
 	element: typedef
-	) -> type:
-
-	return generator('element', element)
+	) -> type_property:
+	"""
+	Closure for generating element properties.
+	"""
+	return type_property('element', element)
 
 def cls_length(
 	length: int
-	) -> type:
+	) -> type_property:
+	"""
+	Closure for generating length properties.
+	"""
+	return type_property('length', length)
 
-	return generator('length', length)
+std_any			= typedef(None, cls_any)
+std_none		= typedef(std_any, cls_none)
+std_some		= typedef(std_any, cls_some)
+std_routine		= typedef(std_some, cls_routine)
+std_type		= typedef(std_routine, cls_type, prototype = std_any)
+std_event		= typedef(std_routine, cls_event)
+std_function	= typedef(std_routine, cls_function)
+std_boolean		= typedef(std_some, cls_boolean, prototype = False)
+std_number		= typedef(std_some, cls_number, prototype = real())
+std_integer		= typedef(std_number, cls_integer) # Inherits prototype from std_number
+std_sequence	= typedef(std_some, cls_sequence)
+std_string		= typedef(std_sequence, cls_string, prototype = '')
+std_list		= typedef(std_sequence, cls_list, prototype = ())
+std_record		= typedef(std_sequence, cls_record, prototype = {})
+std_slice		= typedef(std_sequence, cls_slice, prototype = slice())
+std_future		= typedef(std_some, cls_future, prototype = std_stdin)
 
 """
 Type inference and internals.
@@ -713,7 +641,7 @@ def infer( # Infers typedef of value
 		return typedef(std_integer)
 	datatype = types[name]
 	properties = []
-	if cls_sequence in datatype.types:
+	if cls_sequence in datatype.types.values():
 		if name == 'string':
 			element = std_string
 		elif name == 'slice':
@@ -729,23 +657,10 @@ def infer_element( # Infers element type of value
 	value: Any
 	) -> typedef:
 
-	return reduce(typedef.__or__, [infer(i) for i in value], typedef(std_any))
-
-#def infer_type(value): # Infers type of value
-
-#	name = type(value).__name__
-#	if name in names:
-#		name = names[name]
-#		return 'integer' if name == 'number' and value % 1 == 0 else name
-#	else:
-#		return 'untyped'
-
-#def infer_element(value): # Infers element type of value
-	
-#	try:
-#		return reduce(descriptor.__or__, [infer_type(item) for item in value.values()]) if value else 'untyped'
-#	except AttributeError:
-#		return reduce(descriptor.__or__, [infer_type(item) for item in value]) if value else 'untyped'
+	if isinstance(value, dict):
+		return reduce(typedef.__or__, [infer(i) for i in value.values()], typedef(std_any))
+	else:
+		return reduce(typedef.__or__, [infer(i) for i in value], typedef(std_any))
 
 types = {
 	'any': std_any,
@@ -770,3 +685,143 @@ properties = {
 	'length': cls_length
 }
 del std_stdin # stdlib.arche shouldn't find this yet
+
+#class cls_any:
+
+	#@classmethod
+	#def __null__(cls, value): return
+
+	#@classmethod
+	#def __type__(cls, value): return
+
+	#@classmethod
+	#def __event__(cls, value): return
+
+	#@classmethod
+	#def __function__(cls, value): return
+
+	#@classmethod
+	#def __boolean__(cls, value): return
+
+	#@classmethod
+	#def __number__(cls, value): return
+
+	#@classmethod
+	#def __string__(cls, value): return
+
+	#@classmethod
+	#def __list__(cls, value): return
+
+	#@classmethod
+	#def __record__(cls, value): return
+
+	#@classmethod
+	#def __slice__(cls, value): return
+
+	#@classmethod
+	#def __future__(cls, value): return
+
+#class cls_none(cls_any): # Null type
+
+#class cls_some(cls_any): # Non-null type
+
+#class cls_routine(cls_some):
+
+#class cls_type(cls_routine):
+
+#class cls_event(cls_routine):
+
+#class cls_function(cls_routine):
+
+#class cls_boolean(cls_some):
+
+#	@classmethod
+#	def __boolean__(cls, value): return value
+
+#	@classmethod
+#	def __number__(cls, value): return value != 0
+
+#	@classmethod
+#	def __string__(cls, value): return value != ''
+
+#	@classmethod
+#	def __list__(cls, value): return value != []
+
+#	@classmethod
+#	def __record__(cls, value): return value != {}
+
+#	@classmethod
+#	def __slice__(cls, value): return len(value) != 0
+
+#class cls_number(cls_some):
+
+#	@classmethod
+#	def __boolean__(cls, value): return real(int(value))
+
+#	@classmethod
+#	def __number__(cls, value): return value
+
+#	@classmethod
+#	def __string__(cls, value): return real.read(value)
+
+#	@classmethod
+#	def __future__(cls, value): return real(value.pid)
+
+#class cls_integer(cls_number):
+
+#class cls_sequence(cls_some):
+
+#class cls_string(cls_sequence):
+
+#	@classmethod
+#	def __null__(cls, value): return 'null'
+
+#	@classmethod
+#	def __type__(cls, value): return value.name
+
+#	@classmethod
+#	def __event__(cls, value): return value.name
+
+#	@classmethod
+#	def __function__(cls, value): return value.name
+
+#	@classmethod
+#	def __boolean__(cls, value): return 'true' if value else 'false'
+
+#	@classmethod
+#	def __number__(cls, value): return str(value)
+
+#	@classmethod
+#	def __string__(cls, value): return value
+
+#	#@classmethod
+#	#def __list__(cls, value): return '[' + ', '.join([cast_std_some(i, cls) for i in value]) + ']'
+
+#	#@classmethod
+#	#def __record__(cls, value): return '[' + ', '.join([cast_std_some(k, cls) + ': ' + cast_std_some(v, cls) for k, v in value.items()]) + ']'
+
+#	@classmethod
+#	def __slice__(cls, value): return '{0}:{1}:{2}'.format(value.start, value.stop, value.step)
+
+#	@classmethod
+#	def __future__(cls, value): return value.name
+
+#class cls_list(cls_sequence):
+
+#	@classmethod
+#	def __string__(cls, value): return tuple(i for i in value)
+
+#	@classmethod
+#	def __list__(cls, value): return value
+
+#	@classmethod
+#	def __record__(cls, value): return tuple(value.items())
+
+#	@classmethod
+#	def __slice__(cls, value): return tuple(value)
+
+#class cls_record(cls_sequence):
+
+#class cls_slice(cls_sequence):
+
+#class cls_future(cls_some):
