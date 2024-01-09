@@ -99,6 +99,15 @@ class handler:
 			  sep = '\n',
 			  file = stderr)
 
+	def debug_supervisor(
+		self,
+		message
+		) -> None:
+		"""
+		Prints the current message in the supervisor.
+		"""
+		print(message, file = stderr)
+
 	def debug_task(
 		self,
 		task
@@ -111,6 +120,19 @@ class handler:
 			  sep = '\t',
 			  file = stderr)
 
+	def timeout(
+		self
+		) -> None:
+		"""
+		Prints a timeout warning.
+		"""
+		print('===',
+			  'Timeout warning',
+			  'Enter Ctrl+C to interrupt program',
+			  '===',
+			  sep = '\n',
+			  file = stderr)
+
 	def error(
 		self,
 		status: str,
@@ -121,10 +143,10 @@ class handler:
 		"""
 		if 'suppress' not in self.flags:
 			print('===',
-					#'{0} (line {1})'.format(self.name, self.op.line),
-					ERRORS[status].format(*args) if args else ERRORS[status],
-					'===',
-					sep = '\n',
-					file = stderr)
+				  #'{0} (line {1})'.format(self.name, self.op.line),
+				  ERRORS[status].format(*args) if args else ERRORS[status],
+				  '===',
+				  sep = '\n',
+				  file = stderr)
 		self.lock = True
 		raise SystemExit

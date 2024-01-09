@@ -3,7 +3,6 @@ Built-in operators.
 '''
 
 from ..datatypes.aletheia import funcdef, typedef, cls_element, cls_length
-from ..datatypes.mathos import slice
 
 def u_add(_, x): return +x
 
@@ -26,7 +25,7 @@ std_sub = funcdef(
 def u_rsv(task, x):
 	
 	task.message('resolve', x)
-	task.properties.type = x.check
+	task.properties = typedef(x.check)
 	return task.calls.recv()
 
 def b_mul(_, x, y):	return x * y

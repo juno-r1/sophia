@@ -1,8 +1,8 @@
 // 5.7
 
-num increment awaits num x:
+num increment awaits num x (num y):
 
-	start with num y:
+	start:
 
 		num z: y
 		return y
@@ -10,7 +10,7 @@ num increment awaits num x:
 	num z: z + x
 	return z
 
-x <- increment(1)
+x: increment <- (1)
 bool a: *x = 1
 bool b: *(2 -> x) = 3
 bool c: *(3 -> x) = 6

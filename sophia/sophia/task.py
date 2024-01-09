@@ -2,7 +2,7 @@ from functools import reduce
 from multiprocessing import current_process
 from typing import Any
 
-from .datatypes import aletheia
+from .datatypes import aletheia, iris
 from .datatypes.aletheia import typedef
 from .datatypes.mathos import real, slice
 from .metis import processor
@@ -33,7 +33,6 @@ class task:
 		Instruction execution data.
 		"""
 		self.instructions = processor.instructions # Guaranteed to be non-empty
-		self.cache = processor.cache # Instruction cache
 		self.op = self.instructions[0] # Current instruction
 		self.path = 1 # Instruction index
 		"""
@@ -108,8 +107,7 @@ class task:
 				'path': self.path,
 				'op': self.op,
 				'caller': self.caller,
-				'final': self.final,
-				'cache': self.cache}
+				'final': self.final}
 
 	def restore( # Restore previous state of task
 		self,
@@ -118,26 +116,30 @@ class task:
 
 		self.__dict__.update(state if state else self.caller)
 
-#	def prepare(self, # Sets up task for event execution
-#				namespace: dict,
-#				message: Any) -> None:
+	def prepare( # Sets up task for event execution
+		self,
+		namespace: dict,
+		message: Any
+		) -> None:
 		
-#		self.restore(namespace)
-#		self.path, scope = 0, 0
-#		while True:
-#			op, self.path = self.instructions[self.path], self.path + 1
-#			if not op.address:
-#				scope = scope - 1 if op.name == 'END' else scope + 1
-#				if scope == 1 and op.name == 'EVENT':
-#					name = op.label[0]
-#					break
-#		self.values[name], self.types[name] = message, descriptor('untyped').describe(self)
+		self.restore(namespace)
+		self.path, scope = 0, 0
+		while True:
+			op, self.path = self.instructions[self.path], self.path + 1
+			if not op.address:
+				scope = scope - 1 if op.name == 'END' else scope + 1
+				if scope == 1 and op.name == 'EVENT':
+					name = op.label[0]
+					break
+		self.values[name], self.types[name] = message, typedef(aletheia.std_any)
 
-#	def message(self,
-#				instruction: str | None = None,
-#				*args: tuple) -> None:
-		
-#		current_process().stream.put([instruction, self.pid] + list(args) if instruction else None)
+	def message(
+		self,
+		instruction: str,
+		*args: tuple
+		) -> None:
+
+		current_process().stream.put(iris.message(self.pid, instruction, args))
 
 	"""
 	Internal instructions.
@@ -172,7 +174,9 @@ class task:
 		"""
 		Type check wrapper for when a failed type check requires an error condition.
 		"""
-		return value if check(self, value, write = False) else self.handler.error('TYPE', check, value)
+		address = self.op.address
+		self.values[address] = value if check(self, value, write = False) else self.handler.error('TYPE', check, value)
+		self.types[address] = typedef(check)
 
 	def intern_constraint(
 		self,
@@ -193,31 +197,58 @@ class task:
 		self,
 		*types: tuple[typedef, ...]
 		) -> None:
-
-		pass
-		#name = task.op.address
-		#types, params = [descriptor.read(i).describe(task) for i in task.op.label[0::2]], task.op.label[1::2]
-		#start = task.path
-		#task.branch(0, True, True)
-		#end = task.branch(0, True, True)
-		#definition = event_method(task.instructions[start:end], params, types)
-		#routine = task.values[name] if name in task.values and task.types[name].type == 'event' else eventdef(name)
-		#routine.register(definition, types[0], tuple(types[1:-1]))
-		#return routine
+		
+		name = self.op.address
+		params = self.op.label
+		start = self.path
+		end = self.branch(0, True, True)
+		end = self.branch(1, True, True)
+		definition = aletheia.event_method(self.instructions[start:end], params, types)
+		if name in self.values and self.types[name] < aletheia.std_event:
+			self.values[name].extend(definition)
+		else:
+			routine = aletheia.eventdef()
+			routine.extend(definition)
+			self.values[name] = routine
+			self.types[name] = typedef(aletheia.std_event)
 
 	def intern_function(
 		self,
 		*types: tuple[typedef, ...]
 		) -> None:
 		
-		pass
-		#name = task.op.address
-		#types, params = [descriptor.read(i).describe(task) for i in task.op.label[0::2]], task.op.label[1::2]
-		#start, end = task.path, task.branch(0, True, True)
-		#definition = function_method(task.instructions[start:end], params, types)
-		#routine = task.values[name] if name in task.values and task.types[name].type == 'function' else funcdef(name)
-		#routine.register(definition, types[0], tuple(types[1:]))
-		#return routine
+		name = self.op.address
+		params = self.op.label
+		start, end = self.path, self.branch(0, True, True)
+		definition = aletheia.function_method(self.instructions[start:end], params, types, user = True)
+		if name in self.values and self.types[name] < aletheia.std_function:
+			self.values[name].extend(definition)
+		else:
+			routine = aletheia.funcdef()
+			routine.extend(definition)
+			self.values[name] = routine
+			self.types[name] = typedef(aletheia.std_function)
+
+	def intern_future(
+		self,
+		routine: aletheia.funcdef,
+		*args: tuple
+		) -> None:
+
+		address, signature, arity = self.op.address, self.signature[1:], self.op.arity - 1
+		instance = routine.true if signature else routine.false
+		while instance: # Traverse tree; terminates upon reaching leaf node
+			instance = instance.true if instance.index < arity and instance.check(signature) else instance.false
+		if instance is None or instance.arity != arity:
+			self.handler.error('DISP', self.op.args[0], signature)
+		for i, item in enumerate(signature): # Verify type signature
+			if item > instance.signature[i]:
+				self.handler.error('DISP', self.op.args[0], signature)
+		values = self.values.copy() | dict(zip(instance.params, args))
+		types = self.types.copy() | dict(zip(instance.params, instance.signature))
+		self.message('future', instance, values, types)
+		self.types[address] = typedef(aletheia.std_future)
+		self.values[address] = self.calls.recv()
 
 	def intern_iterator(
 		self,
@@ -405,6 +436,7 @@ class task:
 		'.continue': intern_loop,
 		'.event': intern_event,
 		'.function': intern_function,
+		'.future': intern_future,
 		'.iterator': intern_iterator,
 		'.link': intern_link,
 		'.list': intern_list,

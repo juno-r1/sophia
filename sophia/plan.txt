@@ -627,3 +627,25 @@ unfortunately, type properties still don't compare equal despite having an expli
 i can't be bothered to figure out why
 also i'm pretty sure they won't pickle
 so instead i'm going to change the data structure that represents them. again
+
+---
+
+test 18.
+
+change semantics of the bind operator
+current behaviour is to call a function and *then* bind it to a future
+this requires the parser to be context-sensitive and introduces weird reasoning
+proposed behaviour is to bind a function to a future and *then* instantiate the future by calling it
+for example:
+
+(a <- x)(1, 2, 3)
+or:
+a(1, 2, 3) <- x
+or:
+a <- x{1, 2, 3} // Worse
+
+*or*
+
+x <- (1, 2, 3)
+
+that's better

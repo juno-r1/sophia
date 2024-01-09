@@ -369,19 +369,6 @@ class method:
 		self.signature = types[1:]
 		self.arity = len(self.signature)
 
-	def __bool__(self) -> bool: return False
-
-	def __str__(self) -> str: return self.name
-
-	def debug(
-		self,
-		level: int = 0
-		) -> str:
-		
-		print(('.' * level) + str(self), file = stderr)
-
-class function_method(method):
-
 	def __call__(
 		self,
 		task,
@@ -395,6 +382,19 @@ class function_method(method):
 		task.instructions = self.instructions
 		task.path = 1
 
+	def __bool__(self) -> bool: return False
+
+	def __str__(self) -> str: return self.name
+
+	def debug(
+		self,
+		level: int = 0
+		) -> str:
+		
+		print(('. ' * level) + str(self), file = stderr)
+
+class function_method(method): pass
+
 class event_method(method):
 	
 	def __init__(
@@ -405,18 +405,8 @@ class event_method(method):
 		) -> None:
 
 		super().__init__(body, names[:-1], types[:-1], user = True)
-		self.event_name = names[-1]
-		self.event_type = types[-1]
-
-	def __call__(
-		self,
-		task,
-		*args: tuple
-		) -> reference:
-		
-		task.message('future', self, args, task.values[self.name])
-		task.properties = typedef(std_future)
-		return task.calls.recv()
+		self.message = names[-1]
+		self.check = types[-1]
 
 class multimethod:
 	"""
@@ -442,11 +432,11 @@ class multimethod:
 		https://github.com/JeffBezanson/phdthesis
 		Binary search tree yields closest key for method, then key is verified.
 		"""
-		address, signature = task.op.address, task.signature
+		address, signature, arity = task.op.address, task.signature, task.op.arity
 		instance = self.true if signature else self.false
 		while instance: # Traverse tree; terminates upon reaching leaf node
-			instance = instance.true if instance.index < task.op.arity and instance.check(signature) else instance.false
-		if instance is None or instance.arity != task.op.arity:
+			instance = instance.true if instance.index < arity and instance.check(signature) else instance.false
+		if instance is None or instance.arity != arity:
 			task.handler.error('DISP', task.op.name, signature)
 		for i, item in enumerate(signature): # Verify type signature
 			if item > instance.signature[i]:
@@ -544,7 +534,7 @@ class multimethod:
 		level: int = 0
 		) -> None:
 	
-		print(('.' * level) + str(self), file = stderr)
+		print(('. ' * level) + str(self), file = stderr)
 		if self:
 			if self.true is not None:
 				self.true.debug(level + 1)

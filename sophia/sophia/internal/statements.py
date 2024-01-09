@@ -23,7 +23,7 @@ class coroutine(statement):
 		self.final = final
 		self.params = params
 
-	def __str__(self) -> str: return str(['{0} {1}'.format(item.type, item.value) for item in self.value])
+	def __str__(self) -> str: return str('{0} {1}()'.format(self.final, self.name))
 
 class module(coroutine):
 	"""Base module node. This is always the top node of an AST."""
@@ -91,31 +91,29 @@ class event_statement(coroutine):
 		name, string = re.split(r' awaits ', string, 1)
 		final, name = re.split(r' ', name, 1) if ' ' in name else ('any', name)
 		message, string = re.split(r'\s*\(', string, 1)
-		check, name = re.split(r' ', message, 1) if ' ' in message else ('any', message)
-		params = {name: final, message: check}
+		check, message = re.split(r' ', message, 1) if ' ' in message else ('any', message)
+		params = {name: final}
 		for value in re.finditer(r'\w+( \w+)?', string):
 			param = value.group()
 			typename, param = re.split(r' ', param, 1) if ' ' in param else ('any', param)
 			params[param] = typename
+		params = params | {message: check}
 		super().__init__(name, final, params)
 		if expression:
 			self.nodes = [return_statement('return ' + expression)]
-		self.message = message
-		self.check = check
 
 	def start(
 		self
 		) -> tuple[ins, ...]:
 		
-		return (ins('.event', self.name, label = [i for pair in zip(self.params.keys(), self.params.values()) for i in pair]),
+		return (ins('.event', self.name, tuple(self.params.values()), label = list(self.params.keys())),
 				ins('START', label = [self.name]))
 
 	def execute(
 		self
-		) -> tuple[ins, ...]:
+		) -> tuple[ins, ...]: 
 		
-		return (ins(self.final, self.register, ('&0',)),
-				ins('return', '0'),
+		return (ins('return', '0'),
 				ins('END'))
 
 class function_statement(coroutine):
@@ -141,15 +139,14 @@ class function_statement(coroutine):
 		self
 		) -> tuple[ins, ...]:
 		
-		return (ins('.function', self.name, label = [i for pair in zip(self.params.keys(), self.params.values()) for i in pair]),
+		return (ins('.function', self.name, tuple(self.params.values()), label = list(self.params.keys())),
 				ins('START', label = [self.name]))
 
 	def execute(
 		self
 		) -> tuple[ins, ...]: 
 		
-		return (ins(self.final, self.register, ('&0',)),
-				ins('return', '0'),
+		return (ins('return', '0'),
 				ins('END'))
 
 class assignment(statement):
@@ -281,12 +278,8 @@ class return_statement(statement):
 		routine = self
 		while not isinstance(routine, coroutine):
 			routine = routine.head
-		type_name = routine.final
-		if type_name and not isinstance(routine, module):
-			return (ins(type_name, self.register, (self.nodes[0].register if self.nodes else self.register,)),
-					ins('return', '0', (self.nodes[0].register,) if self.nodes else ()))
-		else:
-			return ins('return', '0', (self.nodes[0].register,) if self.nodes else ()),
+		return (ins('.check', self.register, (self.nodes[0].register if self.nodes else self.register, routine.final)),
+				ins('return', '0', (self.register,) if self.nodes else ()))
 
 class link_statement(statement):
 	"""Defines a link."""
@@ -309,16 +302,19 @@ class link_statement(statement):
 
 class start_statement(statement):
 	"""Defines an initial."""
-	def __str__(self) -> str: return 'start ' + str([item.value for item in self.value])
+	def __str__(self) -> str: return 'start'
 
 	def execute(
 		self
 		) -> tuple[ins, ...]:
 
+		message, check = list(self.head.params.items())[-1]
 		return (ins('return', '0'),
 				ins('END'),
-				ins('EVENT', label = [self.head.message.value]),
-				ins(self.head.message.type, self.head.message.value, (self.head.message.value,)))
+				ins('EVENT', label = [message]),
+				ins('BIND'),
+				ins('.check', message, (message, check)),
+				ins('.bind', '0', label = [message]))
 
 class else_statement(statement):
 	"""Defines an else statement."""

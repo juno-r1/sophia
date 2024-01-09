@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from multiprocessing import Pipe
+from typing import Any
 
 class proxy:
 	"""
@@ -20,13 +21,24 @@ class reference:
 	"""
 	Reference object for a proxy. Represents the user-accessible state of a task.
 	"""
-	name: str = ''
-	pid: int = 0
-	check: str = 'any' # Descriptor format of typedef
+	name: str
+	pid: int
+	check: Any = None # typedef
 
 	def __str__(self) -> str: return '{0}:{1}'.format(self.name, self.pid)
 
 	__repr__ = __str__
+
+@dataclass(slots = True, repr = False)
+class message:
+	"""
+	Message object. Transmits information to and from the supervisor.
+	"""
+	pid: int
+	instruction: str
+	args: tuple
+
+	def __str__(self) -> str: return '{0}: {1} {2}'.format(self.pid, self.instruction, ' '.join(str(i) for i in self.args))
 
 """
 Standard streams and I/O operations.

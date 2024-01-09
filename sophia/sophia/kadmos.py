@@ -12,8 +12,8 @@ class parser:
 	"""
 	def __init__(
 		self,
-		name: str,
 		handler: handler,
+		name: str,
 		offset: int = 0
 		) -> None:
 		
@@ -208,12 +208,10 @@ class parser:
 		offset: int
 		) -> str:
 		
-		if isinstance(self.node.head, expressions.bind):
-			return self.node.head.value # Sure, I guess
-		elif isinstance(self.node, expressions.name): # Variable register
+		if isinstance(self.node, expressions.name): # Variable register
 			return self.node.value
-		#elif isinstance(self.node, expressions.receive):
-		#	return self.node.value.value
+		elif isinstance(self.node, expressions.receive):
+			return self.node.value.value
 		elif isinstance(self.node, expressions.constant) and self.node.value is None: # Null value is interned so that instructions can reliably take null as an operand
 			return '&0'
 		elif isinstance(self.node, expressions.sequence_literal) and not self.node.nodes: # Empty list

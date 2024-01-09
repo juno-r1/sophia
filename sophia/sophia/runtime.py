@@ -2,12 +2,11 @@
 
 import multiprocessing as mp
 import os
-import signal
 from queue import Empty
 from typing import Any
 
 from . import hemera, kadmos, metis
-from .datatypes.iris import proxy
+from .datatypes import aletheia, iris
 from .task import task
 
 class runtime:
@@ -34,14 +33,19 @@ class runtime:
 			pass
 		with open('{0}/{1}'.format(root, address), 'r') as f:
 			source = f.read() # Binds file data to runtime object
+		try: # Yes, the handler can fault if it's given unknown flags
+			self.handler = hemera.handler(source, flags)
+		except SystemExit:
+			self.handler = hemera.handler(source, ())
+			self.handler.lock = True
+			return
 		try:
 			"""
 			Compile stage. Yields a processor object containing optimised instructions.
 			"""
-			self.handler = hemera.handler(source, flags)
-			parser = kadmos.parser(address.split('.')[0], self.handler)
+			parser = kadmos.parser(self.handler, address.split('.')[0])
 			instructions, namespace = parser.parse(source)
-			processor = metis.processor(instructions, namespace, self.handler).analyse()
+			processor = metis.processor(self.handler, instructions, namespace).analyse()
 			"""
 			Build the supervisor. Main task is initialised and awaiting execution.
 			"""
@@ -49,34 +53,39 @@ class runtime:
 			self.stream = mp.Queue() # Supervisor message stream
 			self.pool = mp.Pool(initializer = self.initialise)
 			self.main = task(processor) # Initial task
-			self.tasks = {self.main.pid: proxy(self.main)} # Proxies of tasks
+			self.tasks = {self.main.pid: iris.proxy(self.main)} # Proxies of tasks
 			self.events = {} # Persistent event tasks
 		except SystemExit: # Catches any compile-time error
-			if not hasattr(self, 'handler'): # In case the handler faulted
-				self.handler = hemera.handler(source, ())
 			self.handler.lock = True # Lock runtime
 
 	def initialise(self) -> None: # Cheeky way to sneak a queue into a task
 	
 		mp.current_process().stream = self.stream
 
-#	#def future(self, pid, routine, args, method):
+	def future(
+		self,
+		pid: int,
+		method: aletheia.method,
+		values: dict,
+		types: dict
+		) -> None:
+		
+		processor = metis.processor(self.handler, method.instructions, values, types)
+		new = task(processor)
+		self.tasks[new.pid] = iris.proxy(new)
+		if isinstance(method, aletheia.event_method):
+			self.events[new.pid] = new # Persistent reference to event
+		self.tasks[new.pid].result = self.pool.apply_async(new.execute)
+		self.tasks[new.pid].count = self.tasks[new.pid].count + 1
+		self.tasks[pid].references.append(new.pid) # Mark reference to process
+		self.tasks[pid].calls.send(iris.reference(method.name, new.pid, method.final)) # Return reference to process
 
-#	#	args = self.values | {routine.name: method} | dict(zip(routine.params, args))
-#	#	types = self.types | {routine.name: infer(method)} | dict(zip(routine.params, routine.signature))
-#	#	new = task(routine.instructions, args, types, self.flags)
-#	#	self.tasks[new.pid] = proxy(new)
-#	#	if types[routine.name].type == 'event':
-#	#		self.events[new.pid] = new # Persistent reference to event
-#	#	self.tasks[new.pid].result = self.pool.apply_async(new.execute)
-#	#	self.tasks[new.pid].count = self.tasks[new.pid].count + 1
-#	#	self.tasks[pid].references.append(new.pid) # Mark reference to process
-#	#	self.tasks[pid].calls.send(reference(new, routine.final)) # Return reference to process
-
-#	def send(self,
-#			 pid: int,
-#			 reference: reference,
-#			 message: str) -> None:
+	def send(
+		self,
+		pid: int,
+		reference: iris.reference,
+		message: Any
+		) -> None:
 		
 #		if reference.name == 'stdin':
 #			debug.debug_error('sophia', 0, 'WRIT', ())
@@ -84,26 +93,27 @@ class runtime:
 #			streams.stream_out(message)
 #		elif reference.name == 'stderr':
 #			streams.stream_err(message)
-#		elif reference.pid in self.events: # Update event
-#			self.tasks[reference.pid].result.get() # Wait until routine is done with previous message
-#			routine = self.events[reference.pid]
-#			routine.prepare(self.tasks[reference.pid].state, message) # Mutate this version of the task
-#			self.tasks[reference.pid].result = self.pool.apply_async(routine.execute)
-#		else:
-#			self.tasks[reference.pid].messages.send(message)
+		if reference.pid in self.events: # Update event
+			self.tasks[reference.pid].result.get() # Wait until routine is done with previous message
+			routine = self.events[reference.pid]
+			routine.prepare(self.tasks[reference.pid].state, message) # Mutate this version of the task
+			self.tasks[reference.pid].result = self.pool.apply_async(routine.execute)
+		else:
+			self.tasks[reference.pid].messages.send(message)
 
-#	def resolve(self,
-#				pid: int,
-#				reference: reference) -> None:
+	def resolve(
+		self,
+		pid: int,
+		reference: iris.reference) -> None:
 
 #		if reference.name == 'stdin':
 #			self.tasks[pid].calls.send(streams.stream_in())
 #		elif reference.name == 'stdout' or reference.name == 'stderr':
 #			self.tasks[pid].calls.send(debug.debug_error('sophia', 0, 'READ', ()))
-#		elif self.tasks[reference.pid].result.ready():
-#			self.tasks[pid].calls.send(self.tasks[reference.pid].result.get())
-#		else:
-#			self.tasks[reference.pid].requests.append(pid) # Submit request for return value
+		if self.tasks[reference.pid].result.ready():
+			self.tasks[pid].calls.send(self.tasks[reference.pid].result.get())
+		else:
+			self.tasks[reference.pid].requests.append(pid) # Submit request for return value
 
 #	def read(self,
 #			 pid: int,
@@ -125,27 +135,29 @@ class runtime:
 #	#	self.tasks[pid].references.append(routine.pid) # Mark reference to process
 #	#	self.tasks[pid].calls.send(reference(routine, descriptor('untyped', prepare = True))) # Return reference to process
 
-#	def terminate(self,
-#				  pid: int) -> None:
+	def terminate(
+		self,
+		pid: int
+		) -> None:
 		
-#		if pid not in self.tasks:
-#			raise RuntimeError
-#		state = self.tasks[pid].result.get() # Get return state of task
-#		self.tasks[pid].state = state # Store persistent state in supervisor
-#		value = state['values']['0'] # Get return value from state
-#		for process in self.tasks[pid].requests:
-#			self.tasks[process].calls.send(value)
-#		self.tasks[pid].requests = []
-#		for process in self.tasks[pid].references:
-#			self.tasks[process].count = self.tasks[process].count - 1
-#			if self.tasks[process].count == 0:
-#				del self.tasks[process] # Free referenced tasks
-#				if process in self.events: # Free events
-#					del self.events[process]
-#		if pid == self.main.pid:
-#			self.stream.put(None) # End supervisor
-#		elif self.tasks[pid].count == 0: # Free own task
-#			del self.tasks[pid]
+		if pid not in self.tasks:
+			raise RuntimeError
+		state = self.tasks[pid].result.get() # Get return state of task
+		self.tasks[pid].state = state # Store persistent state in supervisor
+		value = state['values']['0'] # Get return value from state
+		for process in self.tasks[pid].requests:
+			self.tasks[process].calls.send(value)
+		self.tasks[pid].requests = []
+		for process in self.tasks[pid].references:
+			self.tasks[process].count = self.tasks[process].count - 1
+			if self.tasks[process].count == 0:
+				del self.tasks[process] # Free referenced tasks
+				if process in self.events: # Free events
+					del self.events[process]
+		if pid == self.main.pid:
+			self.stream.put(None) # End supervisor
+		elif self.tasks[pid].count == 0: # Free own task
+			del self.tasks[pid]
 
 	def debug(self) -> Any:
 		"""
@@ -158,28 +170,29 @@ class runtime:
 			return self.main.execute()
 		finally: # Manage MP resources
 			self.pool.close()
+			self.pool.join()
 
-#	def run(self) -> Any: # Supervisor process and pool management
+	def run(self) -> Any: # Supervisor process and pool management
 
-#		if self.handler.lock:
-#			return
-#		message = True
-#		interval = 10 if 'timeout' in self.flags or self.root == 'harmonia' else None # Timeout interval
-#		self.tasks[self.main.pid].result = self.pool.apply_async(self.main.execute) # Start execution of initial module
-#		while message: # Event listener pattern; runs until null sentinel value sent from initial module
-#			try:
-#				message = self.stream.get(timeout = interval)
-#				if not message:
-#					break
-#				if 'supervisor' in self.flags:
-#					debug.debug_supervisor(message)
-#				try:
-#					getattr(self, message[0])(*message[1:]) # Executes event
-#				except RuntimeError:
-#					debug.debug_error('sophia', 0, 'TASK', ())
-#			except Empty:
-#				debug.debug_error('sophia', 0, 'TIME', ()) # Prints timeout warning but continues
-#				message = True
-#		self.pool.close()
-#		self.pool.join()
-#		return self.tasks[self.main.pid].result.get()['values']['0']
+		if self.handler.lock:
+			return
+		message = True
+		interval = 10 if 'timeout' in self.handler.flags or self.root == 'harmonia' else None # Timeout interval
+		self.tasks[self.main.pid].result = self.pool.apply_async(self.main.execute) # Start execution of initial module
+		while message: # Event listener; runs until null sentinel value sent from initial module
+			try:
+				message = self.stream.get(timeout = interval)
+				if not message:
+					break
+				if 'supervisor' in self.handler.flags:
+					self.handler.debug_supervisor(message)
+				try:
+					getattr(self, message.instruction)(message.pid, *message.args)
+				except RuntimeError:
+					self.handler.error('TASK')
+			except Empty:
+				self.handler.timeout() # Prints timeout warning but continues
+				message = True
+		self.pool.close()
+		self.pool.join()
+		return self.tasks[self.main.pid].result.get()['values']['0']

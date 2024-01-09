@@ -43,7 +43,7 @@ if __name__ == '__main__':
 	successes, failures = 0, 0
 	for i, path in enumerate(os.listdir('harmonia')):
 		main = runtime(path, root = 'harmonia')
-		result = main.debug()
+		result = main.run()
 		result = True if result == target[i] else False
 		if result:
 			successes = successes + 1

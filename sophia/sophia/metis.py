@@ -12,23 +12,27 @@ class processor:
 	"""
 	def __init__(
 		self,
+		handler: handler,
 		instructions: list[instruction],
 		namespace: dict,
-		handler: handler
+		types: dict | None = None
 		) -> None:
 
 		"""
 		Static attributes for the task to access.
 		"""
 		self.name = instructions[0].label[0] if instructions else ''
-		self.values = arche.stdvalues | namespace
-		self.types = arche.stdtypes | {k: aletheia.infer(v) for k, v in namespace.items()}
 		self.handler = handler
+		if types is None:
+			self.values = arche.stdvalues | namespace
+			self.types = arche.stdtypes | {k: aletheia.infer(v) for k, v in namespace.items()}
+		else:
+			self.values = namespace
+			self.types = types
 		"""
 		Mutable attributes for the processor to access.
 		"""
 		self.instructions = instructions
-		self.cache = [None for _ in instructions]
 		self.path = int(bool(instructions))
 		self.op = None
 		#self.signature = []

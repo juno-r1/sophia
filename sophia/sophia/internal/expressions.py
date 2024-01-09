@@ -47,9 +47,9 @@ class lexer:
 				token = prefix(value)
 			case 'literal' if value in presets.CONSTANTS:
 				token = constant(value)
-			case 'literal' if value == 'if':
+			case 'literal' if value == 'if' and self.token:
 				token = left_conditional(value)
-			case 'literal' if value == 'else':	
+			case 'literal' if value == 'else':
 				token = right_conditional(value)
 			case 'literal':
 				token = name(value)
@@ -69,15 +69,14 @@ class lexer:
 				elif value == '*':
 					token = resolve(value)
 				else:
-					token = prefix(value) # NEGATION TAKES PRECEDENCE OVER EXPONENTIATION - All unary operators have the highest possible left-binding power
-			case 'operator' if value in ('^', '->', '=>'): # Infixes
+					token = prefix(value)
+			case 'operator' if value in presets.INFIX_R: # Infixes
 				token = infix_r(value)
-			#case 'operator' if value == '<-':
-			#	bind_name = tokens.pop()
-			#	token = bind(bind_name.value)
-			#	token.type = bind_name.type
 			case 'operator':
-				token = infix(value)
+				if value == '<-':
+					token = bind(value)
+				else:
+					token = infix(value)
 		self.peek = token
 			#case 'operator' if len(tokens[-1]) == 1 and isinstance(tokens[-1][-1], name) and ('=>' in line or line[-1] == ':'): # Special case for operator definition
 			#	pass
@@ -279,11 +278,16 @@ class operator(expression):
 		('*', '/', '%'),
 		('^',),
 		('?',),
+		('<-',),
 		('.')
 	)
 
 class prefix(operator):
-	"""Defines a prefix."""
+	"""
+	Defines a prefix.
+	All unary operators have the highest possible left-binding power.
+	NEGATION TAKES PRECEDENCE OVER EXPONENTIATION.
+	"""
 	def __init__(
 		self,
 		value: str
@@ -307,24 +311,6 @@ class prefix(operator):
 		return ins(self.value,
 				   self.register,
 				   (self.nodes[0].register,)),
-
-class bind(prefix):
-	"""Defines the bind operator."""
-	def __init__(
-		self,
-		value: str
-		) -> None:
-
-		super().__init__(value)
-		self.type = None
-
-	def __str__(self) -> str: return 'bind ' + self.value
-
-	def execute(
-		self
-		) -> tuple[ins, ...]:
-		
-		return ()
 
 class receive(prefix):
 	"""Defines the receive operator."""
@@ -427,6 +413,14 @@ class right_conditional(infix):
 		) -> tuple[ins, ...]:
 		
 		return ins('.bind', '0', (self.nodes[1].register,), label = [self.head.register]),
+
+class bind(infix):
+	"""Defines the bind operator."""
+	def execute(
+		self
+		) -> tuple[ins, ...]:
+		
+		return ins('.future', self.register, tuple([self.nodes[0].register] + [i.register for i in self.nodes[1].nodes])),
 
 class infix_r(operator):
 	"""Defines a right-binding infix."""

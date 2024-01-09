@@ -4,7 +4,7 @@ ALIASES = {
 	'num': 'number',
 	'str': 'string'
 }
-COMMENT = r'(?P<comment>\s*//.*?\n)'
+COMMENT = r'(?P<comment>\s*//.*?(\n|$))'
 CONSTANTS = {
 	'true': True,
 	'false': False,
@@ -40,14 +40,13 @@ ERRORS = {
 	#'READ': 'Stream not readable',
 	'SNTX': 'Syntax error: {0}',
 	#'TASK': 'Task expired',
-	#'TIME': 'Timeout warning' '\n' 'Enter Ctrl+C to interrupt program',
 	'TYPE': 'Invalid value for type {0}: {1}',
 	'UPRN': 'Unmatched parentheses',
 	'UQTE': 'Unmatched quotes',
 	'USER': '{0}',
 	#'WRIT': 'Stream not writeable'
 }
-FLAGS = [
+FLAGS = (
 	'debug',
 	'instructions',
 	'namespace',
@@ -57,6 +56,11 @@ FLAGS = [
 	'suppress',
 	'task',
 	'tree'
+)
+INFIX_R = [
+	'^',
+	'->',
+	'=>'
 ]
 KEYWORDS_INFIX = (
 	'and',
@@ -73,10 +77,10 @@ PARENS = {
 	'[': ']',
 	'{': '}'
 }
-PROPERTIES = [
+PROPERTIES = (
 	'element',
 	'length'
-]
+)
 STDLIB_NAMES = {
 	# Streams
 	'stdin': 'stdin',
@@ -177,8 +181,8 @@ REGEX_RETURN = r'(?P<return>return( .+)?$)'
 REGEX_LINK = r'(?P<link>link (\w+(,\s*|$))+)'
 REGEX_START = r'(?P<start>start:$)'
 REGEX_TYPE = r'(?P<type>type \w+( extends \w+)?( with .*)?((:$)|(\s*=>\s*.+)))'
-REGEX_EVENT = r'(?P<event>\w+( \w+)? awaits \w+( \w+)?\s*\((\w+( \w+)?(,\s*)?)*\)((:$)|(\s*=>\s*.+)))'
-REGEX_FUNCTION = r'(?P<function>\w+( \w+)?\s*\((\w+( \w+)?(,\s*)?)*\)((:$)|(\s*=>\s*.+)))'
+REGEX_EVENT = r'(?P<event>.+( .+)? awaits \w+( \w+)?\s*\((\w+( \w+)?(,\s*)?)*\)((:$)|(\s*=>\s*.+)))'
+REGEX_FUNCTION = r'(?P<function>.+( .+)?\s*\((\w+( \w+)?(,\s*)?)*\)((:$)|(\s*=>\s*.+)))'
 REGEX_ASSIGN = r'(?P<assign>(\w+( \w+)?:\s*.+((;\s*)|$))+$)'
 REGEX_EXPRESSION = r'(?P<expression>.+)'
 """
