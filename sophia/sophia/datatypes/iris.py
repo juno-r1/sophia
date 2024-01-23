@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from multiprocessing import Pipe
+from sys import stdin, stdout, stderr
 from typing import Any
 
 class proxy:
@@ -24,6 +25,8 @@ class reference:
 	name: str
 	pid: int
 	check: Any = None # typedef
+	readable: bool = False
+	writeable: bool = False
 
 	def __str__(self) -> str: return '{0}:{1}'.format(self.name, self.pid)
 
@@ -46,6 +49,6 @@ These streams are abstract interfaces with stdin, stdout, and stderr.
 Their PIDs correspond to their Unix file descriptors.
 """
 
-std_stdin = reference('stdin', 0)
-std_stdout = reference('stdout', 1)
-std_stderr = reference('stderr', 2)
+std_stdin = reference('stdin', 0, readable = True)
+std_stdout = reference('stdout', 1, writeable = True)
+std_stderr = reference('stderr', 2, writeable = True)

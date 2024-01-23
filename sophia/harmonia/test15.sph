@@ -1,23 +1,10 @@
 // 3.2.9
 
-if ?true:
-	bool a: true
-else:
-	bool a: false
+bool a: ?true
+bool b: not ?null
+bool c: not (!true = null)
+bool d: !false = null
+bool e: true ? false
+bool f: null ? true
 
-if ?null:
-	bool b: false
-else:
-	bool b: true
-
-if !true = null:
-	bool c: false
-else:
-	bool c: true
-
-if !false = null:
-	bool d: true
-else:
-	bool d: false
-
-return a and b and c and d
+return a and b and c and d and e and f

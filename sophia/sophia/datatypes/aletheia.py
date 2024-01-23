@@ -5,8 +5,8 @@ from typing import Any, Callable, Self
 
 from .iris import reference, std_stdin
 from .mathos import real, slice
+from ..internal import presets
 from ..internal.instructions import instruction
-from ..internal.presets import DATATYPES, PROPERTIES, STDLIB_NAMES
 
 with open('sophia/stdlib/kleio.json', 'r') as kleio:
 	metadata = json.load(kleio)
@@ -23,7 +23,8 @@ class type_property:
 		) -> None:
 		
 		self.name = name
-		self.check = self.__check__ if name in type_property.builtins else self.__user__
+		self.tag = '__{0}__'.format(name)
+		self.check = self.__check__ if name in presets.STDLIB_TYPES else self.__user__
 		self.property = value
 
 	def __eq__(
@@ -38,190 +39,102 @@ class type_property:
 	def __user__(
 		self,
 		task,
-		value: Any
-		) -> None:
+		value: Any,
+		known: Any # Known type of value
+		) -> bool:
 		
-		task.caller = task.state()
-		task.final = self.final
-		task.values[self.name], task.types[self.name] = value, self.initial
-		task.instructions = self.instructions
+		caller = task.call()
+		task.final = typedef(known, self) # Extend known type with own property
+		task.values[self.name], task.types[self.name] = value, known
+		task.instructions = self.property
 		task.path = 1
+		value = task.run()
+		task.restore(caller)
+		return value
 
 	def __check__(
 		self,
 		task,
-		value: Any
-		) -> None:
-
-		return getattr(self, '__{0}__'.format(self.name))(task, value)
-
-	def __any__(
-		self,
-		task,
-		value: Any
+		value: Any,
+		known: Any = None # Unused in built-ins
 		) -> bool:
+
+		return getattr(self, self.tag)(task, value)
+
+	def __any__(self, task, value) -> bool:
 
 		return True
 
-	def __none__(
-		self,
-		task,
-		value: Any
-		) -> bool:
+	def __none__(self, task, value) -> bool:
 
 		return value is None
 
-	def __some__(
-		self,
-		task,
-		value: Any
-		) -> bool:
+	def __some__(self, task, value) -> bool:
 
 		return value is not None
 
-	def __routine__(
-		self,
-		task,
-		value: Any
-		) -> bool:
+	def __routine__(self, task, value) -> bool:
 
 		return hasattr(value, '__call__')
 
-	def __type__(
-		self,
-		task,
-		value: Any
-		) -> bool:
+	def __type__(self, task, value) -> bool:
 
 		return isinstance(value, typedef)
 
-	def __event__(
-		self,
-		task,
-		value: Any
-		) -> bool:
+	def __event__(self, task, value) -> bool:
 
 		return isinstance(value, eventdef)
 
-	def __function__(
-		self,
-		task,
-		value: Any
-		) -> bool:
+	def __function__(self, task, value) -> bool:
 
 		return isinstance(value, funcdef)
 
-	def __boolean__(
-		self,
-		task,
-		value: Any
-		) -> bool:
+	def __boolean__(self, task, value) -> bool:
 
 		return value is True or value is False
 
-	def __number__(
-		self,
-		task,
-		value: Any
-		) -> bool:
+	def __number__(self, task, value) -> bool:
 
 		return isinstance(value, real)
 
-	def __integer__( # Safe to assume that value is of type number
-		self,
-		task,
-		value: real
-		) -> bool:
+	def __integer__(self, task, value) -> bool:
 
 		return value % 1 == 0
 
-	def __sequence__(
-		self,
-		task,
-		value: Any
-		) -> bool:
+	def __sequence__(self, task, value) -> bool:
 
 		return hasattr(value, '__iter__')
 
-	def __string__(
-		self,
-		task,
-		value: Any
-		) -> bool:
+	def __string__(self, task, value) -> bool:
 
 		return isinstance(value, str)
 
-	def __list__(
-		self,
-		task,
-		value: Any
-		) -> bool:
+	def __list__(self, task, value) -> bool:
 
 		return isinstance(value, tuple)
 
-	def __record__(
-		self,
-		task,
-		value: Any
-		) -> bool:
+	def __record__(self, task, value) -> bool:
 
 		return isinstance(value, dict)
 
-	def __slice__(
-		self,
-		task,
-		value: Any
-		) -> bool:
+	def __slice__(self, task, value) -> bool:
 
 		return isinstance(value, slice)
 
-	def __future__(
-		self,
-		task,
-		value: Any
-		) -> bool:
+	def __future__(self, task, value) -> bool:
 
 		return isinstance(value, reference)
 
-	def __element__(
-		self,
-		task,
-		value: Any
-		) -> bool:
+	def __element__(self, task, value) -> bool:
 
 		if isinstance(value, dict):
 			return all(self.property(task, i) for i in value.values())
 		else:
 			return all(self.property(task, i) for i in value)
 
-	def __length__(
-		self,
-		task,
-		value: Any
-		) -> bool:
+	def __length__(self, task, value) -> bool:
 
 		return len(value) == self.property
-
-	builtins = [
-		'any',
-		'none',
-		'some',
-		'routine',
-		'type',
-		'event',
-		'function',
-		'boolean',
-		'number',
-		'integer',
-		'sequence',
-		'string',
-		'list',
-		'record',
-		'slice',
-		'future',
-		'element',
-		'length'
-	]
 
 class typedef:
 	"""
@@ -243,7 +156,7 @@ class typedef:
 			self.prototype = None
 		if methods:
 			self.types.update({i.name: i for i in methods})
-		if prototype:
+		if prototype is not None:
 			self.prototype = prototype
 
 	def __call__(self, task, value, *, write = True):
@@ -256,10 +169,13 @@ class typedef:
 		if definition < self: # Value is subtype
 			check = True
 		else:
+			known = typedef(definition) # Duplicate typedef
 			for item in self.types.values():
-				if item not in definition.types.values() and not item.check(task, value):
+				if item not in definition.types.values() and not item.check(task, value, known):
 					check = False
 					break
+				else:
+					known = typedef(known, item) # Build typedef
 			else:
 				check = True
 		if write:
@@ -267,39 +183,63 @@ class typedef:
 			task.types[address] = typedef(std_boolean)
 		return check
 
-	def __eq__( # Implements equality
+	def __eq__(
 		self,
 		other: Self
 		) -> bool:
-
+		"""
+		Type equality.
+		Sophia uses structural typing.
+		"""
 		return self.__dict__ == other.__dict__
 
-	def __lt__( # Implements subtype relation
+	def __lt__(
 		self,
 		other: Self
 		) -> bool:
-		
+		"""
+		Subtype relation.
+		Returns true if self is a strict subtype of other.
+		"""
 		return not bool([i for i in other.types.values() if i not in self.types.values()])
 
-	def __gt__( # Implements negative subtype relation
+	def __gt__(
 		self,
 		other: Self
 		) -> bool:
-		
+		"""
+		Negative subtype relation.
+		Returns true if self is not a strict subtype of other.
+		"""
 		return bool([i for i in other.types.values() if i not in self.types.values()])
 
-	#def __and__(self, other): # Implements type intersection
-
-	#	if self.type != other.type:
-	#		return None
-	#	return typedef(self.type, self.__dict__ | other.__dict__)
+	def __and__(
+		self,
+		other: Self
+		) -> Self:
+		"""
+		Type intersection.
+		The resulting type has the union of self and other's type properties,
+		operating over the intersection of their domains.
+		This operation is non-commutative.
+		"""
+		return typedef(self, *(i for i in other.types.values() if i not in self.types.values()))
 
 	def __or__( # Implements type union / mutual supertype
 		self,
 		other: Self
 		) -> Self:
-
-		return typedef(None, *[i for i in self.types.values() if i in other.types.values()])
+		"""
+		Type union / mutual supertype.
+		The resulting type has the intersection of self and other's type properties,
+		operating over the union of their domains.
+		This operation is commutative.
+		"""
+		return typedef(
+			None,
+			*(i for i in self.types.values() if i in other.types.values()),
+			prototype = self.prototype if self.prototype == other.prototype else None
+		)
 
 	def __str__(self) -> str:
 
@@ -307,10 +247,12 @@ class typedef:
 			return '?'
 		properties = []
 		for item in self.types.values():
-			if (name := item.name) in STDLIB_NAMES and name not in PROPERTIES:
+			if (name := item.name) in presets.STDLIB_NAMES and name not in presets.PROPERTIES:
 				datatype = name # Get most specific data type
-			else:
+			elif name in presets.STDLIB_TYPES:
 				properties.append('{0}:{1}'.format(name, item.property))
+			else:
+				properties.append(name)
 		return '.'.join([datatype] + properties)
 
 	__repr__ = __str__
@@ -368,14 +310,14 @@ class method:
 		self.final = types[0]
 		self.signature = types[1:]
 		self.arity = len(self.signature)
-
+	
 	def __call__(
 		self,
 		task,
 		*args: tuple
 		) -> None:
 
-		task.caller = task.state()
+		task.caller = task.call()
 		task.final = self.final
 		task.values = task.values | dict(zip(self.params, args))
 		task.types = task.types | dict(zip(self.params, self.signature))
@@ -418,7 +360,6 @@ class multimethod:
 	Dispatch is implemented using a singly linked binary search
 	tree. It is only ever necessary to traverse downward.
 	"""
-
 	def __init__(self):
 
 		self.true = None # Path or method if true
@@ -426,7 +367,11 @@ class multimethod:
 		self.property = cls_any # Distinguishing type property
 		self.index = 0 # Signature index
 
-	def __call__(self, task, *args):
+	def __call__(
+		self,
+		task,
+		*args: tuple
+		) -> None:
 		"""
 		Multiple dispatch algorithm, with help from Julia:
 		https://github.com/JeffBezanson/phdthesis
@@ -455,6 +400,34 @@ class multimethod:
 	def __bool__(self): return True
 
 	def __str__(self): return '{0} {1}'.format(self.property.name, self.index)
+
+	def __add__(
+		self,
+		other
+		) -> Self:
+		"""
+		Multimethod composition.
+		This operator is right-binding; self comes before x.
+		"""
+		new = funcdef()
+		for method in self.collect(): # Methods of 1st function
+			"""
+			Dispatch to link between self's methods and x's methods.
+			"""
+			signature, arity = [method.final], 1
+			instance = other.true if signature else other.false
+			while instance: # Traverse tree; terminates upon reaching leaf node
+				instance = instance.true if instance.index < arity and instance.check(signature) else instance.false
+			if instance is None or instance.arity != arity:
+				continue
+			for i, item in enumerate(signature): # Verify type signature
+				if item > instance.signature[i]:
+					continue
+			"""
+			Rewrite instructions and create composed method.
+			"""
+			new.extend(function_method(method.routines + instance.routines))
+		return None if new.true is None and new.false is None else new
 
 	def set( # Set check attributes
 		self,
@@ -626,7 +599,7 @@ def infer( # Infers typedef of value
 	) -> typedef:
 	
 	name = type(value).__name__
-	name = DATATYPES[name] if name in DATATYPES else 'any'
+	name = presets.DATATYPES[name] if name in presets.DATATYPES else 'any'
 	if name == 'number' and value % 1 == 0:
 		return typedef(std_integer)
 	datatype = types[name]
@@ -711,18 +684,6 @@ del std_stdin # stdlib.arche shouldn't find this yet
 	#@classmethod
 	#def __future__(cls, value): return
 
-#class cls_none(cls_any): # Null type
-
-#class cls_some(cls_any): # Non-null type
-
-#class cls_routine(cls_some):
-
-#class cls_type(cls_routine):
-
-#class cls_event(cls_routine):
-
-#class cls_function(cls_routine):
-
 #class cls_boolean(cls_some):
 
 #	@classmethod
@@ -756,10 +717,6 @@ del std_stdin # stdlib.arche shouldn't find this yet
 
 #	@classmethod
 #	def __future__(cls, value): return real(value.pid)
-
-#class cls_integer(cls_number):
-
-#class cls_sequence(cls_some):
 
 #class cls_string(cls_sequence):
 
@@ -809,9 +766,3 @@ del std_stdin # stdlib.arche shouldn't find this yet
 
 #	@classmethod
 #	def __slice__(cls, value): return tuple(value)
-
-#class cls_record(cls_sequence):
-
-#class cls_slice(cls_sequence):
-
-#class cls_future(cls_some):

@@ -61,24 +61,20 @@ class type_statement(coroutine):
 			self.nodes.append(lexer(expression).parse())
 		self.active = int(bool(prototype))
 
-	def start(
-		self
-		) -> tuple[ins, ...]:
-
+	def start(self) -> tuple[ins, ...]:
+		
 		if self.active: # Necessary to check type of prototype
-			return (ins(self.params[self.name], self.register, (self.nodes[0].register,)),
+			return (ins('.check', self.register, (self.nodes[0].register, self.params[self.name])),
 					ins('.type', self.name, (self.params[self.name], self.register)),
 					ins('START', label = [self.name]))
 		else:
 			return (ins('.type', self.name, (self.params[self.name],)),
 					ins('START', label = [self.name]))
 
-	def execute(
-		self
-		) -> tuple[ins, ...]:
+	def execute(self) -> tuple[ins, ...]:
 		
-		return (ins('return', '0', (self.name,)),
-				ins('END', label = [self.name]))
+		return (ins('.constraint', '0'),
+				ins('END'))
 
 class event_statement(coroutine):
 	"""Defines an event definition."""
@@ -102,16 +98,12 @@ class event_statement(coroutine):
 		if expression:
 			self.nodes = [return_statement('return ' + expression)]
 
-	def start(
-		self
-		) -> tuple[ins, ...]:
+	def start(self) -> tuple[ins, ...]:
 		
 		return (ins('.event', self.name, tuple(self.params.values()), label = list(self.params.keys())),
 				ins('START', label = [self.name]))
 
-	def execute(
-		self
-		) -> tuple[ins, ...]: 
+	def execute(self) -> tuple[ins, ...]:
 		
 		return (ins('return', '0'),
 				ins('END'))
@@ -135,16 +127,12 @@ class function_statement(coroutine):
 		if expression:
 			self.nodes = [return_statement('return ' + expression)]
 
-	def start(
-		self
-		) -> tuple[ins, ...]:
+	def start(self) -> tuple[ins, ...]:
 		
 		return (ins('.function', self.name, tuple(self.params.values()), label = list(self.params.keys())),
 				ins('START', label = [self.name]))
 
-	def execute(
-		self
-		) -> tuple[ins, ...]: 
+	def execute(self) -> tuple[ins, ...]:
 		
 		return (ins('return', '0'),
 				ins('END'))
@@ -171,9 +159,7 @@ class assignment(statement):
 
 	def __str__(self) -> str: return 'assignment ' + ' '.join(('{0} {1}'.format(typename, name) for name, typename in self.binds.items()))
 
-	def execute(
-		self
-		) -> tuple[ins, ...]:
+	def execute(self) -> tuple[ins, ...]:
 		
 		return [ins('BIND')] + \
 			   [ins('.check',
@@ -194,15 +180,11 @@ class if_statement(statement):
 		self.active = 1
 		self.block = True
 
-	def start(
-		self
-		) -> tuple[ins, ...]:
+	def start(self) -> tuple[ins, ...]:
 		
 		return ins('if', self.register, (self.nodes[0].register,)),
 
-	def execute(
-		self
-		) -> tuple[ins, ...]:
+	def execute(self) -> tuple[ins, ...]:
 		
 		return ins('if', self.register),
 
@@ -218,15 +200,11 @@ class while_statement(statement):
 		self.active = 1
 		self.block = True
 
-	def start(
-		self
-		) -> tuple[ins, ...]:
+	def start(self) -> tuple[ins, ...]:
 		
 		return ins('if', self.register, (self.nodes[0].register,)),
 
-	def execute(
-		self
-		) -> tuple[ins, ...]:
+	def execute(self) -> tuple[ins, ...]:
 		
 		return ins('.loop', '0'),
 
@@ -245,9 +223,7 @@ class for_statement(statement):
 		self.index = index
 		self.typename = typename
 
-	def start(
-		self
-		) -> tuple[ins, ...]: 
+	def start(self) -> tuple[ins, ...]:
 		
 		return (ins('.iterator', self.register, (self.nodes[0].register,)),
 				ins('ELSE' if self.branch else 'START'),
@@ -256,7 +232,7 @@ class for_statement(statement):
 				ins('.check', '0', ('0', self.typename)),
 				ins('.bind', '0', label = [self.index]))
 
-	def execute(self): return ins('.loop', '0'), ins('END')
+	def execute(self) -> tuple[ins, ...]: return ins('.loop', '0'), ins('END')
 
 class return_statement(statement):
 	"""Defines a return statement."""
@@ -271,9 +247,7 @@ class return_statement(statement):
 		else:
 			super().__init__()
 
-	def execute(
-		self
-		) -> tuple[ins, ...]: 
+	def execute(self) -> tuple[ins, ...]:
 		
 		routine = self
 		while not isinstance(routine, coroutine):
@@ -294,19 +268,15 @@ class link_statement(statement):
 
 	def __str__(self) -> str: return ('else ' if self.branch else '') + 'link_statement ' + ' '.join(self.links)
 
-	def execute(
-		self
-		) -> tuple[ins, ...]:
+	def execute(self) -> tuple[ins, ...]:
 		
-		return ins('.link', '0', tuple(self.links)),
+		return ins('.link', '0', label = self.links),
 
 class start_statement(statement):
 	"""Defines an initial."""
 	def __str__(self) -> str: return 'start'
 
-	def execute(
-		self
-		) -> tuple[ins, ...]:
+	def execute(self) -> tuple[ins, ...]:
 
 		message, check = list(self.head.params.items())[-1]
 		return (ins('return', '0'),
@@ -325,8 +295,6 @@ class else_statement(statement):
 		super().__init__()
 		self.block = True
 
-	def execute(
-		self
-		) -> tuple[ins, ...]:
+	def execute(self) -> tuple[ins, ...]:
 		
 		return ()

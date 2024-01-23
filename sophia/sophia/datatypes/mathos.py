@@ -2,6 +2,22 @@
 from dataclasses import dataclass
 from math import gcd
 
+"""
+As with every other aspect of Python, the developer team has chosen to mitigate
+the recently discovered problem with int-to-string conversion using the first
+and worst solution they could think of, which in this case involves kneecapping
+Python and pretending the problem doesn't exist. This solution does nothing to
+mitigate the problem on older versions of Python and introduces a potentially
+breaking change into newer versions without warning.
+(https://docs.python.org/3/library/stdtypes.html#int-max-str-digits)
+The author is of the opinion that, as with every other potential vector for a
+DOS attack that exists in Python, it is the responsibility of the developer
+to be informed about potential risks and to write secure code.
+That said, the conversion limit is unnecessary in this application, so we have
+chosen to remove it.
+"""
+sys.set_int_max_str_digits(0)
+
 # Constants related to the hash implementation;  hash(x) is based
 # on the reduction of x modulo the prime _PyHASH_MODULUS.
 _PyHASH_MODULUS = sys.hash_info.modulus

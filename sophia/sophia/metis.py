@@ -40,11 +40,9 @@ class processor:
 		#self.state = None
 		#self.scope()
 
-	def analyse(
-		self
-		) -> Self | None:
+	def analyse(self) -> Self:
 
-		self.handler.processor(self)
+		self.handler.debug_processor(self)
 		while 0 < self.path < len(self.instructions): # This can and does change
 			self.op = self.instructions[self.path]
 			self.path = self.path + 1
@@ -52,7 +50,7 @@ class processor:
 				self.bind()
 		return self
 
-	def bind(self):
+	def bind(self) -> None:
 		"""
 		Evaluates type checking for name binding, removing instructions
 		if the type check is known to succeed.
@@ -66,8 +64,10 @@ class processor:
 				self.handler.error('BIND', name)
 		binds = self.instructions[self.path:i]
 		for item in binds:
-			addresses.append(item.args[0])
-			if item.args[1] != '?':
+			if item.args[1] == '?':
+				addresses.append(item.args[0])
+			else:
+				addresses.append(item.address)
 				checks.append(item)
 		self.instructions[i].args = tuple(addresses)
 		self.instructions[self.path - 1:i] = checks

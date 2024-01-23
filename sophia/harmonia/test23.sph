@@ -1,13 +1,9 @@
 // 3.2.7.1, 5.8
 
 type triple extends list with [0, 0, 0] => true
+x: new triple
 
 bool a: new int = 0
- 
-x: new triple
-assert triple(x):
-	bool b: true
-else:
-	bool b: false
+bool b: triple(x)
 
 return a and b

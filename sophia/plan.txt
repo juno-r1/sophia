@@ -1,6 +1,7 @@
 to do
 
 0.7
+(4873 sloc)
 
 ---
 
@@ -649,3 +650,93 @@ a <- x{1, 2, 3} // Worse
 x <- (1, 2, 3)
 
 that's better
+
+---
+
+user-defined types!
+oh no!
+
+that was way easier than expected. guess the implementation doesn't suck
+
+intersection and union also done. assignment causes no problems at all because types are anonymous
+
+---
+
+function calls have a parsing problem
+( is a weird operator
+it acts as an infix and takes expressions on both sides
+however!
+a function call as an entity is expected to behave like the value it returns
+so, ( should have minimum bp *inside* the expression but maximum bp *outside* of it
+or, minimum bp to its right and maximum bp to its left
+which is. impossible?
+what even is the desired behaviour here?
+
+there must be some regex trick we can do here
+
+fuck it. just make space separation significant
+everything directly adjacent to ( gets parsed as a sub-expression, everything else doesn't
+ooh this is gonna be horrible
+
+is it possible to do this for the bit in the brackets too?
+is it possible to express the balancing regime in regex?
+no. at least not in python re
+
+fixed without using regex. the lexer is powerful; trust its capabilities
+
+so now prefixes bind to the function part of the call instead of the call as a whole
+whoops!
+
+fixed again
+
+---
+
+hey. hey. modular functions?
+it worked really nicely for types, right?
+and you are gonna be composing those things
+functions are well-encapsulated so it's not a huge change
+
+proposal:
+methods contain an arbitrary number of execution units
+when a method is called, each one is executed in sequence. somehow
+
+oh here's a funny idea. queue up task.caller so that returns are automatically redirected to the next unit
+hilarious little hack
+
+how do you thread together return values and arguments?
+we'll get to that
+
+forget the call stack. time for a call queue
+oh man this is busted
+the call queue indicates to the runtime the next execution unit to be prepared
+when a method returns, the next unit is popped off the queue and the return value is fed into its arguments
+
+this creates the unbelievably fucked-up concept of a 2-dimensional call stack
+since execution can progress either up and down (traditional call and return) or sideways (modular execution)
+
+what happens when a function gets called?
+and remember that functions and types share the same runtime mechanism
+
+a type check is a function with no subroutines that returns boolean
+
+need to store state in a function and come back to it later? that's what a coroutine is for!
+
+---
+
+execution order
+
+types:
+	execute
+	push no subroutines to runtime
+functions:
+	dispatch
+	call method
+	push 
+
+dispatch (function handles this bit)
+push method's units to the queue
+the runtime handles the rest
+
+execution ends when there's no caller and no units in the queue
+
+oh man this is a weird execution order. do we have to do this

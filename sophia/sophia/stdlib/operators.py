@@ -2,7 +2,8 @@
 Built-in operators.
 '''
 
-from ..datatypes.aletheia import funcdef, typedef, cls_element, cls_length
+from ..datatypes import aletheia
+from ..datatypes.aletheia import funcdef, typedef
 
 def u_add(_, x): return +x
 
@@ -223,11 +224,11 @@ def b_idx_slice_slice(task, sequence, index):
 
 def b_idx_type_type(task, definition, element):
 
-	return typedef(definition, cls_element(element))
+	return typedef(definition, aletheia.cls_element(element))
 
 def b_idx_type_integer(task, definition, length):
 
-	return typedef(definition, cls_length(length))
+	return typedef(definition, aletheia.cls_length(length))
 
 std_idx = funcdef(
 	b_idx_string_integer,
@@ -248,12 +249,12 @@ def u_sfe_some(_, x): return True
 
 def b_sfe_some_some(task, x, y):
 	
-	task.properties.merge(task.signature[0])
+	task.properties = typedef(task.signature[0])
 	return x
 
 def b_sfe_none_some(task, x, y):
 	
-	task.properties.merge(task.signature[1])
+	task.properties = typedef(task.signature[1])
 	return y
 
 std_sfe = funcdef(
@@ -281,57 +282,19 @@ std_snd = funcdef(
 def u_new(task, x):
 	
 	if x.prototype is None:
-		return task.error('PROT', x.name)
+		return None
 	else:
-		task.properties.__dict__.update(x.descriptor)
+		task.properties = typedef(x)
 		return x.prototype
 
 std_new = funcdef(
 	u_new
 )
 
-#def b_cmp(task, x, y):
-	
-#	new = funcdef('{0}.{1}'.format(x.name, y.name))
-#	methods = [i for i in y.tree.collect()] # Methods of 1st function
-#	for method in methods:
-#		tree = x.tree.true # Dispatch tree of 2nd function
-#		while tree:
-#			if tree.index == 0:
-#				tree = tree.true if tree.op(method.final) else tree.false
-#			else:
-#				tree = tree.false
-#		if tree is None:
-#			continue
-#		instance, final, x_signature = tree.routine, tree.final, tree.signature
-#		if not method.final < x_signature[0]:
-#			continue
-#		routine = method.routine
-#		y_signature = method.signature
-#		try:
-#			x_params = instance.params
-#			x_instructions = instance.instructions
-#		except AttributeError: # x is built-in
-#			x_params = ['x' + str(i) for i, _ in enumerate(x_signature)]
-#			x_instructions = instructions.generate_x_function(x.name, x_params)
-#		try:
-#			y_params = routine.params
-#			y_instructions = routine.instructions
-#		except AttributeError: # y is built-in
-#			y_params = ['x' + str(i) for i, _ in enumerate(y_signature)]
-#			y_instructions = instructions.generate_y_function(y.name, y_params, x_params[0])
-#		for op in y_instructions: # Rewrite 1st function so that returns set up the 2nd function instead
-#			if op.name == '.return':
-#				op.name, op.label = 'SKIP', [x_params[0]]
-#		instructions = y_instructions + [instructions.instruction('RETURN', '')] + x_instructions
-#		print(*instructions, sep = '\n')
-#		definition = function_method(instructions, [new.name] + y_params, [final] + list(y_signature))
-#		new.register(definition, final, method.signature)
-#	if new.tree.true is None and new.tree.false is None: # Empty tree
-#		del new
-#		return task.error('COMP', x.name, y.name)
-#	else:
-#		return new
+def b_cmp(task, x, y):
 
-#std_cmp = funcdef('.')
-#std_cmp.retrieve(b_cmp)
+	return y + x
+
+std_cmp = funcdef(
+	b_cmp
+)

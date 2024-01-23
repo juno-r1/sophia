@@ -47,12 +47,12 @@ class task:
 		Target of task.pool.apply_async().
 		Executes flags and runtime loop.
 		"""
-		self.handler.initial(self)
+		self.handler.debug_initial(self)
 		try:
 			value = self.run()
 		except SystemExit:
 			return
-		return self.handler.final(self, value)
+		return self.handler.debug_final(self, value)
 
 	def run(self) -> Any:
 		"""
@@ -72,7 +72,7 @@ class task:
 					args = [self.values[arg] for arg in registers]
 					self.signature = [self.types[arg] for arg in registers]
 					if (name := self.op.name) in task.interns: # Internal instructions
-						task.interns[name](self, *args)
+						value = task.interns[name](self, *args)
 					else:
 						value = self.values[name](self, *args)
 				except KeyError as e:
@@ -80,11 +80,15 @@ class task:
 		else:
 			return value
 
-	def branch(self, # Universal branch function
-			   scope: int = 0,
-			   skip: bool = False,
-			   move: bool = False) -> int:
-
+	def branch(
+		self,
+		scope: int = 0,
+		skip: bool = False,
+		move: bool = False
+		) -> int:
+		"""
+		Universal branch function.
+		"""
 		path = self.path
 		while True:
 			op, path = self.instructions[path], path + 1
@@ -98,16 +102,18 @@ class task:
 						self.path = path
 					return path
 
-	def state(self) -> dict: # Get current state of task as subset of __dict__
+	def call(self) -> dict: # Get current state of task as subset of __dict__
 
-		return {'name': self.name,
-				'values': self.values.copy(),
-				'types': self.types.copy(),
-				'instructions': self.instructions,
-				'path': self.path,
-				'op': self.op,
-				'caller': self.caller,
-				'final': self.final}
+		return {
+			'name': self.name,
+			'values': self.values.copy(),
+			'types': self.types.copy(),
+			'instructions': self.instructions,
+			'op': self.op,
+			'path': self.path,
+			'caller': self.caller,
+			'final': self.final
+		}
 
 	def restore( # Restore previous state of task
 		self,
@@ -177,21 +183,24 @@ class task:
 		address = self.op.address
 		self.values[address] = value if check(self, value, write = False) else self.handler.error('TYPE', check, value)
 		self.types[address] = typedef(check)
+		return value
 
 	def intern_constraint(
 		self,
-		constraint: bool
+		constraint: bool | None = None
 		) -> None:
-		
-		pass
-		#name = task.instructions[0].label[0]
-		#if not constraint:
-		#	value = task.values[name]
-		#	task.restore()
-		#	task.error('CAST', name, str(value))
-		#elif task.op.label and task.op.label[0] != name: # Update type of checked value for subsequent constraints
-		#	task.types[name].type = task.op.label[0]
-		#	task.types[name].describe(task)
+		"""
+		Takes true, false, or null.
+		True constraint does nothing.
+		False constraint returns false.
+		Null constraint signifies a successful check and returns true.
+		"""
+		if constraint is None:
+			self.path = 0
+			return True
+		if not constraint:
+			self.path = 0
+			return False
 
 	def intern_event(
 		self,
@@ -263,11 +272,11 @@ class task:
 		self,
 		) -> None:
 	
-		pass
-		#address = self.op.address
-		#self.message('link', task.op.address + '.sph')
-		#self.values[address] = self.calls.recv()
-		#self.types[address] = typedef(aletheia.std_future)
+		for name in self.op.label: # We can do this bit asynchronously
+			self.message('link', name + '.sph')
+		for name in self.op.label:
+			self.values[name] = self.calls.recv()
+			self.types[name] = typedef(aletheia.std_future)
 	
 	def intern_list(
 		self,
@@ -322,8 +331,8 @@ class task:
 	
 		address = self.op.address
 		try:
-			self.values[address] = next(iterator)
-			self.types[address] = typedef(aletheia.std_any)
+			self.values[address] = (value := next(iterator))
+			self.types[address] = aletheia.infer(value)
 		except StopIteration:
 			self.values[self.op.args[0]] = None # Sanitise register
 			self.branch(1, False, True)
@@ -381,52 +390,12 @@ class task:
 		prototype: Any = None
 		) -> None:
 	
-		pass
-	#	name, supername = task.op.address, supertype.name
-	#	type_tag, final_tag, super_tag = descriptor(name), descriptor(name), descriptor(supername).describe(task)
-	#	type_tag.supertypes = [name] + super_tag.supertypes
-	#	start, end = task.path, task.branch(0, True, True)
-	#	instructions = task.instructions[start:end]
-	#	routine = typedef(name, supertype.supertypes, supertype.prototype)
-	#	if supername in aletheia.supertypes: # Built-in supertype
-	#		check = kadmos.generate_supertype(name, supername)
-	#		routine.register(type_method(instructions, name, super_tag), final_tag, (super_tag,))
-	#		instructions[1:1] = check
-	#		routine.register(type_method(instructions, name, super_tag), final_tag, (descriptor('untyped', prepare = True),))
-	#	else:
-	#		tree = supertype.tree.true
-	#		while tree: # Traverse down tree and copy all false leaves
-	#			key, value = tree.false.signature, tree.false.routine
-	#			definition = [instruction.rewrite(i, supername, name) for i in value.instructions] # Rewrite methods with own type name
-	#			definition[-2:-2] = instructions[1:-2] # Add user constraints to instructions
-	#			routine.register(type_method(definition, name, key[0]), final_tag, key)
-	#			tree = tree.true
-	#		routine.register(type_method(instructions, name, super_tag), final_tag, (super_tag,))
-	#	return routine
-
-	#def type_type_any(task, supertype, prototype):
-	
-	#	name, supername = task.op.address, supertype.name
-	#	type_tag, final_tag, super_tag = descriptor(name), descriptor(name), descriptor(supername).describe(task)
-	#	type_tag.supertypes = [name] + super_tag.supertypes
-	#	start, end = task.path, task.branch(0, True, True)
-	#	instructions = task.instructions[start:end]
-	#	routine = typedef(name, supertype.supertypes, prototype)
-	#	if supername in aletheia.supertypes: # Built-in supertype
-	#		check = kadmos.generate_supertype(name, supername)
-	#		routine.register(type_method(instructions, name, super_tag), final_tag, (super_tag,))
-	#		instructions[1:1] = check
-	#		routine.register(type_method(instructions, name, super_tag), final_tag, (descriptor('untyped', prepare = True),))
-	#	else:
-	#		tree = supertype.tree.true
-	#		while tree: # Traverse down tree and copy all false leaves
-	#			key, value = tree.false.signature, tree.false.routine
-	#			definition = [instruction.rewrite(i, supername, name) for i in value.instructions] # Rewrite methods with own type name
-	#			definition[-2:-2] = instructions[1:-2] # Add user constraints to instructions
-	#			routine.register(type_method(definition, name, key[0]), final_tag, key)
-	#			tree = tree.true
-	#		routine.register(type_method(instructions, name, super_tag), final_tag, (super_tag,))
-	#	return routine
+		address = self.op.address
+		start, end = self.path, self.branch(0, True, True)
+		instructions = self.instructions[start:end]
+		method = aletheia.type_property(address, instructions)
+		self.values[address] = typedef(supertype, method, prototype = prototype)
+		self.types[address] = typedef(aletheia.std_type)
 
 	interns = {
 		'.bind': intern_bind,

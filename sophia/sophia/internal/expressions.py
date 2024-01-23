@@ -25,9 +25,7 @@ class lexer:
 		self.peek = None
 		self.use()
 
-	def use(
-		self
-		) -> None:
+	def use(self) -> None:
 		"""
 		Gets the next tokens, ignoring whitespace.
 		The iterator has a guaranteed sentinel value, so no exception will be raised.
@@ -78,13 +76,6 @@ class lexer:
 				else:
 					token = infix(value)
 		self.peek = token
-			#case 'operator' if len(tokens[-1]) == 1 and isinstance(tokens[-1][-1], name) and ('=>' in line or line[-1] == ':'): # Special case for operator definition
-			#	pass
-			#	token = nodes.name(value)
-			#if len(tokens[-1]) == 1 and isinstance(tokens[-1][-1], name) and ('=>' in line or line[-1] == ':'): # Special case for operator definition
-			#	token = name(symbol)
-			#	token_type = tokens[-1].pop().value # Sets return type of operator
-			#	token.type = sub_types[token_type] if token_type in sub_types else token_type
 
 	def parse(
 		self,
@@ -152,9 +143,7 @@ class literal(identifier):
 		
 		return self # Gives self as node
 
-	def execute(
-		self
-		) -> tuple[ins, ...]:
+	def execute(self) -> tuple[ins, ...]:
 		
 		return ()
 
@@ -191,27 +180,18 @@ class constant(literal):
 
 class name(identifier):
 	"""Defines a name."""
-	def __init__(
-		self,
-		value: str
-		) -> None:
-		
-		super().__init__(presets.ALIASES[value] if value in presets.ALIASES else value)
-
 	def nud(
 		self,
 		lex: lexer
 		) -> expression:
 
-		if isinstance(lex.peek, left_bracket): # If function call:
-			lex.use() # Gets the next token, which is guaranteed to be a left bracket
-			return lex.token.led(lex, self) # Guaranteed to call the LED of the following left bracket
-		else:
+		#if isinstance(lex.peek, left_bracket): # If function call:
+		#	lex.use() # Gets the next token, which is guaranteed to be a left bracket
+		#	return lex.token.led(lex, self) # Guaranteed to call the LED of the following left bracket
+		#else:
 			return self # Gives self as node
 
-	def execute(
-		self
-		) -> tuple[ins, ...]:
+	def execute(self) -> tuple[ins, ...]:
 		
 		return ()
 
@@ -226,9 +206,7 @@ class keyword(identifier):
 
 class keyword_continue(keyword):
 	"""Defines the continue keyword."""
-	def execute(
-		self
-		) -> tuple[ins, ...]:
+	def execute(self) -> tuple[ins, ...]:
 
 		loop = self
 		while type(loop).__name__ not in ('for_statement', 'while_statement'):
@@ -237,9 +215,7 @@ class keyword_continue(keyword):
 
 class keyword_break(identifier):
 	"""Defines the break keyword."""
-	def execute(
-		self
-		) -> tuple[ins, ...]:
+	def execute(self) -> tuple[ins, ...]:
 
 		loop = self
 		while type(loop).__name__ not in ('for_statement', 'while_statement'):
@@ -254,38 +230,17 @@ class operator(expression):
 		) -> None:
 
 		super().__init__(value)
-		for i, level in enumerate(operator.binding_power): # Get binding power of symbol
+		for i, level in enumerate(presets.BP): # Get binding power of symbol
 			if value in level:
 				self.lbp = i + 1
 				break
 		else:
-			self.lbp = len(operator.binding_power) # Default binding power; 1 less than unary operators
-
-	binding_power = ( # The left-binding power of a binary operator is expressed by its position in this tuple of tuples
-		('(', ')', '[', ']', '{', '}'),
-		(',',),
-		(':',),
-		('->',),
-		('if',),
-		('else',),
-		('or', '||',),
-		('and', '&&',),
-		('xor', '^^'),
-		('=', '!=', 'in'),
-		('<', '>', '<=', '>='),
-		('&', '|'),
-		('+', '-'),
-		('*', '/', '%'),
-		('^',),
-		('?',),
-		('<-',),
-		('.')
-	)
+			self.lbp = len(presets.BP) # Default binding power; 1 less than unary operators
 
 class prefix(operator):
 	"""
 	Defines a prefix.
-	All unary operators have the highest possible left-binding power.
+	All unary operators have the same left-binding power.
 	NEGATION TAKES PRECEDENCE OVER EXPONENTIATION.
 	"""
 	def __init__(
@@ -294,7 +249,10 @@ class prefix(operator):
 		) -> None:
 
 		super().__init__(value)
-		self.lbp = len(operator.binding_power) + 1 # Highest possible binding power
+		for i, level in enumerate(presets.BP): # Pre-determined binding power
+			if 'PREFIX' in level:
+				self.lbp = i + 1
+				break
 
 	def nud(
 		self,
@@ -304,9 +262,7 @@ class prefix(operator):
 		self.nodes = [lex.parse(self.lbp)]
 		return self
 
-	def execute(
-		self
-		) -> tuple[ins, ...]:
+	def execute(self) -> tuple[ins, ...]:
 		
 		return ins(self.value,
 				   self.register,
@@ -324,9 +280,7 @@ class receive(prefix):
 		self.value = lex.parse(self.lbp)
 		return self
 
-	def execute(
-		self
-		) -> tuple[ins, ...]:
+	def execute(self) -> tuple[ins, ...]:
 		
 		return ins('>', self.register),
 
@@ -349,11 +303,31 @@ class infix(operator):
 		self.nodes = [left, lex.parse(self.lbp)]
 		return self
 
-	def execute(
-		self
-		) -> tuple[ins, ...]:
+	def execute(self) -> tuple[ins, ...]:
 		
 		return ins(self.value, self.register, (self.nodes[0].register, self.nodes[1].register)),
+
+class bind(infix):
+	"""Defines the bind operator."""
+	def led(
+		self,
+		lex: lexer,
+		left: expression
+		) -> expression:
+		
+		self.nodes = [left]
+		right = lex.parse(self.lbp)
+		if not right.nodes: # Unpack parenthesis
+			return self
+		elif right.nodes[0].value == ',':
+			self.nodes = self.nodes + right.nodes[0].nodes
+		else:
+			self.nodes = self.nodes + [right.nodes[0]]
+		return self
+
+	def execute(self) -> tuple[ins, ...]:
+		
+		return ins('.future', self.register, tuple(i.register for i in self.nodes)),
 
 class left_conditional(infix):
 	"""Defines the condition of the conditional operator."""
@@ -377,15 +351,11 @@ class left_conditional(infix):
 		self.nodes = [left, n]
 		return self
 
-	def start(
-		self
-		) -> tuple[ins, ...]:
+	def start(self) -> tuple[ins, ...]:
 		
 		return ins('if', self.register, (self.nodes[0].register,)),
 
-	def execute(
-		self
-		) -> tuple[ins, ...]:
+	def execute(self) -> tuple[ins, ...]:
 		
 		return ()
 
@@ -399,28 +369,16 @@ class right_conditional(infix):
 		super().__init__(value)
 		self.active = 1
 
-	def start(
-		self
-		) -> tuple[ins, ...]:
+	def start(self) -> tuple[ins, ...]:
 		
 		return (ins('.bind', '0', (self.nodes[0].register,), label = [self.head.register]),
 				ins('if', self.register),
 				ins('END'),
 				ins('ELSE')) # Enclosed by labels of left conditional
 
-	def execute(
-		self
-		) -> tuple[ins, ...]:
+	def execute(self) -> tuple[ins, ...]:
 		
 		return ins('.bind', '0', (self.nodes[1].register,), label = [self.head.register]),
-
-class bind(infix):
-	"""Defines the bind operator."""
-	def execute(
-		self
-		) -> tuple[ins, ...]:
-		
-		return ins('.future', self.register, tuple([self.nodes[0].register] + [i.register for i in self.nodes[1].nodes])),
 
 class infix_r(operator):
 	"""Defines a right-binding infix."""
@@ -433,9 +391,7 @@ class infix_r(operator):
 		self.nodes = [left, lex.parse(self.lbp - 1)]
 		return self
 
-	def execute(
-		self
-		) -> tuple[ins, ...]:
+	def execute(self) -> tuple[ins, ...]:
 		
 		return ins(self.value, self.register, (self.nodes[0].register, self.nodes[1].register)),
 
@@ -451,9 +407,7 @@ class concatenator(operator):
 		self.nodes = [left] + n.nodes if n.value == self.value else [left, n]
 		return self
 
-	def execute(
-		self
-		) -> tuple[ins, ...]:
+	def execute(self) -> tuple[ins, ...]:
 		
 		if self.value == ':' and len(self.nodes) == 3:
 			return ins('.slice', self.register, tuple(item.register for item in self.nodes)),
@@ -461,25 +415,19 @@ class concatenator(operator):
 			return ()
 
 class left_bracket(operator):
-	"""Generic bracket node."""
+	"""
+	Generic bracket node.
+	Brackets have unbalanced binding power;
+	they bind high on the left side and low on the right side.
+	"""
 	def nud(
 		self,
 		lex: lexer
-		) -> expression: # For normal parentheses
+		) -> expression:
 		
-		self.nodes = [] if isinstance(lex.peek, right_bracket) else [lex.parse(self.lbp)] # Accounts for empty brackets
+		self.nodes = [] if isinstance(lex.peek, right_bracket) else [lex.parse(1)] # Accounts for empty brackets
 		lex.use()
 		return self # The bracketed sub-expression as a whole is essentially a literal
-
-	def led(
-		self,
-		lex: lexer,
-		left: expression
-		) -> expression: # For function calls
-		
-		self.nodes = [left] if isinstance(lex.peek, right_bracket) else [left, lex.parse(self.lbp)] # Accounts for empty brackets
-		lex.use()
-		return self
 
 class function_call(left_bracket):
 	"""Defines a function call."""
@@ -487,25 +435,23 @@ class function_call(left_bracket):
 		self,
 		lex: lexer,
 		left: expression
-		) -> expression: # For function calls
+		) -> expression:
 		
-		self.nodes = [left] if isinstance(lex.peek, right_bracket) else [left, lex.parse(self.lbp)] # Accounts for empty brackets
-		if len(self.nodes) > 1 and isinstance(self.nodes[1], concatenator): # Unpack concatenator
-			self.nodes = [self.nodes[0]] + self.nodes[1].nodes
+		if isinstance(lex.peek, right_bracket): # Accounts for empty brackets
+			self.nodes = [left]
+		else:
+			right = lex.parse(1) # Unbalanced binding power
+			self.nodes = [left] + right.nodes if right.value == ',' else [left, right]
 		lex.use()
 		return self
 
-	def execute(
-		self
-		) -> tuple[ins, ...]:
+	def execute(self) -> tuple[ins, ...]:
 		
 		return ins(self.nodes[0].register, self.register, tuple(item.register for item in self.nodes[1:])),
 
 class parenthesis(left_bracket):
 	"""Defines a set of parentheses."""
-	def execute(
-		self
-		) -> tuple[ins, ...]:
+	def execute(self) -> tuple[ins, ...]:
 		
 		return ()
 
@@ -515,41 +461,37 @@ class sequence_index(left_bracket):
 		self,
 		lex: lexer,
 		left: expression
-		) -> expression: # Remove comma operator
+		) -> expression:
 		
 		if isinstance(lex.peek, right_bracket): # Accounts for empty brackets
 			self.nodes = [left]
 		else:
-			self.nodes = [left, lex.parse(self.lbp)]
-			if self.nodes[1].value == ',':
-				self.nodes = [left] + [i for i in self.nodes[1].nodes] # Unpack concatenator
+			right = lex.parse(1) # Unbalanced binding power
+			self.nodes = [left] + right.nodes if right.value == ',' else [left, right]
 		lex.use()
 		return self
 
-	def execute(
-		self
-		) -> tuple[ins, ...]:
+	def execute(self) -> tuple[ins, ...]:
 		
 		return [ins('[', self.register, (self.nodes[0].register, self.nodes[1].register))] + \
 			   [ins('[', self.register, (self.register, item.register)) for item in self.nodes[2:]]
 
 class sequence_literal(left_bracket):
 	"""Defines a sequence constructor."""
-
 	def nud(
 		self,
 		lex: lexer
-		) -> expression: # For normal parentheses
+		) -> expression:
 		
-		self.nodes = [] if isinstance(lex.peek, right_bracket) else [lex.parse(self.lbp)] # Accounts for empty brackets
-		if self.nodes and self.nodes[0].value == ',': # Unpack concatenator
-			self.nodes = self.nodes[0].nodes
+		if isinstance(lex.peek, right_bracket): # Accounts for empty brackets
+			self.nodes = []
+		else:
+			right = lex.parse(1)
+			self.nodes = right.nodes if right.value == ',' else [right]
 		lex.use()
 		return self # The bracketed sub-expression as a whole is essentially a literal
 
-	def execute(
-		self
-		) -> tuple[ins, ...]:
+	def execute(self) -> tuple[ins, ...]:
 		
 		if self.nodes and self.nodes[0].value == ':' and len(self.nodes[0].nodes) == 3:
 			return ins('.range', self.register, tuple(i.register for i in self.nodes[0].nodes)),
@@ -562,10 +504,7 @@ class sequence_literal(left_bracket):
 
 class meta_statement(left_bracket):
 	"""Defines a meta-statement."""
-
-	def execute(
-		self
-		) -> tuple[ins, ...]:
+	def execute(self) -> tuple[ins, ...]:
 		
 		return (ins('.meta', self.register, (self.nodes[0].register)),
 				ins('START', label = ['.meta']),

@@ -1,9 +1,16 @@
 from cProfile import Profile
 from re import match
-from sys import stderr
+from sys import stdin, stdout, stderr
 from typing import Any
 
+from .datatypes import iris
 from .internal.presets import ERRORS, FLAGS, REGEX_NAMESPACE
+
+streams = [ # Standard streams
+	stdin,
+	stdout,
+	stderr
+]
 
 class handler:
 	"""
@@ -25,20 +32,35 @@ class handler:
 			if flag not in FLAGS:
 				self.error('FLAG', flag) # Complete __init__ before potential exception
 
-	def initial( # Initial task flags
+	def read(
+		self,
+		reference: iris.reference,
+		message: str = ''
+		) -> str:
+
+		return input(message)
+
+	def write(
+		self,
+		reference: iris.reference,
+		message: str
+		) -> str:
+
+		print(message, sep = '', file = streams[reference.pid])
+		return message
+
+	def debug_initial(
 		self,
 		task,
 		) -> None:
 		"""
 		Execute pre-runtime flags.
 		"""
-		if 'instructions' in self.flags:
-			self.debug_instructions(task)
 		if 'profile' in self.flags:
 			self.profiler = Profile()
 			self.profiler.enable()
 
-	def final( # Final task flags
+	def debug_final(
 		self,
 		task,
 		value: Any
@@ -55,9 +77,9 @@ class handler:
 			return value
 		else:
 			task.message('terminate')
-			return task.state() # Return mutable state to supervisor
+			return task.call() # Return mutable state to supervisor
 
-	def processor( # Processor flags
+	def debug_processor( # Processor flags
 		self,
 		task
 		) -> None:
@@ -74,10 +96,12 @@ class handler:
 		"""
 		print('===', file = stderr)
 		for i, instruction in enumerate(task.instructions):
-			print(i,
-				  instruction,
-				  sep = '\t',
-				  file = stderr)
+			print(
+                i,
+				instruction,
+				sep = '\t',
+				file = stderr
+            )
 		print('===', file = stderr)
 
 	def debug_namespace(
@@ -87,17 +111,19 @@ class handler:
 		"""
 		Prints the user-accessible namespace.
 		"""
-		print('===',
-			  task.name,
-			  '---',
-			  '\n---\n'.join(('{0} {1} {2}'.format(
-				  name,
-				  task.types[name],
-				  value) for name, value in task.values.items() if match(REGEX_NAMESPACE, name))
-			  ),
-			  '===',
-			  sep = '\n',
-			  file = stderr)
+		print(
+            '===',
+			task.name,
+			'---',
+			'\n---\n'.join(('{0} {1} {2}'.format(
+				name,
+				task.types[name],
+				value) for name, value in task.values.items() if match(REGEX_NAMESPACE, name))
+			),
+			'===',
+			sep = '\n',
+			file = stderr
+        )
 
 	def debug_supervisor(
 		self,
@@ -115,10 +141,12 @@ class handler:
 		"""
 		Prints the current instruction.
 		"""
-		print(str(task.path),
-			  task.op,
-			  sep = '\t',
-			  file = stderr)
+		print(
+            str(task.path),
+			task.op,
+			sep = '\t',
+			file = stderr
+        )
 
 	def timeout(
 		self
@@ -126,12 +154,14 @@ class handler:
 		"""
 		Prints a timeout warning.
 		"""
-		print('===',
-			  'Timeout warning',
-			  'Enter Ctrl+C to interrupt program',
-			  '===',
-			  sep = '\n',
-			  file = stderr)
+		print(
+            '===',
+			'Timeout warning',
+			'Enter Ctrl+C to interrupt program',
+			'===',
+			sep = '\n',
+			file = stderr
+        )
 
 	def error(
 		self,
@@ -142,11 +172,13 @@ class handler:
 		Throws an error and terminates the current task.
 		"""
 		if 'suppress' not in self.flags:
-			print('===',
-				  #'{0} (line {1})'.format(self.name, self.op.line),
-				  ERRORS[status].format(*args) if args else ERRORS[status],
-				  '===',
-				  sep = '\n',
-				  file = stderr)
+			print(
+                '===',
+				#'{0} (line {1})'.format(self.name, self.op.line),
+				ERRORS[status].format(*args) if args else ERRORS[status],
+				'===',
+				sep = '\n',
+				file = stderr
+            )
 		self.lock = True
 		raise SystemExit

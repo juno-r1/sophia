@@ -121,19 +121,25 @@ std_format = funcdef(
 )
 
 def hash_any(task, value):
-
-	return real(hash(value)) # NOT CRYPTOGRAPHICALLY SECURE
+	"""
+	THIS HASH IS NOT CRYPTOGRAPHICALLY SECURE.
+	"""
+	return real(hash(value))
 
 std_hash = funcdef(
 	hash_any
 )
 
-def if_none(task): # Unconditional branch
-	
+def if_none(task):
+	"""
+	Unconditional branch.
+	"""
 	return task.branch(1, False, True)
 
-def if_boolean(task, condition): # Conditional branch
-
+def if_boolean(task, condition):
+	"""
+	Conditional branch.
+	"""
 	if not condition:
 		return task.branch(1, True, True)
 
@@ -161,19 +167,19 @@ std_join = funcdef(
 
 def length_string(task, sequence):
 	
-	return real(task.signature[0].length)
+	return len(sequence)
 
 def length_list(task, sequence):
 	
-	return real(task.signature[0].length)
+	return len(sequence)
 
 def length_record(task, sequence):
 	
-	return real(task.signature[0].length)
+	return len(sequence)
 
 def length_slice(task, sequence):
 	
-	return real(task.signature[0].length)
+	return len(sequence)
 
 std_length = funcdef(
 	length_string,
@@ -288,7 +294,7 @@ std_return = funcdef(
 
 def reverse_slice(task, value):
 		
-	return slice((value.end, value.start, -value.step))
+	return slice(value.end, value.start, -value.step)
 
 std_reverse = funcdef(
 	reverse_slice
@@ -339,7 +345,7 @@ def sum_list(task, sequence):
 
 def sum_slice(task, sequence):
 
-	return real(sum(i for i in sequence))
+	return real(sum(sequence))
 
 std_sum = funcdef(
 	sum_list,

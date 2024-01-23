@@ -8,8 +8,7 @@ class node:
 		
 		self.head = None # Determined by scope parsing
 		self.nodes = [i for i in nodes] # Node operands
-		#self.value = value # For operands that shouldn't be evaluated or that should be handled differently
-		#self.length = 0 # Performance optimisation
+		self.length = 0 # Performance optimisation
 		self.register = '0' # Register that this node returns to
 		self.scope = 0
 		self.active = -1 # Indicates path index for activation of start()

@@ -18,19 +18,13 @@ else:
 bool b: halve(x) = 1
 
 int x: 1
-if even(x):
-	bool c: false
-else:
-	bool c: true
+bool c: not even(x)
 
 type quadruple extends even:
 
 	quadruple % 4 = 0
 
 int x: 4
-if quadruple(x):
-	bool d: true
-else:
-	bool d: false
+bool d: quadruple(x)
 
 return a and b and c and d

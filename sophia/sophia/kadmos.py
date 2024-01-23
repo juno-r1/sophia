@@ -30,12 +30,12 @@ class parser:
 		source: str
 		) -> tuple[list[instruction], dict]:
 		
-		if re.fullmatch(presets.EMPTY, source):
+		if re.fullmatch(presets.REGEX_EMPTY, source):
 			raise SystemExit # End immediately without error
 		if not self.matched(source):
-			self.handler.error('UQTE')
+			self.handler.error('SNTX', 'unmatched parentheses')
 		if not self.balanced(source):
-			self.handler.error('UPRN')
+			self.handler.error('SNTX', 'unmatched quotes')
 		lines = self.split(source)
 		tokens = self.tokenise(lines)
 		ast = self.link(tokens)
@@ -51,8 +51,8 @@ class parser:
 		"""
 		Uncomments and splits the source into logical lines.
 		"""
-		source = re.sub(presets.COMMENT, '\n', source)
-		source = re.sub(presets.REGEX_LITERAL, self.alias, source)
+		source = re.sub(presets.REGEX_COMMENT, '\n', source)
+		source = re.sub(presets.REGEX_ALIAS, self.alias, source)
 		line = ''
 		lines = []
 		for symbol in re.finditer(presets.REGEX_SPLIT, source):
@@ -163,15 +163,8 @@ class parser:
 		self.head.length = len(self.head.nodes)
 		while self.node: # Pre-runtime generation of instructions
 			if self.path[-1] == self.node.length: # Walk up
-				#if isinstance(self.node.head, statements.type_statement) and self.path[-2] >= self.node.head.active: # Insert constraint
-				#	self.instructions.append(
-				#		instruction(
-				#			'.constraint',
-				#			'0',
-				#			(self.node.register,),
-				#			label = [self.node.head.value[0].value] if self.path[-2] == self.node.head.length - 1 else []
-				#		)
-				#	)
+				if isinstance(self.node.head, statements.type_statement) and self.path[-2] >= self.node.head.active: # Insert constraints
+					self.instructions.append(instruction('.constraint', '0', (self.node.register,)))
 				self.node = self.node.head # Walk upward
 				if self.node:
 					self.path.pop()
@@ -179,8 +172,9 @@ class parser:
 				else:
 					continue
 			else: # Walk down
-				self.node.nodes[self.path[-1]].head = self.node # Set head
-				self.node = self.node.nodes[self.path[-1]] # Set value to child node
+				child = self.node.nodes[self.path[-1]]
+				child.head = self.node # Set head
+				self.node = child # Set value to child node
 				self.node.register = self.register(offset)
 				self.node.length = len(self.node.nodes)
 				self.path.append(0)
@@ -269,9 +263,14 @@ class parser:
 
 	def alias(
 		self,
-		match: re.Match
+		symbol: re.Match
 		) -> str:
 		"""
-		Substitutes aliased names for their canonical names.
+		Replaces aliases with their canonical forms.
 		"""
-		return presets.ALIASES[string] if (string := match.group()) in presets.ALIASES else string
+		value = symbol.group()
+		match symbol.lastgroup:
+			case 'string':
+				return value
+			case 'literal':
+				return presets.ALIASES[value] if value in presets.ALIASES else value

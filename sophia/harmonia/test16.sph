@@ -9,4 +9,8 @@ int increment (int n) => n - 1
 bool a: increment(0.5) = 1.5
 bool b: increment(1) = 0
 
+int halve (int n) => n / 2
+
+//bool c: halve.increment(5) = 2
 return a and b
+//return a and b and c
