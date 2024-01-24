@@ -317,7 +317,7 @@ class sub_user(sub):
 		task,
 		*args: tuple
 		) -> None:
-
+		
 		task.caller = task.call()
 		task.final = self.final
 		task.values = task.values | dict(zip(self.params, args))
@@ -332,8 +332,16 @@ class sub_std(sub):
 		task,
 		*args: tuple
 		) -> None:
-
-		return self.body(task, *args)
+		
+		address = task.address
+		if (value := self.body(task, *args)) is None: # Null return override
+			task.types[address] = std_none
+		elif self.final.types:
+			task.types[address], task.properties = task.properties or self.final, None
+		else:
+			task.types[address] = infer(value)
+		task.values[address] = value
+		return value
 
 class method:
 	"""
@@ -357,17 +365,15 @@ class method:
 		*args: tuple
 		) -> Any:
 
-		address = task.op.address
-		value = self.routines[task.sub](task, *args)
-		task.values[address] = value
-		if value is None: # Null return override
-			task.types[address] = std_none
-		elif self.final.types:
-			task.types[address], task.properties = task.properties or self.final, None
+		routine = self.routines[task.sub]
+		args = (task.values['0'],) if task.sub else args
+		if task.sub == self.end:
+			task.sub = 0
+			task.address = task.op.address
 		else:
-			task.types[address] = infer(value)
-		task.sub = 0 if task.sub == self.end else task.sub + 1
-		return value
+			task.sub = task.sub + 1
+			task.address = '0'
+		return routine(task, *args)
 
 	def __bool__(self) -> bool: return False
 
@@ -462,7 +468,7 @@ class multimethod:
 			"""
 			Rewrite instructions and create composed method.
 			"""
-			#new.extend(function_method(method.routines + instance.routines))
+			new.extend(function_method(*(method.routines + instance.routines)))
 		return None if new.true is None and new.false is None else new
 
 	def set( # Set check attributes

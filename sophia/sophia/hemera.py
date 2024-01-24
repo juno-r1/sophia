@@ -142,7 +142,7 @@ class handler:
 		Prints the current instruction and subroutine.
 		"""
 		print(
-            '{0} {1}'.format(task.path, task.sub),
+            str(task.path),
 			task.op,
 			sep = '\t',
 			file = stderr

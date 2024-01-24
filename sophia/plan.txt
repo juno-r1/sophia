@@ -738,3 +738,7 @@ value is stored in the instruction's address
 types are self-contained and can be called anywhere
 functions are not
 the runtime must be allowed to execute in full in case another function has been called
+
+---
+
+this is a *lot* of work for very little gain and very much complexity

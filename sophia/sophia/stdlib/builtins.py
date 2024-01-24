@@ -284,7 +284,7 @@ def return_any(task, sentinel):
 		task.restore() # Restore namespace of calling routine
 	else:
 		task.path = 0 # End task
-	task.values[task.op.address] = sentinel # Different return address
+	task.values[task.address] = sentinel # Different return address
 	return sentinel
 
 std_return = funcdef(
@@ -309,7 +309,7 @@ std_round = funcdef(
 )
 
 def sign_number(task, value):
-
+	
 	return real() if value == 0 else real(int(copysign(1, value)))
 
 std_sign = funcdef(
