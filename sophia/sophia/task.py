@@ -35,6 +35,7 @@ class task:
 		self.instructions = processor.instructions # Guaranteed to be non-empty
 		self.op = self.instructions[0] # Current instruction
 		self.path = 1 # Instruction index
+		self.sub = 0 # Subroutine index
 		"""
 		Program state management.
 		"""
@@ -61,24 +62,29 @@ class task:
 		"""
 		debug_task = 'task' in self.handler.flags # Debug runtime loop
 		self.caller = None # Reset caller
-		while self.path:
-			self.op = self.instructions[self.path]
-			if debug_task:
-				self.handler.debug_task(self)
-			self.path = self.path + 1
-			if self.op.address: # Skip labels
-				try:
-					registers = self.op.args
-					args = [self.values[arg] for arg in registers]
-					self.signature = [self.types[arg] for arg in registers]
+		try:
+			while self.path:
+				if self.sub:
+					pass
+				else:
+					self.op = self.instructions[self.path]
+					if debug_task:
+						self.handler.debug_task(self)
+					self.path = self.path + 1
+					if self.op.address: # Skip labels
+						registers = self.op.args
+						args = [self.values[arg] for arg in registers]
+						self.signature = [self.types[arg] for arg in registers]
+					else:
+						continue
 					if (name := self.op.name) in task.interns: # Internal instructions
 						value = task.interns[name](self, *args)
 					else:
 						value = self.values[name](self, *args)
-				except KeyError as e:
-					self.handler.error('FIND', e.args[0])
-		else:
-			return value
+			else:
+				return value
+		except KeyError as e:
+			self.handler.error('FIND', e.args[0])
 
 	def branch(
 		self,
@@ -111,6 +117,7 @@ class task:
 			'instructions': self.instructions,
 			'op': self.op,
 			'path': self.path,
+			'sub': self.sub,
 			'caller': self.caller,
 			'final': self.final
 		}
@@ -212,7 +219,7 @@ class task:
 		start = self.path
 		end = self.branch(0, True, True)
 		end = self.branch(1, True, True)
-		definition = aletheia.event_method(self.instructions[start:end], params, types)
+		definition = aletheia.event_method(aletheia.sub_user(self.instructions[start:end], params, types))
 		if name in self.values and self.types[name] < aletheia.std_event:
 			self.values[name].extend(definition)
 		else:
@@ -229,7 +236,7 @@ class task:
 		name = self.op.address
 		params = self.op.label
 		start, end = self.path, self.branch(0, True, True)
-		definition = aletheia.function_method(self.instructions[start:end], params, types, user = True)
+		definition = aletheia.function_method(aletheia.sub_user(self.instructions[start:end], params, types))
 		if name in self.values and self.types[name] < aletheia.std_function:
 			self.values[name].extend(definition)
 		else:
