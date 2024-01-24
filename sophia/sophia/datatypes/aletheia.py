@@ -12,10 +12,6 @@ with open('sophia/stdlib/kleio.json', 'r') as kleio:
 	metadata = json.load(kleio)
 del kleio
 
-"""
-Type data type.
-"""
-
 class type_property:
 	"""
 	Implements a type property.
@@ -289,29 +285,32 @@ class typedef:
 			methods.append(properties[name](value))
 		return cls(datatype, *methods) # Create new typedef from base datatype
 
-"""
-Function and event data types.
-"""
-class sub:
+class method:
 	"""
-	Subroutine object. Methods are composed of multiple subroutines.
+	Implements a method. This functions as the leaf node of a multimethod's
+	dispatch tree.
 	"""
 	def __init__(
 		self,
 		body: list[instruction] | Callable,
 		names: list[str],
-		types: list[typedef]
+		types: list[typedef],
+		*,
+		user = False
 		) -> None:
 		
-		self.body = body
+		if user:
+			self.instructions = body
+			self.routine = self
+		else:
+			self.instructions = None
+			self.routine = body
 		self.name = names[0]
 		self.params = names[1:]
 		self.final = types[0]
 		self.signature = types[1:]
 		self.arity = len(self.signature)
-
-class sub_user(sub):
-
+	
 	def __call__(
 		self,
 		task,
@@ -322,52 +321,8 @@ class sub_user(sub):
 		task.final = self.final
 		task.values = task.values | dict(zip(self.params, args))
 		task.types = task.types | dict(zip(self.params, self.signature))
-		task.instructions = self.body
-		task.path, task.sub = 1, 0
-
-class sub_std(sub):
-
-	def __call__(
-		self,
-		task,
-		*args: tuple
-		) -> None:
-
-		return self.body(task, *args)
-
-class method:
-	"""
-	Implements a method. This functions as the leaf node of a multimethod's
-	dispatch tree.
-	"""
-	def __init__(
-		self,
-		*routines: tuple[sub]
-		) -> None:
-		
-		self.routines = routines
-		self.end = len(routines) - 1
-		self.final = routines[-1].final
-		self.signature = routines[0].signature
-		self.arity = len(self.signature)
-
-	def __call__(
-		self,
-		task,
-		*args: tuple
-		) -> Any:
-
-		address = task.op.address
-		value = self.routines[task.sub](task, *args)
-		task.values[address] = value
-		if value is None: # Null return override
-			task.types[address] = std_none
-		elif self.final.types:
-			task.types[address], task.properties = task.properties or self.final, None
-		else:
-			task.types[address] = infer(value)
-		task.sub = 0 if task.sub == self.end else task.sub + 1
-		return value
+		task.instructions = self.instructions
+		task.path = 1
 
 	def __bool__(self) -> bool: return False
 
@@ -422,7 +377,7 @@ class multimethod:
 		https://github.com/JeffBezanson/phdthesis
 		Binary search tree yields closest key for method, then key is verified.
 		"""
-		signature, arity = task.signature, task.op.arity
+		address, signature, arity = task.op.address, task.signature, task.op.arity
 		instance = self.true if signature else self.false
 		while instance: # Traverse tree; terminates upon reaching leaf node
 			instance = instance.true if instance.index < arity and instance.check(signature) else instance.false
@@ -431,7 +386,16 @@ class multimethod:
 		for i, item in enumerate(signature): # Verify type signature
 			if item > instance.signature[i]:
 				task.handler.error('DISP', task.op.name, signature)
-		return instance(task, *args)
+		final = instance.final
+		value = instance.routine(task, *args)
+		task.values[address] = value
+		if value is None: # Null return override
+			task.types[address] = std_none
+		elif final.types:
+			task.types[address], task.properties = task.properties or final, None
+		else:
+			task.types[address] = infer(value)
+		return value
 
 	def __bool__(self): return True
 
@@ -462,7 +426,7 @@ class multimethod:
 			"""
 			Rewrite instructions and create composed method.
 			"""
-			#new.extend(function_method(method.routines + instance.routines))
+			new.extend(function_method(method.routines + instance.routines))
 		return None if new.true is None and new.false is None else new
 
 	def set( # Set check attributes
@@ -566,7 +530,7 @@ class funcdef(multimethod):
 			data = metadata[item.__name__] # Retrieve method signature from Kleio
 			names = [item.__name__] + [str(i) for i in range(len(data['signature']))]
 			types = [typedef.read(data['final'])] + [typedef.read(i) for i in data['signature']]
-			self.extend(function_method(sub_std(item, names, types)))
+			self.extend(function_method(item, names, types))
 
 class eventdef(multimethod): pass
 

@@ -139,10 +139,10 @@ class handler:
 		task
 		) -> None:
 		"""
-		Prints the current instruction and subroutine.
+		Prints the current instruction.
 		"""
 		print(
-            '{0} {1}'.format(task.path, task.sub),
+            str(task.path),
 			task.op,
 			sep = '\t',
 			file = stderr

@@ -723,18 +723,20 @@ need to store state in a function and come back to it later? that's what a corou
 
 ---
 
-execution order got fucked and generators don't pickle.
-basic concept is sound but runtime isn't atomic enough to accommodate it elegantly
+execution order
 
-basic principles
+types:
+	execute
+	push no subroutines to runtime
+functions:
+	dispatch
+	call method
+	push 
 
-runtime gets a callable instruction
-instruction is executed with the instruction's arguments
-instruction performs dispatch and returns a callable method
-method performs arbitrary actions on the runtime
-method returns a value
-value is stored in the instruction's address
+dispatch (function handles this bit)
+push method's units to the queue
+the runtime handles the rest
 
-types are self-contained and can be called anywhere
-functions are not
-the runtime must be allowed to execute in full in case another function has been called
+execution ends when there's no caller and no units in the queue
+
+oh man this is a weird execution order. do we have to do this
