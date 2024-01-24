@@ -1,8 +1,16 @@
-// 3.2.8
+// 3.2.7, 5.5
 
 num increment (num n):
 
-	return n + >m
+	return n + 1
 
-x: increment <- (1)
-return *(1 -> x) = 2
+int increment (int n) => n - 1
+
+bool a: increment(0.5) = 1.5
+bool b: increment(1) = 0
+
+int halve (int n) => n / 2
+
+bool c: halve.increment(5) = 2
+
+return a and b and c

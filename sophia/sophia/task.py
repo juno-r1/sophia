@@ -39,7 +39,6 @@ class task:
 		"""
 		Program state management.
 		"""
-		self.address = '0' # Current address
 		self.caller = None # State of the calling routine
 		self.final = aletheia.std_any # Return type of routine
 		self.handler = processor.handler # Error handler
@@ -65,7 +64,9 @@ class task:
 		self.caller = None # Reset caller
 		try:
 			while self.path:
-				if not self.sub: # Beginning of method
+				if self.sub:
+					pass
+				else:
 					self.op = self.instructions[self.path]
 					if debug_task:
 						self.handler.debug_task(self)
@@ -76,10 +77,10 @@ class task:
 						self.signature = [self.types[arg] for arg in registers]
 					else:
 						continue
-				if (name := self.op.name) in task.interns: # Internal instructions
-					value = task.interns[name](self, *args)
-				else:
-					value = self.values[name](self, *args)
+					if (name := self.op.name) in task.interns: # Internal instructions
+						value = task.interns[name](self, *args)
+					else:
+						value = self.values[name](self, *args)
 			else:
 				return value
 		except KeyError as e:
@@ -117,7 +118,6 @@ class task:
 			'op': self.op,
 			'path': self.path,
 			'sub': self.sub,
-			'address': self.address,
 			'caller': self.caller,
 			'final': self.final
 		}
@@ -250,7 +250,7 @@ class task:
 		routine: aletheia.funcdef,
 		*args: tuple
 		) -> None:
-		
+
 		address, signature, arity = self.op.address, self.signature[1:], self.op.arity - 1
 		instance = routine.true if signature else routine.false
 		while instance: # Traverse tree; terminates upon reaching leaf node
@@ -260,8 +260,8 @@ class task:
 		for i, item in enumerate(signature): # Verify type signature
 			if item > instance.signature[i]:
 				self.handler.error('DISP', self.op.args[0], signature)
-		values = self.values.copy() | dict(zip(instance.routines[0].params, args))
-		types = self.types.copy() | dict(zip(instance.routines[0].params, instance.signature))
+		values = self.values.copy() | dict(zip(instance.params, args))
+		types = self.types.copy() | dict(zip(instance.params, instance.signature))
 		self.message('future', instance, values, types)
 		self.types[address] = typedef(aletheia.std_future)
 		self.values[address] = self.calls.recv()
