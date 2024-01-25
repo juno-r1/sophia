@@ -1,4 +1,4 @@
-// 4.2, 5.2
+// While statements, control flow
 
 int x: 0
 while x < 5:

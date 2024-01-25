@@ -1,4 +1,4 @@
-// 4.2, 5.3
+// For statements, control flow
 
 for i in 0:5:1:
 	int x: i

@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from typing import Self
 
 @dataclass(slots = True, repr = False)
 class instruction:
@@ -19,11 +20,44 @@ class instruction:
 
 	def __str__(self) -> str:
 		
+		string = self.name
+		if self.address:
+			string = string + ' ' + self.address
 		if self.args:
-			return '{0} {1} {2}; {3}'.format(self.name, self.address, ' '.join(self.args), ' '.join(self.label))
-		elif self.address:
-			return '{0} {1}; {2}'.format(self.name, self.address, ' '.join(self.label))
-		else:
-			return '{0}; {1}'.format(self.name, ' '.join(self.label))
+			string = string + ' ' + ' '.join(self.args)
+		string = string + ';'
+		if self.label:
+			string = string + ' ' + ' '.join(self.label)
+		return string
 
 	__repr__ = __str__
+
+	@classmethod
+	def left(
+		cls,
+		left,
+		right
+		) -> list[Self]:
+		"""
+		Converts a built-in method into the first half of a composed function.
+		"""
+		return [
+			cls('START', label = [left.name]),
+			cls(left.name, right.params[0], left.params),
+			cls('END')
+		]
+
+	@classmethod
+	def right(
+		cls,
+		right
+		) -> list[Self]:
+		"""
+		Converts a built-in method into the second half of a composed function.
+		"""
+		return [
+			cls('START', label = [right.name]),
+			cls(right.name, '0', right.params),
+			cls('return', '0', ('0',)),
+			cls('END')
+		]

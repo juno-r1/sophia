@@ -426,7 +426,17 @@ class multimethod:
 			"""
 			Rewrite instructions and create composed method.
 			"""
-			new.extend(function_method(method.routines + instance.routines))
+			left = method.instructions if method.instructions else instruction.left(method, instance)
+			right = instance.instructions if instance.instructions else instruction.right(instance)
+			instructions = [
+				instruction('.skip', instance.params[0], item.args, label = item.label)
+				if item.name == 'return'
+				else instruction(item.name, item.address, item.args, label = item.label)
+				for item in left
+			] + right
+			names = ['{0}.{1}'.format(instance.name, method.name)] + method.params
+			types = [instance.final] + method.signature
+			new.extend(function_method(instructions, names, types, user = True))
 		return None if new.true is None and new.false is None else new
 
 	def set( # Set check attributes
@@ -528,7 +538,7 @@ class funcdef(multimethod):
 		super().__init__()
 		for item in methods:
 			data = metadata[item.__name__] # Retrieve method signature from Kleio
-			names = [item.__name__] + [str(i) for i in range(len(data['signature']))]
+			names = [data['name']] + [str(i) for i in range(len(data['signature']))]
 			types = [typedef.read(data['final'])] + [typedef.read(i) for i in data['signature']]
 			self.extend(function_method(item, names, types))
 

@@ -1,9 +1,3 @@
-// 3.2.7.1, 5.8
+// Meta-expression
 
-type triple extends list with [0, 0, 0] => true
-x: new triple
-
-bool a: new int = 0
-bool b: triple(x)
-
-return a and b
+return {'true if 3 - 12 / -2 ^ -(0 - 2) * 3 + 1 = -5 != 0 in [true] & [1, 2, 3] | [false or true and false xor true] else false'}

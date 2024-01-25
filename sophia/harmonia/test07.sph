@@ -1,4 +1,4 @@
-// 3.2.3
+// Boolean operators
 
 bool a: not false
 bool b: true and true

@@ -1,3 +1,5 @@
+// Type operators, structural typing
+
 type pos extends int => pos > 0
 type even extends int => even % 2 = 0
 

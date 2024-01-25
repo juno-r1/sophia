@@ -5,6 +5,7 @@ from typing import Any
 from .datatypes import aletheia, iris
 from .datatypes.aletheia import typedef
 from .datatypes.mathos import real, slice
+from .kadmos import parser
 from .metis import processor
 
 class task:
@@ -212,7 +213,7 @@ class task:
 		start = self.path
 		end = self.branch(0, True, True)
 		end = self.branch(1, True, True)
-		definition = aletheia.event_method(self.instructions[start:end], params, types)
+		definition = aletheia.event_method(self.instructions[start:end], list(params), list(types))
 		if name in self.values and self.types[name] < aletheia.std_event:
 			self.values[name].extend(definition)
 		else:
@@ -229,7 +230,7 @@ class task:
 		name = self.op.address
 		params = self.op.label
 		start, end = self.path, self.branch(0, True, True)
-		definition = aletheia.function_method(self.instructions[start:end], params, types, user = True)
+		definition = aletheia.function_method(self.instructions[start:end], list(params), list(types), user = True)
 		if name in self.values and self.types[name] < aletheia.std_function:
 			self.values[name].extend(definition)
 		else:
@@ -313,16 +314,16 @@ class task:
 		string: str
 		) -> None:
 
-		pass
-		#meta = module(string, meta = task.name)
-		#offset = int(task.op.address) - 1
-		#constants = len([item for item in task.values if item[0] == '&']) - 1
-		#instructions, values, types = translator(meta, constants = constants).generate(offset = offset)
-		#start = task.path
-		#end = task.branch(0, True, False)
-		#task.instructions[start + 1:end] = instructions
-		#task.values.update(values)
-		#task.types.update({k: v.describe(task) for k, v in types.items()})
+		instructions, namespace = parser(self.handler, '<meta>').parse(string)
+		if not instructions[-2].args:
+			instructions[-2].args = ('1',) # Always the register of the head node
+			instructions[-2].arity = 1
+		self.caller = self.call()
+		self.final = aletheia.std_any # Cannot guarantee type of meta-expression
+		self.values = self.values | namespace
+		self.types = self.types | {k: aletheia.infer(v) for k, v in namespace.items()}
+		self.instructions = instructions
+		self.path = 1
 
 	def intern_next(
 		self,
@@ -367,6 +368,18 @@ class task:
 			aletheia.cls_element(element),
 			aletheia.cls_length(length)
 		)
+
+	def intern_skip(
+		self,
+		*sentinel: Any
+		) -> None:
+
+		address = self.op.address
+		path, self.path = self.path, 0
+		while self.path < path:
+			self.branch(0, True, True)
+		self.values[address] = sentinel[0] if sentinel else None
+		self.types[address] = self.signature[0]
 
 	def intern_slice(
 		self,
@@ -414,6 +427,7 @@ class task:
 		'.next': intern_next,
 		'.range': intern_range,
 		'.record': intern_record,
+		'.skip': intern_skip,
 		'.slice': intern_slice,
 		'.type': intern_type
 	}

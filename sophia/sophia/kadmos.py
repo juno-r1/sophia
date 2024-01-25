@@ -13,14 +13,13 @@ class parser:
 	def __init__(
 		self,
 		handler: handler,
-		name: str,
-		offset: int = 0
+		name: str
 		) -> None:
 		
 		self.head = statements.module(name)
 		self.node = self.head
 		self.path = [0]
-		self.constant = offset # Constant register counter
+		self.constant = 0 # Constant register counter
 		self.instructions = [instruction('START', label = [name])]
 		self.values = {'0': None, '&0': None} # Register namespace
 		self.handler = handler # Error handler
@@ -156,8 +155,7 @@ class parser:
 		return self.head
 
 	def generate(
-		self,
-		offset: int = 0
+		self
 		) -> tuple[list[instruction], dict]:
 		
 		self.head.length = len(self.head.nodes)
@@ -175,7 +173,7 @@ class parser:
 				child = self.node.nodes[self.path[-1]]
 				child.head = self.node # Set head
 				self.node = child # Set value to child node
-				self.node.register = self.register(offset)
+				self.node.register = self.register()
 				self.node.length = len(self.node.nodes)
 				self.path.append(0)
 				if not isinstance(self.node, statements.for_statement):
@@ -198,8 +196,7 @@ class parser:
 		return self.instructions, self.values
 
 	def register(
-		self,
-		offset: int
+		self
 		) -> str:
 		
 		if isinstance(self.node, expressions.name): # Variable register
@@ -219,7 +216,7 @@ class parser:
 			self.values[index] = self.node.value
 			return index
 		else: # Temporary register
-			index = str(sum(self.path) + offset + 1) # Sum of path is a pretty good way to minimise registers
+			index = str(sum(self.path) + 1) # Sum of path is a pretty good way to minimise registers
 			self.values[index] = None
 			return index
 			

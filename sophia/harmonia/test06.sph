@@ -1,4 +1,4 @@
-// 3.2.2
+// Equality operators
 
 bool a: 1 = 1.0
 bool b: 1 != 1.1

@@ -56,7 +56,7 @@ class lexer:
 			case 'l_parens' if value == '[':
 				token = sequence_literal(value) if self.prefix() else sequence_index(value)
 			case 'l_parens' if value == '{':
-				token = meta_statement(value)
+				token = meta(value)
 			case 'r_parens':
 				token = right_bracket(value)
 			case 'operator' if value in (':', ','): # Same regardless of context
@@ -502,13 +502,11 @@ class sequence_literal(left_bracket):
 		else:
 			return () # Empty list is a constant
 
-class meta_statement(left_bracket):
-	"""Defines a meta-statement."""
+class meta(left_bracket):
+	"""Defines a meta-expression."""
 	def execute(self) -> tuple[ins, ...]:
 		
-		return (ins('.meta', self.register, (self.nodes[0].register)),
-				ins('START', label = ['.meta']),
-				ins('END'))
+		return ins('.meta', self.register, (self.nodes[0].register,)),
 
 class right_bracket(operator):
 	"""Defines a right bracket."""
