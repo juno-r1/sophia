@@ -10,7 +10,7 @@ class instruction:
 	"""
 	name: str											# Name of the command to be called.
 	address: str = ''									# Return address.
-	args: tuple[str, ...] = ()							# Argument addresses.
+	args: list[str] = field(default_factory = list)		# Argument addresses.
 	label: list[str] = field(default_factory = list)	# Additional information.
 	arity: int = field(init = False)					# Number of arguments.
 

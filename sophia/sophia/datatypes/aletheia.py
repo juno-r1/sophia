@@ -139,7 +139,8 @@ class type_property:
 class typedef:
 	"""
 	Type descriptor that holds the properties of a given type.
-	Believe it or not, this implementation sucks less than it did before.
+	I no longer care if a type has 2 of the same property.
+	That's the user's problem.
 	"""
 	def __init__(
 		self,

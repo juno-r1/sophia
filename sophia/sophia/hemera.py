@@ -56,6 +56,8 @@ class handler:
 		"""
 		Execute pre-runtime flags.
 		"""
+		if 'instructions' in self.flags:
+			self.debug_instructions(task)
 		if 'profile' in self.flags:
 			self.profiler = Profile()
 			self.profiler.enable()

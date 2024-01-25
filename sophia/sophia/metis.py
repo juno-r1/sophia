@@ -69,7 +69,7 @@ class processor:
 			else:
 				addresses.append(item.address)
 				checks.append(item)
-		self.instructions[i].args = tuple(addresses)
+		self.instructions[i].args = addresses
 		self.instructions[self.path - 1:i] = checks
 		self.path = self.path + len(checks)
 	

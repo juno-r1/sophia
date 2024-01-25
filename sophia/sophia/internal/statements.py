@@ -64,11 +64,11 @@ class type_statement(coroutine):
 	def start(self) -> tuple[ins, ...]:
 		
 		if self.active: # Necessary to check type of prototype
-			return (ins('.check', self.register, (self.nodes[0].register, self.params[self.name])),
-					ins('.type', self.name, (self.params[self.name], self.register)),
+			return (ins('.check', self.register, [self.nodes[0].register, self.params[self.name]]),
+					ins('.type', self.name, [self.params[self.name], self.register]),
 					ins('START', label = [self.name]))
 		else:
-			return (ins('.type', self.name, (self.params[self.name],)),
+			return (ins('.type', self.name, [self.params[self.name]]),
 					ins('START', label = [self.name]))
 
 	def execute(self) -> tuple[ins, ...]:
@@ -100,7 +100,7 @@ class event_statement(coroutine):
 
 	def start(self) -> tuple[ins, ...]:
 		
-		return (ins('.event', self.name, tuple(self.params.values()), label = list(self.params.keys())),
+		return (ins('.event', self.name, list(self.params.values()), label = list(self.params.keys())),
 				ins('START', label = [self.name]))
 
 	def execute(self) -> tuple[ins, ...]:
@@ -129,7 +129,7 @@ class function_statement(coroutine):
 
 	def start(self) -> tuple[ins, ...]:
 		
-		return (ins('.function', self.name, tuple(self.params.values()), label = list(self.params.keys())),
+		return (ins('.function', self.name, list(self.params.values()), label = list(self.params.keys())),
 				ins('START', label = [self.name]))
 
 	def execute(self) -> tuple[ins, ...]:
@@ -164,7 +164,7 @@ class assignment(statement):
 		return [ins('BIND')] + \
 			   [ins('.check',
 				str(int(self.register) + i),
-				(self.nodes[i].register, typename))
+				[self.nodes[i].register, typename])
 				for i, typename in enumerate(self.binds.values())] + \
 			   [ins('.bind', '0', label = list(self.binds.keys()))]
 
@@ -182,7 +182,7 @@ class if_statement(statement):
 
 	def start(self) -> tuple[ins, ...]:
 		
-		return ins('if', self.register, (self.nodes[0].register,)),
+		return ins('if', self.register, [self.nodes[0].register]),
 
 	def execute(self) -> tuple[ins, ...]:
 		
@@ -202,7 +202,7 @@ class while_statement(statement):
 
 	def start(self) -> tuple[ins, ...]:
 		
-		return ins('if', self.register, (self.nodes[0].register,)),
+		return ins('if', self.register, [self.nodes[0].register]),
 
 	def execute(self) -> tuple[ins, ...]:
 		
@@ -225,12 +225,17 @@ class for_statement(statement):
 
 	def start(self) -> tuple[ins, ...]:
 		
-		return (ins('.iterator', self.register, (self.nodes[0].register,)),
-				ins('ELSE' if self.branch else 'START'),
-				ins('.next', '0', (self.register,)),
-				ins('BIND'),
-				ins('.check', '0', ('0', self.typename)),
-				ins('.bind', '0', label = [self.index]))
+		if self.typename == '?':
+			return (ins('.iterator', self.register, [self.nodes[0].register]),
+					ins('ELSE' if self.branch else 'START'),
+					ins('.next', self.index, [self.register]))
+		else:
+			return (ins('.iterator', self.register, [self.nodes[0].register]),
+					ins('ELSE' if self.branch else 'START'),
+					ins('.next', '0', [self.register]),
+					ins('BIND'),
+					ins('.check', '0', ['0', self.typename]),
+					ins('.bind', '0', label = [self.index]))
 
 	def execute(self) -> tuple[ins, ...]: return ins('.loop', '0'), ins('END')
 
@@ -252,8 +257,8 @@ class return_statement(statement):
 		routine = self
 		while not isinstance(routine, coroutine):
 			routine = routine.head
-		return (ins('.check', self.register, (self.nodes[0].register if self.nodes else self.register, routine.final)),
-				ins('return', '0', (self.register,) if self.nodes else ()))
+		return (ins('.check', self.register, [self.nodes[0].register if self.nodes else self.register, routine.final]),
+				ins('return', '0', [self.register] if self.nodes else []))
 
 class link_statement(statement):
 	"""Defines a link."""
@@ -283,7 +288,7 @@ class start_statement(statement):
 				ins('END'),
 				ins('EVENT', label = [message]),
 				ins('BIND'),
-				ins('.check', message, (message, check)),
+				ins('.check', message, [message, check]),
 				ins('.bind', '0', label = [message]))
 
 class else_statement(statement):

@@ -22,7 +22,7 @@ class task:
 		Task identifiers.
 		"""
 		self.name = processor.name
-		self.pid = id(self) # Guaranteed not to collide with other task PIDs; not the same as the PID of the pool process
+		self.pid = id(self) # Guaranteed not to collide with other task PIDs in CPython
 		"""
 		Namespace management.
 		"""
@@ -316,7 +316,7 @@ class task:
 
 		instructions, namespace = parser(self.handler, '<meta>').parse(string)
 		if not instructions[-2].args:
-			instructions[-2].args = ('1',) # Always the register of the head node
+			instructions[-2].args = ['1'] # Always the register of the head node
 			instructions[-2].arity = 1
 		self.caller = self.call()
 		self.final = aletheia.std_any # Cannot guarantee type of meta-expression
@@ -332,7 +332,7 @@ class task:
 	
 		address = self.op.address
 		try:
-			self.values[address] = (value := next(iterator))
+			self.values[address] = value = next(iterator)
 			self.types[address] = aletheia.infer(value)
 		except StopIteration:
 			self.values[self.op.args[0]] = None # Sanitise register

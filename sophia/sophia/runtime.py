@@ -188,7 +188,7 @@ class runtime:
 		self.pool = mp.Pool(initializer = self.initialise)
 		try:
 			self.tasks[self.main.pid].result = self.pool.apply_async(self.main.execute) # Start execution of initial module
-			while message: # Event listener; runs until null sentinel value sent from initial module
+			while message: # Event listener; runs until null sentinel value sent from the termination of main
 				try:
 					message = self.stream.get(timeout = interval)
 					if not message:

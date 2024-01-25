@@ -220,7 +220,7 @@ class keyword_break(identifier):
 		loop = self
 		while type(loop).__name__ not in ('for_statement', 'while_statement'):
 			loop = loop.head
-		return ins('.break', '0', (loop.register, loop.index if hasattr(loop, 'index') else '0')),
+		return ins('.break', '0', [loop.register, loop.index if hasattr(loop, 'index') else '0']),
 
 class operator(expression):
 	"""Generic operator node."""
@@ -266,7 +266,7 @@ class prefix(operator):
 		
 		return ins(self.value,
 				   self.register,
-				   (self.nodes[0].register,)),
+				   [self.nodes[0].register]),
 
 class receive(prefix):
 	"""Defines the receive operator."""
@@ -290,7 +290,7 @@ class resolve(prefix):
 		self
 		) -> tuple[ins, ...]:
 		
-		return ins('*', self.register, (self.nodes[0].register,)),
+		return ins('*', self.register, [self.nodes[0].register]),
 
 class infix(operator):
 	"""Defines a left-binding infix."""
@@ -305,7 +305,7 @@ class infix(operator):
 
 	def execute(self) -> tuple[ins, ...]:
 		
-		return ins(self.value, self.register, (self.nodes[0].register, self.nodes[1].register)),
+		return ins(self.value, self.register, [self.nodes[0].register, self.nodes[1].register]),
 
 class bind(infix):
 	"""Defines the bind operator."""
@@ -327,7 +327,7 @@ class bind(infix):
 
 	def execute(self) -> tuple[ins, ...]:
 		
-		return ins('.future', self.register, tuple(i.register for i in self.nodes)),
+		return ins('.future', self.register, [i.register for i in self.nodes]),
 
 class left_conditional(infix):
 	"""Defines the condition of the conditional operator."""
@@ -353,7 +353,7 @@ class left_conditional(infix):
 
 	def start(self) -> tuple[ins, ...]:
 		
-		return ins('if', self.register, (self.nodes[0].register,)),
+		return ins('if', self.register, [self.nodes[0].register]),
 
 	def execute(self) -> tuple[ins, ...]:
 		
@@ -371,14 +371,14 @@ class right_conditional(infix):
 
 	def start(self) -> tuple[ins, ...]:
 		
-		return (ins('.bind', '0', (self.nodes[0].register,), label = [self.head.register]),
+		return (ins('.bind', '0', [self.nodes[0].register], label = [self.head.register]),
 				ins('if', self.register),
 				ins('END'),
 				ins('ELSE')) # Enclosed by labels of left conditional
 
 	def execute(self) -> tuple[ins, ...]:
 		
-		return ins('.bind', '0', (self.nodes[1].register,), label = [self.head.register]),
+		return ins('.bind', '0', [self.nodes[1].register], label = [self.head.register]),
 
 class infix_r(operator):
 	"""Defines a right-binding infix."""
@@ -393,7 +393,7 @@ class infix_r(operator):
 
 	def execute(self) -> tuple[ins, ...]:
 		
-		return ins(self.value, self.register, (self.nodes[0].register, self.nodes[1].register)),
+		return ins(self.value, self.register, [self.nodes[0].register, self.nodes[1].register]),
 
 class concatenator(operator):
 	"""Defines a concatenator."""
@@ -410,7 +410,7 @@ class concatenator(operator):
 	def execute(self) -> tuple[ins, ...]:
 		
 		if self.value == ':' and len(self.nodes) == 3:
-			return ins('.slice', self.register, tuple(item.register for item in self.nodes)),
+			return ins('.slice', self.register, [item.register for item in self.nodes]),
 		else:
 			return ()
 
@@ -447,7 +447,7 @@ class function_call(left_bracket):
 
 	def execute(self) -> tuple[ins, ...]:
 		
-		return ins(self.nodes[0].register, self.register, tuple(item.register for item in self.nodes[1:])),
+		return ins(self.nodes[0].register, self.register, [item.register for item in self.nodes[1:]]),
 
 class parenthesis(left_bracket):
 	"""Defines a set of parentheses."""
@@ -473,8 +473,8 @@ class sequence_index(left_bracket):
 
 	def execute(self) -> tuple[ins, ...]:
 		
-		return [ins('[', self.register, (self.nodes[0].register, self.nodes[1].register))] + \
-			   [ins('[', self.register, (self.register, item.register)) for item in self.nodes[2:]]
+		return [ins('[', self.register, [self.nodes[0].register, self.nodes[1].register])] + \
+			   [ins('[', self.register, [self.register, item.register]) for item in self.nodes[2:]]
 
 class sequence_literal(left_bracket):
 	"""Defines a sequence constructor."""
@@ -494,11 +494,11 @@ class sequence_literal(left_bracket):
 	def execute(self) -> tuple[ins, ...]:
 		
 		if self.nodes and self.nodes[0].value == ':' and len(self.nodes[0].nodes) == 3:
-			return ins('.range', self.register, tuple(i.register for i in self.nodes[0].nodes)),
+			return ins('.range', self.register, [i.register for i in self.nodes[0].nodes]),
 		elif self.nodes and self.nodes[0].value == ':':
-			return ins('.record', self.register, tuple(i.nodes[1].register for i in self.nodes), label = [i.nodes[0].register for i in self.nodes]),
+			return ins('.record', self.register, [i.nodes[1].register for i in self.nodes], label = [i.nodes[0].register for i in self.nodes]),
 		elif self.nodes:
-			return ins('.list', self.register, tuple(i.register for i in self.nodes)),
+			return ins('.list', self.register, [i.register for i in self.nodes]),
 		else:
 			return () # Empty list is a constant
 
@@ -506,7 +506,7 @@ class meta(left_bracket):
 	"""Defines a meta-expression."""
 	def execute(self) -> tuple[ins, ...]:
 		
-		return ins('.meta', self.register, (self.nodes[0].register,)),
+		return ins('.meta', self.register, [self.nodes[0].register]),
 
 class right_bracket(operator):
 	"""Defines a right bracket."""
