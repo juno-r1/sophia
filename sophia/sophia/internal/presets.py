@@ -221,12 +221,16 @@ REGEX_EXPR		= r'(?P<expression>.+)'
 """
 Regex expression patterns.
 """
+REGEX_TYPE_EXPR = r'(?P<type_expression>extends \w+( with .*)?\s*=>\s*.+)'
+REGEX_EVNT_EXPR = r'(?P<event_expression>awaits \w+( \w+)?\s*=>\s*.+)'
+REGEX_FUNC_EXPR = r'(?P<func_expression>(\w+( \w+)?(,\s*)?)*\s*=>\s*.+)'
+REGEX_ENV		= r'(?P<env>\@)'
 REGEX_NUMBER	= r'(?P<number>[+-]?\d+(\.\d*)?)' # Any number of the format x(.y)
 REGEX_STRING	= r'(?P<string>(\'.*?\')|(\".*?\"))' # Any symbols between single or double quotes
 REGEX_LITERAL	= r'(?P<literal>\w+)' # Any word
 REGEX_L_PARENS	= r'(?P<l_parens>[\(\[\{])'
 REGEX_R_PARENS	= r'(?P<r_parens>[\)\]\}])'
-REGEX_OPERATOR	= r'(?P<operator>[^\s\d\w\(\[\{]+)' # Any other symbol
+REGEX_OPERATOR	= r'(?P<operator>[^\s\d\w\(\[\{\@]+)' # Any other symbol
 """
 Regex combinations.
 """
@@ -256,6 +260,7 @@ REGEX_STATEMENT = '|'.join((
 ))
 REGEX_LEXER = '|'.join((
 	REGEX_SENTINEL,
+	REGEX_ENV,
 	REGEX_NUMBER,
 	REGEX_STRING,
 	REGEX_LITERAL,

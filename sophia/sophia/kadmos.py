@@ -161,7 +161,8 @@ class parser:
 		self.head.length = len(self.head.nodes)
 		while self.node: # Pre-runtime generation of instructions
 			if self.path[-1] == self.node.length: # Walk up
-				if isinstance(self.node.head, statements.type_statement) and self.path[-2] >= self.node.head.active: # Insert constraints
+				if (isinstance(self.node.head, (statements.type_statement, expressions.type_expression)) and \
+					self.path[-2] >= self.node.head.active): # Insert constraints
 					self.instructions.append(instruction('.constraint', '0', [self.node.register]))
 				self.node = self.node.head # Walk upward
 				if self.node:
@@ -199,7 +200,12 @@ class parser:
 		self
 		) -> str:
 		
-		if isinstance(self.node, expressions.name): # Variable register
+		if isinstance(self.node, expressions.name) and self.node.value == '@': # Environment reference
+			routine = self.node
+			while not isinstance(routine, (statements.coroutine, expressions.anonymous)):
+				routine = routine.head
+			return routine.name
+		elif isinstance(self.node, expressions.name): # Variable register
 			return self.node.value
 		elif isinstance(self.node, expressions.receive):
 			return self.node.value.value

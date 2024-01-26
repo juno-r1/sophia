@@ -35,6 +35,8 @@ class lexer:
 		match self.peek.lastgroup:
 			case 'sentinel': # End of string
 				token = eol()
+			case 'env':
+				token = name(value)
 			case 'number':
 				token = number(value)
 			case 'string':
@@ -51,12 +53,24 @@ class lexer:
 				token = right_conditional(value)
 			case 'literal':
 				token = name(value)
+			case 'l_parens' if value == '(' and self.prefix():
+				value = self.collect(value)
+				if re.fullmatch(presets.REGEX_TYPE_EXPR, value):
+					token = type_expression(value)
+				elif re.fullmatch(presets.REGEX_EVNT_EXPR, value):
+					token = event_expression(value)
+				elif re.fullmatch(presets.REGEX_FUNC_EXPR, value):
+					token = function_expression(value)
+				else:
+					token = parenthesis(value)
 			case 'l_parens' if value == '(':
-				token = parenthesis(value) if self.prefix() else function_call(value)
+				token = function_call(value)
+			case 'l_parens' if value == '[' and self.prefix():
+				token = sequence_literal(self.collect(value))
 			case 'l_parens' if value == '[':
-				token = sequence_literal(value) if self.prefix() else sequence_index(value)
+				token = sequence_index(value)
 			case 'l_parens' if value == '{':
-				token = meta(value)
+				token = meta(self.collect(value))
 			case 'r_parens':
 				token = right_bracket(value)
 			case 'operator' if value in (':', ','): # Same regardless of context
@@ -108,6 +122,25 @@ class lexer:
 			   or isinstance(self.token, operator) \
 			   and not isinstance(self.token, right_bracket)
 
+	def collect(
+		self,
+		symbol: str
+		) -> str:
+		"""
+		Collects the contents of a set of brackets.
+		"""
+		string, count = '', 1
+		while count:
+			value = next(self.iterator).group()
+			if value == symbol:
+				count = count + 1
+			elif value == presets.PARENS[symbol]:
+				count = count - 1
+				if not count:
+					break
+			string = string + ' ' + value
+		return string.strip()
+
 class eol:
 	"""Sentinel object for the lexer."""
 	def __init__(self) -> None: self.lbp = -1
@@ -133,6 +166,13 @@ class identifier(expression):
 		
 		super().__init__(value)
 		self.lbp = 0
+
+	def nud(
+		self,
+		lex: lexer
+		) -> expression:
+		
+		return self
 
 class literal(identifier):
 	"""Defines a literal."""
@@ -185,11 +225,7 @@ class name(identifier):
 		lex: lexer
 		) -> expression:
 
-		#if isinstance(lex.peek, left_bracket): # If function call:
-		#	lex.use() # Gets the next token, which is guaranteed to be a left bracket
-		#	return lex.token.led(lex, self) # Guaranteed to call the LED of the following left bracket
-		#else:
-			return self # Gives self as node
+		return self # Gives self as node
 
 	def execute(self) -> tuple[ins, ...]:
 		
@@ -221,6 +257,166 @@ class keyword_break(identifier):
 		while type(loop).__name__ not in ('for_statement', 'while_statement'):
 			loop = loop.head
 		return ins('.break', '0', [loop.register, loop.index if hasattr(loop, 'index') else '0']),
+
+class parenthesis(identifier):
+	"""Defines a parenthetical expression."""
+	def __init__(
+		self,
+		value: Any
+		) -> None:
+		
+		super().__init__('(')
+		self.nodes = [lexer(value).parse()] if value else []
+
+	def execute(self) -> tuple[ins, ...]:
+		
+		return ()
+
+class sequence_literal(identifier):
+	"""Defines a sequence constructor."""
+	def __init__(
+		self,
+		value: Any
+		) -> None:
+		
+		super().__init__('[')
+		if not value: # Accounts for empty brackets
+			self.nodes = []
+		else:
+			expr = lexer(value).parse()
+			self.nodes = expr.nodes if expr.value == ',' else [expr]
+
+	def execute(self) -> tuple[ins, ...]:
+		
+		if self.nodes and self.nodes[0].value == ':' and len(self.nodes[0].nodes) == 3:
+			return ins('.range', self.register, [i.register for i in self.nodes[0].nodes]),
+		elif self.nodes and self.nodes[0].value == ':':
+			return ins('.record', self.register, [i.nodes[1].register for i in self.nodes], label = [i.nodes[0].register for i in self.nodes]),
+		elif self.nodes:
+			return ins('.list', self.register, [i.register for i in self.nodes]),
+		else:
+			return () # Empty list is a constant
+
+class meta(identifier):
+	"""Defines a meta-expression."""
+	def __init__(
+		self,
+		value: Any
+		) -> None:
+		
+		super().__init__('{')
+		self.nodes = [lexer(value).parse()]
+
+	def execute(self) -> tuple[ins, ...]:
+		
+		return ins('.meta', self.register, [self.nodes[0].register]),
+
+class anonymous(identifier):
+	"""Defines an anonymous routine."""
+	def __init__(
+		self,
+		name: str,
+		final: str,
+		params: dict[str, str]
+		) -> None:
+
+		super().__init__(name)
+		self.active = 0
+		self.name = name
+		self.final = final
+		self.params = params
+
+class type_expression(anonymous):
+	"""Defines a type expression."""
+	def __init__(
+		self, 
+		string: str
+		) -> None:
+		
+		string, expression = re.split(r'=>\s*', string, 1)
+		name = '@'
+		supertype = re.split(' ', re.search(r'extends \w+', string).group(), 1)[1]
+		prototype = re.split(' ', re.search(r'with .+', string).group(), 1)[1] if 'with' in string else ''
+		super().__init__(name, name, {name: supertype})
+		if prototype:
+			self.nodes.append(lexer(prototype).parse())
+		if expression:
+			self.nodes.append(lexer(expression).parse())
+		self.active = int(bool(prototype))
+
+	def start(self) -> tuple[ins, ...]:
+		
+		if self.active: # Necessary to check type of prototype
+			return (ins('.check', self.register, [self.nodes[0].register, self.params[self.name]]),
+					ins('.type', self.register, [self.params[self.name], self.register], label = [self.name]),
+					ins('START', label = [self.name]))
+		else:
+			return (ins('.type', self.register, [self.params[self.name]], label = [self.name]),
+					ins('START', label = [self.name]))
+
+	def execute(self) -> tuple[ins, ...]:
+		
+		return (ins('.constraint', '0'),
+				ins('END'))
+
+class event_expression(anonymous):
+	"""Defines a type expression."""
+	def __init__(
+		self,
+		string: str
+		) -> None:
+
+		string, expression = re.split(r'\s*=>\s*', string, 1)
+		final, name = 'any', '@'
+		string = re.split(' ', re.search(r'awaits \w+( \w+)?', string).group(), 1)[1]
+		check, message = re.split(r' ', string, 1) if ' ' in string else ('any', string)
+		params = {name: final, message: check}
+		super().__init__(name, final, params)
+		self.nodes = [lexer(expression).parse()]
+
+	def start(self) -> tuple[ins, ...]:
+		
+		message, check = list(self.params.items())[1]
+		return (ins('.event', self.register, list(self.params.values()), label = list(self.params.keys())),
+				ins('START', label = [self.name]),
+				ins('return', '0'),
+				ins('END'),
+				ins('EVENT', label = [message]),
+				ins('BIND'),
+				ins('.check', message, [message, check]),
+				ins('.bind', '0', label = [message]))
+
+	def execute(self) -> tuple[ins, ...]:
+		
+		return (ins('return', '0', [self.nodes[0].register]),
+				ins('END'))
+
+class function_expression(anonymous):
+	"""Defines a type expression."""
+	def __init__(
+		self,
+		string: str
+		) -> None:
+		
+		string, expression = re.split(r'\s*=>\s*', string, 1)
+		final, name = 'any', '@'
+		params = {name: final}
+		for value in re.finditer(r'\w+( \w+)?', string):
+			param = value.group()
+			typename, param = re.split(r' ', param, 1) if ' ' in param else ('any', param)
+			params[param] = typename
+		super().__init__(name, final, params)
+		self.nodes = [lexer(expression).parse()]
+
+	def start(self) -> tuple[ins, ...]:
+		
+		return (ins('.function', self.register, list(self.params.values()), label = list(self.params.keys())),
+				ins('START', label = [self.name]))
+
+	def execute(self) -> tuple[ins, ...]:
+		
+		return (ins('return', '0', [self.nodes[0].register]),
+				ins('END'))
 
 class operator(expression):
 	"""Generic operator node."""
@@ -426,7 +622,7 @@ class left_bracket(operator):
 		) -> expression:
 		
 		self.nodes = [] if isinstance(lex.peek, right_bracket) else [lex.parse(1)] # Accounts for empty brackets
-		lex.use()
+		#lex.use()
 		return self # The bracketed sub-expression as a whole is essentially a literal
 
 class function_call(left_bracket):
@@ -449,12 +645,6 @@ class function_call(left_bracket):
 		
 		return ins(self.nodes[0].register, self.register, [item.register for item in self.nodes[1:]]),
 
-class parenthesis(left_bracket):
-	"""Defines a set of parentheses."""
-	def execute(self) -> tuple[ins, ...]:
-		
-		return ()
-
 class sequence_index(left_bracket):
 	"""Defines a sequence index."""
 	def led(
@@ -475,38 +665,6 @@ class sequence_index(left_bracket):
 		
 		return [ins('[', self.register, [self.nodes[0].register, self.nodes[1].register])] + \
 			   [ins('[', self.register, [self.register, item.register]) for item in self.nodes[2:]]
-
-class sequence_literal(left_bracket):
-	"""Defines a sequence constructor."""
-	def nud(
-		self,
-		lex: lexer
-		) -> expression:
-		
-		if isinstance(lex.peek, right_bracket): # Accounts for empty brackets
-			self.nodes = []
-		else:
-			right = lex.parse(1)
-			self.nodes = right.nodes if right.value == ',' else [right]
-		lex.use()
-		return self # The bracketed sub-expression as a whole is essentially a literal
-
-	def execute(self) -> tuple[ins, ...]:
-		
-		if self.nodes and self.nodes[0].value == ':' and len(self.nodes[0].nodes) == 3:
-			return ins('.range', self.register, [i.register for i in self.nodes[0].nodes]),
-		elif self.nodes and self.nodes[0].value == ':':
-			return ins('.record', self.register, [i.nodes[1].register for i in self.nodes], label = [i.nodes[0].register for i in self.nodes]),
-		elif self.nodes:
-			return ins('.list', self.register, [i.register for i in self.nodes]),
-		else:
-			return () # Empty list is a constant
-
-class meta(left_bracket):
-	"""Defines a meta-expression."""
-	def execute(self) -> tuple[ins, ...]:
-		
-		return ins('.meta', self.register, [self.nodes[0].register]),
 
 class right_bracket(operator):
 	"""Defines a right bracket."""

@@ -400,13 +400,17 @@ class multimethod:
 				task.handler.error('DISP', instance.name, signature)
 		final = instance.final
 		value = instance.routine(task, *args)
+		if instance.instructions:
+			task.values[instance.name] = self
+			task.types[instance.name] = task.types[task.op.name]
 		task.values[address] = value
 		if value is None: # Null return override
 			task.types[address] = std_none
 		elif final.types:
-			task.types[address], task.properties = task.properties or final, None
+			task.types[address] = task.properties or final
 		else:
-			task.types[address] = infer(value)
+			task.types[address] = task.properties or infer(value)
+		task.properties = None
 		return value
 
 	def __bool__(self): return True

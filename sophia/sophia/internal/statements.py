@@ -48,8 +48,7 @@ class type_statement(coroutine):
 		self, 
 		string: str
 		) -> None:
-
-		# Regex
+		
 		string, expression = re.split(r'=>\s*', string, 1) if '=>' in string else (string[:-1], None)
 		name = re.split(' ', re.search(r'type \w+', string).group(), 1)[1]
 		supertype = re.split(' ', re.search(r'extends \w+', string).group(), 1)[1] if 'extends' in string else 'any'
@@ -65,10 +64,10 @@ class type_statement(coroutine):
 		
 		if self.active: # Necessary to check type of prototype
 			return (ins('.check', self.register, [self.nodes[0].register, self.params[self.name]]),
-					ins('.type', self.name, [self.params[self.name], self.register]),
+					ins('.type', self.name, [self.params[self.name], self.register], label = [self.name]),
 					ins('START', label = [self.name]))
 		else:
-			return (ins('.type', self.name, [self.params[self.name]]),
+			return (ins('.type', self.name, [self.params[self.name]], label = [self.name]),
 					ins('START', label = [self.name]))
 
 	def execute(self) -> tuple[ins, ...]:

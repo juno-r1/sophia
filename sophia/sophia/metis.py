@@ -27,8 +27,8 @@ class processor:
 			self.values = arche.stdvalues | namespace
 			self.types = arche.stdtypes | {k: aletheia.infer(v) for k, v in namespace.items()}
 		else:
-			self.values = namespace
-			self.types = types
+			self.values = arche.stdvalues | namespace
+			self.types = arche.stdtypes| types
 		"""
 		Mutable attributes for the processor to access.
 		"""

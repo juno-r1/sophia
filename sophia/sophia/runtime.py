@@ -87,12 +87,13 @@ class runtime:
 		reference: iris.reference,
 		message: Any
 		) -> None:
+
 		if reference.pid == 1 or reference.pid == 2: # Standard streams
 			self.handler.write(reference, message)
 		elif reference.pid in self.events: # Update event
-			self.tasks[reference.pid].result.get() # Wait until routine is done with previous message
+			self.tasks[reference.pid].state = state = self.tasks[reference.pid].result.get() # Check event is finished
 			routine = self.events[reference.pid]
-			routine.prepare(self.tasks[reference.pid].state, message) # Mutate this version of the task
+			routine.prepare(state, message) # Mutate this version of the task
 			self.tasks[reference.pid].result = self.pool.apply_async(routine.execute)
 		else:
 			self.tasks[reference.pid].messages.send(message)

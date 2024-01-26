@@ -97,7 +97,7 @@ def filter_function_list(task, routine, sequence):
 			caller = task.call()
 			instance(task, item)
 			check = task.run() # WARNING: Recursive runtime
-			task.caller = caller
+			task.restore(caller)
 		else: # Built-ins
 			check = instance(task, item)
 		if check:
@@ -204,7 +204,7 @@ def map_function_list(task, routine, sequence):
 			caller = task.call()
 			instance(task, item)
 			result.append(task.run()) # WARNING: Recursive runtime
-			task.caller = caller
+			task.restore(caller)
 		else: # Built-ins
 			result.append(instance(task, item))
 	return tuple(result)
@@ -257,7 +257,7 @@ def reduce_function_list(task, routine, sequence):
 			caller = task.call()
 			instance(task, left, right)
 			left = task.run() # WARNING: Recursive runtime
-			task.caller = caller
+			task.restore(caller)
 		else: # Built-ins
 			left = instance(task, left, right)
 	return left

@@ -36,7 +36,8 @@ if __name__ == '__main__':
 	   21: True,
 	   22: True,
 	   23: True,
-	   24: True
+	   24: True,
+	   25: True
 	}
 	
 	print('', 'Pass', 'Fail', sep = '\t')

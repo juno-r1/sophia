@@ -5,26 +5,13 @@ to do
 
 ---
 
-are meta-statements really worth it?
-consider eval/exec
-eval has valid uses for namespace tricks, string manipulation, et cetera
-exec is kind of dangerous and absolutely ruins the type system
-
-make meta-statements occupy their own scope; cannot affect external scope except by messaging
-compensate by adding apply
-wow, sophia is surprisingly functional, huh?
-
----
-
-change register allocation so that constants are assigned negative numbers / hash registers / figure out a way to give every register a unique hash
-
----
-
 anonymous routines
 (num x, num y => x + y)
 (awaits x => x + 1)
 (extends x => x = 1)
+
 the return type of an anonymous function is inferred from its last operation
+and what is that, exactly?
 
 make single-line function definitions into expressions that return the function
 this is going to require some specialised parsing
@@ -429,6 +416,39 @@ errors are severe faults, which incentivises LBYL
 
 ---
 
+namespaces
+
+you want some namespaces with that thing?
+i mean. do we actually need module namespaces?
+a well-designed program delegates downwards so that the interior namespaces are hidden from the callsite
+
+sophia can *have* modules without actually needing module objects
+just say "use x from y" (or use x, which is equivalent to use * from x)
+and you get everything you need
+
+for example:
+
+python
+
+import math
+return math.floor(1.5)
+
+sophia
+
+use floor from math
+return floor(1.5)
+
+"but won't that clutter the namespace?" not if you give a shit
+in sophia it's bad practice to use too many external functions in 1 file
+symptomatic of improper separation of concerns
+
+traditional programming languages have this weird insistence on being top-heavy
+that is, there's a chain of dependencies that must be maintained
+sophia is based around the composition of elements
+atomic operations go at the bottom and combine into the main task at the top
+
+---
+
 250047 function calls in 0.332 seconds
 
 Ordered by: cumulative time
@@ -453,3 +473,11 @@ ncalls  tottime  percall  cumtime  percall filename:lineno(function)
 10001    0.002    0.000    0.002    0.000 aletheia.py:339(__bool__)			necessary without caching
 
 120000 function calls (half of all calls in the runtime!) can be removed by well-implemented caching
+
+---
+
+reimplement parser, again, for better brackets handling
+when the lexer encounters a bracket:
+consume the input until the matching closing bracket is found
+create a new lexer to deal with the contents of the brackets
+brackets are semantically literals anyway. it's fine

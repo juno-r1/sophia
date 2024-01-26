@@ -5,6 +5,7 @@ from typing import Any
 from .datatypes import aletheia, iris
 from .datatypes.aletheia import typedef
 from .datatypes.mathos import real, slice
+from .internal import presets
 from .kadmos import parser
 from .metis import processor
 
@@ -109,6 +110,7 @@ class task:
 			'name': self.name,
 			'values': self.values.copy(),
 			'types': self.types.copy(),
+			'signature': self.signature,
 			'instructions': self.instructions,
 			'op': self.op,
 			'path': self.path,
@@ -254,8 +256,8 @@ class task:
 		for i, item in enumerate(signature): # Verify type signature
 			if item > instance.signature[i]:
 				self.handler.error('DISP', self.op.args[0], signature)
-		values = self.values.copy() | dict(zip(instance.params, args))
-		types = self.types.copy() | dict(zip(instance.params, instance.signature))
+		values = {k: v for k, v in self.values.items() if k not in presets.STDLIB_NAMES.values()} | dict(zip(instance.params, args))
+		types = {k: v for k, v in self.types.items() if k not in presets.STDLIB_NAMES.values()} | dict(zip(instance.params, instance.signature))
 		self.message('future', instance, values, types)
 		self.types[address] = typedef(aletheia.std_future)
 		self.values[address] = self.calls.recv()
@@ -316,7 +318,7 @@ class task:
 
 		instructions, namespace = parser(self.handler, '<meta>').parse(string)
 		if not instructions[-2].args: # Expression return
-			instructions[-2].args = ['1'] # Always the register of the head node
+			instructions[-2].args = ['1'] if instructions[1:-2] else ['-2'] # Register of the head node
 			instructions[-2].arity = 1
 		self.caller = self.call()
 		self.final = aletheia.std_any # Cannot guarantee type of meta-expression
@@ -406,7 +408,7 @@ class task:
 		address = self.op.address
 		start, end = self.path, self.branch(0, True, True)
 		instructions = self.instructions[start:end]
-		method = aletheia.type_property(address, instructions)
+		method = aletheia.type_property(self.op.label[0], instructions)
 		self.values[address] = typedef(supertype, method, prototype = prototype)
 		self.types[address] = typedef(aletheia.std_type)
 
