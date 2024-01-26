@@ -456,6 +456,14 @@
     ],
     "final": "list"
   },
+  "filter_type_list": {
+    "name": "filter",
+    "signature": [
+      "type",
+      "list"
+    ],
+    "final": "list"
+  },
   "format_string_list": {
     "name": "format",
     "signature": [
@@ -530,6 +538,14 @@
     "name": "map",
     "signature": [
       "function",
+      "list"
+    ],
+    "final": "list"
+  },
+  "map_type_list": {
+    "name": "map",
+    "signature": [
+      "type",
       "list"
     ],
     "final": "list"

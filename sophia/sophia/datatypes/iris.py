@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from multiprocessing import Pipe
-from sys import stdin, stdout, stderr
 from typing import Any
 
 class proxy:

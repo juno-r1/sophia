@@ -24,6 +24,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="sophia\stdlib\casts.py" />
     <Compile Include="sophia\internal\expressions.py" />
     <Compile Include="sophia\internal\presets.py" />
     <Compile Include="sophia\internal\statements.py" />

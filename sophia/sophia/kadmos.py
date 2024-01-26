@@ -19,9 +19,9 @@ class parser:
 		self.head = statements.module(name)
 		self.node = self.head
 		self.path = [0]
-		self.constant = 0 # Constant register counter
+		self.constant = 1 # Constant register counter
 		self.instructions = [instruction('START', label = [name])]
-		self.values = {'0': None, '&0': None} # Register namespace
+		self.values = {'0': None, '-1': None} # Register namespace
 		self.handler = handler # Error handler
 
 	def parse(
@@ -203,16 +203,16 @@ class parser:
 			return self.node.value
 		elif isinstance(self.node, expressions.receive):
 			return self.node.value.value
-		elif isinstance(self.node, expressions.constant) and self.node.value is None: # Null value is interned so that instructions can reliably take null as an operand
-			return '&0'
+		elif isinstance(self.node, expressions.constant) and self.node.value is None: # Null value is interned
+			return '-1'
 		elif isinstance(self.node, expressions.sequence_literal) and not self.node.nodes: # Empty list
 			self.constant = self.constant + 1
-			index = '&' + str(self.constant)
+			index = str(-self.constant)
 			self.values[index] = ()
 			return index
 		elif isinstance(self.node, expressions.literal): # Constant register
 			self.constant = self.constant + 1
-			index = '&' + str(self.constant)
+			index = str(-self.constant)
 			self.values[index] = self.node.value
 			return index
 		else: # Temporary register

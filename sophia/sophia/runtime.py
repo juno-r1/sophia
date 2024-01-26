@@ -87,9 +87,7 @@ class runtime:
 		reference: iris.reference,
 		message: Any
 		) -> None:
-		if not reference.writeable:
-			self.handler.error('WRIT', reference)
-		elif reference.pid == 1 or reference.pid == 2: # Standard streams
+		if reference.pid == 1 or reference.pid == 2: # Standard streams
 			self.handler.write(reference, message)
 		elif reference.pid in self.events: # Update event
 			self.tasks[reference.pid].result.get() # Wait until routine is done with previous message
@@ -104,9 +102,7 @@ class runtime:
 		pid: int,
 		reference: iris.reference) -> None:
 		
-		if not reference.readable:
-			self.handler.error('READ', reference)
-		elif reference.pid == 0: # Standard streams
+		if reference.pid == 0: # Standard streams
 			self.tasks[pid].calls.send(self.handler.read(reference))
 		elif self.tasks[reference.pid].result.ready():
 			self.tasks[pid].calls.send(self.tasks[reference.pid].result.get())
@@ -198,9 +194,9 @@ class runtime:
 					try:
 						getattr(self, message.instruction)(message.pid, *message.args)
 					except RuntimeError:
-						self.handler.error('TASK')
+						self.handler.warn() # Prints task warning
 				except Empty:
-					self.handler.timeout() # Prints timeout warning but continues
+					self.handler.timeout() # Prints timeout warning
 					message = True
 		except SystemExit:
 			self.handler.lock = True

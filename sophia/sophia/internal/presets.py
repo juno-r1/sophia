@@ -52,7 +52,6 @@ ERRORS = {
 	'INDX': 'Invalid index: {0}',
 	'READ': 'Stream {0} not readable',
 	'SNTX': 'Syntax error: {0}',
-	'TASK': 'Task expired',
 	'TYPE': 'Invalid value for type {0}: {1}',
 	'USER': '{0}',
 	'WRIT': 'Stream {0} not writeable'

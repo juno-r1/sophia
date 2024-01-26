@@ -25,6 +25,8 @@ std_sub = funcdef(
 
 def u_rsv(task, x):
 	
+	if not x.readable:
+		task.handler.error('READ', x)
 	task.message('resolve', x)
 	task.properties = typedef(x.check)
 	return task.calls.recv()
@@ -134,7 +136,7 @@ std_lxr = funcdef(
 	b_lxr
 )
 
-def b_ins_string(_, x, y): return ''.join(i for i in x if i in y) # Order of list dependent on order of operators
+def b_ins_string(_, x, y): return ''.join(i for i in x if i in y) # Order of list dependent on order of operands
 
 def b_ins_list(_, x, y): return tuple(i for i in x if i in y)
 
@@ -272,6 +274,8 @@ std_usf = funcdef(
 
 def b_snd(task, x, y):
 	
+	if not y.writeable:
+		task.handler.error('WRIT', y)
 	task.message('send', y, x)
 	return y
 

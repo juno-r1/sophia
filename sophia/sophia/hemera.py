@@ -150,6 +150,20 @@ class handler:
 			file = stderr
         )
 
+	def warn(
+		self
+		) -> None:
+		"""
+		Prints a dead task warning.
+		"""
+		print(
+            '===',
+			'Task expired',
+			'===',
+			sep = '\n',
+			file = stderr
+        )
+
 	def timeout(
 		self
 		) -> None:

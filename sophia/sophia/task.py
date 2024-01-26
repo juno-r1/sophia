@@ -51,9 +51,9 @@ class task:
 		self.handler.debug_initial(self)
 		try:
 			value = self.run()
+			return self.handler.debug_final(self, value)
 		except SystemExit:
-			return
-		return self.handler.debug_final(self, value)
+			return self.handler.debug_final(self, None)
 
 	def run(self) -> Any:
 		"""
@@ -159,7 +159,7 @@ class task:
 
 		for i, name in enumerate(self.op.label):
 			self.values[name] = args[i]
-			self.types[name] = typedef(self.signature[i])
+			self.types[name] = self.signature[i]
 
 	def intern_break(
 		self,
@@ -265,9 +265,9 @@ class task:
 		sequence: Any
 		) -> None:
 	
-		address = self.op.address
+		address, element = self.op.address, self.signature[0]['element']
 		self.values[address] = iter(sequence)
-		self.types[address] = typedef(aletheia.std_any)
+		self.types[address] = element.property if element else aletheia.infer(sequence)
 
 	def intern_link(
 		self,
@@ -315,7 +315,7 @@ class task:
 		) -> None:
 
 		instructions, namespace = parser(self.handler, '<meta>').parse(string)
-		if not instructions[-2].args:
+		if not instructions[-2].args: # Expression return
 			instructions[-2].args = ['1'] # Always the register of the head node
 			instructions[-2].arity = 1
 		self.caller = self.call()
@@ -332,8 +332,8 @@ class task:
 	
 		address = self.op.address
 		try:
-			self.values[address] = value = next(iterator)
-			self.types[address] = aletheia.infer(value)
+			self.values[address] = next(iterator)
+			self.types[address] = self.signature[0]
 		except StopIteration:
 			self.values[self.op.args[0]] = None # Sanitise register
 			self.branch(1, False, True)

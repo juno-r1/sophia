@@ -153,10 +153,10 @@ class typedef:
 			self.types = supertype.types.copy()
 			self.prototype = supertype.prototype
 		else:
-			self.types = {}
+			self.types = []
 			self.prototype = None
 		if methods:
-			self.types.update({i.name: i for i in methods})
+			self.types.extend(methods)
 		if prototype is not None:
 			self.prototype = prototype
 
@@ -171,8 +171,8 @@ class typedef:
 			check = True
 		else:
 			known = typedef(definition) # Duplicate typedef
-			for item in self.types.values():
-				if item not in definition.types.values() and not item.check(task, value, known):
+			for item in self.types:
+				if item not in definition.types and not item.check(task, value, known):
 					check = False
 					break
 				else:
@@ -183,6 +183,17 @@ class typedef:
 			task.values[address] = check
 			task.types[address] = typedef(std_boolean)
 		return check
+
+	def __getitem__(
+		self,
+		index: str
+		) -> type_property | None:
+		"""
+		Gets a type property by its name.
+		"""
+		for item in self.types:
+			if item.name == index:
+				return item
 
 	def __eq__(
 		self,
@@ -202,7 +213,7 @@ class typedef:
 		Subtype relation.
 		Returns true if self is a strict subtype of other.
 		"""
-		return not bool([i for i in other.types.values() if i not in self.types.values()])
+		return not bool([i for i in other.types if i not in self.types])
 
 	def __gt__(
 		self,
@@ -212,7 +223,7 @@ class typedef:
 		Negative subtype relation.
 		Returns true if self is not a strict subtype of other.
 		"""
-		return bool([i for i in other.types.values() if i not in self.types.values()])
+		return bool([i for i in other.types if i not in self.types])
 
 	def __and__(
 		self,
@@ -224,7 +235,7 @@ class typedef:
 		operating over the intersection of their domains.
 		This operation is non-commutative.
 		"""
-		return typedef(self, *(i for i in other.types.values() if i not in self.types.values()))
+		return typedef(self, *(i for i in other.types if i not in self.types))
 
 	def __or__( # Implements type union / mutual supertype
 		self,
@@ -238,7 +249,7 @@ class typedef:
 		"""
 		return typedef(
 			None,
-			*(i for i in self.types.values() if i in other.types.values()),
+			*(i for i in self.types if i in other.types),
 			prototype = self.prototype if self.prototype == other.prototype else None
 		)
 
@@ -247,7 +258,7 @@ class typedef:
 		if not self.types:
 			return '?'
 		properties = []
-		for item in self.types.values():
+		for item in self.types:
 			if (name := item.name) in presets.STDLIB_NAMES and name not in presets.PROPERTIES:
 				datatype = name # Get most specific data type
 			elif name in presets.STDLIB_TYPES:
@@ -263,7 +274,7 @@ class typedef:
 		other: Self
 		) -> type_property | None:
 
-		shared = [i for i in self.types.values() if i not in other.types.values()]
+		shared = [i for i in self.types if i not in other.types]
 		return shared[-1] if shared else None
 
 	@classmethod
@@ -383,10 +394,10 @@ class multimethod:
 		while instance: # Traverse tree; terminates upon reaching leaf node
 			instance = instance.true if instance.index < arity and instance.check(signature) else instance.false
 		if instance is None or instance.arity != arity:
-			task.handler.error('DISP', task.op.name, signature)
+			task.handler.error('DISP', instance.name, signature)
 		for i, item in enumerate(signature): # Verify type signature
 			if item > instance.signature[i]:
-				task.handler.error('DISP', task.op.name, signature)
+				task.handler.error('DISP', instance.name, signature)
 		final = instance.final
 		value = instance.routine(task, *args)
 		task.values[address] = value
@@ -504,7 +515,7 @@ class multimethod:
 		signature: list[typedef]
 		) -> bool: 
 
-		return self.property in signature[self.index].types.values()
+		return self.property in signature[self.index].types
 
 	def collect(self) -> list[method]: # Collect all leaf nodes (order not important)
 
@@ -615,7 +626,7 @@ def infer( # Infers typedef of value
 		return typedef(std_integer)
 	datatype = types[name]
 	properties = []
-	if cls_sequence in datatype.types.values():
+	if cls_sequence in datatype.types:
 		if name == 'string':
 			element = std_string
 		elif name == 'slice':
@@ -659,121 +670,3 @@ properties = {
 	'length': cls_length
 }
 del std_stdin # stdlib.arche shouldn't find this yet
-
-#class cls_any:
-
-	#@classmethod
-	#def __null__(cls, value): return
-
-	#@classmethod
-	#def __type__(cls, value): return
-
-	#@classmethod
-	#def __event__(cls, value): return
-
-	#@classmethod
-	#def __function__(cls, value): return
-
-	#@classmethod
-	#def __boolean__(cls, value): return
-
-	#@classmethod
-	#def __number__(cls, value): return
-
-	#@classmethod
-	#def __string__(cls, value): return
-
-	#@classmethod
-	#def __list__(cls, value): return
-
-	#@classmethod
-	#def __record__(cls, value): return
-
-	#@classmethod
-	#def __slice__(cls, value): return
-
-	#@classmethod
-	#def __future__(cls, value): return
-
-#class cls_boolean(cls_some):
-
-#	@classmethod
-#	def __boolean__(cls, value): return value
-
-#	@classmethod
-#	def __number__(cls, value): return value != 0
-
-#	@classmethod
-#	def __string__(cls, value): return value != ''
-
-#	@classmethod
-#	def __list__(cls, value): return value != []
-
-#	@classmethod
-#	def __record__(cls, value): return value != {}
-
-#	@classmethod
-#	def __slice__(cls, value): return len(value) != 0
-
-#class cls_number(cls_some):
-
-#	@classmethod
-#	def __boolean__(cls, value): return real(int(value))
-
-#	@classmethod
-#	def __number__(cls, value): return value
-
-#	@classmethod
-#	def __string__(cls, value): return real.read(value)
-
-#	@classmethod
-#	def __future__(cls, value): return real(value.pid)
-
-#class cls_string(cls_sequence):
-
-#	@classmethod
-#	def __null__(cls, value): return 'null'
-
-#	@classmethod
-#	def __type__(cls, value): return value.name
-
-#	@classmethod
-#	def __event__(cls, value): return value.name
-
-#	@classmethod
-#	def __function__(cls, value): return value.name
-
-#	@classmethod
-#	def __boolean__(cls, value): return 'true' if value else 'false'
-
-#	@classmethod
-#	def __number__(cls, value): return str(value)
-
-#	@classmethod
-#	def __string__(cls, value): return value
-
-#	#@classmethod
-#	#def __list__(cls, value): return '[' + ', '.join([cast_std_some(i, cls) for i in value]) + ']'
-
-#	#@classmethod
-#	#def __record__(cls, value): return '[' + ', '.join([cast_std_some(k, cls) + ': ' + cast_std_some(v, cls) for k, v in value.items()]) + ']'
-
-#	@classmethod
-#	def __slice__(cls, value): return '{0}:{1}:{2}'.format(value.start, value.stop, value.step)
-
-#	@classmethod
-#	def __future__(cls, value): return value.name
-
-#class cls_list(cls_sequence):
-
-#	@classmethod
-#	def __string__(cls, value): return tuple(i for i in value)
-
-#	@classmethod
-#	def __list__(cls, value): return value
-
-#	@classmethod
-#	def __record__(cls, value): return tuple(value.items())
-
-#	@classmethod
-#	def __slice__(cls, value): return tuple(value)

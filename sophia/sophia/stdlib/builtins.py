@@ -1,11 +1,14 @@
 '''
 Built-in functions.
 '''
-from functools import reduce
+import re
 from math import copysign
 
+from . import casts
+from ..datatypes import aletheia
 from ..datatypes.aletheia import funcdef, typedef
 from ..datatypes.mathos import real
+from ..internal.presets import DATATYPES
 
 def abs_number(task, value):
 
@@ -15,8 +18,13 @@ std_abs = funcdef(
 	abs_number
 )
 
-#def cast_any_type(task, value, target):
+def cast_any_type(task, value, routine):
 	
+	for item in routine.types[::-1]:
+		if item.name in DATATYPES.values():
+			return casts.cast(value, item.name)
+	else:
+		return None
 #	try:
 #		result = getattr(types.types['__{0}__'.format(types.names[type(value).__name__])])(value)
 #	except KeyError:
@@ -26,9 +34,9 @@ std_abs = funcdef(
 #	else:
 #		return result
 
-#std_cast = funcdef(
-#	cast_any_type
-#)
+std_cast = funcdef(
+	cast_any_type
+)
 
 def ceiling_number(task, value):
 
@@ -38,33 +46,24 @@ std_ceiling = funcdef(
 	ceiling_number
 )
 
-#def dispatch_function_list(task, routine, signature):
+def dispatch_function_list(task, routine, signature):
 	
-#	tree = routine.tree.true if signature else routine.tree.false
-#	while tree:
-#		try:
-#			tree = tree.true if tree.op(signature[tree.index]) else tree.false
-#		except IndexError:
-#			tree = tree.false
-#	try:
-#		if tree is None:
-#			raise KeyError
-#		instance, final, result = tree.routine, tree.final, tree.signature
-#		for i, item in enumerate(signature): # Verify type signature
-#			if not item < result[i]:
-#				raise KeyError
-#	except (IndexError, KeyError):
-#		return task.error('DISP', routine.name, signature)
-#	new = funcdef(routine.name)
-#	try:
-#		definition = function_method(instance.instructions, [routine.name] + instance.params, [final] + list(signature))
-#		new.register(definition, final, signature)
-#	except AttributeError: # Built-ins
-#		new.register(instance, final, signature)
-#	return new
+	arity = len(signature)
+	instance = routine.true if signature else routine.false
+	while instance: # Traverse tree; terminates upon reaching leaf node
+		instance = instance.true if instance.index < arity and instance.check(signature) else instance.false
+	if instance is None or instance.arity != arity:
+		return None
+	for i, item in enumerate(signature): # Verify type signature
+		if item > instance.signature[i]:
+			return None
+	new = funcdef()
+	new.extend(instance)
+	return new
 
-#std_dispatch = funcdef('dispatch')
-#std_dispatch.retrieve(dispatch_function_list)
+std_dispatch = funcdef(
+	dispatch_function_list
+)
 
 def error_string(task, status):
 	
@@ -82,35 +81,37 @@ std_floor = funcdef(
 	floor_number
 )
 
-#def filter_function_list(task, routine, target):
+def filter_function_list(task, routine, sequence):
 
-#	result, member, length = [], task.signature[1].member, 0
-#	for value in target: # Dispatch and execute for each element of the list
-#		signature = descriptor(member).complete(types.infer(value), value).describe(task)
-#		tree = routine.tree.true if target else routine.tree.false
-#		while tree: # Traverse tree; terminates upon reaching leaf node
-#			tree = tree.true if tree.index == 0 and tree.op(signature) else tree.false
-#		if (tree is None) or len(tree.signature) > 1 or not (signature < tree.signature[0]):
-#			return task.error('DISP', routine.name, signature)
-#		instance, signature = tree.routine, tree.signature
-#		if 'boolean' not in tree.final.supertypes:
-#			return task.error('FLTR', routine.name, value)
-#		if isinstance(instance, function_method):
-#			caller = task.caller
-#			instance(task, value)
-#			check = task.run() # WARNING: Recursive runtime
-#			task.caller = caller
-#		else: # Built-ins
-#			check = instance(task, value)
-#		if check:
-#			result.append(value)
-#			length = length + 1
-#	task.properties.member = member # Member type remains constant
-#	task.properties.length = length
-#	return result
+	result, element = [], (task.signature[1]['element'] or aletheia.infer(sequence)['element']).property
+	instance = routine.true
+	while instance: # Traverse tree; terminates upon reaching leaf node
+		instance = instance.true if instance.index == 0 and instance.check([element]) else instance.false
+	if (instance is None or \
+		instance.arity != 1 or \
+		element > instance.signature[0] or \
+		instance.final > aletheia.std_boolean):
+		return None # Verify type signature
+	for item in sequence:
+		if instance.instructions:
+			caller = task.call()
+			instance(task, item)
+			check = task.run() # WARNING: Recursive runtime
+			task.caller = caller
+		else: # Built-ins
+			check = instance(task, item)
+		if check:
+			result.append(item)
+	return tuple(result)
 
-#std_filter = funcdef('filter')
-#std_filter.retrieve(filter_function_list)
+def filter_type_list(task, routine, sequence):
+	
+	return tuple(i for i in sequence if routine(task, i))
+
+std_filter = funcdef(
+	filter_function_list,
+	filter_type_list
+)
 
 def format_string_list(task, string, args):
 
@@ -188,38 +189,44 @@ std_length = funcdef(
 	length_slice
 )
 
-#def map_function_list(task, routine, target):
+def map_function_list(task, routine, sequence):
 
-#	result, final, member = [], [], task.signature[1].member
-#	for value in target: # Dispatch and execute for each element of the list
-#		signature = descriptor(member).complete(types.infer(value), value).describe(task)
-#		tree = routine.tree.true if target else routine.tree.false
-#		while tree: # Traverse tree; terminates upon reaching leaf node
-#			tree = tree.true if tree.index == 0 and tree.op(signature) else tree.false
-#		if (tree is None) or len(tree.signature) > 1 or not (signature < tree.signature[0]):
-#			return task.error('DISP', routine.name, signature)
-#		instance, signature = tree.routine, tree.signature
-#		final.append(tree.final)
-#		if isinstance(instance, function_method):
-#			caller = task.caller
-#			instance(task, value)
-#			result.append(task.run()) # WARNING: Recursive runtime
-#			task.caller = caller
-#		else: # Built-ins
-#			result.append(instance(task, value))
-#	final = reduce(descriptor.mutual, final) # Use the return type of the map, not the inferred type of the elements
-#	task.properties.member = final.type
-#	return result
+	result, element = [], (task.signature[1]['element'] or aletheia.infer(sequence)['element']).property
+	instance = routine.true
+	while instance: # Traverse tree; terminates upon reaching leaf node
+		instance = instance.true if instance.index == 0 and instance.check([element]) else instance.false
+	if (instance is None or \
+		instance.arity != 1 or \
+		element > instance.signature[0]):
+		return None # Verify type signature
+	for item in sequence:
+		if instance.instructions:
+			caller = task.call()
+			instance(task, item)
+			result.append(task.run()) # WARNING: Recursive runtime
+			task.caller = caller
+		else: # Built-ins
+			result.append(instance(task, item))
+	return tuple(result)
 
-#std_map = funcdef('map')
-#std_map.retrieve(map_function_list)
+def map_type_list(task, routine, sequence):
+	
+	return tuple(routine(task, i) for i in sequence)
 
-#def namespace_none(task): # Do not let the user read working registers
+std_map = funcdef(
+	map_function_list,
+	map_type_list
+)
 
-#	return {k: v for k, v in task.values.items() if k not in builtins} # ABOVE COMMENT IS LYING
+def namespace_none(task):
+	"""
+	Retrieves the current namespace as a record, excluding internal registers.
+	"""
+	return {k: v for k, v in task.values.items() if not re.fullmatch(r'[-0123456789]+', k)}
 
-#std_namespace = funcdef('namespace')
-#std_namespace.retrieve(namespace_none)
+std_namespace = funcdef(
+	namespace_none
+)
 
 def print_string(task, value):
 
@@ -230,44 +237,34 @@ std_print = funcdef(
 	print_string
 )
 
-#def reduce_function_list(task, routine, target):
+def reduce_function_list(task, routine, sequence):
 	
-#	try:
-#		x, member = target[0], task.signature[1].member
-#		x_type = descriptor(member).complete(types.infer(x), x).describe(task)
-#	except IndexError:
-#		return task.error('RDCE')
-#	for y in target[1:]: # Dispatch and execute for each element of the list
-#		y_type = descriptor(member).complete(types.infer(y), y).describe(task)
-#		xy = [x_type, y_type]
-#		tree = routine.tree.true if target else routine.tree.false
-#		while tree: # Traverse tree; terminates upon reaching leaf node
-#			try:
-#				tree = tree.true if tree.op(xy[tree.index]) else tree.false
-#			except IndexError:
-#				tree = tree.false
-#		try:
-#			if tree is None:
-#				raise KeyError
-#			instance, final, signature = tree.routine, tree.final, tree.signature
-#			for i, item in enumerate(xy): # Verify type signature
-#				if not item < signature[i]:
-#					raise KeyError
-#		except (IndexError, KeyError):
-#			return task.error('DISP', routine.name, xy)
-#		if isinstance(instance, function_method):
-#			caller = task.caller
-#			instance(task, x, y)
-#			x = task.run() # WARNING: Recursive runtime
-#			task.caller = caller
-#		else: # Built-ins
-#			x = instance(task, x, y)
-#		x_type, y_type = final, member
-#	task.properties.merge(final)
-#	return x
+	if not sequence:
+		return None
+	if len(sequence) == 1:
+		return sequence[0]
+	left, element = sequence[0], (task.signature[1]['element'] or aletheia.infer(sequence)['element']).property
+	instance = routine.true
+	while instance: # Traverse tree; terminates upon reaching leaf node
+		instance = instance.true if (0 <= instance.index < 2) and instance.check([element, element]) else instance.false
+	if (instance is None or \
+		instance.arity != 2 or \
+		element > instance.signature[0] or \
+		element > instance.signature[1]):
+		return None # Verify type signature
+	for right in sequence[1:]:
+		if instance.instructions:
+			caller = task.call()
+			instance(task, left, right)
+			left = task.run() # WARNING: Recursive runtime
+			task.caller = caller
+		else: # Built-ins
+			left = instance(task, left, right)
+	return left
 
-#std_reduce = funcdef('reduce')
-#std_reduce.retrieve(reduce_function_list)
+std_reduce = funcdef(
+	reduce_function_list
+)
 
 def return_none(task):
 	
