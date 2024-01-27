@@ -26,6 +26,7 @@ class type_property:
 		self.tag = '__{0}__'.format(name)
 		self.check = self.__check__ if name in presets.STDLIB_TYPES else self.__user__
 		self.property = value
+		self.closure = {}
 
 	def __eq__(
 		self,
@@ -46,6 +47,8 @@ class type_property:
 		caller = task.call()
 		task.final = typedef(known, self) # Extend known type with own property
 		task.values[self.name], task.types[self.name] = value, known
+		task.values = task.values | self.closure
+		task.types = task.types | {k: infer(v) for k, v in self.closure.items()}
 		task.instructions = self.property
 		task.path = 1
 		value = task.run()
@@ -322,6 +325,7 @@ class method:
 		self.final = types[0]
 		self.signature = types[1:]
 		self.arity = len(self.signature)
+		self.closure = {}
 	
 	def __call__(
 		self,
@@ -331,8 +335,8 @@ class method:
 
 		task.caller = task.call()
 		task.final = self.final
-		task.values = task.values | dict(zip(self.params, args))
-		task.types = task.types | dict(zip(self.params, self.signature))
+		task.values = task.values | dict(zip(self.params, args)) | self.closure
+		task.types = task.types | dict(zip(self.params, self.signature)) | {k: infer(v) for k, v in self.closure.items()}
 		task.instructions = self.instructions
 		task.path = 1
 

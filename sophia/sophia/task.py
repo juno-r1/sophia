@@ -1,12 +1,15 @@
 from functools import reduce
 from multiprocessing import current_process
-from typing import Any
+from typing import Any, Self
 
 from .datatypes import aletheia, iris
 from .datatypes.aletheia import typedef
 from .datatypes.mathos import real, slice
+from .internal import presets
+from .internal.instructions import instruction
+from .hemera import handler
 from .kadmos import parser
-from .metis import processor, user_namespace
+from .stdlib import arche
 
 class task:
 	"""
@@ -16,32 +19,39 @@ class task:
 	"""
 	def __init__( # God objects? What is she objecting to?
 		self,
-		processor: processor,
+		handler: handler,
+		instructions: list[instruction],
+		namespace: dict,
+		types: dict | None = None
 		) -> None:
 		"""
 		Task identifiers.
 		"""
-		self.name = processor.name
+		self.name = instructions[0].label[0]
 		self.pid = id(self) # Guaranteed not to collide with other task PIDs in CPython
 		"""
 		Namespace management.
 		"""
-		self.values = processor.values
-		self.types = processor.types
+		if types is None:
+			self.values = arche.stdvalues | namespace
+			self.types = arche.stdtypes | {k: aletheia.infer(v) for k, v in namespace.items()}
+		else:
+			self.values = arche.stdvalues | namespace
+			self.types = arche.stdtypes| types
 		self.signature = [] # Current type signature
 		self.properties = None # Final type override
 		"""
 		Instruction execution data.
 		"""
-		self.instructions = processor.instructions # Guaranteed to be non-empty
-		self.op = self.instructions[0] # Current instruction
+		self.instructions = instructions # Guaranteed to be non-empty
+		self.op = instructions[0] # Current instruction
 		self.path = 1 # Instruction index
 		"""
 		Program state management.
 		"""
 		self.caller = None # State of the calling routine
 		self.final = aletheia.std_any # Return type of routine
-		self.handler = processor.handler # Error handler
+		self.handler = handler # Error handler
 
 	def execute(self) -> Any:
 		"""
@@ -141,6 +151,28 @@ class task:
 					break
 		self.values[name], self.types[name] = message, typedef(aletheia.std_any)
 
+	def use(self) -> None:
+		"""
+		Retrieves routine definitions for use statements.
+		"""
+		self.path = 1
+		while 0 < self.path < len(self.instructions):
+			self.op = self.instructions[self.path]
+			self.path = self.path + 1
+			if self.op.address: # Skip labels
+				try:
+					if (name := self.op.name) == '.type':
+						task.intern_type(self, *[self.values[arg] for arg in self.op.args])
+					elif name == '.event':
+						task.intern_event(self, *[self.values[arg] for arg in self.op.args])
+					elif name == '.function':
+						task.intern_function(self, *[self.values[arg] for arg in self.op.args])
+				except KeyError as e:
+					self.handler.error('FIND', e.args[0])
+		else:
+			self.path = 1
+			return arche.user_namespace(self.values)
+
 	def message(
 		self,
 		instruction: str,
@@ -148,6 +180,46 @@ class task:
 		) -> None:
 
 		current_process().stream.put(iris.message(self.pid, instruction, args))
+
+	"""
+	Preprocessor instructions.
+	"""
+
+	def analyse(self) -> Self:
+		"""
+		Optimises instructions.
+		"""
+		self.handler.debug_processor(self)
+		while 0 < self.path < len(self.instructions): # This can and does change
+			self.op = self.instructions[self.path]
+			self.path = self.path + 1
+			if self.op.name == 'BIND':
+				self.bind()
+		self.path = 1
+		return self
+
+	def bind(self) -> None:
+		"""
+		Evaluates type checking for name binding, removing instructions
+		if the type check is known to succeed.
+		Currently does not bother to remove unnecessary type checks.
+		"""
+		i, checks, addresses = self.path, [], []
+		while self.instructions[i].name != '.bind':
+			i = i + 1
+		for name in self.instructions[i].label:
+			if name in presets.STDLIB_NAMES:
+				self.handler.error('BIND', name)
+		binds = self.instructions[self.path:i]
+		for item in binds:
+			if item.args[1] == '?':
+				addresses.append(item.args[0])
+			else:
+				addresses.append(item.address)
+				checks.append(item)
+		self.instructions[i].args = addresses
+		self.instructions[self.path - 1:i] = checks
+		self.path = self.path + len(checks)
 
 	"""
 	Internal instructions.
@@ -255,8 +327,8 @@ class task:
 		for i, item in enumerate(signature): # Verify type signature
 			if item > instance.signature[i]:
 				self.handler.error('DISP', self.op.args[0], signature)
-		values = user_namespace(self.values) | dict(zip(instance.params, args))
-		types = user_namespace(self.types) | dict(zip(instance.params, instance.signature))
+		values = arche.intern_namespace(self.values) | dict(zip(instance.params, args))
+		types = arche.intern_namespace(self.types) | dict(zip(instance.params, instance.signature))
 		self.message('future', instance, values, types)
 		self.types[address] = typedef(aletheia.std_future)
 		self.values[address] = self.calls.recv()
@@ -274,7 +346,7 @@ class task:
 		self,
 		) -> None:
 	
-		for name in self.op.label: # We can do this bit asynchronously
+		for name in self.op.label: # Asynchronous I/O
 			self.message('link', name + '.sph')
 		for name in self.op.label:
 			self.values[name] = self.calls.recv()
@@ -411,6 +483,23 @@ class task:
 		self.values[address] = typedef(supertype, method, prototype = prototype)
 		self.types[address] = typedef(aletheia.std_type)
 
+	def intern_use(
+		self
+		) -> None:
+
+		if self.op.address == '0': # Use
+			for name in self.op.label: # Asynchronous I/O
+				self.message('use', name)
+			for name in self.op.label:
+				namespace = self.calls.recv()
+				self.values = self.values | namespace
+				self.types = self.types | {k: aletheia.infer(v) for k, v in namespace.items()}
+		else: # Use from
+			self.message('use', self.op.address)
+			namespace = {k: v for k, v in self.calls.recv().items() if k in self.op.label}
+			self.values = self.values | namespace
+			self.types = self.types | {k: aletheia.infer(v) for k, v in namespace.items()}
+
 	interns = {
 		'.bind': intern_bind,
 		'.break': intern_break,
@@ -430,5 +519,6 @@ class task:
 		'.record': intern_record,
 		'.skip': intern_skip,
 		'.slice': intern_slice,
-		'.type': intern_type
+		'.type': intern_type,
+		'.use': intern_use
 	}

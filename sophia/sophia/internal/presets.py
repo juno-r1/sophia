@@ -212,6 +212,7 @@ REGEX_WHILE		= r'(?P<while>while .+:$)'
 REGEX_FOR		= r'(?P<for>for \w+( \w+)? in .+:$)'
 REGEX_RETURN	= r'(?P<return>return( .+)?$)'
 REGEX_LINK		= r'(?P<link>link (\w+(,\s*|$))+)'
+REGEX_USE		= r'(?P<use>use (\w+(,\s*)?)+(\s*from\s+\w+)?)'
 REGEX_START		= r'(?P<start>start:$)'
 REGEX_TYPE		= r'(?P<type>type \w+( extends \w+)?( with .*)?((:$)|(\s*=>\s*.+)))'
 REGEX_EVENT		= r'(?P<event>.+( .+)? awaits \w+( \w+)?\s*\((\w+( \w+)?(,\s*)?)*\)((:$)|(\s*=>\s*.+)))'
@@ -251,6 +252,7 @@ REGEX_STATEMENT = '|'.join((
 	REGEX_FOR,
 	REGEX_RETURN,
 	REGEX_LINK,
+	REGEX_USE,
 	REGEX_START,
 	REGEX_TYPE,
 	REGEX_EVENT,

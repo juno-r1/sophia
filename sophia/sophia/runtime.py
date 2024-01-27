@@ -5,7 +5,7 @@ import os
 from queue import Empty
 from typing import Any
 
-from . import hemera, kadmos, metis
+from . import hemera, kadmos
 from .datatypes import aletheia, iris
 from .task import task
 
@@ -40,26 +40,38 @@ class runtime:
 			return
 		try:
 			"""
-			Compile stage. Yields a processor object containing optimised instructions.
+			Compile stage. Yields a task object containing optimised instructions.
 			"""
 			parser = kadmos.parser(self.handler, address.split('.')[0])
 			instructions, namespace = parser.parse(source)
-			processor = metis.processor(self.handler, instructions, namespace).analyse()
+			self.main = task(self.handler, instructions, namespace).analyse() # Initial task
 			"""
 			Build the supervisor. Main task is initialised and awaiting execution.
 			"""
 			self.root = root
 			self.stream = mp.Queue() # Supervisor message stream
 			self.pool = None # Don't initialise just yet
-			self.main = task(processor) # Initial task
 			self.tasks = {self.main.pid: iris.proxy(self.main)} # Proxies of tasks
 			self.events = {} # Persistent event tasks
+			self.modules = {} # Use cache
 		except SystemExit: # Catches any compile-time error
 			self.handler.lock = True # Lock runtime
 
-	def initialise(self) -> None: # Cheeky way to sneak a queue into a task
-	
+	def initialise(self) -> None:
+		"""
+		Initialises a task with a connection to the supervisor.
+		"""
 		mp.current_process().stream = self.stream
+
+	def open(
+		self,
+		address: str
+		) -> str:
+		"""
+		Opens a Sophia file in the root directory.
+		"""
+		with open('{0}/{1}'.format(self.root, address), 'r') as f:
+			return f.read()
 
 	def future(
 		self,
@@ -69,8 +81,7 @@ class runtime:
 		types: dict
 		) -> None:
 		
-		processor = metis.processor(self.handler, method.instructions, values, types)
-		new = task(processor)
+		new = task(self.handler, method.instructions, values, types).analyse()
 		proxy = iris.proxy(new)
 		proxy.result = self.pool.apply_async(new.execute)
 		proxy.count = 1
@@ -127,12 +138,10 @@ class runtime:
 		address: str
 		) -> None:
 		
-		with open('{0}/{1}'.format(self.root, address), 'r') as f:
-			source = f.read() # Binds file data to runtime object
+		source = self.open(address)
 		parser = kadmos.parser(self.handler, address.split('.')[0])
 		instructions, namespace = parser.parse(source)
-		processor = metis.processor(self.handler, instructions, namespace).analyse()
-		new = task(processor)
+		new = task(self.handler, instructions, namespace).analyse()
 		proxy = iris.proxy(new)
 		proxy.result = self.pool.apply_async(new.execute)
 		proxy.count = 1
@@ -141,6 +150,29 @@ class runtime:
 		self.tasks[pid].calls.send( # Return reference to process
 			iris.reference(new.name, new.pid, aletheia.typedef(aletheia.std_any), readable = True, writeable = True)
 		)
+
+	def use(
+		self,
+		pid: int,
+		name: str
+		) -> None:
+
+		if name in self.modules: # Use cache
+			self.tasks[pid].calls.send(self.modules[name])
+		else:
+			source = self.open(name + '.sph')
+			parser = kadmos.parser(self.handler, name)
+			instructions, namespace = parser.parse(source)
+			routines = task(self.handler, instructions, namespace).analyse().use()
+			for routine in routines.values():
+				if isinstance(routine, aletheia.typedef):
+					for item in routine.types:
+						item.closure = namespace.copy()
+				else:
+					for method in routine.collect():
+						method.closure = namespace.copy()
+			self.modules[name] = routines
+			self.tasks[pid].calls.send(self.modules[name])
 
 	def terminate(
 		self,

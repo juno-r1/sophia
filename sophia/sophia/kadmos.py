@@ -112,6 +112,8 @@ class parser:
 						token = statements.return_statement(value)
 					case 'link':
 						token = statements.link_statement(value)
+					case 'use':
+						token = statements.use_statement(value)
 					case 'start':
 						token = statements.start_statement()
 					case 'type':

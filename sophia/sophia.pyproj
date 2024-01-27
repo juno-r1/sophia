@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>77ea40b1-1af6-4971-ad30-ff261d0da3cb</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>harmonia.py</StartupFile>
+    <StartupFile>run.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -38,7 +38,6 @@
     <Compile Include="sophia\datatypes\mathos.py" />
     <Compile Include="harmonia.py" />
     <Compile Include="sophia\stdlib\arche.py" />
-    <Compile Include="sophia\metis.py" />
     <Compile Include="sophia\runtime.py" />
     <Compile Include="sophia\internal\instructions.py" />
     <Compile Include="run.py" />
@@ -72,6 +71,7 @@
     <Content Include="harmonia\test23.sph" />
     <Content Include="harmonia\test24.sph" />
     <Content Include="harmonia\test25.sph" />
+    <Content Include="harmonia\test26.sph" />
     <Content Include="sophia\stdlib\kleio.json" />
     <Content Include="plan.txt" />
     <Content Include="user\main.sph" />

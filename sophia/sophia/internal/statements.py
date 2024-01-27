@@ -276,6 +276,24 @@ class link_statement(statement):
 		
 		return ins('.link', '0', label = self.links),
 
+class use_statement(statement):
+	"""Defines a use statement."""
+	def __init__(
+		self,
+		string: str
+		) -> None:
+		
+		super().__init__()
+		string = re.split(r' ', string, 1)[1]
+		string, self.source = re.split(r'\s*from\s*', string) if 'from' in string else (string, '0')
+		self.routines = re.split(r',\s*', string)
+
+	def __str__(self) -> str: return ('else ' if self.branch else '') + 'use_statement ' + ' '.join(self.routines)
+
+	def execute(self) -> tuple[ins, ...]:
+		
+		return ins('.use', self.source, label = self.routines),
+
 class start_statement(statement):
 	"""Defines an initial."""
 	def __str__(self) -> str: return 'start'
