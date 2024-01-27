@@ -71,11 +71,12 @@ class runtime:
 		
 		processor = metis.processor(self.handler, method.instructions, values, types)
 		new = task(processor)
-		self.tasks[new.pid] = iris.proxy(new)
+		proxy = iris.proxy(new)
+		proxy.result = self.pool.apply_async(new.execute)
+		proxy.count = 1
+		self.tasks[new.pid] = proxy
 		if isinstance(method, aletheia.event_method):
 			self.events[new.pid] = new # Persistent reference to event
-		self.tasks[new.pid].result = self.pool.apply_async(new.execute)
-		self.tasks[new.pid].count = self.tasks[new.pid].count + 1
 		self.tasks[pid].references.append(new.pid) # Mark reference to process
 		self.tasks[pid].calls.send( # Return reference to process
 			iris.reference(method.name, new.pid, method.final, readable = True, writeable = True)
@@ -132,9 +133,10 @@ class runtime:
 		instructions, namespace = parser.parse(source)
 		processor = metis.processor(self.handler, instructions, namespace).analyse()
 		new = task(processor)
-		self.tasks[new.pid] = iris.proxy(new)
-		self.tasks[new.pid].result = self.pool.apply_async(new.execute)
-		self.tasks[new.pid].count = self.tasks[new.pid].count + 1
+		proxy = iris.proxy(new)
+		proxy.result = self.pool.apply_async(new.execute)
+		proxy.count = 1
+		self.tasks[new.pid] = proxy
 		self.tasks[pid].references.append(new.pid) # Mark reference to process
 		self.tasks[pid].calls.send( # Return reference to process
 			iris.reference(new.name, new.pid, aletheia.typedef(aletheia.std_any), readable = True, writeable = True)

@@ -222,8 +222,8 @@ REGEX_EXPR		= r'(?P<expression>.+)'
 Regex expression patterns.
 """
 REGEX_TYPE_EXPR = r'(?P<type_expression>extends \w+( with .*)?\s*=>\s*.+)'
-REGEX_EVNT_EXPR = r'(?P<event_expression>awaits \w+( \w+)?\s*=>\s*.+)'
-REGEX_FUNC_EXPR = r'(?P<func_expression>(\w+( \w+)?(,\s*)?)*\s*=>\s*.+)'
+REGEX_EVNT_EXPR = r'(?P<event_expression>awaits \w+( \w+)?\s*=>\s*.+(=>.+$)?)'
+REGEX_FUNC_EXPR = r'(?P<func_expression>(\w+( \w+)?(,\s*)?)*\s*=>\s*.+(=>.+$)?)'
 REGEX_ENV		= r'(?P<env>\@)'
 REGEX_NUMBER	= r'(?P<number>[+-]?\d+(\.\d*)?)' # Any number of the format x(.y)
 REGEX_STRING	= r'(?P<string>(\'.*?\')|(\".*?\"))' # Any symbols between single or double quotes

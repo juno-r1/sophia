@@ -5,9 +5,8 @@ from typing import Any
 from .datatypes import aletheia, iris
 from .datatypes.aletheia import typedef
 from .datatypes.mathos import real, slice
-from .internal import presets
 from .kadmos import parser
-from .metis import processor
+from .metis import processor, user_namespace
 
 class task:
 	"""
@@ -256,8 +255,8 @@ class task:
 		for i, item in enumerate(signature): # Verify type signature
 			if item > instance.signature[i]:
 				self.handler.error('DISP', self.op.args[0], signature)
-		values = {k: v for k, v in self.values.items() if k not in presets.STDLIB_NAMES.values()} | dict(zip(instance.params, args))
-		types = {k: v for k, v in self.types.items() if k not in presets.STDLIB_NAMES.values()} | dict(zip(instance.params, instance.signature))
+		values = user_namespace(self.values) | dict(zip(instance.params, args))
+		types = user_namespace(self.types) | dict(zip(instance.params, instance.signature))
 		self.message('future', instance, values, types)
 		self.types[address] = typedef(aletheia.std_future)
 		self.values[address] = self.calls.recv()

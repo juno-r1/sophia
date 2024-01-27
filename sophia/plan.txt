@@ -5,19 +5,6 @@ to do
 
 ---
 
-anonymous routines
-(num x, num y => x + y)
-(awaits x => x + 1)
-(extends x => x = 1)
-
-the return type of an anonymous function is inferred from its last operation
-and what is that, exactly?
-
-make single-line function definitions into expressions that return the function
-this is going to require some specialised parsing
-
----
-
 use statement
 analogous to import statements or rust use statements
 sophia needs a mechanism for extending namespaces regardless of how useful linking is

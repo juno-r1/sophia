@@ -222,7 +222,7 @@ def namespace_none(task):
 	"""
 	Retrieves the current namespace as a record, excluding internal registers.
 	"""
-	return {k: v for k, v in task.values.items() if not re.fullmatch(r'[-0123456789]+', k)}
+	return {k: v for k, v in task.values.items() if not re.fullmatch(r'-?[0123456789]+', k)}
 
 std_namespace = funcdef(
 	namespace_none

@@ -367,11 +367,11 @@ class event_expression(anonymous):
 		) -> None:
 
 		string, expression = re.split(r'\s*=>\s*', string, 1)
-		final, name = 'any', '@'
+		expression, final = re.split(r'\s*=>\s*(?=\w+$)', expression, 1) if re.search(r'(?<==>)\s*\w+$', expression) else (expression, 'any')
 		string = re.split(' ', re.search(r'awaits \w+( \w+)?', string).group(), 1)[1]
 		check, message = re.split(r' ', string, 1) if ' ' in string else ('any', string)
-		params = {name: final, message: check}
-		super().__init__(name, final, params)
+		params = {'@': final, message: check}
+		super().__init__('@', final, params)
 		self.nodes = [lexer(expression).parse()]
 
 	def start(self) -> tuple[ins, ...]:
@@ -399,13 +399,13 @@ class function_expression(anonymous):
 		) -> None:
 		
 		string, expression = re.split(r'\s*=>\s*', string, 1)
-		final, name = 'any', '@'
-		params = {name: final}
+		expression, final = re.split(r'\s*=>\s*(?=\w+$)', expression, 1) if re.search(r'(?<==>)\s*\w+$', expression) else (expression, 'any')
+		params = {'@': final}
 		for value in re.finditer(r'\w+( \w+)?', string):
 			param = value.group()
 			typename, param = re.split(r' ', param, 1) if ' ' in param else ('any', param)
 			params[param] = typename
-		super().__init__(name, final, params)
+		super().__init__('@', final, params)
 		self.nodes = [lexer(expression).parse()]
 
 	def start(self) -> tuple[ins, ...]:
