@@ -1,3 +1,0 @@
-num a (num x) => x + 1
-num b (num x) => x + 2
-num c (num x) => x + 3

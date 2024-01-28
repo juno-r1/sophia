@@ -32,12 +32,8 @@ class task:
 		"""
 		Namespace management.
 		"""
-		if types is None:
-			self.values = arche.stdvalues | namespace
-			self.types = arche.stdtypes | {k: aletheia.infer(v) for k, v in namespace.items()}
-		else:
-			self.values = arche.stdvalues | namespace
-			self.types = arche.stdtypes| types
+		self.values = arche.stdvalues | namespace
+		self.types = {k: aletheia.infer(v) for k, v in self.values.items()} if types is None else arche.stdtypes | types
 		self.signature = [] # Current type signature
 		self.properties = None # Final type override
 		"""
@@ -113,8 +109,10 @@ class task:
 						self.path = path
 					return path
 
-	def call(self) -> dict: # Get current state of task as subset of __dict__
-
+	def call(self) -> dict:
+		"""
+		Get the current mutable state of the task.
+		"""
 		return {
 			'name': self.name,
 			'values': self.values.copy(),
@@ -127,19 +125,23 @@ class task:
 			'final': self.final
 		}
 
-	def restore( # Restore previous state of task
+	def restore(
 		self,
 		state: dict | None = None
 		) -> None:
-
+		"""
+		Restores the previous state of the task.
+		"""
 		self.__dict__.update(state if state else self.caller)
 
-	def prepare( # Sets up task for event execution
+	def prepare(
 		self,
 		namespace: dict,
 		message: Any
 		) -> None:
-		
+		"""
+		Resets the task for the execution of an event.
+		"""
 		self.restore(namespace)
 		self.path, scope = 0, 0
 		while True:
@@ -178,7 +180,9 @@ class task:
 		instruction: str,
 		*args: tuple
 		) -> None:
-
+		"""
+		Sends a message to the supervisor.
+		"""
 		current_process().stream.put(iris.message(self.pid, instruction, args))
 
 	"""
@@ -367,10 +371,10 @@ class task:
 			aletheia.cls_length(length)
 		)
 
-	def intern_loop( # Continue is just an early loop
+	def intern_loop(
 		self
 		) -> None:
-	
+
 		scope = 1
 		while True:
 			self.path = self.path - 1

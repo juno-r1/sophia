@@ -1,1 +1,0 @@
-print(str.isnumeric('-1'))

@@ -81,11 +81,13 @@ class handler:
 			task.message('terminate')
 			return task.call() # Return mutable state to supervisor
 
-	def debug_processor( # Processor flags
+	def debug_processor(
 		self,
 		task
 		) -> None:
-
+		"""
+		Prints instructions before processing.
+		"""
 		if 'processor' in self.flags:
 			self.debug_instructions(task)
 

@@ -240,7 +240,7 @@ class typedef:
 		"""
 		return typedef(self, *(i for i in other.types if i not in self.types))
 
-	def __or__( # Implements type union / mutual supertype
+	def __or__(
 		self,
 		other: Self
 		) -> Self:
@@ -272,20 +272,25 @@ class typedef:
 
 	__repr__ = __str__
 
-	def criterion( # Gets the most specific property that two typedefs don't share (non-commutative)
+	def criterion(
 		self,
 		other: Self
 		) -> type_property | None:
-
+		"""
+		Gets the most specific property that two typedefs don't share.
+		This operation is non-commutative.
+		"""
 		shared = [i for i in self.types if i not in other.types]
 		return shared[-1] if shared else None
 
 	@classmethod
-	def read( # Creates a typedef from a type descriptor
+	def read(
 		cls,
 		descriptor: str
 		) -> Self:
-
+		"""
+		Creates a typedef from a type descriptor.
+		"""
 		if descriptor == '?':
 			return cls() # Infer return type
 		attributes = descriptor.split('.')
@@ -403,6 +408,9 @@ class multimethod:
 			if item > instance.signature[i]:
 				task.handler.error('DISP', instance.name, signature)
 		final = instance.final
+		"""
+		Execute method and write result to registers.
+		"""
 		value = instance.routine(task, *args)
 		if instance.instructions:
 			task.values[instance.name] = self
@@ -459,25 +467,29 @@ class multimethod:
 			new.extend(function_method(instructions, names, types, user = True))
 		return None if new.true is None and new.false is None else new
 
-	def set( # Set check attributes
+	def set(
 		self,
 		true: method,
 		false: method,
 		check: typedef,
 		index: int,
 		) -> Self:
-
+		"""
+		Set the attributes of the method's distinguishing criterion.
+		"""
 		self.true = true
 		self.false = false
 		self.property = check
 		self.index = index
 		return self
 
-	def extend( # Add node to tree
+	def extend(
 		self,
 		new: method
 		) -> None:
-		
+		"""
+		Add a node to the tree.
+		"""
 		if not new.signature: # Zero-argument method
 			self.false = new
 			return
@@ -493,12 +505,14 @@ class multimethod:
 		else:
 			head.false = head.build(new, branch)
 
-	def build( # Reorder branch node with new method
+	def build(
 		self,
 		new: method,
 		other: method
 		) -> Self | method:
-		
+		"""
+		Reorders a branch node with a new method.
+		"""
 		if new.signature == other.signature: # If signatures match, end early
 			return new
 		new_length, other_length = len(new.signature), len(other.signature)
@@ -518,15 +532,20 @@ class multimethod:
 					return node.set(other, new, other_criterion, i)
 		return node
 
-	def check( # Universal dispatch check exploiting properties of structural typing
+	def check(
 		self,
 		signature: list[typedef]
 		) -> bool: 
-
+		"""
+		Universal dispatch check exploiting properties of structural typing.
+		"""
 		return self.property in signature[self.index].types
 
-	def collect(self) -> list[method]: # Collect all leaf nodes (order not important)
-
+	def collect(self) -> list[method]:
+		"""
+		Collect all methods.
+		The order of the methods is not guaranteed.
+		"""
 		x, y = self.true, self.false
 		x = x.collect() if x else ([] if x is None else [x])
 		y = y.collect() if y else ([] if y is None else [y])
@@ -624,10 +643,12 @@ std_future		= typedef(std_some, cls_future, prototype = std_stdin)
 Type inference and internals.
 """
 
-def infer( # Infers typedef of value
+def infer(
 	value: Any
 	) -> typedef:
-	
+	"""
+	Infers the typedef of a value.
+	"""
 	name = type(value).__name__
 	name = presets.DATATYPES[name] if name in presets.DATATYPES else 'any'
 	if name == 'number' and value % 1 == 0:
@@ -646,10 +667,12 @@ def infer( # Infers typedef of value
 	definition = typedef(types[name], *properties)
 	return definition
 
-def infer_element( # Infers element type of value
+def infer_element(
 	value: Any
 	) -> typedef:
-
+	"""
+	Infers the element type of a sequence.
+	"""
 	if isinstance(value, dict):
 		return reduce(typedef.__or__, [infer(i) for i in value.values()], typedef(std_any))
 	else:

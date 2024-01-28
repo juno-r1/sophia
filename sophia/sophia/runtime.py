@@ -1,4 +1,4 @@
-# ☉ 0.6.1 30-09-2023
+# ☉ 0.7 27-01-2024
 
 import multiprocessing as mp
 import os
@@ -36,26 +36,26 @@ class runtime:
 			self.handler = hemera.handler(source, flags)
 		except SystemExit:
 			self.handler = hemera.handler(source, ())
-			self.handler.lock = True
 			return
+		"""
+		Compile stage. Yields a task object containing optimised instructions.
+		"""
 		try:
-			"""
-			Compile stage. Yields a task object containing optimised instructions.
-			"""
 			parser = kadmos.parser(self.handler, address.split('.')[0])
 			instructions, namespace = parser.parse(source)
 			self.main = task(self.handler, instructions, namespace).analyse() # Initial task
-			"""
-			Build the supervisor. Main task is initialised and awaiting execution.
-			"""
-			self.root = root
-			self.stream = mp.Queue() # Supervisor message stream
-			self.pool = None # Don't initialise just yet
-			self.tasks = {self.main.pid: iris.proxy(self.main)} # Proxies of tasks
-			self.events = {} # Persistent event tasks
-			self.modules = {} # Use cache
 		except SystemExit: # Catches any compile-time error
 			self.handler.lock = True # Lock runtime
+			return
+		"""
+		Build the supervisor. Main task is initialised and awaiting execution.
+		"""
+		self.root = root
+		self.stream = mp.Queue() # Supervisor message stream
+		self.pool = None # Don't initialise just yet
+		self.tasks = {self.main.pid: iris.proxy(self.main)} # Proxies of tasks
+		self.events = {} # Persistent event tasks
+		self.modules = {} # Use cache
 
 	def initialise(self) -> None:
 		"""

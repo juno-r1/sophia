@@ -1,4 +1,1 @@
-// Use statement
-
-use increment from test16
-return increment(1)
+print('Hello world!')
