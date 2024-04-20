@@ -1,5 +1,5 @@
-# Sophia 0.6.1
+# Sophia 0.7
 
-Sophia is a general-purpose procedural programming language oriented around multiple dispatch and the actor model. [Find more information here.](https://github.com/juno-r1/sophia/wiki)
+Sophia is a general-purpose procedural programming language oriented around multiple dispatch and the actor model.
 
 **Caution:** this implementation is in development. Language features are considered to be stable but may not behave as expected.
