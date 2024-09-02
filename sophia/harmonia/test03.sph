@@ -1,7 +1,0 @@
-// Untyped assignment, constants, names
-
-a: 1
-b: 1.1
-c: '1.1'
-d: true; e: false
-return [a, [b], [c, d], [], ['e': [e]], ['f': 'f', 'g': 'g']]

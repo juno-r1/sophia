@@ -1,8 +1,0 @@
-// Boolean operators
-
-bool a: not false
-bool b: true and true
-bool c: true or false
-bool d: true xor false
-
-return [a, b, c, d]
