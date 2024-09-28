@@ -23,6 +23,11 @@ pub enum Value {
 
 impl Value
 {
+	
+	pub fn new_any(x: Value) -> Value
+	{
+		x
+	}
 	pub fn new_boolean(x: bool) -> Value
 	{
 		Value::Boolean(Box::new(x))
@@ -57,9 +62,10 @@ impl Value
 	}
 }
 
-pub type Function = fn(Task, Vec<Value>) -> Value;
+pub type Function = fn(&mut Task, Vec<Value>) -> Value;
 
 pub type Namespace = HashMap<String, Value>;
+pub type Typespace = HashMap<String, TypeDef>;
 
 pub fn stdlib() -> Namespace
 // Build the standard library.
@@ -68,4 +74,15 @@ pub fn stdlib() -> Namespace
 	//namespace.extend(TypeDef::stdlib());
 	namespace.extend(FuncDef::stdlib());
 	namespace
+}
+pub fn infer_namespace(values: &Namespace) -> Typespace
+// Build a typespace from a namespace.
+{
+	values
+	.iter()
+	.map(
+		|(k, v)| {
+			(k.clone(), TypeDef::infer(v))
+		}
+	).collect()
 }

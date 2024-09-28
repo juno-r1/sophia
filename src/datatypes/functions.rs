@@ -75,7 +75,7 @@ impl FuncDef
 						// Null method does not already exist.
 						_ => FuncDef::new_arity(self.clone(), FuncDef::Leaf(new), 0)
 					}
-				} else if *index < new.arity && new.signature[*index].check(property.clone()) {
+				} else if *index < new.arity && new.signature[*index].check(property) {
 					FuncDef::new_node(
 						truepath.extend(new),
 						*falsepath.clone(),
@@ -138,6 +138,24 @@ impl FuncDef
 			}
 		}
 	}
+	pub fn dispatch(&self, signature: &Vec<TypeDef>) -> &Method
+	// Multiple dispatch algorithm, with help from Julia:
+	// https://github.com/JeffBezanson/phdthesis
+	// Binary search tree yields closest key for method, then key is verified.
+	{
+		match self { // Traverse tree, terminate upon reaching leaf node.
+			FuncDef::Node{truepath, falsepath, property, index} => {
+				if signature
+					.get(*index)
+					.expect("CALL")
+					.check(property) 
+				{truepath.dispatch(signature)} else
+				{falsepath.dispatch(signature)}
+			},
+			FuncDef::Leaf(method) => method,
+			FuncDef::Undefined => panic!("Undefined method")
+		}
+	}
 }
 
 // class multimethod:
@@ -147,11 +165,7 @@ impl FuncDef
 // 		task,
 // 		*args: tuple
 // 		) -> None:
-// 		"""
-// 		Multiple dispatch algorithm, with help from Julia:
-// 		https://github.com/JeffBezanson/phdthesis
-// 		Binary search tree yields closest key for method, then key is verified.
-// 		"""
+
 // 		address, signature, arity = task.op.address, task.signature, task.op.arity
 // 		instance = self.true if signature else self.false
 // 		while instance: # Traverse tree; terminates upon reaching leaf node
@@ -317,6 +331,11 @@ impl FuncDef
 		// Produces the standard function namespace.
 		HashMap::from(
 			[
+				new_function!(
+					"return",
+					return_none,
+					return_any
+				),
 				new_function!(
 					"+",
 					u_add,

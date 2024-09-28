@@ -38,6 +38,19 @@ impl TypeDef
 			}
 		}
 	}
+	pub fn infer(value: &Value) -> TypeDef
+	{
+		match value {
+			Value::None => TypeDef::std_none(),
+			Value::Type(_) => TypeDef::std_any(),
+			Value::Function(_) => TypeDef::std_any(),
+			Value::Boolean(_) => TypeDef::std_boolean(),
+			Value::Number(x) if x.denominator_ref() == &Natural::ONE => TypeDef::std_integer(),
+			Value::Number(_) => TypeDef::std_number(),
+			Value::String(_) => TypeDef::std_string(),
+			_ => panic!("Type not currently supported")
+		}
+	}
 // 		attributes = descriptor.split('.')
 // 		datatype = types[attributes[0]]
 // 		methods = []
@@ -64,32 +77,12 @@ impl TypeDef
 			_ => panic!("Type not currently supported")
 		}
 	}
-// types = {
-// 	'any': std_any,
-// 	'none': std_none,
-// 	'some': std_some,
-// 	'type': std_type,
-// 	'function': std_function,
-// 	'boolean': std_boolean,
-// 	'number': std_number,
-// 	'integer': std_integer,
-// 	'sequence': std_sequence,
-// 	'string': std_string,
-// 	'list': std_list,
-// 	'record': std_record,
-// 	'slice': std_slice,
-// 	'future': std_future
-// }
-// properties = {
-// 	'element': cls_element,
-// 	'length': cls_length
-// }
-	pub fn check(&self, predicate: Predicate) -> bool
+	pub fn check(&self, predicate: &Predicate) -> bool
 	// Universal dispatch check exploiting properties of structural typing.
 	{
 		self.types
 		.iter()
-		.find(|x| **x == predicate)
+		.find(|x| *x == predicate)
 		.is_some()
 	}
 	pub fn criterion(&self, other: Self) -> Option<Predicate>
@@ -232,46 +225,46 @@ impl TypeDef
 
 impl Task
 {
-	pub fn type_any(self, _: Vec<Value>) -> Value
+	pub fn type_any(&mut self, _: Vec<Value>) -> Value
 	{
 		Value::new_boolean(true)
 	}
-	pub fn type_none(self, args: Vec<Value>) -> Value
+	pub fn type_none(&mut self, args: Vec<Value>) -> Value
 	{
 		match args[0] {
 			Value::None => Value::new_boolean(true),
 			_ => Value::new_boolean(false)
 		}
 	}
-	pub fn type_some(self, args: Vec<Value>) -> Value
+	pub fn type_some(&mut self, args: Vec<Value>) -> Value
 	{
 		match args[0] {
 			Value::None => Value::new_boolean(false),
 			_ => Value::new_boolean(true)
 		}
 	}
-	pub fn type_boolean(self, args: Vec<Value>) -> Value
+	pub fn type_boolean(&mut self, args: Vec<Value>) -> Value
 	{
 		match args[0] {
 			Value::Boolean(_) => Value::new_boolean(true),
 			_ => Value::new_boolean(false)
 		}
 	}
-	pub fn type_number(self, args: Vec<Value>) -> Value
+	pub fn type_number(&mut self, args: Vec<Value>) -> Value
 	{
 		match args[0] {
 			Value::Number(_) => Value::new_boolean(true),
 			_ => Value::new_boolean(false)
 		}
 	}
-	pub fn type_integer(self, args: Vec<Value>) -> Value
+	pub fn type_integer(&mut self, args: Vec<Value>) -> Value
 	{
 		match args[0].clone() {
 			Value::Number(x) if x.denominator_ref() == &Natural::ONE => Value::new_boolean(true),
 			_ => Value::new_boolean(false)
 		}
 	}
-	pub fn type_string(self, args: Vec<Value>) -> Value
+	pub fn type_string(&mut self, args: Vec<Value>) -> Value
 	{
 		match args[0] {
 			Value::String(_) => Value::new_boolean(true),

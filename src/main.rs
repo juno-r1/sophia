@@ -4,7 +4,6 @@
 extern crate macros;
 
 mod sophia;
-use sophia::arche::stdlib;
 use sophia::kadmos::Parser;
 use sophia::runtime::{Supervisor, Task};
 
@@ -25,9 +24,9 @@ fn main()
 	for item in parser.analyse(){
 		println!("{}", item.to_string())
 	};
-	let task = Task::new(
-		parser.analyse(),
+	let mut task = Task::new(
+		&parser.analyse(),
 		parser.namespace
 	);
-	println!("{:?}", stdlib());
+	println!("{:?}", task.run());
 }

@@ -393,15 +393,15 @@ impl Instruction {
 	fn return_end(node: &Node) -> Vec<Instruction>
 	{
 		vec![
-			Instruction::internal(
-				".check",
-				&node.register,
-				vec![
-					if node.nodes.is_empty() {node.register.clone()} else {node.nodes[0].register.clone()},
-					String::from("") // Incorrect.
-				],
-				vec![]
-			),
+			// Instruction::internal(
+			// 	".check",
+			// 	&node.register,
+			// 	vec![
+			// 		if node.nodes.is_empty() {node.register.clone()} else {node.nodes[0].register.clone()},
+			// 		String::from("") // Incorrect.
+			// 	],
+			// 	vec![]
+			// ),
 			Instruction::command(
 				"return",
 				"0",

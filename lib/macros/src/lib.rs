@@ -107,7 +107,7 @@ pub fn std_fn(stream: TokenStream) -> TokenStream
 		"
 		impl Task
 		{{
-			pub fn {name}(self, args: Vec<Value>) -> Value
+			pub fn {name}(&mut self, args: Vec<Value>) -> Value
 			{{
 				match &args[..] {{
 					[{signature}] => {{{bindings}{result}}},

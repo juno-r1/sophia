@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, HashMap};
 
 use crate::internal::instructions::Instruction;
-use crate::sophia::arche::{Function, Namespace};
+use crate::sophia::arche::{Function, Namespace, Value};
 use crate::sophia::runtime::Task;
 
 use super::types::TypeDef;
@@ -63,6 +63,13 @@ impl Method
 			signature: types[1..].to_vec(),
 			arity: names.len() - 1,
 			closure: HashMap::new()
+		}
+	}
+	pub fn call(&self, task: &mut Task, args: Vec<Value>) -> Value
+	{
+		match self.routine {
+			Routine::Std(function) => function(task, args),
+			Routine::User(_) => panic!("Not implemented")
 		}
 	}
 }
