@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, VecDeque};
 use std::ops::Not;
 
 use regex::{Captures, Regex};
+use utils::coerce::Coerce;
 
 use crate::internal::lexer::Lexer;
 use crate::internal::patterns;
@@ -34,8 +35,8 @@ impl Node
         )
         .map( // Parse lines as nodes.
             |line: String| -> Node {
-                let scope = patterns::count(&line, '\t');
-                let (pattern, branch) =
+                let scope = utils::string::count(&line, '\t');
+                let (pattern, branch): (String, bool) =
                     if let Some(branch) = Regex::new(patterns::BRANCH)
                     .unwrap()
                     .captures(&line[scope..]) {
@@ -43,13 +44,12 @@ impl Node
                             branch
                             .name("branch")
                             .unwrap()
-                            .as_str()
                             .to_string(),
                             true
                         )
                     } else {
                         (
-                            line[scope..].to_string(),
+                            line[scope..].into(),
                             false
                         )
                     };
@@ -97,7 +97,7 @@ impl Node
             nodes: vec![],
             scope: 0,
             branch: false,
-			register: String::from("0")
+			register: format!("0")
         }
     }
     pub fn leaf(token: Token) -> Node
@@ -109,7 +109,7 @@ impl Node
             nodes: vec![],
             scope: 0,
             branch: false,
-			register: String::from("0")
+			register: format!("0")
         }
     }
     pub fn branch(token: Token, nodes: Vec<Node>) -> Node
@@ -121,7 +121,7 @@ impl Node
             nodes,
             scope: 0,
             branch: false,
-			register: String::from("0")
+			register: format!("0")
         }
     }
     pub fn expression(pattern: &str) -> Node
@@ -151,10 +151,6 @@ impl Node
 		.unwrap()
 		.captures(&pattern) {
 			Node::new_type(cap)
-		// } else if let Some(cap) = Regex::new(patterns::EVENT)
-		// .unwrap()
-		// .captures(&pattern) {
-		// 	Node::new_event(cap)
 		} else if let Some(cap) = Regex::new(patterns::FUNCTION)
 		.unwrap()
 		.captures(&pattern) {
@@ -195,10 +191,6 @@ impl Node
 		.unwrap()
 		.is_match(&pattern) {
 			Node::new_break()
-        } else if Regex::new(patterns::START)
-        .unwrap()
-        .is_match(&pattern) {
-            Node::new_start()
         } else if Regex::new(patterns::ELSE)
         .unwrap()
         .is_match(&pattern) {
@@ -212,13 +204,10 @@ impl Node
         let name = cap
             .name("name")
             .unwrap()
-            .as_str()
             .to_string();
         let supertype: String = match cap.name("supertype") {
-            Some(supertype) => supertype
-                .as_str()
-                .to_string(),
-            None => String::from("any")
+            Some(supertype) => supertype.to_string(),
+            None => format!("any")
         };
 		match cap.name("prototype") {
 			Some(prototype) => Node::branch(
@@ -229,11 +218,11 @@ impl Node
 				},
 				match cap.name("expression") {
 					Some(expression) => [
-						Node::expression(prototype.as_str()),
-						Node::expression(expression.as_str())
+						Node::expression(prototype.into()),
+						Node::expression(expression.into())
 					].into(),
 					None => [
-						Node::expression(prototype.as_str())
+						Node::expression(prototype.into())
 					].into()
 				}
 			),
@@ -245,101 +234,22 @@ impl Node
 				},
 				match cap.name("expression") {
 					Some(expression) => [
-						Node::expression(expression.as_str())
+						Node::expression(expression.into())
 					].into(),
 					None => vec![],
 				}
 			)
 		}
     }
-    // fn new_event(cap: Captures) -> Node
-    // {
-    //     let funname = cap
-    //         .name("name")
-    //         .unwrap()
-    //         .as_str()
-    //         .to_string();
-    //     let funtype = match cap.name("final") {
-    //         Some(x) => x
-    //         .as_str()
-    //         .to_string(),
-    //         None => String::from("any")
-    //     };
-    //     let message = cap
-    //         .name("message")
-    //         .unwrap()
-    //         .as_str()
-    //         .to_string();
-    //     let check = match cap.name("check") {
-    //         Some(x) => x
-    //         .as_str()
-    //         .trim()
-    //         .to_string(),
-    //         None => String::from("any")
-    //     };
-    //     let params = cap
-    //         .name("params")
-    //         .unwrap()
-    //         .as_str();
-    //     let signature: BTreeMap<String, String> = if params.is_empty() {
-    //         BTreeMap::from(
-    //             [
-	// 				(funname.clone(), funtype.clone()),
-    //                 (message, check)
-    //             ]
-    //         )
-    //     } else {
-    //         Regex::new(r"\s*,\s*")
-    //         .unwrap()
-    //         .split(params)
-    //         .fold(
-    //             BTreeMap::from(
-    //                 [
-    //                     (message, check)
-    //                 ]
-    //             ),
-    //             |mut acc, param| {
-    //                 let mut split = param.split(" ");
-    //                 let left = split.next().unwrap();
-    //                 match split.next() {
-    //                     Some(right) => acc.insert(
-    //                         right.to_string(),
-    //                         left.to_string()
-    //                     ),
-    //                     None => acc.insert(
-    //                         left.to_string(),
-    //                         String::from("any")
-    //                     )
-    //                 };
-    //                 acc
-    //             }
-    //         )
-    //     };
-    //     Node::branch(
-    //         Token::Event{
-	// 			name: funname,
-	// 			signature
-	// 		},
-    //         match cap.name("expression") {
-    //             Some(expression) => [
-    //                 Node::expression(expression.as_str())
-    //             ].into(),
-    //             None => vec![]
-    //         }
-    //     )
-    // }
     fn new_function(cap: Captures) -> Node
     {
-        let funname = cap
+        let funname: String = cap
             .name("name")
             .unwrap()
-            .as_str()
             .to_string();
-        let funtype = match cap.name("final") {
-            Some(x) => x
-            .as_str()
-            .to_string(),
-            None => String::from("any")
+        let funtype: String = match cap.name("final") {
+            Some(x) => x.to_string(),
+            None => format!("any")
         };
         let params = cap
             .name("params")
@@ -348,7 +258,10 @@ impl Node
         let signature: BTreeMap<String, String> = if params.is_empty() {
             BTreeMap::from(
 				[
-					(funname.clone(), funtype.clone())
+					(
+                        funname.clone(),
+                        funtype.clone()
+                    )
 				]
 			)
         } else {
@@ -362,12 +275,12 @@ impl Node
                     let left = split.next().unwrap();
                     match split.next() {
                         Some(right) => acc.insert(
-                            right.to_string(),
-                            left.to_string()
+                            right.into(),
+                            left.into()
                         ),
                         None => acc.insert(
-                            left.to_string(),
-                            String::from("any")
+                            left.into(),
+                            format!("any")
                         )
                     };
                     acc
@@ -381,7 +294,7 @@ impl Node
 			},
             match cap.name("expression") {
                 Some(expression) => [
-                    Node::expression(expression.as_str())
+                    Node::expression(expression.into())
                 ].into(),
                 None => vec![]
             }
@@ -401,27 +314,17 @@ impl Node
                 let name = cap
                     .name("name")
                     .unwrap()
-                    .as_str()
                     .to_string();
                 match cap.name("type") {
-                    Some(x) => {
-                        acc.0.insert(
-                            x
-                            .as_str()
-                            .to_string(),
-                            name
-                        )    
-                    },
-                    None => {
-                        acc.0.insert(name, String::from("any"))
-                    }
+                    Some(x) => acc.0.insert(x.to_string(), name),
+                    None => acc.0.insert(name, format!("any"))
                 };
                 acc.1.push(
                     Node::expression(
                         cap
                         .name("expression")
                         .unwrap()
-                        .as_str()
+                        .into()
                     )
                 );
                 acc
@@ -441,7 +344,7 @@ impl Node
                     cap
                     .name("expression")
                     .unwrap()
-                    .as_str()
+                    .into()
                 )
             ].into()
         )
@@ -455,7 +358,7 @@ impl Node
                     cap
                     .name("expression")
                     .unwrap()
-                    .as_str()
+                    .into()
                 )
             ].into()
         )
@@ -467,7 +370,6 @@ impl Node
                 cap
                 .name("index")
                 .unwrap()
-                .as_str()
                 .to_string()
 			),
             [
@@ -475,7 +377,7 @@ impl Node
                     cap
                     .name("iterator")
                     .unwrap()
-                    .as_str()
+                    .into()
                 )
             ].into()
         )
@@ -489,7 +391,7 @@ impl Node
                     [
                         Node::expression(
                             expression
-                            .as_str()
+                            .into()
                         )
                     ].into(),
                 None => vec![]
@@ -506,12 +408,12 @@ impl Node
                     cap
                     .name("names")
                     .unwrap()
-                    .as_str()
+                    .into()
                 )
                 .fold(
                     vec![],
                     |mut acc, name| {
-                        acc.push(name.to_string());
+                        acc.push(name.into());
                         acc
                     }
                 )
@@ -529,30 +431,20 @@ impl Node
                     cap
                     .name("names")
                     .unwrap()
-                    .as_str()
+                    .into()
                 )
                 .fold(
                     vec![],
                     |mut acc, name| {
-                        acc.push(name.to_string());
+                        acc.push(name.into());
                         acc
                     }
                 ),
                 source: match cap.name("source") {
-                    Some(x) => Some(x
-                        .as_str()
-                        .to_string()
-                    ),
+                    Some(x) => Some(x.to_string()),
                     None => None
                 }
 			},
-            vec![]
-        )
-    }
-    fn new_start() -> Node
-    {
-        Node::branch(
-            Token::Start,
             vec![]
         )
     }

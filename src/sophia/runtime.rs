@@ -5,9 +5,9 @@ use std::path::PathBuf;
 use crate::datatypes::methods::Method;
 use crate::datatypes::types::TypeDef;
 use crate::internal::instructions::Instruction;
-use crate::sophia::arche::Function;
 
-use super::arche::{infer_namespace, stdlib, Namespace, Typespace, Value};
+use super::hemera::Error;
+use super::arche::{infer_namespace, stdlib, Function, Namespace, Typespace, Value};
 
 #[derive(Debug, Clone)]
 pub struct Supervisor {
@@ -99,6 +99,7 @@ impl Task
     pub fn run(&mut self) -> Value
     // Task runtime loop.
     // Performs dispatch and executes instructions.
+    // Errors are returned immediately to the caller.
     {
 		// debug_task = 'task' in self.handler.flags # Debug runtime loop
 		// self.caller = None # Reset caller
@@ -114,67 +115,67 @@ impl Task
                 Instruction::Internal{address, args, ..} => (address, args),
                 Instruction::Label(_) => continue
             };
-            let values: Vec<Value> = args
+            let values: Vec<Value> = match args
                 .iter()
                 .map(|register| self.read(register))
-                .collect();
-            self.signature = args
+                .collect() {
+                    Ok(x) => x,
+                    Err(x) => return x
+                };
+            self.signature = match args
                 .iter()
                 .map(|register| self.describe(register))
-                .collect();
+                .collect() {
+                    Ok(x) => x,
+                    Err(x) => return x
+                };
             value = match self.op.clone() {
                 Instruction::Command{name, ..} => {
-                    match self.read(name.as_str()) {
-                        Value::Function(function) => {
-                            let method: &Method = (*function).dispatch(&self.signature);
+                    match self.read(&name) {
+                        Ok(Value::Function(function)) => {
+                            let method: &Method = match (*function).dispatch(&self.signature) {
+                                Ok(x) => x,
+                                Err(_) => return Value::Err(Error::DISP)
+                            };
                             let value: Value = method.call(self, values);
                             self.write(&address, value, method.last.clone())
                         },
-                        _ => panic!("CALL")
+                        Err(x) => return x,
+                        _ => return Value::Err(Error::CALL)
                     }
                 },
                 Instruction::Internal{name, ..} => {
-                    let function: Function = self.intern(name.as_str());
-                    let value: Value = function(self, values);
-                    let last: TypeDef = match self.read("any") {
-                        Value::Type(typedef) => *typedef.clone(),
-                        _ => panic!("TYPE")
-                    }; // Incorrect.
-                    self.write(&address, value, last)
+                    match name.as_str() {
+                        ".bind" => Task::intern_bind(self, values),
+                        _ => return Value::Err(Error::IMPL)
+                    }
                 },
-                _ => panic!("Not implemented")
+                _ => return Value::Err(Error::IMPL)
             };
         } value
     }
-    fn read(&mut self, address: &str) -> Value
+    fn read(&mut self, address: &str) -> Result<Value, Value>
     // Reads a value and returns a copy.
     {
         match self.values.get(address) {
-            Some(x) => x.clone(),
-            None => panic!("READ")
+            Some(x) => Ok(x.clone()),
+            None => Err(Value::Err(Error::READ))
         }
     }
-    fn describe(&mut self, address: &str) -> TypeDef
+    fn describe(&mut self, address: &str) -> Result<TypeDef, Value>
     // Reads a type and returns a copy.
     {
         match self.types.get(address) {
-            Some(x) => x.clone(),
-            None => panic!("DESCRIBE")
+            Some(x) => Ok(x.clone()),
+            None => Err(Value::Err(Error::DESC))
         }
     }
     fn write(&mut self, address: &str, value: Value, typedef: TypeDef) -> Value
     // Writes the return value and type and returns a copy of the value.
     {
-        self.values.insert(address.to_string(), value.clone());
-        self.types.insert(address.to_string(), typedef);
+        self.values.insert(address.into(), value.clone());
+        self.types.insert(address.into(), typedef);
         value
-    }
-    fn intern(&mut self, name: &str) -> Function
-    // Gets an internal function.
-    {
-        match name {
-            _ => panic!("FIND_INTERN")
-        }
     }
 }
 
@@ -189,3 +190,21 @@ impl Task
 // 			return self.handler.debug_final(self, value)
 // 		except SystemExit:
 // 			return self.handler.debug_final(self, None)
+
+impl Task
+// Internal functions.
+{
+    fn intern_bind(&mut self, args: Vec<Value>) -> Value
+    {
+        Value::new_none()
+    }
+}
+
+// def intern_bind(
+//     self,
+//     *args: tuple
+//     ) -> None:
+
+//     for i, name in enumerate(self.op.label):
+//         self.values[name] = args[i]
+//         self.types[name] = self.signature[i]

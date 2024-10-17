@@ -22,8 +22,8 @@ impl Parser
 			instructions: vec![],
 			namespace: HashMap::from(
 				[
-					(String::from("0"), Value::new_none()),
-					(String::from("-1"), Value::new_none())
+					(format!("0"), Value::new_none()),
+					(format!("-1"), Value::new_none())
 				]
 			),
 			constant: -1
@@ -87,7 +87,7 @@ impl Parser
 			Token::Env(name) 		|
 			Token::Name(name) 		|
 			Token::Receive(name) 	=> name.clone(),
-			Token::Null => String::from("-1"),
+			Token::Null => format!("-1"),
 			Token::Sequence(_) if node.nodes.is_empty() => {
 				self.constant -= 1;
 				let index = self.constant.to_string();
@@ -141,7 +141,7 @@ impl Parser
 		loop {
 			match instructions.pop_front() {
 				Some(ins) => {
-					match ins.clone() {
+					match &ins {
 						Instruction::Label(name) if name == "BIND" => {
 							Instruction::bind(&mut instructions, &mut acc)
 						},

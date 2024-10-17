@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, HashMap};
 
 use crate::internal::instructions::Instruction;
 use crate::sophia::arche::{Function, Namespace, Value};
+use crate::sophia::hemera::Error;
 use crate::sophia::runtime::Task;
 
 use super::types::TypeDef;
@@ -69,7 +70,7 @@ impl Method
 	{
 		match self.routine {
 			Routine::Std(function) => function(task, args),
-			Routine::User(_) => panic!("Not implemented")
+			Routine::User(_) => Value::Err(Error::IMPL)
 		}
 	}
 }
@@ -107,14 +108,14 @@ impl Predicate
 	{
 		Predicate::Base{
 			routine,
-			name: name.to_string()
+			name: name.into()
 		}
 	}
 	pub fn new_any() -> Predicate
 	{
 		Predicate::Base{
 			routine: Task::type_any,
-			name: "any".to_string()
+			name: format!("any")
 		}
 	}
 }

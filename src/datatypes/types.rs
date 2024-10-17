@@ -48,6 +48,7 @@ impl TypeDef
 			Value::Number(x) if x.denominator_ref() == &Natural::ONE => TypeDef::std_integer(),
 			Value::Number(_) => TypeDef::std_number(),
 			Value::String(_) => TypeDef::std_string(),
+			Value::Range(_) => TypeDef::std_range(),
 			_ => panic!("Type not currently supported")
 		}
 	}
@@ -74,6 +75,7 @@ impl TypeDef
 			"number" => TypeDef::std_number(),
 			"integer" => TypeDef::std_integer(),
 			"string" => TypeDef::std_string(),
+			"range" => TypeDef::std_range(),
 			_ => panic!("Type not currently supported")
 		}
 	}
@@ -85,24 +87,24 @@ impl TypeDef
 		.find(|x| *x == predicate)
 		.is_some()
 	}
-	pub fn criterion(&self, other: Self) -> Option<Predicate>
-	// 	Gets the most specific predicate that two typedefs don't share.
-	// 	This operation is non-commutative.
+	pub fn criterion(&self, other: &Self) -> Option<&Predicate>
+	// Gets the most specific predicate that two typedefs don't share.
+	// This operation is non-commutative.
 	{
-		let criteria: Vec<Predicate> = self.types
+		let criteria: Vec<&Predicate> = self.types
 			.iter()
 			.filter_map(
 				|x| {
-					for y in other.clone().types {
-						if *x == y {
+					for y in &other.types {
+						if *x == *y {
 							return None
 						}
 					}
-					Some(x.clone())
+					Some(x)
 				}
 			).collect();
 		match criteria.last() {
-			Some(x) => Some(x.clone()),
+			Some(x) => Some(x),
 			None => None
 		}
 	}
@@ -113,7 +115,8 @@ impl TypeDef
 	pub fn stdlib() -> Namespace
 	{
 		// Produces a key-value pair with a standard library type.
-		macro_rules! new_type {
+		macro_rules! new_type
+		{
 			($name:expr, $method:ident) => {
 				($name.into(), Value::new_type(TypeDef::$method()))
 			};
@@ -128,10 +131,11 @@ impl TypeDef
 				new_type!("number", std_number),
 				new_type!("integer", std_integer),
 				new_type!("string", std_string),
+				new_type!("range", std_range),
 			]
 		)
 	}
-	fn std_any() -> TypeDef
+	pub fn std_any() -> TypeDef
 	{
 		TypeDef::new(
 			vec![
@@ -143,7 +147,7 @@ impl TypeDef
 			None
 		)
 	}
-	fn std_none() -> TypeDef
+	pub fn std_none() -> TypeDef
 	{
 		TypeDef::from_super(
 			&TypeDef::std_any(),
@@ -153,10 +157,10 @@ impl TypeDef
 					Task::type_none
 				)
 			],
-			Some(Value::new_none())
+			None
 		)
 	}
-	fn std_some() -> TypeDef
+	pub fn std_some() -> TypeDef
 	{
 		TypeDef::from_super(
 			&TypeDef::std_any(),
@@ -169,7 +173,7 @@ impl TypeDef
 			None
 		)
 	}
-	fn std_boolean() -> TypeDef
+	pub fn std_boolean() -> TypeDef
 	{
 		TypeDef::from_super(
 			&TypeDef::std_some(),
@@ -182,7 +186,7 @@ impl TypeDef
 			Some(Value::new_boolean(true))
 		)
 	}
-	fn std_number() -> TypeDef
+	pub fn std_number() -> TypeDef
 	{
 		TypeDef::from_super(
 			&TypeDef::std_some(),
@@ -195,7 +199,7 @@ impl TypeDef
 			Some(Value::new_number(Rational::ZERO))
 		)
 	}
-	fn std_integer() -> TypeDef
+	pub fn std_integer() -> TypeDef
 	{
 		TypeDef::from_super(
 			&TypeDef::std_number(),
@@ -208,7 +212,7 @@ impl TypeDef
 			None
 		)
 	}
-	fn std_string() -> TypeDef
+	pub fn std_string() -> TypeDef
 	{
 		TypeDef::from_super(
 			&TypeDef::std_some(),
@@ -219,6 +223,19 @@ impl TypeDef
 				)
 			],
 			Some(Value::new_string(String::new()))
+		)
+	}
+	pub fn std_range() -> TypeDef
+	{
+		TypeDef::from_super(
+			&TypeDef::std_some(),
+			vec![
+				Predicate::new_predicate_base(
+					"range",
+					Task::type_range
+				)
+			],
+			None
 		)
 	}
 }
@@ -259,7 +276,7 @@ impl Task
 	}
 	pub fn type_integer(&mut self, args: Vec<Value>) -> Value
 	{
-		match args[0].clone() {
+		match &args[0] {
 			Value::Number(x) if x.denominator_ref() == &Natural::ONE => Value::new_boolean(true),
 			_ => Value::new_boolean(false)
 		}
@@ -268,6 +285,13 @@ impl Task
 	{
 		match args[0] {
 			Value::String(_) => Value::new_boolean(true),
+			_ => Value::new_boolean(false)
+		}
+	}
+	pub fn type_range(&mut self, args: Vec<Value>) -> Value
+	{
+		match args[0] {
+			Value::Range(_) => Value::new_boolean(true),
 			_ => Value::new_boolean(false)
 		}
 	}

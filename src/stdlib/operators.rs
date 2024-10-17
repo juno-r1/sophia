@@ -1,11 +1,10 @@
-pub mod add
+use crate::std_mod;
+
+std_mod!
 {
-	use macros::std_fn;
-	use malachite::num::arithmetic::traits::Abs;
-
-	use crate::sophia::arche::Value;
-	use crate::sophia::runtime::Task;
-
+	add: {
+		use malachite::num::arithmetic::traits::Abs;
+	};
 	std_fn!
 	{
 		number u_add(number x0)
@@ -22,13 +21,9 @@ pub mod add
 	}
 }
 
-pub mod sub
+std_mod!
 {
-	use macros::std_fn;
-
-	use crate::sophia::arche::Value;
-	use crate::sophia::runtime::Task;
-
+	sub;
 	std_fn!
 	{
 		number u_sub(number x0)
@@ -45,13 +40,9 @@ pub mod sub
 	}
 }
 
-pub mod mul
+std_mod!
 {
-	use macros::std_fn;
-
-	use crate::sophia::arche::Value;
-	use crate::sophia::runtime::Task;
-
+	mul;
 	std_fn!
 	{
 		number b_mul(number x0, number x1)
@@ -61,13 +52,9 @@ pub mod mul
 	}
 }
 
-pub mod div
+std_mod!
 {
-	use macros::std_fn;
-
-	use crate::sophia::arche::Value;
-	use crate::sophia::runtime::Task;
-
+	div;
 	std_fn!
 	{
 		number b_div(number x0, number x1)
@@ -77,29 +64,26 @@ pub mod div
 	}
 }
 
-pub mod exp
+std_mod!
 {
-	use macros::std_fn;
-	use malachite::Rational;
-	use malachite::num::basic::traits::One;
-
-	use crate::sophia::arche::Value;
-	use crate::sophia::runtime::Task;
-
+	exp: {
+		use malachite::Rational;
+		use malachite::num::basic::traits::One;
+	};
 	std_fn!
 	{
 		number b_exp(number x0, number x1)
 		{
 			let mut acc = Rational::ONE;
-			let mut i = x1.clone();
+			let mut i = x1;
 			if i > 0 {
 				while i != 0 {
-					acc *= x0.clone();
+					acc *= &x0;
 					i -= Rational::ONE;
 				};
 			} else if i < 0 {
 				while i != 0 {
-					acc /= x0.clone();
+					acc /= &x0;
 					i -= Rational::ONE;
 				};
 			};
@@ -108,38 +92,30 @@ pub mod exp
 	}
 }
 
-pub mod mdl
+std_mod!
 {
-	use malachite::Rational;
-	use macros::std_fn;
-
-	use crate::sophia::arche::Value;
-	use crate::sophia::runtime::Task;
-
-	// Implementation borrowed from Python's Rational module.
+	mdl: {
+		use malachite::Rational;
+	};
 	std_fn!
 	{
 		number b_mdl(number x0, number x1)
+		// Implementation borrowed from Python's Rational module.
 		{
 			let (nx, dx) = x0.into_numerator_and_denominator();
 			let (ny, dy) = x1.into_numerator_and_denominator();
-			let a = nx * dy.clone();
-			let b = ny * dx.clone();
+			let (a, b) = (nx * &dy, ny * &dx);
 			Rational::from_naturals(
-				((a % b.clone()) + b.clone()) % b.clone(), // Rust doesn't have the modulo operator!
-				dx.clone() * dy.clone()
+				((a % &b) + &b) % &b, // Rust doesn't have the modulo operator!
+				&dx * &dy
 			)
 		}
 	}
 }
 
-pub mod eql
+std_mod!
 {
-	use macros::std_fn;
-
-	use crate::sophia::arche::Value;
-	use crate::sophia::runtime::Task;
-
+	eql;
 	std_fn!
 	{
 		boolean b_eql(any x0, any x1)
@@ -149,13 +125,9 @@ pub mod eql
 	}
 }
 
-pub mod nql
+std_mod!
 {
-	use macros::std_fn;
-
-	use crate::sophia::arche::Value;
-	use crate::sophia::runtime::Task;
-
+	nql;
 	std_fn!
 	{
 		boolean b_nql(any x0, any x1)
@@ -165,13 +137,9 @@ pub mod nql
 	}
 }
 
-pub mod ltn
+std_mod!
 {
-	use macros::std_fn;
-
-	use crate::sophia::arche::Value;
-	use crate::sophia::runtime::Task;
-
+	ltn;
 	std_fn!
 	{
 		boolean b_ltn(number x0, number x1)
@@ -181,13 +149,9 @@ pub mod ltn
 	}
 }
 
-pub mod gtn
+std_mod!
 {
-	use macros::std_fn;
-
-	use crate::sophia::arche::Value;
-	use crate::sophia::runtime::Task;
-
+	gtn;
 	std_fn!
 	{
 		boolean b_gtn(number x0, number x1)
@@ -197,13 +161,9 @@ pub mod gtn
 	}
 }
 
-pub mod lql
+std_mod!
 {
-	use macros::std_fn;
-
-	use crate::sophia::arche::Value;
-	use crate::sophia::runtime::Task;
-
+	lql;
 	std_fn!
 	{
 		boolean b_lql(number x0, number x1)
@@ -213,13 +173,9 @@ pub mod lql
 	}
 }
 
-pub mod gql
+std_mod!
 {
-	use macros::std_fn;
-
-	use crate::sophia::arche::Value;
-	use crate::sophia::runtime::Task;
-
+	gql;
 	std_fn!
 	{
 		boolean b_gql(number x0, number x1)
@@ -229,45 +185,40 @@ pub mod gql
 	}
 }
 
-pub mod sbs
+std_mod!
 {
-	use macros::std_fn;
-
-	use crate::sophia::arche::Value;
-	use crate::sophia::runtime::Task;
-
+	sbs;
 	std_fn!
 	{
 		boolean b_sbs_string(string x0, string x1)
 		{
-			x1.contains(x0.as_str())
+			x1.contains(&x0)
+		}
+	}
+	std_fn!
+	{
+		boolean b_sbs_range(number x0, range x1)
+		{
+			x1.contains(&x0)
 		}
 	}
 }
 
-pub mod lnt
+std_mod!
 {
-	use macros::std_fn;
-
-	use crate::sophia::arche::Value;
-	use crate::sophia::runtime::Task;
-
+	lnt;
 	std_fn!
 	{
-		boolean b_lnt(boolean x0)
+		boolean u_lnt(boolean x0)
 		{
 			!x0
 		}
 	}
 }
 
-pub mod lnd
+std_mod!
 {
-	use macros::std_fn;
-
-	use crate::sophia::arche::Value;
-	use crate::sophia::runtime::Task;
-
+	lnd;
 	std_fn!
 	{
 		boolean b_lnd(boolean x0, boolean x1)
@@ -277,13 +228,9 @@ pub mod lnd
 	}
 }
 
-pub mod lor
+std_mod!
 {
-	use macros::std_fn;
-
-	use crate::sophia::arche::Value;
-	use crate::sophia::runtime::Task;
-
+	lor;
 	std_fn!
 	{
 		boolean b_lor(boolean x0, boolean x1)
@@ -293,13 +240,9 @@ pub mod lor
 	}
 }
 
-pub mod lxr
+std_mod!
 {
-	use macros::std_fn;
-
-	use crate::sophia::arche::Value;
-	use crate::sophia::runtime::Task;
-
+	lxr;
 	std_fn!
 	{
 		boolean b_lxr(boolean x0, boolean x1)

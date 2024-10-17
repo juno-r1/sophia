@@ -12,6 +12,7 @@ use serde::Deserialize;
 use serde_json;
 
 use crate::sophia::arche::{Namespace, Value};
+use crate::sophia::hemera::Error;
 use crate::sophia::runtime::Task;
 
 use super::methods::{Method, Predicate};
@@ -39,7 +40,7 @@ impl FuncDef
 	{
 		let mut funcdef = FuncDef::Undefined;
 		for method in methods {
-			funcdef = funcdef.extend(method.clone());
+			funcdef = funcdef.extend(method);
 		};
 		funcdef
 	}
@@ -109,20 +110,20 @@ impl FuncDef
 				} else {
 					for i in 0..new.arity {
 						let (x, y): (TypeDef, TypeDef) = (new.signature[i].clone(), old.signature[i].clone());
-						match x.clone().criterion(y.clone()) {
+						match x.criterion(&y) {
 							Some(crit) => return FuncDef::new_node(
 								FuncDef::Leaf(new),
 								FuncDef::Leaf(old.clone()),
-								crit,
+								crit.clone(),
 								i
 							),
 							None => {}
 						};
-						match y.criterion(x) {
+						match y.criterion(&x) {
 							Some(crit) => return FuncDef::new_node(
 								FuncDef::Leaf(old.clone()),
 								FuncDef::Leaf(new),
-								crit,
+								crit.clone(),
 								i
 							),
 							None => {}
@@ -138,22 +139,23 @@ impl FuncDef
 			}
 		}
 	}
-	pub fn dispatch(&self, signature: &Vec<TypeDef>) -> &Method
+	pub fn dispatch(&self, signature: &Vec<TypeDef>) -> Result<&Method, Error>
 	// Multiple dispatch algorithm, with help from Julia:
 	// https://github.com/JeffBezanson/phdthesis
 	// Binary search tree yields closest key for method, then key is verified.
 	{
 		match self { // Traverse tree, terminate upon reaching leaf node.
 			FuncDef::Node{truepath, falsepath, property, index} => {
-				if signature
-					.get(*index)
-					.expect("CALL")
-					.check(property) 
+				if signature.len() != 0 &&
+				match signature.get(*index) {
+					Some(x) => x.check(property),
+					None => return Err(Error::DISP)
+				}
 				{truepath.dispatch(signature)} else
 				{falsepath.dispatch(signature)}
 			},
-			FuncDef::Leaf(method) => method,
-			FuncDef::Undefined => panic!("Undefined method")
+			FuncDef::Leaf(method) => Ok(method),
+			FuncDef::Undefined => Err(Error::DISP)
 		}
 	}
 }
@@ -280,7 +282,8 @@ impl FuncDef
 			).expect("Couldn't read signature file")
 		).expect("Couldn't deserialise signature file");
 		// Produces a key-value pair with a standard library function.
-		macro_rules! new_function {
+		macro_rules! new_function
+		{
 			($name:expr) => {
 				($name.into(), Value::new_function(FuncDef::new(vec![])))
 			};
@@ -305,20 +308,11 @@ impl FuncDef
 									data.signature
 									.iter()
 									.map(
-										|x| {
-											let mut descriptor = x.split(": ");
-											(
-												descriptor
-												.next()
-												.unwrap()
-												.to_string(),
-												TypeDef::read(
-													descriptor
-													.next()
-													.unwrap()
-												)
-											)
-										}
+										|x|
+										(
+											format!("_"),
+											TypeDef::read(x)
+										)
 									)
 								)
 							);
@@ -331,16 +325,84 @@ impl FuncDef
 		// Produces the standard function namespace.
 		HashMap::from(
 			[
+				// Built-ins.
 				new_function!(
 					"return",
 					return_none,
 					return_any
 				),
+				// Operators.
 				new_function!(
 					"+",
 					u_add,
 					b_add
-				)
+				),
+				new_function!(
+					"-",
+					u_sub,
+					b_sub
+				),
+				new_function!(
+					"*",
+					b_mul
+				),
+				new_function!(
+					"/",
+					b_div
+				),
+				new_function!(
+					"^",
+					b_exp
+				),
+				new_function!(
+					"%",
+					b_mdl
+				),
+				new_function!(
+					"=",
+					b_eql
+				),
+				new_function!(
+					"!=",
+					b_nql
+				),
+				new_function!(
+					"<",
+					b_ltn
+				),
+				new_function!(
+					">",
+					b_gtn
+				),
+				new_function!(
+					"<=",
+					b_lql
+				),
+				new_function!(
+					">=",
+					b_gql
+				),
+				new_function!(
+					"in",
+					b_sbs_string,
+					b_sbs_range
+				),
+				new_function!(
+					"not",
+					u_lnt
+				),
+				new_function!(
+					"and",
+					b_lnd
+				),
+				new_function!(
+					"or",
+					b_lor
+				),
+				new_function!(
+					"xor",
+					b_lxr
+				),
 			]
 		)
 	}

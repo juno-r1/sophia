@@ -29,7 +29,7 @@ impl ToString for Instruction
     {
 		match self {
 			Instruction::Command{name, address, args, arity} => {
-				let mut buf: String = String::from(name);
+				let mut buf: String = name.into();
 				buf.push_str(" "); buf.push_str(address);
 				match arity {
 					0 => {},
@@ -43,7 +43,7 @@ impl ToString for Instruction
 				buf
 			},
 			Instruction::Internal{name, address, args, labels, arity, count} => {
-				let mut buf: String = String::from(name);
+				let mut buf: String = name.into();
 				buf.push_str(" "); buf.push_str(address);
 				match arity {
 					0 => {},
@@ -57,7 +57,7 @@ impl ToString for Instruction
 				buf
 			},
 			Instruction::Label(name) => {
-				let mut buf: String = String::from(name);
+				let mut buf: String = name.into();
 				buf.push_str(";");
 				// match label {
 				// 	0 => {},
@@ -77,8 +77,8 @@ impl Instruction
 	// Their names are plain by convention.
 	{
 		Instruction::Command{
-			name: name.to_string(),
-			address: address.to_string(),
+			name: name.into(),
+			address: address.into(),
 			args: args.clone(),
 			arity: args.len()
 		}
@@ -88,8 +88,8 @@ impl Instruction
 	// Their names are prefixed with '.' by convention.
 	{
 		Instruction::Internal{
-			name: name.to_string(),
-			address: address.to_string(),
+			name: name.into(),
+			address: address.into(),
 			args: args.clone(),
 			labels: labels.clone(),
 			arity: args.len(),
@@ -100,7 +100,7 @@ impl Instruction
 	// Labels aren't executed.
 	// Their names are capitalised by convention.
 	{
-		Instruction::Label(name.to_string())
+		Instruction::Label(name.into())
 	}
 }
 
@@ -117,10 +117,6 @@ impl Instruction
 					supertype,
 					prototype
 				} 						=> Instruction::type_execute(node, &name, &supertype, prototype),
-				// Token::Event{
-				// 	name,
-				// 	signature
-				// } 						=> Instruction::event_execute(&name, &signature),
 				Token::Function{
 					name,
 					signature
@@ -156,7 +152,7 @@ impl Instruction
 					&node.register,
 					vec![
 						node.nodes[0].register.clone(),
-						supertype.to_string()
+						supertype.into()
 					],
 					vec![]
 				),
@@ -164,7 +160,7 @@ impl Instruction
 					".type",
 					name,
 					vec![
-						supertype.to_string(),
+						supertype.into(),
 						node.register.clone()
 					],
 					vec![]
@@ -177,7 +173,7 @@ impl Instruction
 					".type",
 					name,
 					vec![
-						supertype.to_string()
+						supertype.into()
 					],
 					vec![]
 				),
@@ -185,24 +181,6 @@ impl Instruction
 			]
 		}
 	}
-	// pub fn event_execute(name: &str, signature: &BTreeMap<String, String>) -> Vec<Instruction>
-	// {
-	// 	vec![
-	// 		Instruction::internal(
-	// 			".event",
-	// 			name,
-	// 			signature
-	// 			.values()
-	// 			.map(|x| x.clone())
-	// 			.collect(),
-	// 			signature
-	// 			.keys()
-	// 			.map(|x| x.clone())
-	// 			.collect()
-	// 		),
-	// 		Instruction::label("START")
-	// 	]
-	// }
 	pub fn function_execute(name: &str, signature: &BTreeMap<String, String>) -> Vec<Instruction>
 	{
 		vec![
@@ -211,11 +189,11 @@ impl Instruction
 				name,
 				signature
 				.values()
-				.map(|x| x.clone())
+				.cloned()
 				.collect(),
 				signature
 				.keys()
-				.map(|x| x.clone())
+				.cloned()
 				.collect()
 			),
 			Instruction::label("START")
@@ -277,7 +255,6 @@ impl Instruction {
         match &node.token {
 			Token::Type{..}				=> Instruction::type_end(),
 			Token::Module				|
-			// Token::Event{..}	 		|
 			Token::Function{..} 		=> Instruction::method_end(node),
 			Token::Assign(binds) 		=> Instruction::assign_end(node, &binds),
 			Token::If 					=> Instruction::if_end(node),
@@ -286,7 +263,6 @@ impl Instruction {
 			Token::Return 				=> Instruction::return_end(node),
 			Token::Link(links) 			=> Instruction::link_end(&links),
 			Token::Use{names, source} 	=> Instruction::use_end(&names, &source),
-			Token::Start 				=> Instruction::start_end(),
 			Token::Else 				=> Instruction::else_end(),
 			Token::Continue 			=> Instruction::continue_end(),
 			Token::Break				=> Instruction::break_end(),
@@ -361,7 +337,7 @@ impl Instruction {
 				vec![],
 				binds
 				.keys()
-				.map(|x| {x.clone()})
+				.cloned()
 				.collect()
 			)
 		);
@@ -398,7 +374,7 @@ impl Instruction {
 			// 	&node.register,
 			// 	vec![
 			// 		if node.nodes.is_empty() {node.register.clone()} else {node.nodes[0].register.clone()},
-			// 		String::from("") // Incorrect.
+			// 		"".into() // Incorrect.
 			// 	],
 			// 	vec![]
 			// ),
@@ -433,10 +409,6 @@ impl Instruction {
 				names.clone()
 			),
 		]
-	}
-	fn start_end() -> Vec<Instruction>
-	{
-		vec![] // Incorrect.
 	}
 	fn else_end() -> Vec<Instruction>
 	{

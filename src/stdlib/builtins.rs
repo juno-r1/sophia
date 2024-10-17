@@ -1,23 +1,21 @@
-pub mod ret
+use crate::std_mod;
+
+std_mod!
 {
-	use macros::std_fn;
-
-	use crate::sophia::arche::Value;
-	use crate::sophia::runtime::Task;
-
+	ret;
 	std_fn!
 	{
 		none return_none()
 		{
 			self.path = 0;
-            Value::new_none()
+			Value::new_none()
 		}
 	}
 	std_fn!
 	{
 		any return_any(any x0)
 		{
-            self.path = 0;
+			self.path = 0;
 			x0
 		}
 	}

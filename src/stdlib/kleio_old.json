@@ -2,7 +2,7 @@
   	"u_add": {
 		"name": "+",
 		"signature": [
-			"number"
+			"x0: number"
 		],
 		"last": "number",
 		"total": true
@@ -10,8 +10,8 @@
 	"b_add": {
 		"name": "+",
 		"signature": [
-			"number",
-			"number"
+			"x0: number",
+			"x1: number"
 		],
 		"last": "number",
 		"total": true
@@ -19,7 +19,7 @@
 	"u_sub": {
 		"name": "-",
 		"signature": [
-			"number"
+			"x0: number"
 		],
 		"last": "number",
 		"total": true
@@ -27,8 +27,8 @@
 	"b_sub": {
 		"name": "-",
 		"signature": [
-			"number",
-			"number"
+			"x0: number",
+			"x1: number"
 		],
 		"last": "number",
 		"total": true
@@ -36,7 +36,7 @@
 	"u_rsv": {
 		"name": "*",
 		"signature": [
-			"iterator(T)"
+			"x0: iterator(T)"
 		],
 		"last": "T",
 		"total": false
@@ -44,8 +44,8 @@
 	"b_mul": {
 		"name": "*",
 		"signature": [
-			"number",
-			"number"
+			"x0: number",
+			"x1: number"
 		],
 		"last": "number",
 		"total": true
@@ -53,8 +53,8 @@
 	"b_div": {
 		"name": "/",
 		"signature": [
-			"number",
-			"number"
+			"x0: number",
+			"x1: number"
 		],
 		"last": "number",
 		"total": false
@@ -62,17 +62,17 @@
 	"b_exp": {
 		"name": "^",
 		"signature": [
-			"number",
-			"integer"
+			"x0: number",
+			"x1: integer"
 		],
 		"last": "number",
 		"total": true
 	},
-	"b_mdl": {
+	"b_mod": {
 		"name": "%",
 		"signature": [
-			"number",
-			"number"
+			"x0: number",
+			"x1: number"
 		],
 		"last": "number",
 		"total": false
@@ -80,17 +80,17 @@
 	"b_eql": {
 		"name": "=",
 		"signature": [
-			"some",
-			"some"
+			"x0: some",
+			"x1: some"
 		],
 		"last": "boolean",
 		"total": true
 	},
-	"b_nql": {
+	"b_neq": {
 		"name": "!=",
 		"signature": [
-			"some",
-			"some"
+			"x0: some",
+			"x1: some"
 		],
 		"last": "boolean",
 		"total": true
@@ -98,8 +98,8 @@
 	"b_ltn": {
 		"name": "<",
 		"signature": [
-			"number",
-			"number"
+			"x0: number",
+			"x1: number"
 		],
 		"last": "boolean",
 		"total": true
@@ -107,26 +107,26 @@
 	"b_gtn": {
 		"name": ">",
 		"signature": [
-			"number",
-			"number"
+			"x0: number",
+			"x1: number"
 		],
 		"last": "boolean",
 		"total": true
 	},
-	"b_lql": {
+	"b_leq": {
 		"name": "<=",
 		"signature": [
-			"number",
-			"number"
+			"x0: number",
+			"x1: number"
 		],
 		"last": "boolean",
 		"total": true
 	},
-	"b_gql": {
+	"b_geq": {
 		"name": ">=",
 		"signature": [
-			"number",
-			"number"
+			"x0: number",
+			"x1: number"
 		],
 		"last": "boolean",
 		"total": true
@@ -134,17 +134,8 @@
 	"b_sbs_string": {
 		"name": "in",
 		"signature": [
-			"string",
-			"string"
-		],
-		"last": "boolean",
-		"total": true
-	},
-	"b_sbs_range": {
-		"name": "in",
-		"signature": [
-			"number",
-			"range"
+			"x0: some",
+			"x1: string"
 		],
 		"last": "boolean",
 		"total": true
@@ -152,8 +143,8 @@
 	"b_sbs_element": {
 		"name": "in",
 		"signature": [
-			"some",
-			"element"
+			"x0: some",
+			"x1: element"
 		],
 		"last": "boolean",
 		"total": true
@@ -161,8 +152,8 @@
 	"b_sbs_key": {
 		"name": "in",
 		"signature": [
-			"some",
-			"key"
+			"x0: some",
+			"x1: key"
 		],
 		"last": "boolean",
 		"total": true
@@ -170,7 +161,7 @@
 	"u_lnt": {
 		"name": "not",
 		"signature": [
-			"boolean"
+			"x0: boolean"
 		],
 		"last": "boolean",
 		"total": true
@@ -178,8 +169,8 @@
 	"b_lnd": {
 		"name": "and",
 		"signature": [
-			"boolean",
-			"boolean"
+			"x0: boolean",
+			"x1: boolean"
 		],
 		"last": "boolean",
 		"total": true
@@ -187,8 +178,8 @@
 	"b_lor": {
 		"name": "or",
 		"signature": [
-			"boolean",
-			"boolean"
+			"x0: boolean",
+			"x1: boolean"
 		],
 		"last": "boolean",
 		"total": true
@@ -196,8 +187,8 @@
 	"b_lxr": {
 		"name": "xor",
 		"signature": [
-			"boolean",
-			"boolean"
+			"x0: boolean",
+			"x1: boolean"
 		],
 		"last": "boolean",
 		"total": true
@@ -205,8 +196,8 @@
 	"b_ins_string": {
 		"name": "&",
 		"signature": [
-			"string",
-			"string"
+			"x0: string",
+			"x1: string"
 		],
 		"last": "string",
 		"total": true
@@ -214,8 +205,8 @@
 	"b_ins_element": {
 		"name": "&",
 		"signature": [
-			"element(T1)",
-			"element(T2)"
+			"x0: element(T1)",
+			"x1: element(T2)"
 		],
 		"last": "element(T1 & T2)",
 		"total": true
@@ -223,8 +214,8 @@
 	"b_ins_index": {
 		"name": "&",
 		"signature": [
-			"index & element(T1)",
-			"index & element(T2)"
+			"x0: index & element(T1)",
+			"x1: index & element(T2)"
 		],
 		"last": "index & element(T1 & T2)",
 		"total": true
@@ -232,8 +223,8 @@
 	"b_ins_key": {
 		"name": "&",
 		"signature": [
-			"key(K1) & element(V1)",
-			"key(K2) & element(V2)"
+			"x0: key(K1) & element(V1)",
+			"x1: key(K2) & element(V2)"
 		],
 		"last": "key(K1 & K2) & element(V1 & V2)",
 		"total": true
@@ -241,8 +232,8 @@
 	"b_ins_type": {
 		"name": "&",
 		"signature": [
-			"type",
-			"type"
+			"x0: type",
+			"x1: type"
 		],
 		"last": "type",
 		"total": true
@@ -250,8 +241,8 @@
 	"b_uni_string": {
 		"name": "|",
 		"signature": [
-			"string",
-			"string"
+			"x0: string",
+			"x1: string"
 		],
 		"last": "string",
 		"total": true
@@ -259,8 +250,8 @@
 	"b_uni_element": {
 		"name": "|",
 		"signature": [
-			"element(T1)",
-			"element(T2)"
+			"x0: element(T1)",
+			"x1: element(T2)"
 		],
 		"last": "element(T1 | T2)",
 		"total": true
@@ -268,8 +259,8 @@
 	"b_uni_index": {
 		"name": "|",
 		"signature": [
-			"index & element(T1)",
-			"index & element(T2)"
+			"x0: index & element(T1)",
+			"x1: index & element(T2)"
 		],
 		"last": "index & element(T1 | T2)",
 		"total": true
@@ -277,8 +268,8 @@
 	"b_uni_key": {
 		"name": "|",
 		"signature": [
-			"key(K1) & element(V1)",
-			"key(K2) & element(V2)"
+			"x0: key(K1) & element(V1)",
+			"x1: key(K2) & element(V2)"
 		],
 		"last": "key(K1 | K2) & element(V1 | V2)",
 		"total": true
@@ -286,8 +277,8 @@
 	"b_uni_type": {
 		"name": "|",
 		"signature": [
-			"type",
-			"type"
+			"x0: type",
+			"x1: type"
 		],
 		"last": "type",
 		"total": true
@@ -295,8 +286,8 @@
 	"b_idx_string_integer": {
 		"name": "[",
 		"signature": [
-			"string & length(l)",
-			"integer"
+			"x0: string & length(l)",
+			"x1: integer"
 		],
 		"last": "string & length(1)",
 		"total": false
@@ -304,8 +295,8 @@
 	"b_idx_string_range": {
 		"name": "[",
 		"signature": [
-			"string & length(l)",
-			"range"
+			"x0: string & length(l)",
+			"x1: range"
 		],
 		"last": "string",
 		"total": false
@@ -313,8 +304,8 @@
 	"b_idx_index_integer": {
 		"name": "[",
 		"signature": [
-			"index & element(T) & length(l)",
-			"integer"
+			"x0: index & element(T) & length(l)",
+			"x1: integer"
 		],
 		"last": "T",
 		"total": false
@@ -322,8 +313,8 @@
 	"b_idx_index_range": {
 		"name": "[",
 		"signature": [
-			"index & element(T) & length(l)",
-			"range"
+			"x0: index & element(T) & length(l)",
+			"x1: range"
 		],
 		"last": "index & element(T)",
 		"total": false
@@ -331,8 +322,8 @@
 	"b_idx_key": {
 		"name": "[",
 		"signature": [
-			"key(K) & element(V)",
-			"K"
+			"x0: key(K) & element(V)",
+			"x1: K"
 		],
 		"last": "V",
 		"total": false
@@ -340,7 +331,7 @@
 	"u_sfe_none": {
 		"name": "?",
 		"signature": [
-			"none"
+			"x0: none"
 		],
 		"last": "boolean",
 		"total": true
@@ -348,7 +339,7 @@
 	"u_sfe_some": {
 		"name": "?",
 		"signature": [
-			"some"
+			"x0: some"
 		],
 		"last": "boolean",
 		"total": true
@@ -356,8 +347,8 @@
 	"b_sfe_some_some": {
 		"name": "?",
 		"signature": [
-			"some",
-			"some"
+			"x0: some",
+			"x1: some"
 		],
 		"last": "boolean",
 		"total": true
@@ -365,8 +356,8 @@
 	"b_sfe_none_some": {
 		"name": "?",
 		"signature": [
-			"none",
-			"some"
+			"x0: none",
+			"x1: some"
 		],
 		"last": "boolean",
 		"total": true
@@ -374,7 +365,7 @@
 	"u_usf": {
 		"name": "!",
 		"signature": [
-			"T"
+			"x0: T"
 		],
 		"last": "T",
 		"total": true
@@ -382,8 +373,8 @@
 	"b_usf": {
 		"name": "!",
 		"signature": [
-			"T",
-			"string"
+			"x0: T",
+			"x1: string"
 		],
 		"last": "T",
 		"total": true
@@ -391,8 +382,8 @@
 	"b_snd": {
 		"name": "->",
 		"signature": [
-			"T1",
-			"send(T2)"
+			"x0: T1",
+			"x1: send(T2)"
 		],
 		"last": "send(T2)",
 		"total": false
@@ -400,7 +391,7 @@
 	"u_new": {
 		"name": "new",
 		"signature": [
-			"type"
+			"x0: type"
 		],
 		"last": "x0",
 		"total": false
@@ -408,8 +399,8 @@
 	"b_cmp": {
 		"name": ".",
 		"signature": [
-			"function",
-			"function & final(T)"
+			"x0: function",
+			"x1: function & final(T)"
 		],
 		"last": "function & final(T)",
 		"total": false
@@ -417,7 +408,7 @@
 	"abs_number": {
 		"name": "abs",
 		"signature": [
-			"number"
+			"x0: number"
 		],
 		"last": "number",
 		"total": true
@@ -425,8 +416,8 @@
 	"cast_some_type": {
 		"name": "cast",
 		"signature": [
-			"some",
-			"type"
+			"x0: some",
+			"x1: type"
 		],
 		"last": "x1",
 		"total": false
@@ -434,7 +425,7 @@
 	"ceiling_number": {
 		"name": "ceiling",
 		"signature": [
-			"number"
+			"x0: number"
 		],
 		"last": "integer",
 		"total": true
@@ -442,8 +433,8 @@
 	"dispatch_function_list": {
 		"name": "dispatch",
 		"signature": [
-			"function",
-			"element(type)"
+			"x0: function",
+			"x1: element(type)"
 		],
 		"last": "function",
 		"total": false
@@ -451,7 +442,7 @@
 	"error_string": {
 		"name": "error",
 		"signature": [
-			"string"
+			"x0: string"
 		],
 		"last": "none",
 		"total": false
@@ -459,7 +450,7 @@
 	"floor_number": {
 		"name": "floor",
 		"signature": [
-			"number"
+			"x0: number"
 		],
 		"last": "integer",
 		"total": true
@@ -467,8 +458,8 @@
 	"filter_final_iterator": {
 		"name": "filter",
 		"signature": [
-			"final(boolean)",
-			"iterator(T)"
+			"x0: final(boolean)",
+			"x1: iterator(T)"
 		],
 		"last": "iterator(T)",
 		"total": false
@@ -476,8 +467,8 @@
 	"filter_type_iterator": {
 		"name": "filter",
 		"signature": [
-			"type",
-			"iterator(T)"
+			"x0: type",
+			"x1: iterator(T)"
 		],
 		"last": "iterator(T)",
 		"total": true
@@ -485,8 +476,8 @@
 	"format_string_index": {
 		"name": "format",
 		"signature": [
-			"string",
-			"index & element(string)"
+			"x0: string",
+			"x1: index & element(string)"
 		],
 		"last": "string",
 		"total": false
@@ -494,7 +485,7 @@
 	"hash_some": {
 		"name": "hash",
 		"signature": [
-			"some"
+			"x0: some"
 		],
 		"last": "integer",
 		"total": true
@@ -508,7 +499,7 @@
 	"if_boolean": {
 		"name": "if",
 		"signature": [
-			"boolean"
+			"x0: boolean"
 		],
 		"last": "none",
 		"total": false
@@ -516,7 +507,7 @@
 	"input_string": {
 		"name": "input",
 		"signature": [
-			"string"
+			"x0: string"
 		],
 		"last": "string",
 		"total": false
@@ -524,8 +515,8 @@
 	"join_element_string": {
 		"name": "join",
 		"signature": [
-			"element(string)",
-			"string"
+			"x0: element(string)",
+			"x1: string"
 		],
 		"last": "string",
 		"total": true
@@ -533,7 +524,7 @@
 	"length_string": {
 		"name": "length",
 		"signature": [
-			"string"
+			"x0: string"
 		],
 		"last": "integer",
 		"total": true
@@ -541,7 +532,7 @@
 	"length_element": {
 		"name": "length",
 		"signature": [
-			"element"
+			"x0: element"
 		],
 		"last": "integer",
 		"total": true
@@ -549,7 +540,7 @@
 	"length_iterator": {
 		"name": "length",
 		"signature": [
-			"iterator"
+			"x0: iterator"
 		],
 		"last": "integer",
 		"total": true
@@ -557,8 +548,8 @@
 	"map_final_iterator": {
 		"name": "map",
 		"signature": [
-			"final(T)",
-			"iterator"
+			"x0: final(T)",
+			"x1: iterator"
 		],
 		"last": "iterator(T)",
 		"total": false
@@ -566,8 +557,8 @@
 	"map_type_iterator": {
 		"name": "map",
 		"signature": [
-			"type",
-			"iterator"
+			"x0: type",
+			"x1: iterator"
 		],
 		"last": "iterator(boolean)",
 		"total": false
@@ -581,7 +572,7 @@
 	"print_string": {
 		"name": "print",
 		"signature": [
-			"string"
+			"x0: string"
 		],
 		"last": "string",
 		"total": false
@@ -589,8 +580,8 @@
 	"reduce_final_list": {
 		"name": "reduce",
 		"signature": [
-			"final(T1)",
-			"iterator(T2)"
+			"x0: final(T1)",
+			"x1: iterator(T2)"
 		],
 		"last": "T1",
 		"total": true
@@ -604,7 +595,7 @@
 	"return_any": {
 		"name": "return",
 		"signature": [
-			"any"
+			"x0: any"
 		],
 		"last": "none",
 		"total": false
@@ -612,7 +603,7 @@
 	"reverse_iterator": {
 		"name": "reverse",
 		"signature": [
-			"iterator(T)"
+			"x0: iterator(T)"
 		],
 		"last": "iterator(T)",
 		"total": true
@@ -620,7 +611,7 @@
 	"round_number": {
 		"name": "round",
 		"signature": [
-			"number"
+			"x0: number"
 		],
 		"last": "integer",
 		"total": true
@@ -628,7 +619,7 @@
 	"sign_number": {
 		"name": "sign",
 		"signature": [
-			"number"
+			"x0: number"
 		],
 		"last": "integer",
 		"total": true
@@ -636,8 +627,8 @@
 	"signature_function_element": {
 		"name": "signature",
 		"signature": [
-			"function",
-			"element(type)"
+			"x0: function",
+			"x1: element(type)"
 		],
 		"last": "boolean",
 		"total": true
@@ -645,8 +636,8 @@
 	"split_string_string": {
 		"name": "split",
 		"signature": [
-			"string",
-			"string"
+			"x0: string",
+			"x1: string"
 		],
 		"last": "index & element(string)",
 		"total": true
@@ -654,7 +645,7 @@
 	"sum_element": {
 		"name": "sum",
 		"signature": [
-			"element(number)"
+			"x0: element(number)"
 		],
 		"last": "number",
 		"total": true
@@ -662,7 +653,7 @@
 	"sum_iterator": {
 		"name": "sum",
 		"signature": [
-			"iterator(number)"
+			"x0: iterator(number)"
 		],
 		"last": "number",
 		"total": true
@@ -670,7 +661,7 @@
 	"typeof_any": {
 		"name": "typeof",
 		"signature": [
-			"any"
+			"x0: any"
 		],
 		"last": "type",
 		"total": true

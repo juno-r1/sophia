@@ -2,6 +2,7 @@ use std::str::FromStr;
 
 use malachite::Rational;
 use regex::CaptureMatches;
+use utils::coerce::Coerce;
 
 use crate::internal::nodes::Node;
 use crate::internal::tokens::Token;
@@ -53,27 +54,19 @@ impl <'a> Lexer<'a>
                 Some(cap) => {
                     if let Some(x) = cap.name("number") {
                         Token::Number(
-                            Rational::from_str(x.as_str())
+                            Rational::from_str(x.into())
                             .unwrap()
                         )
                     } else if let Some(x) = cap.name("string") {
                         Token::String(
                             x
                             .as_str()[1..x.len() - 1] // Would be nice if indexing was isize, not going to lie.
-                            .to_string()
+                            .into()
                         )
                     } else if let Some(x) = cap.name("name") {
                         match x.as_str() {
-                            "and" | "or" | "xor" | "in" => Token::Infix(
-                                x
-                                .as_str()
-                                .to_string()
-                            ),
-                            "not" | "new" => Token::Prefix(
-                                x
-                                .as_str()
-                                .to_string()
-                            ),
+                            "and" | "or" | "xor" | "in" => Token::Infix(x.to_string()),
+                            "not" | "new" => Token::Prefix(x.to_string()),
                             "true" | "false" => Token::Boolean(
                                 x
                                 .as_str()
@@ -83,20 +76,12 @@ impl <'a> Lexer<'a>
                             "null" => Token::Null,
                             "if" => Token::LeftConditional,
                             "else" => Token::RightConditional,
-                            _ => Token::Name(
-                                x
-                                .as_str()
-                                .to_string()
-                            )
+                            _ => Token::Name(x.to_string())
                         }
                     } else if let Some(_) = cap.name("env") {
                         Token::Env(String::new())
                     } else if let Some(x) = cap.name("receive") {
-                        Token::Receive(
-                            x
-                            .as_str()
-                            .to_string()
-                        )
+                        Token::Receive(x.to_string())
                     } else if let Some(x) = cap.name("l_parens") {
                         if self.prefix() {
                             match x.as_str() {
@@ -116,26 +101,14 @@ impl <'a> Lexer<'a>
                         Token::RightBracket
                     } else if let Some(x) = cap.name("operator") {
                         if self.prefix() {
-                            Token::Prefix(
-                                x
-                                .as_str()
-                                .to_string()
-                            )
+                            Token::Prefix(x.to_string())
                         } else {
                             match x.as_str() {
                                 "," => Token::Concatenator,
                                 ":" => Token::Pair,
-                                "^" | "->" | "=>" | "." => Token::InfixR(
-                                    x
-                                    .as_str()
-                                    .to_string()
-                                ),
+                                "^" | "->" | "=>" | "." => Token::InfixR(x.to_string()),
                                 "<-" => Token::Bind,
-                                _ => Token::Infix(
-                                    x
-                                    .as_str()
-                                    .to_string()
-                                )
+                                _ => Token::Infix(x.to_string())
                             }
                         }
                     } else {
@@ -190,12 +163,10 @@ impl <'a> Lexer<'a>
                 _ => {}
             };
             acc.push(' ');
-            acc.push_str(
-                value
-            )
+            acc.push_str(value)
         };
         acc
         .trim()
-        .to_string()
+        .into()
     }
 }

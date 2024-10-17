@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use malachite::Rational;
 use regex::Regex;
+use utils::coerce::Coerce;
 
 use crate::internal::lexer::Lexer;
 use crate::internal::nodes::Node;
@@ -66,7 +67,6 @@ pub enum Token {
 		names: Vec<String>,
 		source: Option<String>
 	},
-    Start,
     Else,
     Continue,
     Break,
@@ -108,11 +108,10 @@ impl Token
                 if let Some(cap) = Regex::new(patterns::TYPE_EXPR)
                     .unwrap()
                     .captures(&expr) {
-                    let name = String::from("@");
+                    let name = format!("@");
                     let supertype: String = cap
                         .name("supertype")
                         .unwrap()
-                        .as_str()
                         .to_string();
                     let expression: Node = Node::expression(
                         cap
@@ -127,10 +126,10 @@ impl Token
 								supertype,
 								prototype: true
 							},
-                         	[
+                         	vec![
                                 Node::expression(prototype.as_str()),
                                 expression
-                            ].into()
+                            ]
 						),
                         None => Node::branch(
 							Token::Type{
@@ -138,59 +137,16 @@ impl Token
 								supertype,
 								prototype: false
 							},
-							[expression].into()
+							vec![expression]
 						)
                     }
-                // } else if let Some(cap) = Regex::new(patterns::EVENT_EXPR)
-                //     .unwrap()
-                //     .captures(&expr) {
-                //     let funname = String::from("@");
-                //     let funtype = match cap.name("final") {
-                //         Some(x) => x
-                //         .as_str()
-                //         .to_string(),
-                //         None => String::from("any")
-                //     };
-                //     let message = cap
-                //         .name("message")
-                //         .unwrap()
-                //         .as_str()
-                //         .to_string();
-                //     let check = match cap.name("check") {
-                //         Some(x) => x
-                //         .as_str()
-                //         .trim()
-                //         .to_string(),
-                //         None => String::from("any")
-                //     };
-                //     let expression: Node = Node::expression(
-                //         cap
-                //         .name("expression")
-                //         .unwrap()
-                //         .as_str()
-                //     );
-                //     let signature: BTreeMap<String, String> = BTreeMap::from(
-                //         [
-				// 			(funname.clone(), funtype.clone()),
-                //             (message, check)
-                //         ]
-                //     );
-                //     Node::branch(
-                //         Token::Event{
-				// 			name: funname,
-				// 			signature
-				// 		},
-                //         [expression].into()
-                //     )
                 } else if let Some(cap) = Regex::new(patterns::FUNC_EXPR)
                     .unwrap()
                     .captures(&expr) {
-                    let funname = String::from("@");
-                    let funtype = match cap.name("final") {
-                        Some(x) => x
-                        .as_str()
-                        .to_string(),
-                        None => String::from("any")
+                    let funname: String = format!("@");
+                    let funtype: String = match cap.name("final") {
+                        Some(x) => x.to_string(),
+                        None => format!("any")
                     };
                     let params = cap
                         .name("params")
@@ -213,12 +169,12 @@ impl Token
                                 let left = split.next().unwrap();
                                 match split.next() {
                                     Some(right) => acc.insert(
-                                        right.to_string(),
-                                        left.to_string()
+                                        right.into(),
+                                        left.into()
                                     ),
                                     None => acc.insert(
-                                        left.to_string(),
-                                        String::from("any")
+                                        left.into(),
+                                        format!("any")
                                     )
                                 };
                                 acc
@@ -236,7 +192,7 @@ impl Token
 							name: funname,
 							signature
 						},
-                        [expression].into()
+                        vec![expression]
                     )
                 } else {
                     Node::branch(
@@ -244,7 +200,7 @@ impl Token
                         if expr.is_empty() {
                             vec![]
                         } else {
-                            [Node::expression(&expr)].into()
+                            vec![Node::expression(&expr)]
                         }
                     )
                 }
@@ -257,18 +213,18 @@ impl Token
                     let contents = Node::expression(&expr);
                     match contents.token {
                         Token::Concatenator => contents.nodes,
-                        _ => [contents].into()
+                        _ => vec![contents]
                     }
                 }
             ),
             Token::Meta(expr) => Node::branch(
                 Token::Meta(expr.clone()),
-                [Node::expression(&expr)].into()
+                vec![Node::expression(&expr)]
             ),
             Token::Prefix(_) => {
                 Node::branch(
                     self.clone(),
-                    [lex.parse(self.lbp())].into()
+                    vec![lex.parse(self.lbp())]
                 )
             },
             _ => Node::leaf(self)
@@ -281,10 +237,10 @@ impl Token
         match self {
             Token::Infix(symbol) => Node::branch(
                 Token::Infix(symbol.clone()),
-                [
+                vec![
                     left.clone(),
                     lex.parse(Token::Infix(symbol.clone()).lbp())
-                ].into()
+                ]
             ),
             Token::Bind => {
                 let right = lex.parse(self.lbp());
@@ -293,11 +249,11 @@ impl Token
                     if right.nodes.is_empty() {
                         vec![]
                     } else if let Token::Concatenator = right.nodes[0].token {
-                        let mut nodes: Vec<Node> = [left].into();
+                        let mut nodes: Vec<Node> = vec![left];
                         nodes.extend(right.nodes[0].nodes.clone());
                         nodes
                     } else {
-                        let mut nodes: Vec<Node> = [left].into();
+                        let mut nodes: Vec<Node> = vec![left];
                         nodes.push(right.nodes[0].clone());
                         nodes
                     }
@@ -306,42 +262,42 @@ impl Token
             Token::LeftConditional => {
                 let right = lex.parse(self.lbp());
                 println!("{left:?} {right:?}");
-                let mut nodes: Vec<Node> = [left.clone()].into();
+                let mut nodes: Vec<Node> = vec![left.clone()];
                 if right.nodes.len() > 1 {
                     nodes.extend(
                         right.nodes[1..]
 						.iter()
-                        .map(|x| {x.clone()})
+                        .cloned()
                     );
                 };
                 Node::branch(
                     self.clone(),
-                    [
+                    vec![
                         right.nodes[0].clone(),
                         Node::branch(
                             right.token.clone(),
                             nodes
                         )
-                    ].into()
+                    ]
                 )
             },
             Token::RightConditional => Node::branch(
                 self.clone(),
-                [
+                vec![
                     left.clone(),
                     lex.parse(self.lbp())
-                ].into()
+                ]
             ),
             Token::InfixR(symbol) => Node::branch(
                 Token::InfixR(symbol.clone()),
-                [
+                vec![
                     left.clone(),
                     lex.parse(Token::InfixR(symbol.clone()).lbp() - 1)
-                ].into()
+                ]
             ),
             Token::Concatenator => {
                 let right = lex.parse(self.lbp() - 1);
-                let mut nodes: Vec<Node> = [left.clone()].into();
+                let mut nodes: Vec<Node> = vec![left.clone()];
                 Node::branch(
                     self.clone(),
                     if let Token::Concatenator = right.token {
@@ -355,7 +311,7 @@ impl Token
             }
             Token::Pair => {
                 let right = lex.parse(self.lbp() - 1);
-                let mut nodes: Vec<Node> = [left.clone()].into();
+                let mut nodes: Vec<Node> = vec![left.clone()];
                 Node::branch(
                     self.clone(),
                     if let Token::Pair = right.token {
@@ -368,7 +324,7 @@ impl Token
                 )
             }
             Token::Call => {
-                let mut nodes: Vec<Node> = [left.clone()].into();
+                let mut nodes: Vec<Node> = vec![left.clone()];
                 Node::branch(
                     self.clone(),
                     if let Token::RightBracket = lex.peek {
@@ -389,7 +345,7 @@ impl Token
                 )
             }
             Token::Index => {
-                let mut nodes: Vec<Node> = [left.clone()].into();
+                let mut nodes: Vec<Node> = vec![left.clone()];
                 Node::branch(
                     self.clone(),
                     if let Token::RightBracket = lex.peek {
@@ -417,14 +373,14 @@ impl Token
     {
         let index: &str = match self {
             Token::Prefix(_) 		=> "PREFIX",
-            Token::Infix(x) 		=> x,
+            Token::Infix(x)         |
+            Token::InfixR(x)        => x,
             Token::Bind 			=> "<-",
             Token::LeftConditional 	=> "if",
             Token::RightConditional => "else",
-            Token::InfixR(x) 		=> x,
             Token::Concatenator 	=> ",",
             Token::Pair 			=> ":",
-            Token::Call 			=> "LEFT_BRACKET",
+            Token::Call             |
             Token::Index 			=> "LEFT_BRACKET",
             Token::RightBracket 	=> "RIGHT_BRACKET",
             _ 						=> {return 0}

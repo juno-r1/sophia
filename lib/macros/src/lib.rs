@@ -10,15 +10,11 @@ pub fn std_fn(stream: TokenStream) -> TokenStream
 // This macro expects an input with the format <type> <name> (<params>) {<block>},
 // where each parameter takes the form <type> <name>.
 {
-	let mut iter = stream
-		.clone()
-		.into_iter();
+	let mut iter = stream.into_iter();
 	let last = match iter
 	.next()
 	.expect("Invalid format for std_fn") {
-		TokenTree::Ident(x) => x
-			.clone()
-			.to_string(),
+		TokenTree::Ident(x) => x.to_string(),
 		_ => panic!("Invalid format for std_fn")
 	};
 	let name = match iter
@@ -36,11 +32,11 @@ pub fn std_fn(stream: TokenStream) -> TokenStream
 	// Remove parentheses from params.
 	let substring = Regex::new(r"[^\(\)]+")
 		.expect("Parentheses required for arguments of std_fn")
-		.find(params.as_str());
+		.find(&params);
 	let signature = match substring {
 		Some(sub) => Regex::new(r"\s*,\s*")
 			.unwrap()
-			.split(sub.as_str())
+			.split(sub.into())
 			.fold(
 				String::new(),
 				|mut acc, param| {
@@ -50,11 +46,12 @@ pub fn std_fn(stream: TokenStream) -> TokenStream
 					acc.push_str(
 						// Capture concrete data types but not abstract.
 						match left {
-							"any" 		=> "_,".into(),
-							"none" 		=> "Value::None,".into(),
+							"any" 		=> format!("_,"),
+							"none" 		=> format!("Value::None,"),
 							"boolean" 	=> format!("Value::Boolean({right}),"),
 							"number" 	=> format!("Value::Number({right}),"),
 							"string" 	=> format!("Value::String({right}),"),
+							"range"		=> format!("Value::Range({right}),"),
 							"list" 		=> format!("Value::List({right}),"),
 							"record" 	=> format!("Value::Record({right}),"),
 							"function" 	=> format!("Value::Function({right}),"),
@@ -72,25 +69,25 @@ pub fn std_fn(stream: TokenStream) -> TokenStream
 	let bindings = match substring {
 		Some(sub) => Regex::new(r"\s*,\s*")
 			.unwrap()
-			.split(sub.as_str())
+			.split(sub.into())
 			.fold(
-				String::new(),
+				vec![],
 				|mut acc, param| {
 					let mut split = param.split(" ");
 					let index = acc.len();
 					let left = split.next().unwrap();
 					let right = split.next().unwrap();
-					acc.push_str(
+					acc.push(
 						match left {
 							"any" => format!("let {right} = args[{index}].clone();"),
 							"none" => format!("let {right} = Value::None;"),
 							_ => format!("let {right} = *{right}.clone();")
 						}
-						.as_str()
 					);
 					acc
 				}
-			),
+			)
+			.join("\n"),
 		None => String::new()
 	};
 	let block = match iter
@@ -111,7 +108,7 @@ pub fn std_fn(stream: TokenStream) -> TokenStream
 			{{
 				match &args[..] {{
 					[{signature}] => {{{bindings}{result}}},
-					_ => Value::Err
+					_ => Value::Err(Error::CALL)
 				}}
 			}}
 		}}
