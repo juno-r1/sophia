@@ -11,28 +11,23 @@ pub fn std_fn(stream: TokenStream) -> TokenStream
 // where each parameter takes the form <type> <name>.
 {
 	let mut iter = stream.into_iter();
-	let last = match iter
-	.next()
-	.expect("Invalid format for std_fn") {
-		TokenTree::Ident(x) => x.to_string(),
-		_ => panic!("Invalid format for std_fn")
+	let last = match iter.next() {
+		Some(TokenTree::Ident(x)) => x.to_string(),
+		_ => panic!("Invalid return type for std_fn")
 	};
-	let name = match iter
-	.next()
-	.expect("Invalid format for std_fn") {
-		TokenTree::Ident(x) => x.to_string(),
-		_ => panic!("Invalid format for std_fn")
+	let name = match iter.next() {
+		Some(TokenTree::Ident(x)) => x.to_string(),
+		_ => panic!("Invalid name for std_fn")
 	};
-	let params: String = match iter
-		.next()
-		.expect("Invalid format for std_fn") {
-			TokenTree::Group(x) => x.to_string(),
-			_ => panic!("Invalid format for std_fn")
-		};
+	let params: String = match iter.next() {
+		Some(TokenTree::Group(x)) => x.to_string(),
+		_ => panic!("Invalid parameters for std_fn")
+	};
 	// Remove parentheses from params.
-	let substring = Regex::new(r"[^\(\)]+")
-		.expect("Parentheses required for arguments of std_fn")
-		.find(&params);
+	let substring = match Regex::new(r"[^\(\)]+") {
+		Ok(x) => x.find(&params),
+		Err(_) => panic!("Parentheses required for arguments of std_fn")
+	};
 	let signature = match substring {
 		Some(sub) => Regex::new(r"\s*,\s*")
 			.unwrap()
@@ -56,7 +51,7 @@ pub fn std_fn(stream: TokenStream) -> TokenStream
 							"record" 	=> format!("Value::Record({right}),"),
 							"function" 	=> format!("Value::Function({right}),"),
 							"type" 		=> format!("Value::Type({right}),"),
-							_ 			=> panic!("Invalid type signature for std_fn: {left} {right}")
+							_ 			=> panic!("Invalid signature for std_fn: {left} {right}")
 						}
 						.as_str()
 					);
@@ -90,25 +85,23 @@ pub fn std_fn(stream: TokenStream) -> TokenStream
 			.join("\n"),
 		None => String::new()
 	};
-	let block = match iter
-	.next()
-	.expect("Invalid format for std_fn") {
-		TokenTree::Group(x) => x,
-		_ => panic!("Invalid format for std_fn")
+	let block = match iter.next() {
+		Some(TokenTree::Group(x)) => x,
+		_ => panic!("Invalid body for std_fn")
 	};
 	let result = match last.as_str() {
-		"none" => format!("{{{block}; Value::None}}"),
-		_ => format!("Value::new_{last}({block})")
+		"none" => format!("{{{block}; Ok(Value::None)}}"),
+		_ => format!("Ok(Value::new_{last}({block}))")
 	};
 	format!(
 		"
 		impl Task
 		{{
-			pub fn {name}(&mut self, args: Vec<Value>) -> Value
+			pub fn {name}(&mut self, args: Vec<Value>) -> Result<Value, String>
 			{{
 				match &args[..] {{
 					[{signature}] => {{{bindings}{result}}},
-					_ => Value::Err(Error::CALL)
+					_ => error!(CALL, \"{name}\")
 				}}
 			}}
 		}}

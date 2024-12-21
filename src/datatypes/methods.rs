@@ -1,8 +1,8 @@
 use std::collections::{BTreeMap, HashMap};
 
+use crate::error;
 use crate::internal::instructions::Instruction;
-use crate::sophia::arche::{Function, Namespace, Value};
-use crate::sophia::hemera::Error;
+use crate::sophia::arche::{Function, Namespace, Type, Value};
 use crate::sophia::runtime::Task;
 
 use super::types::TypeDef;
@@ -66,11 +66,11 @@ impl Method
 			closure: HashMap::new()
 		}
 	}
-	pub fn call(&self, task: &mut Task, args: Vec<Value>) -> Value
+	pub fn call(&self, task: &mut Task, args: Vec<Value>) -> Result<Value, String>
 	{
 		match self.routine {
 			Routine::Std(function) => function(task, args),
-			Routine::User(_) => Value::Err(Error::IMPL)
+			Routine::User(_) => error!(IMPL)
 		}
 	}
 }
@@ -79,12 +79,12 @@ impl Method
 pub enum Predicate{
 	// Non-capturing built-in predicates.
 	Base{
-		routine: Function,
+		routine: Type,
 		name: String,
 	},
 	// Capturing built-in predicates.
 	Std{
-		routine: Function,
+		routine: Type,
 		name: String,
 		signature: Vec<TypeDef>,
 		arity: usize,
@@ -104,7 +104,7 @@ pub enum Predicate{
 
 impl Predicate
 {
-	pub fn new_predicate_base(name: &str, routine: Function) -> Predicate
+	pub fn new_predicate_base(name: &str, routine: Type) -> Predicate
 	{
 		Predicate::Base{
 			routine,
@@ -116,6 +116,14 @@ impl Predicate
 		Predicate::Base{
 			routine: Task::type_any,
 			name: format!("any")
+		}
+	}
+	pub fn call(&self, value: &Value) -> bool
+	{
+		match self {
+			Predicate::Base{routine, ..} => routine(value.clone()),
+			Predicate::Std{..} => false,
+			Predicate::User{..} => false,
 		}
 	}
 }

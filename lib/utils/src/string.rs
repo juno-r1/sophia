@@ -6,10 +6,8 @@ pub fn count(pattern: &str, symbol: char) -> usize
     .fold(
         0,
         |mut acc: usize, ch: char| {
-            match ch {
-                x if x == symbol => {acc += 1; acc},
-                _ => acc
-            }
+            acc += (ch == symbol) as usize;
+            acc
         }
     )
 }

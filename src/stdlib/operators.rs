@@ -19,6 +19,20 @@ std_mod!
 			x0 + x1
 		}
 	}
+	std_fn!
+	{
+		range range_u_add(range x0)
+		{
+			x0.abs()
+		}
+	}
+	std_fn!
+	{
+		range range_b_add(range x0, number x1)
+		{
+			x0 + x1
+		}
+	}
 }
 
 std_mod!
@@ -38,6 +52,20 @@ std_mod!
 			x0 - x1
 		}
 	}
+	std_fn!
+	{
+		range range_u_sub(range x0)
+		{
+			-x0
+		}
+	}
+	std_fn!
+	{
+		range range_b_sub(range x0, number x1)
+		{
+			x0 - x1
+		}
+	}
 }
 
 std_mod!
@@ -50,6 +78,13 @@ std_mod!
 			x0 * x1
 		}
 	}
+	std_fn!
+	{
+		range range_b_mul(range x0, number x1)
+		{
+			x0 * x1
+		}
+	}
 }
 
 std_mod!
@@ -58,6 +93,13 @@ std_mod!
 	std_fn!
 	{
 		number b_div(number x0, number x1)
+		{
+			x0 / x1
+		}
+	}
+	std_fn!
+	{
+		range range_b_div(range x0, number x1)
 		{
 			x0 / x1
 		}

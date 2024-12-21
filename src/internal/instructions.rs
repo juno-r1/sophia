@@ -3,24 +3,94 @@ use std::collections::{BTreeMap, VecDeque};
 use crate::internal::nodes::Node;
 use crate::internal::tokens::Token;
 
+pub type Signature = BTreeMap<String, String>;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Instruction
 {
+	// User functions and dispatched commands.
+	// Commands retrieve their instruction from the namespace.
+	// Their names are plain by convention.
 	Command{
-		name: String,
+		name: String,					// Function name.
+		address: String,				// Writeable address.
+		args: Vec<String>,				// Readable addresses.
+		arity: usize,					// Length of args.
+	},
+	// Internal functions.
+	// Internals execute directly from the task.
+	// Their names are prefixed with '.' by convention.
+	Bind{
+		args: Vec<String>,				// Readable addresses.
+		signature: Signature,			// Binding signature.
+	},
+	Break,
+	Check{
+		address: String,				// Writeable address.
+		register: String,				// Readable address.
+		typename: Option<String>, 		// Checked type.
+	},
+	Continue,
+	Function{
+		name: String,					// Function name.
+		signature: Signature,			// Parameter signature.
+		arity: usize,					// Number of arguments.
+	},
+	Future{
 		address: String,
 		args: Vec<String>,
-		arity: usize,
 	},
-	Internal{
-		name: String,
+	Iterator{
 		address: String,
-		args: Vec<String>, 		// Readable addresses.
-		labels: Vec<String>, 	// Non-readable names.
-		arity: usize, 			// Length of args.
-		count: usize, 			// Length of labels.
+		register: String,
 	},
-	Label(String)
+	Link(Vec<String>),
+	List{
+		address: String,
+		args: Vec<String>,
+	},
+	Loop,
+	// Meta,
+	Next{
+		index: String,
+		register: String,
+	},
+	Range{
+		address: String,
+		start: String,
+		end: String,
+		step: String,
+	},
+	Receive(String),
+	Record{
+		address: String,
+		keys: Vec<String>,
+		values: Vec<String>,
+	},
+	Sequence{
+		address: String,
+		start: String,
+		end: String,
+		step: String,
+	},
+	Skip,
+	Type{
+		name: String,
+		supertype: String,
+		prototype: Option<String>,
+	},
+	// Use,
+	Write{
+		address: String, // Destination register.
+		register: String, // Source register.
+	},
+	// Instruction labels.
+	// Labels aren't executed.
+	// Their names are capitalised by convention.
+	START,
+	ELSE,
+	BIND,
+	END,
 }
 
 impl ToString for Instruction
@@ -29,42 +99,74 @@ impl ToString for Instruction
     {
 		match self {
 			Instruction::Command{name, address, args, arity} => {
-				let mut buf: String = name.into();
-				buf.push_str(" "); buf.push_str(address);
+				let body: String = format!("{name} {address}");
+				let args: String = args.join(" ");
 				match arity {
-					0 => {},
-					_ => {buf.push_str(" "); buf.push_str(&args.join(" "))},
-				};
-				// buf.push_str(";");
-				// match label {
-				// 	0 => {},
-				// 	_ => {buf.push_str(" "); buf.push_str(&labels.join(" "))},
-				// };
-				buf
+					0 => body,
+					_ => format!("{body} {args}")
+				}
 			},
-			Instruction::Internal{name, address, args, labels, arity, count} => {
-				let mut buf: String = name.into();
-				buf.push_str(" "); buf.push_str(address);
-				match arity {
-					0 => {},
-					_ => {buf.push_str(" "); buf.push_str(&args.join(" "))},
-				};
-				buf.push_str(";");
-				match count {
-					0 => {},
-					_ => {buf.push_str(" "); buf.push_str(&labels.join(" "))},
-				};
-				buf
-			},
-			Instruction::Label(name) => {
-				let mut buf: String = name.into();
-				buf.push_str(";");
-				// match label {
-				// 	0 => {},
-				// 	_ => {buf.push_str(" "); buf.push_str(&labels.join(" "))},
+			Instruction::Bind{args, signature, ..} => {
+				let args: String = args.join(" ");
+				let signature: String = signature
+					.iter()
+					.fold(
+						format!(""),
+						|mut acc, (name, typename)| {
+							acc.push_str(
+								&format!("; {typename} {name}")
+							);
+							acc
+						}
+					);
+				format!("bind {args}{signature}")
+				// let mut buf: String = format!("bind");
+				// for arg in args {
+				// 	buf.push_str(" ");
+				// 	buf.push_str(arg);
 				// };
-				return buf;
+				// for (name, typename) in signature {
+				// 	buf.push_str("; ");
+				// 	buf.push_str(typename);
+				// 	buf.push_str(" ");
+				// 	buf.push_str(name);
+				// };
+				// buf
 			}
+			_ => format!("")
+			// Instruction::Internal{name, address, args, labels, arity, count} => {
+			// 	let mut buf: String = name.into();
+			// 	buf.push_str(" "); buf.push_str(address);
+			// 	match arity {
+			// 		0 => {},
+			// 		_ => {buf.push_str(" "); buf.push_str(&args.join(" "))},
+			// 	};
+			// 	buf.push_str(";");
+			// 	match count {
+			// 		0 => {},
+			// 		_ => {buf.push_str(" "); buf.push_str(&labels.join(" "))},
+			// 	};
+			// 	buf
+			// },
+			// Instruction::Bind(signature) => {
+			// 	let mut buf: String = format!(".bind:");
+			// 	for (k, v) in signature {
+			// 		buf.push_str(
+			// 			format!(" {v} {k};")
+			// 			.as_str()
+			// 		);
+			// 	}
+			// 	buf
+			// }
+			// Instruction::Label(name) => {
+			// 	let mut buf: String = name.into();
+			// 	buf.push_str(";");
+			// 	// match label {
+			// 	// 	0 => {},
+			// 	// 	_ => {buf.push_str(" "); buf.push_str(&labels.join(" "))},
+			// 	// };
+			// 	buf
+			// }
 		}
     }
 }
@@ -72,35 +174,124 @@ impl ToString for Instruction
 impl Instruction
 // Instruction constructors.
 {
-	pub fn command(name: &str, address: &str, args: Vec<String>) -> Instruction
-	// Commands retrieve their instruction from the namespace.
-	// Their names are plain by convention.
+	pub fn new_command(name: &str, address: &str, args: Vec<String>) -> Instruction
 	{
+		let arity = args.len();
 		Instruction::Command{
 			name: name.into(),
 			address: address.into(),
-			args: args.clone(),
-			arity: args.len()
+			args,
+			arity
 		}
 	}
-	pub fn internal(name: &str, address: &str, args: Vec<String>, labels: Vec<String>) -> Instruction
-	// Internals execute directly from the task.
-	// Their names are prefixed with '.' by convention.
+	pub fn new_bind(args: Vec<String>, signature: Signature) -> Instruction
 	{
-		Instruction::Internal{
-			name: name.into(),
+		Instruction::Bind{
+			args,
+			signature
+		}
+	}
+	pub fn new_check(address: &str, register: &str, typename: Option<String>) -> Instruction
+	{
+		Instruction::Check{
 			address: address.into(),
-			args: args.clone(),
-			labels: labels.clone(),
-			arity: args.len(),
-			count: labels.len()
+			register: register.into(),
+			typename
 		}
 	}
-	pub fn label(name: &str) -> Instruction
-	// Labels aren't executed.
-	// Their names are capitalised by convention.
+	pub fn new_function(name: &str, signature: Signature) -> Instruction
 	{
-		Instruction::Label(name.into())
+		let arity = signature.len();
+		Instruction::Function{
+			name: name.into(),
+			signature,
+			arity,
+		}
+	}
+	pub fn new_future(address: &str, args: Vec<String>) -> Instruction
+	{
+		Instruction::Future{
+			address: address.into(),
+			args
+		}
+	}
+	pub fn new_iterator(address: &str, register: &str) -> Instruction
+	{
+		Instruction::Iterator{
+			address: address.into(),
+			register: register.into()
+		}
+	}
+	pub fn new_list(address: &str, args: Vec<String>) -> Instruction
+	{
+		Instruction::List{
+			address: address.into(),
+			args
+		}
+	}
+	pub fn new_next(index: &str, register: &str) -> Instruction
+	{
+		Instruction::Next{
+			index: index.into(),
+			register: register.into()
+		}
+	}
+	pub fn new_range(address: &str, start: &str, end: &str, step: &str) -> Instruction
+	{
+		Instruction::Range{
+			address: address.into(),
+			start: start.into(),
+			end: end.into(),
+			step: step.into(),
+		}
+	}
+	pub fn new_record(address: &str, keys: Vec<String>, values: Vec<String>) -> Instruction
+	{
+		Instruction::Record{
+			address: address.into(),
+			keys,
+			values
+		}
+	}
+	pub fn new_sequence(address: &str, start: &str, end: &str, step: &str) -> Instruction
+	{
+		Instruction::Sequence{
+			address: address.into(),
+			start: start.into(),
+			end: end.into(),
+			step: step.into(),
+		}
+	}
+	pub fn new_type(name: &str, supertype: &str) -> Instruction
+	{
+		Instruction::Type{
+			name: name.into(),
+			supertype: supertype.into(),
+			prototype: None,
+		}
+	}
+	pub fn new_type_prototype(name: &str, supertype: &str, prototype: &str) -> Instruction
+	{
+		Instruction::Type{
+			name: name.into(),
+			supertype: supertype.into(),
+			prototype: Some(prototype.into()),
+		}
+	}
+	pub fn new_write(address: &str, register: &str) -> Instruction
+	{
+		Instruction::Write{
+			address: address.into(),
+			register: register.into()
+		}
+	}
+	pub fn default() -> Vec<Instruction>
+	{
+		vec![
+			Instruction::START,
+			Instruction::new_command("return", "0", vec![format!("-1")]),
+			Instruction::END
+		]
 	}
 }
 
@@ -121,17 +312,17 @@ impl Instruction
 					name,
 					signature
 				} 						=> Instruction::function_execute(&name, &signature),
-				Token::Module			|
-				Token::If 				|
-				Token::While 			|
-				Token::For(_) 			|
-				Token::Else 			=> Instruction::block_execute(node),
+				| Token::Module
+				| Token::If
+				| Token::While 
+				| Token::For(_)
+				| Token::Else 			=> Instruction::block_execute(node),
 				_ 						=> vec![]
 			},
 			1 => match &node.token {
-				Token::If 				|
-				Token::While 			|
-				Token::LeftConditional 	=> Instruction::branch_execute(node),
+				| Token::If
+				| Token::While
+				| Token::LeftConditional => Instruction::branch_execute(node),
 				Token::For(index) 		=> Instruction::for_execute(node, &index),
 				Token::RightConditional => Instruction::right_con_execute(node),
 				_ 						=> vec![]
@@ -141,68 +332,48 @@ impl Instruction
     }
 	pub fn block_execute(node: &Node) -> Vec<Instruction>
 	{
-		vec![Instruction::label(if node.branch {"ELSE"} else {"START"})]
+		vec![if node.branch {Instruction::ELSE} else {Instruction::START}]
 	}
 	pub fn type_execute(node: &Node, name: &str, supertype: &str, prototype: &bool) -> Vec<Instruction>
 	{
 		if *prototype {
 			vec![
-				Instruction::internal(
-					".check",
+				Instruction::new_check(
 					&node.register,
-					vec![
-						node.nodes[0].register.clone(),
-						supertype.into()
-					],
-					vec![]
+					&node.nodes[0].register,
+					Some(supertype.into())
 				),
-				Instruction::internal(
-					".type",
+				Instruction::new_type_prototype(
 					name,
-					vec![
-						supertype.into(),
-						node.register.clone()
-					],
-					vec![]
+					&supertype,
+					&node.register
 				),
-				Instruction::label("START")
+				Instruction::START
 			]
 		} else {
 			vec![
-				Instruction::internal(
-					".type",
+				Instruction::new_type(
 					name,
-					vec![
-						supertype.into()
-					],
-					vec![]
+					&supertype
 				),
-				Instruction::label("START")
+				Instruction::START
 			]
 		}
 	}
 	pub fn function_execute(name: &str, signature: &BTreeMap<String, String>) -> Vec<Instruction>
 	{
 		vec![
-			Instruction::internal(
-				".function",
+			Instruction::new_function(
 				name,
-				signature
-				.values()
-				.cloned()
-				.collect(),
-				signature
-				.keys()
-				.cloned()
-				.collect()
+				signature.clone()
 			),
-			Instruction::label("START")
+			Instruction::START
 		]
 	}
 	pub fn branch_execute(node: &Node) -> Vec<Instruction>
 	{
 		vec![
-			Instruction::command(
+			Instruction::new_command(
 				"if",
 				&node.register,
 				vec![node.nodes[0].register.clone()]
@@ -212,37 +383,31 @@ impl Instruction
 	pub fn for_execute(node: &Node, index: &str) -> Vec<Instruction>
 	{
 		vec![
-			Instruction::internal(
-				".iterator",
+			Instruction::new_iterator(
 				&node.register,
-				vec![node.nodes[0].register.clone()],
-				vec![]
+				&node.nodes[0].register
 			),
-			Instruction::label(if node.branch {"ELSE"} else {"START"}),
-			Instruction::internal(
-				".next",
+			if node.branch {Instruction::ELSE} else {Instruction::START},
+			Instruction::new_next(
 				index,
-				vec![node.register.clone()],
-				vec![]
+				&node.register
 			)
 		]
 	}
 	pub fn right_con_execute(node: &Node) -> Vec<Instruction>
 	{
 		vec![
-			Instruction::internal(
-				".bind",
-				"0",
-				vec![node.nodes[0].register.clone()],
-				vec![node.register.clone()]
+			Instruction::new_write(
+				&node.register,
+				&node.nodes[0].register
 			),
-			Instruction::command(
+			Instruction::new_command(
 				"if",
 				&node.register,
 				vec![]
 			),
-			Instruction::label("END"),
-			Instruction::label("ELSE")
+			Instruction::END,
+			Instruction::ELSE
 		]
 	}
 }
@@ -254,21 +419,21 @@ impl Instruction {
     {
         match &node.token {
 			Token::Type{..}				=> Instruction::type_end(),
-			Token::Module				|
-			Token::Function{..} 		=> Instruction::method_end(node),
+			| Token::Module
+			| Token::Function{..} 		=> Instruction::method_end(node),
 			Token::Assign(binds) 		=> Instruction::assign_end(node, &binds),
 			Token::If 					=> Instruction::if_end(node),
 			Token::While 				|
 			Token::For{..} 				=> Instruction::loop_end(),
 			Token::Return 				=> Instruction::return_end(node),
 			Token::Link(links) 			=> Instruction::link_end(&links),
-			Token::Use{names, source} 	=> Instruction::use_end(&names, &source),
+			// Token::Use{names, source} 	=> Instruction::use_end(&names, &source),
 			Token::Else 				=> Instruction::else_end(),
 			Token::Continue 			=> Instruction::continue_end(),
 			Token::Break				=> Instruction::break_end(),
 			Token::Receive(name) 		=> Instruction::receive_end(name),
 			Token::Sequence(_) 			=> Instruction::sequence_end(node),
-			Token::Meta(_) 				=> Instruction::meta_end(node),
+			// Token::Meta(_) 				=> Instruction::meta_end(node),
 			Token::Bind 				=> Instruction::bind_end(node),
 			Token::RightConditional		=> Instruction::right_con_end(node),
 			Token::Pair					=> Instruction::pair_end(node),
@@ -283,18 +448,18 @@ impl Instruction {
 	fn type_end() -> Vec<Instruction>
 	{
 		vec![
-			Instruction::command(
+			Instruction::new_command(
 				"constraint",
 				"0",
 				vec![]
 			),
-			Instruction::label("END")
+			Instruction::END
 		]
 	}
 	fn method_end(node: &Node) -> Vec<Instruction>
 	{
 		vec![
-			Instruction::command(
+			Instruction::new_command(
 				"return",
 				"0",
 				vec![
@@ -306,39 +471,48 @@ impl Instruction {
 					.clone()
 				]
 			),
-			Instruction::label("END")
+			Instruction::END
 		]
 	}
-	fn assign_end(node: &Node, binds: &BTreeMap<String, String>) -> Vec<Instruction>
+	fn assign_end(node: &Node, signature: &Signature) -> Vec<Instruction>
 	{
-		let mut instructions = vec![Instruction::label("BIND")];
-		instructions.extend(
-			binds
+		let mut instructions = vec![Instruction::BIND];
+		let args: Vec<(String, String, String)> = signature
 			.values()
 			.enumerate()
 			.map(
 				|(i, typename)| {
-					Instruction::internal(
-						".check",
-						&(str::parse::<usize>(&node.register).unwrap() + i).to_string(),
-						vec![
-							node.nodes[i].register.clone(),
-							typename.clone()
-						],
-						vec![]
+					(
+						(str::parse::<usize>(&node.register).unwrap() + i).to_string(),
+						node.nodes[i].register.clone(),
+						typename.clone()
+					)
+				}
+			)
+			.collect();
+		instructions.extend(
+			args
+			.iter()
+			.map(
+				|(address, register, typename)| {
+					Instruction::new_check(
+						address,
+						register,
+						match typename.as_str() {
+							"?" => None,
+							_ => Some(typename.clone())
+						}
 					)
 				}
 			)
 		);
 		instructions.push(
-			Instruction::internal(
-				".bind",
-				"0",
-				vec![],
-				binds
-				.keys()
-				.cloned()
-				.collect()
+			Instruction::new_bind(
+				args
+				.iter()
+				.map(|(address, ..)| address.clone())
+				.collect(),
+				signature.clone()
 			)
 		);
 		instructions
@@ -346,24 +520,19 @@ impl Instruction {
 	fn if_end(node: &Node) -> Vec<Instruction>
 	{
 		vec![
-			Instruction::command(
+			Instruction::new_command(
 				"if",
 				&node.register,
 				vec![]
 			),
-			Instruction::label("END")
+			Instruction::END
 		]
 	}
 	fn loop_end() -> Vec<Instruction>
 	{
 		vec![
-			Instruction::internal(
-				".loop",
-				"0",
-				vec![],
-				vec![]
-			),
-			Instruction::label("END")
+			Instruction::Loop,
+			Instruction::END
 		]
 	}
 	fn return_end(node: &Node) -> Vec<Instruction>
@@ -378,7 +547,7 @@ impl Instruction {
 			// 	],
 			// 	vec![]
 			// ),
-			Instruction::command(
+			Instruction::new_command(
 				"return",
 				"0",
 				if node.nodes.is_empty() {vec![]} else {vec![node.register.clone()]},
@@ -387,65 +556,41 @@ impl Instruction {
 	}
 	fn link_end(links: &Vec<String>) -> Vec<Instruction>
 	{
-		vec![
-			Instruction::internal(
-				".link",
-				"0", 
-				vec![],
-				links.clone()
-			)
-		]
+		vec![Instruction::Link(links.clone())]
 	}
-	fn use_end(names: &Vec<String>, source: &Option<String>) -> Vec<Instruction>
-	{
-		vec![
-			Instruction::internal(
-				".use",
-				match source {
-					Some(filename) => filename,
-					None => "0"
-				},
-				vec![],
-				names.clone()
-			),
-		]
-	}
+	// fn use_end(names: &Vec<String>, source: &Option<String>) -> Vec<Instruction>
+	// {
+	// 	vec![
+	// 		Instruction::internal(
+	// 			".use",
+	// 			match source {
+	// 				Some(filename) => filename,
+	// 				None => "0"
+	// 			},
+	// 			vec![],
+	// 			names.clone()
+	// 		),
+	// 	]
+	// }
 	fn else_end() -> Vec<Instruction>
 	{
-		vec![Instruction::label("END")]
+		vec![Instruction::END]
 	}
 	fn continue_end() -> Vec<Instruction>
 	{
 		vec![
-			Instruction::internal(
-				".continue",
-				"0",
-				vec![],
-				vec![]
-			)
+			Instruction::Continue
 		]
 	}
 	fn break_end() -> Vec<Instruction>
 	{
 		vec![
-			Instruction::internal(
-				".break",
-				"0",
-				vec![],
-				vec![]
-			)
+			Instruction::Break
 		]
 	}
 	fn receive_end(name: &str) -> Vec<Instruction>
 	{
-		vec![
-			Instruction::internal(
-				".receive",
-				name,
-				vec![],
-				vec![]
-			)
-		]
+		vec![Instruction::Receive(name.into())]
 	}
 	fn sequence_end(node: &Node) -> Vec<Instruction>
 	{
@@ -454,84 +599,70 @@ impl Instruction {
 		} else {
 			match node.nodes[0].token {
 				Token::Pair if node.nodes[0].nodes.len() == 3 => vec![
-					Instruction::internal(
-						".range",
+					Instruction::new_sequence(
 						&node.register,
-						node.nodes[0].nodes
-						.iter()
-						.map(|x| x.register.clone())
-						.collect(),
-						vec![]
+						&node.nodes[0].nodes[0].register,
+						&node.nodes[0].nodes[1].register,
+						&node.nodes[0].nodes[2].register
 					)
 				],
 				Token::Pair => vec![
-					Instruction::internal(
-						".record",
+					Instruction::new_record(
 						&node.register,
 						node.nodes
 						.iter()
-						.map(|x| x.nodes[1].register.clone())
+						.map(|x| x.nodes[0].register.clone())
 						.collect(),
 						node.nodes
 						.iter()
-						.map(|x| x.nodes[0].register.clone())
+						.map(|x| x.nodes[1].register.clone())
 						.collect()
 					)
 				],
 				_ => vec![
-					Instruction::internal(
-						".list",
+					Instruction::new_list(
 						&node.register,
 						node.nodes
 						.iter()
 						.map(|x| x.register.clone())
-						.collect(),
-						vec![]
+						.collect()
 					)
 				] 
 			}
 		}
 	}
-	fn meta_end(node: &Node) -> Vec<Instruction>
-	{
-		vec![
-			Instruction::internal(
-				"meta",
-				&node.register, 
-				vec![
-					node.nodes[0].register.clone()
-				],
-				vec![]
-			)
-		]
-	}
+	// fn meta_end(node: &Node) -> Vec<Instruction>
+	// {
+	// 	vec![
+	// 		Instruction::internal(
+	// 			"meta",
+	// 			&node.register, 
+	// 			vec![
+	// 				node.nodes[0].register.clone()
+	// 			],
+	// 			vec![]
+	// 		)
+	// 	]
+	// }
 	fn bind_end(node: &Node) -> Vec<Instruction>
 	{
 		vec![
-			Instruction::internal(
-				".future",
+			Instruction::new_future(
 				&node.register,
 				node
 				.nodes
 				.iter()
 				.map(|x| x.register.clone())
-				.collect(),
-				vec![]
+				.collect()
 			)
 		]
 	}
 	fn right_con_end(node: &Node) -> Vec<Instruction>
 	{
 		vec![
-			Instruction::internal(
-				".bind",
-				"0",
-				vec![
-					node.nodes[1].register.clone()
-				],
-				vec![
-					node.register.clone()
-				]
+			Instruction::new_write(
+				&node.register,
+				&node.nodes[1].register.clone()
 			)
 		]
 	}
@@ -539,14 +670,11 @@ impl Instruction {
 	{
 		if node.nodes.len() == 3 {
 			vec![
-				Instruction::internal(
-					".slice",
+				Instruction::new_range(
 					&node.register,
-					node.nodes
-					.iter()
-					.map(|x| x.register.clone())
-					.collect(),
-					vec![]
+					&node.nodes[0].register,
+					&node.nodes[1].register,
+					&node.nodes[2].register
 				)
 			]
 		} else {
@@ -556,7 +684,7 @@ impl Instruction {
 	fn call_end(node: &Node) -> Vec<Instruction>
 	{
 		vec![
-			Instruction::command(
+			Instruction::new_command(
 				&node.nodes[0].register,
 				&node.register,
 				node
@@ -570,7 +698,7 @@ impl Instruction {
 	fn index_end(node: &Node) -> Vec<Instruction>
 	{
 		let mut instructions: Vec<Instruction> = vec![
-			Instruction::command(
+			Instruction::new_command(
 				"[",
 				&node.register,
 				vec![
@@ -584,7 +712,7 @@ impl Instruction {
 				node.nodes[2..]
 				.iter()
 				.map(
-					|x| Instruction::command(
+					|x| Instruction::new_command(
 						"[",
 						&node.register,
 						vec![
@@ -600,7 +728,7 @@ impl Instruction {
 	fn operator_end(node: &Node, symbol: &str) -> Vec<Instruction>
 	{
 		vec![
-			Instruction::command(
+			Instruction::new_command(
 				symbol,
 				&node.register,
 				node
@@ -616,7 +744,7 @@ impl Instruction {
 impl Instruction
 // Instruction generation for optimisations.
 {
-	pub fn bind(instructions: &mut VecDeque<Instruction>, acc: &mut Vec<Instruction>)
+	pub fn resolve_bind(instructions: &mut VecDeque<Instruction>, acc: &mut Vec<Instruction>)
 	// Evaluates type checking for name binding, removing instructions if the type check is known to succeed.
 	// Currently does not bother to remove unnecessary type checks.
 	{
@@ -625,32 +753,30 @@ impl Instruction
 			match instructions
 			.pop_front()
 			.unwrap() {
-				Instruction::Internal{name, address, labels, ..} if name == ".bind" => {
+				Instruction::Bind{signature, ..} => {
 					acc.push(
-						Instruction::internal(
-							".bind",
-							&address,
+						Instruction::new_bind(
 							registers,
-							labels
+							signature.clone()
 						)
 					);
 					break
 				},
-				Instruction::Internal{name, address, args, labels, ..} if name == ".check" => {
-					if args[1] == "?" {
-						registers.push(args[0].clone())
-					} else {
-						registers.push(address.clone());
-						acc.push(
-							Instruction::internal(
-								".check",
-								&address,
-								args,
-								labels
+				Instruction::Check{address, register, typename} => {
+					match typename {
+						Some(_) => registers.push(register.clone()),
+						None => {
+							registers.push(address.clone());
+							acc.push(
+								Instruction::new_check(
+									&address,
+									&register,
+									None
+								)
 							)
-						)
+						}
 					}
-				}
+				},
 				_ => {}
 			}
 		}

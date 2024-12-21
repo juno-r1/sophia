@@ -16,6 +16,23 @@
 		"last": "number",
 		"total": true
 	},
+	"range_u_add": {
+		"name": "+",
+		"signature": [
+			"range"
+		],
+		"last": "range",
+		"total": true
+	},
+	"range_b_add": {
+		"name": "+",
+		"signature": [
+			"range",
+			"number"
+		],
+		"last": "range",
+		"total": true
+	},
 	"u_sub": {
 		"name": "-",
 		"signature": [
@@ -31,6 +48,23 @@
 			"number"
 		],
 		"last": "number",
+		"total": true
+	},
+	"range_u_sub": {
+		"name": "-",
+		"signature": [
+			"range"
+		],
+		"last": "range",
+		"total": true
+	},
+	"range_b_sub": {
+		"name": "-",
+		"signature": [
+			"range",
+			"number"
+		],
+		"last": "range",
 		"total": true
 	},
 	"u_rsv": {
@@ -50,6 +84,15 @@
 		"last": "number",
 		"total": true
 	},
+	"range_b_mul": {
+		"name": "*",
+		"signature": [
+			"range",
+			"number"
+		],
+		"last": "range",
+		"total": true
+	},
 	"b_div": {
 		"name": "/",
 		"signature": [
@@ -57,6 +100,15 @@
 			"number"
 		],
 		"last": "number",
+		"total": false
+	},
+	"range_b_div": {
+		"name": "/",
+		"signature": [
+			"range",
+			"number"
+		],
+		"last": "range",
 		"total": false
 	},
 	"b_exp": {
@@ -414,265 +466,18 @@
 		"last": "function & final(T)",
 		"total": false
 	},
-	"abs_number": {
-		"name": "abs",
-		"signature": [
-			"number"
-		],
-		"last": "number",
-		"total": true
-	},
-	"cast_some_type": {
-		"name": "cast",
-		"signature": [
-			"some",
-			"type"
-		],
-		"last": "x1",
-		"total": false
-	},
-	"ceiling_number": {
-		"name": "ceiling",
-		"signature": [
-			"number"
-		],
-		"last": "integer",
-		"total": true
-	},
-	"dispatch_function_list": {
-		"name": "dispatch",
-		"signature": [
-			"function",
-			"element(type)"
-		],
-		"last": "function",
-		"total": false
-	},
-	"error_string": {
-		"name": "error",
-		"signature": [
-			"string"
-		],
-		"last": "none",
-		"total": false
-	},
-	"floor_number": {
-		"name": "floor",
-		"signature": [
-			"number"
-		],
-		"last": "integer",
-		"total": true
-	},
-	"filter_final_iterator": {
-		"name": "filter",
-		"signature": [
-			"final(boolean)",
-			"iterator(T)"
-		],
-		"last": "iterator(T)",
-		"total": false
-	},
-	"filter_type_iterator": {
-		"name": "filter",
-		"signature": [
-			"type",
-			"iterator(T)"
-		],
-		"last": "iterator(T)",
-		"total": true
-	},
-	"format_string_index": {
-		"name": "format",
-		"signature": [
-			"string",
-			"index & element(string)"
-		],
-		"last": "string",
-		"total": false
-	},
-	"hash_some": {
-		"name": "hash",
-		"signature": [
-			"some"
-		],
-		"last": "integer",
-		"total": true
-	},
-	"if_none": {
-		"name": "if",
-		"signature": [],
-		"last": "none",
-		"total": false
-	},
-	"if_boolean": {
-		"name": "if",
-		"signature": [
-			"boolean"
-		],
-		"last": "none",
-		"total": false
-	},
-	"input_string": {
-		"name": "input",
-		"signature": [
-			"string"
-		],
-		"last": "string",
-		"total": false
-	},
-	"join_element_string": {
-		"name": "join",
-		"signature": [
-			"element(string)",
-			"string"
-		],
-		"last": "string",
-		"total": true
-	},
-	"length_string": {
-		"name": "length",
-		"signature": [
-			"string"
-		],
-		"last": "integer",
-		"total": true
-	},
-	"length_element": {
-		"name": "length",
-		"signature": [
-			"element"
-		],
-		"last": "integer",
-		"total": true
-	},
-	"length_iterator": {
-		"name": "length",
-		"signature": [
-			"iterator"
-		],
-		"last": "integer",
-		"total": true
-	},
-	"map_final_iterator": {
-		"name": "map",
-		"signature": [
-			"final(T)",
-			"iterator"
-		],
-		"last": "iterator(T)",
-		"total": false
-	},
-	"map_type_iterator": {
-		"name": "map",
-		"signature": [
-			"type",
-			"iterator"
-		],
-		"last": "iterator(boolean)",
-		"total": false
-	},
-	"namespace_none": {
-		"name": "namespace",
-		"signature": [],
-		"last": "key(string) & element(some)",
-		"total": true
-	},
-	"print_string": {
-		"name": "print",
-		"signature": [
-			"string"
-		],
-		"last": "string",
-		"total": false
-	},
-	"reduce_final_list": {
-		"name": "reduce",
-		"signature": [
-			"final(T1)",
-			"iterator(T2)"
-		],
-		"last": "T1",
-		"total": true
-	},
 	"return_none": {
 		"name": "return",
 		"signature": [],
 		"last": "none",
-		"total": false
+		"total": true
 	},
 	"return_any": {
 		"name": "return",
 		"signature": [
 			"any"
 		],
-		"last": "none",
-		"total": false
-	},
-	"reverse_iterator": {
-		"name": "reverse",
-		"signature": [
-			"iterator(T)"
-		],
-		"last": "iterator(T)",
-		"total": true
-	},
-	"round_number": {
-		"name": "round",
-		"signature": [
-			"number"
-		],
-		"last": "integer",
-		"total": true
-	},
-	"sign_number": {
-		"name": "sign",
-		"signature": [
-			"number"
-		],
-		"last": "integer",
-		"total": true
-	},
-	"signature_function_element": {
-		"name": "signature",
-		"signature": [
-			"function",
-			"element(type)"
-		],
-		"last": "boolean",
-		"total": true
-	},
-	"split_string_string": {
-		"name": "split",
-		"signature": [
-			"string",
-			"string"
-		],
-		"last": "index & element(string)",
-		"total": true
-	},
-	"sum_element": {
-		"name": "sum",
-		"signature": [
-			"element(number)"
-		],
-		"last": "number",
-		"total": true
-	},
-	"sum_iterator": {
-		"name": "sum",
-		"signature": [
-			"iterator(number)"
-		],
-		"last": "number",
-		"total": true
-	},
-	"typeof_any": {
-		"name": "typeof",
-		"signature": [
-			"any"
-		],
-		"last": "type",
+		"last": "any",
 		"total": true
 	}
 }

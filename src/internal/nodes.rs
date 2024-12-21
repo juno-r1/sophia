@@ -7,6 +7,9 @@ use utils::coerce::Coerce;
 use crate::internal::lexer::Lexer;
 use crate::internal::patterns;
 use crate::internal::tokens::Token;
+use crate::sophia::arche::{new_namespace, Namespace, Value};
+
+use super::instructions::Instruction;
 
 #[derive(Debug, Clone)]
 pub struct Node {
@@ -21,6 +24,7 @@ impl Node
 {
 	pub fn tree(source: Vec<String>) -> Node
 	// Creates an AST from a list of logical lines.
+    // Here's tree!
 	{
 		// Parse lines into statement nodes.
 		let mut lines: VecDeque<Node> = source
@@ -317,7 +321,7 @@ impl Node
                     .to_string();
                 match cap.name("type") {
                     Some(x) => acc.0.insert(x.to_string(), name),
-                    None => acc.0.insert(name, format!("any"))
+                    None => acc.0.insert(name, format!("?"))
                 };
                 acc.1.push(
                     Node::expression(
@@ -470,4 +474,93 @@ impl Node
 	// 		node.debug(indent + 1)
 	// 	}
 	// }
+}
+
+impl Node
+// Instruction generation.
+{
+	pub fn generate(mut self) -> (Vec<Instruction>, Namespace)
+	// Generates a list of instructions from an AST.
+	// Rust is a bit annoying about mutable references, so reaching a node is O(n).
+	{
+        let mut instructions: Vec<Instruction> = vec![];
+        let mut namespace: Namespace = new_namespace();
+		let mut path: Vec<usize> = vec![];
+		let mut index: usize = 0;
+        let mut constant: isize = -1;
+		loop {
+			let mut head = &mut self; // Start at top of tree.
+			for i in &path { // Navigate to head node.
+				head = head
+					.nodes
+					.get_mut(*i)
+					.unwrap();
+			}
+			instructions.extend( // Get initial instructions.
+				Instruction::execute(head, index)
+			); // Never called for leaf nodes, and doesn't need to be.
+			match head.nodes.get_mut(index) { // Get current node.
+				Some(node) => { // Going down?
+					path.push(index); // Push index to path.
+					index = 0; // Reset index.
+                    node.register = match &node.token {
+                        | Token::Env(name)
+                        | Token::Name(name)
+                        | Token::Receive(name)
+                        => name.clone(),
+                        Token::Null => format!("-1"),
+                        Token::Sequence(_) if node.nodes.is_empty() => {
+                            constant -= 1;
+                            let index = constant.to_string();
+                            namespace.insert(
+                                index.clone(),
+                                Value::new_list(vec![])
+                            );
+                            index
+                        },
+                        Token::Number(x) => {
+                            constant -= 1;
+                            let index = constant.to_string();
+                            namespace.insert(
+                                index.clone(),
+                                Value::new_number(x.clone())
+                            );
+                            index
+                        },
+                        Token::String(x) => {
+                            constant -= 1;
+                            let index = constant.to_string();
+                            namespace.insert(
+                                index.clone(),
+                                Value::new_string(x.clone())
+                            );
+                            index
+                        },
+                        Token::Boolean(x) => {
+                            constant -= 1;
+                            let index = constant.to_string();
+                            namespace.insert(
+                                index.clone(),
+                                Value::new_boolean(x.clone())
+                            );
+                            index
+                        },
+                        _ => (path
+                            .iter()
+                            .sum::<usize>() + 1)
+                            .to_string()
+                    }
+				},
+				None => { // Going up?
+					instructions.extend( // Get final instructions.
+						Instruction::end(head)
+					);
+					index = match path.pop() { // Increment path or exit.
+						Some(i) => i + 1,
+						None => return (instructions, namespace)
+					}
+				}
+			}
+		}
+	}
 }

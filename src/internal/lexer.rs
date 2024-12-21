@@ -123,18 +123,18 @@ impl <'a> Lexer<'a>
     // Determines whether the next token is a prefix.
     {
         match self.peek {
-            Token::Prefix(_) 		=> true,
-            Token::Infix(_) 		=> true,
-            Token::Bind 			=> true,
-            Token::LeftConditional 	=> true,
-            Token::RightConditional => true,
-            Token::InfixR(_) 		=> true,
-            Token::Concatenator 	=> true,
-            Token::Pair 			=> true,
-            Token::Call 			=> true,
-            Token::Index 			=> true,
-            Token::EOL 				=> true,
-            _ 						=> false
+            | Token::Prefix(_)
+            | Token::Infix(_)
+            | Token::Bind
+            | Token::LeftConditional
+            | Token::RightConditional
+            | Token::InfixR(_)
+            | Token::Concatenator
+            | Token::Pair
+            | Token::Call
+            | Token::Index
+            | Token::EOL => true,
+            _ => false
         }
     }
     fn collect(&mut self) -> String

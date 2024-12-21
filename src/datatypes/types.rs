@@ -79,6 +79,12 @@ impl TypeDef
 			_ => panic!("Type not currently supported")
 		}
 	}
+	pub fn call(&self, value: &Value) -> bool
+	{
+		self.types
+		.iter()
+		.all(|predicate| {predicate.call(value)})
+	}
 	pub fn check(&self, predicate: &Predicate) -> bool
 	// Universal dispatch check exploiting properties of structural typing.
 	{
@@ -109,8 +115,49 @@ impl TypeDef
 		}
 	}
 }
-// Standard library types.
+impl PartialOrd for TypeDef
+// Structural typing relations.
+{
+	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering>
+	// 	Subtype relation.
+	// 	Returns:
+	//	Less if self is a strict subtype of other;
+	//	Greater if self is not a strict subtype of other;
+	//	Equal if self and other are equal.
+	{
+		if self.types == other.types {
+			Some(std::cmp::Ordering::Equal)
+		} else {
+			let criteria: Vec<&Predicate> = other.types
+				.iter()
+				.filter_map(
+					|x| {
+						for y in &self.types {
+							if *x == *y {
+								return None
+							}
+						}
+						Some(x)
+					}
+				).collect();
+			if criteria.len() == 0 {
+				Some(std::cmp::Ordering::Less)
+			} else {
+				Some(std::cmp::Ordering::Greater)
+			}
+		}	
+	}
+}
+impl Ord for TypeDef
+// Structural typing relations.
+{
+	fn cmp(&self, other: &Self) -> std::cmp::Ordering
+	{
+		self.partial_cmp(other).unwrap()
+	}
+}
 impl TypeDef
+// Standard library types.
 {
 	pub fn stdlib() -> Namespace
 	{
@@ -132,6 +179,8 @@ impl TypeDef
 				new_type!("integer", std_integer),
 				new_type!("string", std_string),
 				new_type!("range", std_range),
+				new_type!("function", std_function),
+				new_type!("type", std_type),
 			]
 		)
 	}
@@ -238,61 +287,102 @@ impl TypeDef
 			None
 		)
 	}
+	pub fn std_function() -> TypeDef
+	{
+		TypeDef::from_super(
+			&TypeDef::std_some(),
+			vec![
+				Predicate::new_predicate_base(
+					"function",
+					Task::type_function
+				)
+			],
+			None
+		)
+	}
+	pub fn std_type() -> TypeDef
+	{
+		TypeDef::from_super(
+			&TypeDef::std_some(),
+			vec![
+				Predicate::new_predicate_base(
+					"type",
+					Task::type_type
+				)
+			],
+			None
+		)
+	}
 }
 
 impl Task
+// Standard library predicates.
 {
-	pub fn type_any(&mut self, _: Vec<Value>) -> Value
+	pub fn type_any(_: Value) -> bool
 	{
-		Value::new_boolean(true)
+		true
 	}
-	pub fn type_none(&mut self, args: Vec<Value>) -> Value
+	pub fn type_none(value: Value) -> bool
 	{
-		match args[0] {
-			Value::None => Value::new_boolean(true),
-			_ => Value::new_boolean(false)
+		match value {
+			Value::None => true,
+			_ => false
 		}
 	}
-	pub fn type_some(&mut self, args: Vec<Value>) -> Value
+	pub fn type_some(value: Value) -> bool
 	{
-		match args[0] {
-			Value::None => Value::new_boolean(false),
-			_ => Value::new_boolean(true)
+		match value {
+			Value::None => false,
+			_ => true
 		}
 	}
-	pub fn type_boolean(&mut self, args: Vec<Value>) -> Value
+	pub fn type_boolean(value: Value) -> bool
 	{
-		match args[0] {
-			Value::Boolean(_) => Value::new_boolean(true),
-			_ => Value::new_boolean(false)
+		match value {
+			Value::Boolean(_) => true,
+			_ => false
 		}
 	}
-	pub fn type_number(&mut self, args: Vec<Value>) -> Value
+	pub fn type_number(value: Value) -> bool
 	{
-		match args[0] {
-			Value::Number(_) => Value::new_boolean(true),
-			_ => Value::new_boolean(false)
+		match value {
+			Value::Number(_) => true,
+			_ => false
 		}
 	}
-	pub fn type_integer(&mut self, args: Vec<Value>) -> Value
+	pub fn type_integer(value: Value) -> bool
 	{
-		match &args[0] {
-			Value::Number(x) if x.denominator_ref() == &Natural::ONE => Value::new_boolean(true),
-			_ => Value::new_boolean(false)
+		match value {
+			Value::Number(x) if x.denominator_ref() == &Natural::ONE => true,
+			_ => false
 		}
 	}
-	pub fn type_string(&mut self, args: Vec<Value>) -> Value
+	pub fn type_string(value: Value) -> bool
 	{
-		match args[0] {
-			Value::String(_) => Value::new_boolean(true),
-			_ => Value::new_boolean(false)
+		match value {
+			Value::String(_) => true,
+			_ => false
 		}
 	}
-	pub fn type_range(&mut self, args: Vec<Value>) -> Value
+	pub fn type_range(value: Value) -> bool
 	{
-		match args[0] {
-			Value::Range(_) => Value::new_boolean(true),
-			_ => Value::new_boolean(false)
+		match value {
+			Value::Range(_) => true,
+			_ => false
+		}
+	}
+	pub fn type_function(value: Value) -> bool
+	{
+		match value {
+			Value::Function(_) => true,
+			_ => false
+		}
+	}
+	pub fn type_type(value: Value) -> bool
+	{
+		match value {
+			Value::Type(_) => true,
+			_ => false
 		}
 	}
 }

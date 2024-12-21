@@ -1,3 +1,6 @@
+use std::ops::{Add, Div, Mul, Neg, Sub};
+
+use malachite::num::arithmetic::traits::Abs;
 use malachite::Rational;
 use malachite::num::basic::traits::One;
 
@@ -41,6 +44,99 @@ impl Range
     pub fn len(&self) -> Rational
     {
         ((&self.end - &self.start) / &self.step) + Rational::ONE
+    }
+}
+
+impl Abs for Range
+{
+    type Output = Range;
+
+    fn abs(self) -> Self::Output
+    // Invert sequence if descending.
+    {
+        if self.step < 0 {
+            Range::new(
+                self.end.clone(),
+                self.start.clone(),
+                -self.step
+            )
+        } else {
+            self
+        }
+    }
+}
+
+impl Neg for Range
+{
+    type Output = Range;
+
+    fn neg(self) -> Self::Output
+    {
+        Range::new(
+            self.end.clone(),
+            self.start.clone(),
+            -self.step
+        )
+    }
+}
+
+impl Add<Rational> for Range
+{
+    type Output = Range;
+
+    fn add(self, rhs: Rational) -> Self::Output
+    // Adds to the arithmetic sequence.
+    {
+        Range::new(
+            self.start + &rhs,
+            self.end + &rhs,
+            self.step
+        )
+    }
+}
+
+impl Sub<Rational> for Range
+{
+    type Output = Range;
+
+    fn sub(self, rhs: Rational) -> Self::Output
+    // Subtracts from the arithmetic sequence.
+    {
+        Range::new(
+            self.start - &rhs,
+            self.end - &rhs,
+            self.step
+        )
+    }
+}
+
+impl Mul<Rational> for Range
+{
+    type Output = Range;
+
+    fn mul(self, rhs: Rational) -> Self::Output
+    // Multiplies the arithmetic sequence.
+    {
+        Range::new(
+            self.start * &rhs,
+            self.end * &rhs,
+            self.step * &rhs
+        )
+    }
+}
+
+impl Div<Rational> for Range
+{
+    type Output = Range;
+
+    fn div(self, rhs: Rational) -> Self::Output
+    // Divides the arithmetic sequence.
+    {
+        Range::new(
+            self.start / &rhs,
+            self.end / &rhs,
+            self.step / &rhs
+        )
     }
 }
 

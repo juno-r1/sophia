@@ -6,7 +6,6 @@ use crate::datatypes::functions::FuncDef;
 use crate::datatypes::range::Range;
 use crate::datatypes::types::TypeDef;
 
-use super::hemera::Error;
 use super::runtime::Task;
 
 // Enum of all concrete data types.
@@ -21,7 +20,7 @@ pub enum Value {
 	Function(Box<FuncDef>),
 	Type(Box<TypeDef>),
 	None,
-	Err(Error),
+	Err(String),
 }
 
 impl Value
@@ -69,18 +68,26 @@ impl Value
 	}
 }
 
-pub type Function = fn(&mut Task, Vec<Value>) -> Value;
-
+pub type Function = fn(&mut Task, Vec<Value>) -> Result<Value, String>;
+pub type Type = fn(Value) -> bool;
 pub type Namespace = HashMap<String, Value>;
 pub type Typespace = HashMap<String, TypeDef>;
 
-pub fn stdlib() -> Namespace
+pub fn stdlib(user: Namespace) -> Namespace
 // Build the standard library.
 {
-	let mut namespace: Namespace = HashMap::new();
+	let mut namespace: Namespace = user;
 	namespace.extend(TypeDef::stdlib());
 	namespace.extend(FuncDef::stdlib());
 	namespace
+}
+pub fn new_namespace() -> Namespace
+// Generates the minimum required namespace.
+{
+	HashMap::from([
+		(format!("0"), Value::new_none()),
+		(format!("-1"), Value::new_none())
+	])
 }
 pub fn infer_namespace(values: &Namespace) -> Typespace
 // Build a typespace from a namespace.
@@ -100,8 +107,8 @@ macro_rules! std_mod
 		{
 			use macros::std_fn;
 
+			use crate::error;
 			use crate::sophia::arche::Value;
-			use crate::sophia::hemera::Error;
 			use crate::sophia::runtime::Task;
 
 			$(std_fn!$method)+
@@ -112,12 +119,12 @@ macro_rules! std_mod
 		{
 			use macros::std_fn;
 
+			use crate::error;
 			use crate::sophia::arche::Value;
-			use crate::sophia::hemera::Error;
 			use crate::sophia::runtime::Task;
 
 			$($statement)+
 			$(std_fn!$method)+
 		}
-	}
+	};
 }

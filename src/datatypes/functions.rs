@@ -11,8 +11,8 @@ use std::env::current_dir;
 use serde::Deserialize;
 use serde_json;
 
+use crate::error;
 use crate::sophia::arche::{Namespace, Value};
-use crate::sophia::hemera::Error;
 use crate::sophia::runtime::Task;
 
 use super::methods::{Method, Predicate};
@@ -139,7 +139,7 @@ impl FuncDef
 			}
 		}
 	}
-	pub fn dispatch(&self, signature: &Vec<TypeDef>) -> Result<&Method, Error>
+	pub fn dispatch(&self, signature: &Vec<TypeDef>) -> Result<&Method, String>
 	// Multiple dispatch algorithm, with help from Julia:
 	// https://github.com/JeffBezanson/phdthesis
 	// Binary search tree yields closest key for method, then key is verified.
@@ -149,13 +149,13 @@ impl FuncDef
 				if signature.len() != 0 &&
 				match signature.get(*index) {
 					Some(x) => x.check(property),
-					None => return Err(Error::DISP)
+					None => return error!(DISP, "<function>", signature)
 				}
 				{truepath.dispatch(signature)} else
 				{falsepath.dispatch(signature)}
 			},
 			FuncDef::Leaf(method) => Ok(method),
-			FuncDef::Undefined => Err(Error::DISP)
+			FuncDef::Undefined => error!(DISP, "<function>", signature)
 		}
 	}
 }
