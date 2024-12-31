@@ -28,7 +28,7 @@ pub const ELSE:         &str = r#"^else:$"#;
 // Regex expression patterns.
 pub const TYPE_EXPR:    &str = r#"^extends (?<supertype>\w+)( with (?<prototype>.*))?\s*=>\s*(?<expression>.+)$"#;
 pub const FUNC_EXPR:    &str = r#"^(?<params>(\w+( \w+)?(\s*,\s*)?)*)\s*=>\s*(?<expression>.+?)(\s*=>\s*(?<final>\w+)$)?"#;
-pub const NUMBER:       &str = r#"(?<number>[+-]?\d+([\./]\d*)?)"#; // Any number of the format x(.y) or x(/y).
+pub const NUMBER:       &str = r#"(?<number>[+-]?\d+([\./]\d*)?(e[+-]?\d*)?)"#; // Any number of the format described in SI-3.
 pub const STRING:       &str = r#"(?<string>('.*?')|(".*?"))"#; // Any symbols between single or double quotes.
 pub const NAME:         &str = r#"(?<name>\w+)"#; // Any word.
 pub const ENV:          &str = r#"(?<env>@)"#;

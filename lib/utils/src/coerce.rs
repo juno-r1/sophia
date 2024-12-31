@@ -1,5 +1,7 @@
+use std::str::FromStr;
+
 use malachite::Rational;
-use malachite::num::conversion::traits::RoundingInto;
+use malachite::num::conversion::traits::{FromSciString, RoundingInto};
 use malachite::rounding_modes::RoundingMode;
 use regex::Match;
 
@@ -17,17 +19,21 @@ pub trait Coerce
     {
         panic!("Unimplemented coerce to isize")
     }
-    fn to_vec<T>(&self) -> Vec<T>
+    fn to_rational(&self) -> Option<Rational>
     {
-        panic!("Unimplemented coerce to Vec")
+        panic!("Unimplemented coerce to rational")
     }
-    fn keys_into_vec<T>(&self) -> Vec<T>
+}
+
+impl Coerce for str
+{
+    fn to_rational(&self) -> Option<Rational>
     {
-        panic!("Unimplemented coerce to Vec")
-    }
-    fn values_into_vec<T>(&self) -> Vec<T>
-    {
-        panic!("Unimplemented coerce to Vec")
+        if self.contains('.') || self.contains('e') {
+            Rational::from_sci_string(self)
+        } else {
+            Rational::from_str(self).ok()
+        }
     }
 }
 
@@ -35,9 +41,7 @@ impl <'a> Coerce for Match<'a>
 {
     fn to_string(&self) -> String
     {
-        self
-        .as_str()
-        .to_string()
+        ToString::to_string(self.as_str())
     }
 }
 

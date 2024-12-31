@@ -1,6 +1,3 @@
-use std::str::FromStr;
-
-use malachite::Rational;
 use regex::CaptureMatches;
 use utils::coerce::Coerce;
 
@@ -54,7 +51,8 @@ impl <'a> Lexer<'a>
                 Some(cap) => {
                     if let Some(x) = cap.name("number") {
                         Token::Number(
-                            Rational::from_str(x.into())
+                            x.as_str()
+                            .to_rational()
                             .unwrap()
                         )
                     } else if let Some(x) = cap.name("string") {

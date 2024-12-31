@@ -1,6 +1,11 @@
 #[cfg(test)]
 mod integration
 {
+    use std::str::FromStr;
+
+    use malachite::num::conversion::traits::FromSciString;
+    use malachite::Rational;
+
     use crate::sophia::arche::Value;
     use crate::sophia::runtime::Runtime;
 
@@ -22,6 +27,42 @@ mod integration
         assert_eq!(
             Runtime::run("integration/SI-2/1.sph"),
             Ok(Value::new_none())
+        );
+    }
+    #[test]
+    fn si_3()
+    {
+        assert_eq!(
+            Runtime::run("integration/SI-3/0.sph"),
+            Ok(Value::new_number(Rational::from_str("0").unwrap()))
+        );
+        assert_eq!(
+            Runtime::run("integration/SI-3/1.sph"),
+            Ok(Value::new_number(Rational::from_str("1").unwrap()))
+        );
+        assert_eq!(
+            Runtime::run("integration/SI-3/2.sph"),
+            Ok(Value::new_number(Rational::from_str("-1").unwrap()))
+        );
+        assert_eq!(
+            Runtime::run("integration/SI-3/3.sph"),
+            Ok(Value::new_number(Rational::from_sci_string("1.2").unwrap()))
+        );
+        assert_eq!(
+            Runtime::run("integration/SI-3/4.sph"),
+            Ok(Value::new_number(Rational::from_str("1/2").unwrap()))
+        );
+        assert_eq!(
+            Runtime::run("integration/SI-3/5.sph"),
+            Ok(Value::new_number(Rational::from_sci_string("1e1111").unwrap()))
+        );
+        assert_eq!(
+            Runtime::run("integration/SI-3/6.sph"),
+            Ok(Value::new_number(Rational::from_str("-1/2").unwrap()))
+        );
+        assert_eq!(
+            Runtime::run("integration/SI-3/7.sph"),
+            Ok(Value::new_number(Rational::from_sci_string("-1.2e-2").unwrap()))
         );
     }
 }
