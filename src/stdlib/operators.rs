@@ -7,28 +7,28 @@ std_mod!
 	};
 	std_fn!
 	{
-		number u_add(number x0)
+		number add_u(number x0)
 		{
 			x0.abs()
 		}
 	}
 	std_fn!
 	{
-		number b_add(number x0, number x1)
+		number add_b(number x0, number x1)
 		{
 			x0 + x1
 		}
 	}
 	std_fn!
 	{
-		range range_u_add(range x0)
+		range add_r(range x0)
 		{
 			x0.abs()
 		}
 	}
 	std_fn!
 	{
-		range range_b_add(range x0, number x1)
+		range add_rn(range x0, number x1)
 		{
 			x0 + x1
 		}

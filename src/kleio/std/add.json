@@ -1,0 +1,35 @@
+{
+	"name": "+",
+	"methods": {
+		"add_u": {
+			"signature": [
+				"number"
+			],
+			"returns": "number",
+			"partial": false
+		},
+		"add_b": {
+			"signature": [
+				"number",
+				"number"
+			],
+			"returns": "number",
+			"partial": false
+		},
+		"add_r": {
+			"signature": [
+				"range"
+			],
+			"returns": "range",
+			"partial": false
+		},
+		"add_rn": {
+			"signature": [
+				"range",
+				"number"
+			],
+			"returns": "range",
+			"partial": false
+		}
+	}
+}

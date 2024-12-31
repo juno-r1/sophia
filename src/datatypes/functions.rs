@@ -256,11 +256,16 @@ impl FuncDef
 // 				self.false.debug(level + 1)
 
 #[derive(Debug, Deserialize)]
-pub struct Signature {
+struct Metadata {
 	name: String,
+	methods: HashMap<String, Signature>,
+}
+
+#[derive(Debug, Deserialize)]
+struct Signature {
 	signature: Vec<String>,
-	last: String,
-	total: bool,
+	returns: String,
+	partial: bool,
 }
 
 // Standard library functions.
@@ -273,136 +278,129 @@ impl FuncDef
 		// 	self.extend(function_method(item, names, types))
 	pub fn stdlib() -> Namespace
 	{
-		// Deserialise signature file.
-		let signatures: HashMap<String, Signature> = serde_json::from_str(
-			&std::fs::read_to_string(
-				current_dir()
-				.expect("Couldn't find signature file")
-				.join("src/stdlib/kleio.json")
-			).expect("Couldn't read signature file")
-		).expect("Couldn't deserialise signature file");
-		// Produces a key-value pair with a standard library function.
 		macro_rules! new_function
+		// Creates a standard library function.
+		// Deserialises signature file, then constructs function from methods.
 		{
 			($name:expr) => {
 				($name.into(), Value::new_function(FuncDef::new(vec![])))
 			};
-			($name:expr, $($method:ident),*) => {
-				($name.into(), Value::new_function(FuncDef::new(vec![$(
+			($name:expr, $($method:ident),*) => {{
+				let metadata: Metadata = serde_json::from_str(
+					&std::fs::read_to_string(
+						std::fs::canonicalize(
+							current_dir()
+							.expect("Couldn't find signature file")
+							.join(format!("src/kleio/{:}.json", $name))
+						).expect("Couldn't canonicalise signature file")
+					).expect("Couldn't read signature file")
+				).expect("Couldn't deserialise signature file");
+				(metadata.name.into(), Value::new_function(FuncDef::new(vec![$(
 					Method::new_method_std(
 						Task::$method,
 						{
-							let data = &signatures
+							let data = &metadata.methods
 								.get(stringify!($method))
 								.unwrap();
-							let mut signature = BTreeMap::from(
-								[
-									(
-										$name.into(),
-										TypeDef::read(&data.last)
-									)
-								]
-							);
+							let mut signature = BTreeMap::from([
+								($name.into(), TypeDef::read(&data.returns))
+							]);
 							signature.extend(
 								BTreeMap::from_iter(
 									data.signature
 									.iter()
-									.map(
-										|x|
-										(
-											format!("_"),
-											TypeDef::read(x)
-										)
-									)
+									.map(|x| (format!("_"), TypeDef::read(x)))
 								)
 							);
 							signature
 						}
 					)
 				),*])))
-			};
+			}};
 		}
 		// Produces the standard function namespace.
 		HashMap::from(
 			[
 				// Built-ins.
-				new_function!(
-					"return",
-					return_none,
-					return_any
-				),
+				// new_function!(
+				// 	"return",
+				// 	return_none,
+				// 	return_any
+				// ),
 				// Operators.
 				new_function!(
-					"+",
-					u_add,
-					b_add
+					"std/add",
+					add_u,
+					add_b,
+					add_r,
+					add_rn
 				),
-				new_function!(
-					"-",
-					u_sub,
-					b_sub
-				),
-				new_function!(
-					"*",
-					b_mul
-				),
-				new_function!(
-					"/",
-					b_div
-				),
-				new_function!(
-					"^",
-					b_exp
-				),
-				new_function!(
-					"%",
-					b_mdl
-				),
-				new_function!(
-					"=",
-					b_eql
-				),
-				new_function!(
-					"!=",
-					b_nql
-				),
-				new_function!(
-					"<",
-					b_ltn
-				),
-				new_function!(
-					">",
-					b_gtn
-				),
-				new_function!(
-					"<=",
-					b_lql
-				),
-				new_function!(
-					">=",
-					b_gql
-				),
-				new_function!(
-					"in",
-					b_sbs_string,
-					b_sbs_range
-				),
-				new_function!(
-					"not",
-					u_lnt
-				),
-				new_function!(
-					"and",
-					b_lnd
-				),
-				new_function!(
-					"or",
-					b_lor
-				),
-				new_function!(
-					"xor",
-					b_lxr
-				),
+				// new_function!(
+				// 	"-",
+				// 	u_sub,
+				// 	b_sub
+				// ),
+				// new_function!(
+				// 	"*",
+				// 	b_mul
+				// ),
+				// new_function!(
+				// 	"/",
+				// 	b_div
+				// ),
+				// new_function!(
+				// 	"^",
+				// 	b_exp
+				// ),
+				// new_function!(
+				// 	"%",
+				// 	b_mdl
+				// ),
+				// new_function!(
+				// 	"=",
+				// 	b_eql
+				// ),
+				// new_function!(
+				// 	"!=",
+				// 	b_nql
+				// ),
+				// new_function!(
+				// 	"<",
+				// 	b_ltn
+				// ),
+				// new_function!(
+				// 	">",
+				// 	b_gtn
+				// ),
+				// new_function!(
+				// 	"<=",
+				// 	b_lql
+				// ),
+				// new_function!(
+				// 	">=",
+				// 	b_gql
+				// ),
+				// new_function!(
+				// 	"in",
+				// 	b_sbs_string,
+				// 	b_sbs_range
+				// ),
+				// new_function!(
+				// 	"not",
+				// 	u_lnt
+				// ),
+				// new_function!(
+				// 	"and",
+				// 	b_lnd
+				// ),
+				// new_function!(
+				// 	"or",
+				// 	b_lor
+				// ),
+				// new_function!(
+				// 	"xor",
+				// 	b_lxr
+				// ),
 			]
 		)
 	}

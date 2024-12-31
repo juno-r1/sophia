@@ -1,38 +1,4 @@
 {
-  	"u_add": {
-		"name": "+",
-		"signature": [
-			"number"
-		],
-		"last": "number",
-		"total": true
-	},
-	"b_add": {
-		"name": "+",
-		"signature": [
-			"number",
-			"number"
-		],
-		"last": "number",
-		"total": true
-	},
-	"range_u_add": {
-		"name": "+",
-		"signature": [
-			"range"
-		],
-		"last": "range",
-		"total": true
-	},
-	"range_b_add": {
-		"name": "+",
-		"signature": [
-			"range",
-			"number"
-		],
-		"last": "range",
-		"total": true
-	},
 	"u_sub": {
 		"name": "-",
 		"signature": [

@@ -1,25 +1,25 @@
-use crate::std_mod;
+// use crate::std_mod;
 
-std_mod!
-{
-	ret;
-	std_fn!
-	{
-		none return_none()
-		{
-			self.path = 0;
-			Value::new_none()
-		}
-	}
-	std_fn!
-	{
-		any return_any(any x0)
-		{
-			self.path = 0;
-			x0
-		}
-	}
-}
+// std_mod!
+// {
+// 	ret;
+// 	std_fn!
+// 	{
+// 		none return_none()
+// 		{
+// 			self.path = 0;
+// 			Value::new_none()
+// 		}
+// 	}
+// 	std_fn!
+// 	{
+// 		any return_any(any x0)
+// 		{
+// 			self.path = 0;
+// 			x0
+// 		}
+// 	}
+// }
 
 // def return_none(task):
 	

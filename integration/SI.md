@@ -9,3 +9,14 @@ SIs are associated with a description of their requirements, an integration test
 ## SI-1
 
 Initialise the Sophia runtime.
+
+## SI-2
+
+Return statement.
+
+`return`
+`return <E>`
+
+Ends execution of the current routine and returns null to the calling routine.
+It is possible to return from the global routine.
+The returned value may be used by external utilities in future.

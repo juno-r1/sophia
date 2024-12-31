@@ -67,6 +67,7 @@ pub enum Instruction
 		keys: Vec<String>,
 		values: Vec<String>,
 	},
+	Return(String),
 	Sequence{
 		address: String,
 		start: String,
@@ -289,7 +290,7 @@ impl Instruction
 	{
 		vec![
 			Instruction::START,
-			Instruction::new_command("return", "0", vec![format!("-1")]),
+			Instruction::Return(format!("-1")),
 			Instruction::END
 		]
 	}
@@ -307,25 +308,25 @@ impl Instruction
 					name,
 					supertype,
 					prototype
-				} 						=> Instruction::type_execute(node, &name, &supertype, prototype),
+				} => Instruction::type_execute(node, &name, &supertype, prototype),
 				Token::Function{
 					name,
 					signature
-				} 						=> Instruction::function_execute(&name, &signature),
+				} => Instruction::function_execute(&name, &signature),
 				| Token::Module
 				| Token::If
 				| Token::While 
 				| Token::For(_)
-				| Token::Else 			=> Instruction::block_execute(node),
-				_ 						=> vec![]
+				| Token::Else => Instruction::block_execute(node),
+				_ => vec![]
 			},
 			1 => match &node.token {
 				| Token::If
 				| Token::While
 				| Token::LeftConditional => Instruction::branch_execute(node),
-				Token::For(index) 		=> Instruction::for_execute(node, &index),
+				Token::For(index) => Instruction::for_execute(node, &index),
 				Token::RightConditional => Instruction::right_con_execute(node),
-				_ 						=> vec![]
+				_ => vec![]
 			},
 			_ => vec![]
 		}
@@ -418,31 +419,31 @@ impl Instruction {
 	// Generates final instructions.
     {
         match &node.token {
-			Token::Type{..}				=> Instruction::type_end(),
+			Token::Type{..} => Instruction::type_end(),
 			| Token::Module
-			| Token::Function{..} 		=> Instruction::method_end(node),
-			Token::Assign(binds) 		=> Instruction::assign_end(node, &binds),
-			Token::If 					=> Instruction::if_end(node),
-			Token::While 				|
-			Token::For{..} 				=> Instruction::loop_end(),
-			Token::Return 				=> Instruction::return_end(node),
-			Token::Link(links) 			=> Instruction::link_end(&links),
+			| Token::Function{..} => Instruction::method_end(node),
+			Token::Assign(binds) => Instruction::assign_end(node, &binds),
+			Token::If => Instruction::if_end(node),
+			| Token::While
+			| Token::For{..} => Instruction::loop_end(),
+			Token::Return => Instruction::return_end(node),
+			Token::Link(links) => Instruction::link_end(&links),
 			// Token::Use{names, source} 	=> Instruction::use_end(&names, &source),
-			Token::Else 				=> Instruction::else_end(),
-			Token::Continue 			=> Instruction::continue_end(),
-			Token::Break				=> Instruction::break_end(),
-			Token::Receive(name) 		=> Instruction::receive_end(name),
-			Token::Sequence(_) 			=> Instruction::sequence_end(node),
+			Token::Else => Instruction::else_end(),
+			Token::Continue => Instruction::continue_end(),
+			Token::Break => Instruction::break_end(),
+			Token::Receive(name) => Instruction::receive_end(name),
+			Token::Sequence(_) => Instruction::sequence_end(node),
 			// Token::Meta(_) 				=> Instruction::meta_end(node),
-			Token::Bind 				=> Instruction::bind_end(node),
-			Token::RightConditional		=> Instruction::right_con_end(node),
-			Token::Pair					=> Instruction::pair_end(node),
-			Token::Call					=> Instruction::call_end(node),
-			Token::Index				=> Instruction::index_end(node),
-			Token::Prefix(symbol) 		|
-			Token::Infix(symbol) 		|
-			Token::InfixR(symbol)		=> Instruction::operator_end(node, symbol),
-            _ 							=> vec![]
+			Token::Bind => Instruction::bind_end(node),
+			Token::RightConditional => Instruction::right_con_end(node),
+			Token::Pair => Instruction::pair_end(node),
+			Token::Call => Instruction::call_end(node),
+			Token::Index => Instruction::index_end(node),
+			| Token::Prefix(symbol)
+			| Token::Infix(symbol)
+			| Token::InfixR(symbol) => Instruction::operator_end(node, symbol),
+            _ => vec![]
         }
     }
 	fn type_end() -> Vec<Instruction>
@@ -456,20 +457,16 @@ impl Instruction {
 			Instruction::END
 		]
 	}
-	fn method_end(node: &Node) -> Vec<Instruction>
+	fn method_end(_: &Node) -> Vec<Instruction>
 	{
 		vec![
-			Instruction::new_command(
-				"return",
-				"0",
-				vec![
-					node
-					.nodes
-					.last()
-					.unwrap()
-					.register
-					.clone()
-				]
+			Instruction::Return(
+				format!("-1")
+				// node.nodes
+				// .last()
+				// .unwrap()
+				// .register
+				// .clone()
 			),
 			Instruction::END
 		]
@@ -538,19 +535,10 @@ impl Instruction {
 	fn return_end(node: &Node) -> Vec<Instruction>
 	{
 		vec![
-			// Instruction::internal(
-			// 	".check",
-			// 	&node.register,
-			// 	vec![
-			// 		if node.nodes.is_empty() {node.register.clone()} else {node.nodes[0].register.clone()},
-			// 		"".into() // Incorrect.
-			// 	],
-			// 	vec![]
-			// ),
-			Instruction::new_command(
-				"return",
-				"0",
-				if node.nodes.is_empty() {vec![]} else {vec![node.register.clone()]},
+			Instruction::Return(
+				if node.nodes.is_empty()
+				{format!("-1")} else
+				{node.nodes[0].register.clone()},
 			),
 		]
 	}

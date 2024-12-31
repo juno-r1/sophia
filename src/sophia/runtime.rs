@@ -109,9 +109,9 @@ impl Task
     {
         // Parse input source.
         let (instructions, namespace) = parse(file)?;
-        // for item in parser.analyse(){
-        //     println!("{:?}", item)
-        // };
+        for item in &instructions {
+            println!("{:?}", item)
+        };
         // Build standard library.
         let lib = stdlib(namespace);
         let types = infer_namespace(&lib);
@@ -167,17 +167,22 @@ impl Task
                         _ => return error!(CALL, name)
                     }
                 },
-                Instruction::Bind{args, signature} => {
-                    for (index, (name, typename)) in signature.iter().enumerate() {
-                        let value = self.read(&args[index])?;
-                        let typedef = match self.read(&typename)? {
-                            Value::Type(x) => *x,
-                            _ => return error!(FIND, typename)
-                        };
-                        self.write(&name, value, typedef);
-                    };
-                    Value::new_none()
+                Instruction::Return(register) => {
+                    let value = self.read(&register)?;
+                    self.path = 0;
+                    value
                 },
+                // Instruction::Bind{args, signature} => {
+                //     for (index, (name, typename)) in signature.iter().enumerate() {
+                //         let value = self.read(&args[index])?;
+                //         let typedef = match self.read(&typename)? {
+                //             Value::Type(x) => *x,
+                //             _ => return error!(FIND, typename)
+                //         };
+                //         self.write(&name, value, typedef);
+                //     };
+                //     Value::new_none()
+                // },
                 // Instruction::Check{address, register, typename} => {
                 //     match typename {
                 //         Some(name) => {},
