@@ -65,6 +65,34 @@ mod integration
             Ok(Value::new_number(Rational::from_sci_string("-1.2e-2").unwrap()))
         );
     }
+    #[test]
+    fn si_4()
+    {
+        assert_eq!(
+            Runtime::run("integration/SI-4/0.sph"),
+            Ok(Value::new_string(format!("Hello world!")))
+        );
+        assert_eq!(
+            Runtime::run("integration/SI-4/1.sph"),
+            Ok(Value::new_string(format!("Hello world!")))
+        );
+        assert_eq!(
+            Runtime::run("integration/SI-4/2.sph"),
+            Ok(Value::new_string(format!("'")))
+        );
+        assert_eq!(
+            Runtime::run("integration/SI-4/3.sph"),
+            Ok(Value::new_string(format!("\"")))
+        );
+        assert_eq!(
+            Runtime::run("integration/SI-4/4.sph"),
+            Ok(Value::new_string(format!("\0\t\n\r\"\'\\")))
+        );
+        assert_eq!(
+            Runtime::run("integration/SI-4/5.sph"),
+            Ok(Value::new_string(format!("\0\0")))
+        );
+    }
 }
 // #[cfg(test)]
 // mod arche

@@ -8,6 +8,7 @@ pub const COMMENT:      &str = r#"(\s*//.*?(?:\n|$))"#;
 pub const TRAILING:     &str = r#"(?<start>\n\s*[,;'"\)\]\}])|(?<end>[,;'"\(\[\{]\n\s*)|(?<empty>\s*\n)|(?<sentinel>\s*$)"#;
 pub const WHITESPACE:   &str = r#"^\s*$"#;
 pub const TABSPACE:		&str = r#"    "#;
+pub const ESCAPE:       &str = r#"(\\x(?<x>..))|(\\(?<char>.))"#;
 
 // Regex statement patterns.
 pub const BRANCH:       &str = r#"^else (?<branch>.+)$"#;
@@ -96,10 +97,32 @@ pub fn normalise(source: &str) -> String
 		.unwrap()
 		.replace_all(&source, "\t")
 		.into();
-    Regex::new(&[
-        STRING,
-        NAME
-    ].join("|"))
+    source = Regex::new(ESCAPE) // Convert escape characters to Unicode escapes.
+        .unwrap()
+        .replace_all(
+            &source,
+            |cap: &regex::Captures| -> String {
+                if let Some(x) = cap.name("char") {
+                    match x.as_str() {
+                        "u" => "\\u",
+                        "0" => "\\u{00}",
+                        "t" => "\\u{09}",
+                        "n" => "\\u{0A}",
+                        "r" => "\\u{0D}",
+                        "\"" => "\\u{22}",
+                        "\'" => "\\u{27}",
+                        "\\" => "\\u{5C}",
+                        _ => ""
+                    }.into()
+                } else if let Some(x) = cap.name("x") {
+                    format!("\\u{{{:}}}", x.as_str())
+                } else {
+                    format!("")
+                }
+            }
+        ).into();
+    println!("{source}");
+    Regex::new(&[STRING, NAME].join("|"))
     .unwrap()
     .replace_all(
         &source,
@@ -127,7 +150,8 @@ pub fn split(source: &str) -> Vec<String>
     .replace_all(
         source,
         |cap: &regex::Captures| -> String {
-            if let Some(x) = cap.name("start") { // Trailing after a newline.
+            // Trailing after a newline.
+            if let Some(x) = cap.name("start") {
                 x
                 .as_str()
                 .chars()
@@ -135,7 +159,8 @@ pub fn split(source: &str) -> Vec<String>
                 .unwrap()
                 .into()
             }
-            else if let Some(x) = cap.name("end") { // Trailing before a newline.
+            // Trailing before a newline.
+            else if let Some(x) = cap.name("end") {
                 x
                 .as_str()
                 .chars()
@@ -143,6 +168,7 @@ pub fn split(source: &str) -> Vec<String>
                 .unwrap()
                 .into()
             }
+            // Otherwise.
             else {
                 cap
                 .get(0)

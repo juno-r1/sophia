@@ -52,10 +52,7 @@ impl Node
                             true
                         )
                     } else {
-                        (
-                            line[scope..].into(),
-                            false
-                        )
+                        (line[scope..].into(), false)
                     };
                 let mut node = Node::statement(pattern.trim());
                 node.scope = scope + 1;
@@ -260,14 +257,9 @@ impl Node
             .unwrap()
             .as_str();
         let signature: BTreeMap<String, String> = if params.is_empty() {
-            BTreeMap::from(
-				[
-					(
-                        funname.clone(),
-                        funtype.clone()
-                    )
-				]
-			)
+            BTreeMap::from([
+                (funname.clone(), funtype.clone())
+			])
         } else {
             Regex::new(r"\s*,\s*")
             .unwrap()
@@ -310,10 +302,7 @@ impl Node
         .unwrap()
         .captures_iter(pattern)
         .fold(
-            (
-                BTreeMap::new(),
-                vec![]
-            ),
+            (BTreeMap::new(), vec![]),
             |mut acc: (BTreeMap<String, String>, Vec<Node>), cap| {
                 let name = cap
                     .name("name")
@@ -334,10 +323,7 @@ impl Node
                 acc
             }
         );
-        Node::branch(
-            Token::Assign(signature),
-            nodes
-        )
+        Node::branch(Token::Assign(signature), nodes)
     }
     fn new_if(cap: Captures) -> Node
     {

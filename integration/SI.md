@@ -34,3 +34,31 @@ Numeric literals.
 
 Sophia has one numeric data type: arbitrary-precision rationals.
 It should be able to parse as constant with the sign and either a fraction sign or a decimal point and an exponent.
+
+# SI-4
+
+String literals.
+
+`"Hello world!"`
+`'Hello world!'`
+`"'"`
+`'"'`
+
+String literals are indicated with single or double quotes.
+One can be used inside the other.
+Strings are encoded in UTF-8.
+
+The following escape characters are available:
+\0  U+0000 (NUL)
+\t	U+0009 (HT)
+\n	U+000A (LF)
+\r	U+000D (CR)
+\"	U+0022 (QUOTATION MARK)
+\'	U+0027 (APOSTROPHE)
+\\	U+005C (REVERSE SOLIDUS)
+
+ASCII characters can be specified with \x and then 2 digits:
+\x00
+
+Unicode charaacters can be specified with \u and then up to 6 digits in curly brackets:
+\u{000000}

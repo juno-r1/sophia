@@ -22,7 +22,6 @@ pub fn parse(source: &str) -> Result<(Vec<Instruction>, Namespace), String>
 	// Generate AST from lines.
 	let tree: Node = Node::tree(lines);
 	// Generate instructions and namespace from AST.
-	// Rust is a bit annoying about mutable references, so reaching a node is O(n).
 	Ok(tree.generate())
 }
 	// pub fn analyse(&self) -> Vec<Instruction>

@@ -1,5 +1,6 @@
 use regex::CaptureMatches;
 use utils::coerce::Coerce;
+use utils::string::unescape;
 
 use crate::internal::nodes::Node;
 use crate::internal::tokens::Token;
@@ -57,9 +58,7 @@ impl <'a> Lexer<'a>
                         )
                     } else if let Some(x) = cap.name("string") {
                         Token::String(
-                            x
-                            .as_str()[1..x.len() - 1] // Would be nice if indexing was isize, not going to lie.
-                            .into()
+                            unescape(x.as_str()[1..x.len() - 1].into())
                         )
                     } else if let Some(x) = cap.name("name") {
                         match x.as_str() {
