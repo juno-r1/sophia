@@ -93,6 +93,18 @@ mod integration
             Ok(Value::new_string(format!("\0\0")))
         );
     }
+    #[test]
+    fn si_5()
+    {
+        assert_eq!(
+            Runtime::run("integration/SI-5/0.sph"),
+            Ok(Value::new_boolean(false))
+        );
+        assert_eq!(
+            Runtime::run("integration/SI-5/1.sph"),
+            Ok(Value::new_boolean(true))
+        );
+    }
 }
 // #[cfg(test)]
 // mod arche

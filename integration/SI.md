@@ -57,8 +57,18 @@ The following escape characters are available:
 \'	U+0027 (APOSTROPHE)
 \\	U+005C (REVERSE SOLIDUS)
 
-ASCII characters can be specified with \x and then 2 digits:
+ASCII characters can be specified with \x and then 2 hex digits:
 \x00
 
-Unicode charaacters can be specified with \u and then up to 6 digits in curly brackets:
+Unicode characters can be specified with \u and then up to 6 hex digits in curly brackets:
 \u{000000}
+
+# SI-5
+
+Boolean literals.
+
+`true`
+`false`
+
+Sophia has no concept of truthiness.
+Any expression in a boolean context (if statements, while statements) must evaluate to these values.
