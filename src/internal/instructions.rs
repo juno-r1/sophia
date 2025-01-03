@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::BTreeMap;
 
 use crate::internal::nodes::Node;
 use crate::internal::tokens::Token;
@@ -25,11 +25,11 @@ pub enum Instruction
 		signature: Signature,			// Binding signature.
 	},
 	Break,
-	Check{
-		address: String,				// Writeable address.
-		register: String,				// Readable address.
-		typename: Option<String>, 		// Checked type.
-	},
+	// Check{
+	// 	address: String,				// Writeable address.
+	// 	register: String,				// Readable address.
+	// 	typename: Option<String>, 		// Checked type.
+	// },
 	Continue,
 	Function{
 		name: String,					// Function name.
@@ -192,14 +192,14 @@ impl Instruction
 			signature
 		}
 	}
-	pub fn new_check(address: &str, register: &str, typename: Option<String>) -> Instruction
-	{
-		Instruction::Check{
-			address: address.into(),
-			register: register.into(),
-			typename
-		}
-	}
+	// pub fn new_check(address: &str, register: &str, typename: Option<String>) -> Instruction
+	// {
+	// 	Instruction::Check{
+	// 		address: address.into(),
+	// 		register: register.into(),
+	// 		typename
+	// 	}
+	// }
 	pub fn new_function(name: &str, signature: Signature) -> Instruction
 	{
 		let arity = signature.len();
@@ -339,11 +339,11 @@ impl Instruction
 	{
 		if *prototype {
 			vec![
-				Instruction::new_check(
-					&node.register,
-					&node.nodes[0].register,
-					Some(supertype.into())
-				),
+				// Instruction::new_check(
+				// 	&node.register,
+				// 	&node.nodes[0].register,
+				// 	Some(supertype.into())
+				// ),
 				Instruction::new_type_prototype(
 					name,
 					&supertype,
@@ -473,46 +473,55 @@ impl Instruction {
 	}
 	fn assign_end(node: &Node, signature: &Signature) -> Vec<Instruction>
 	{
-		let mut instructions = vec![Instruction::BIND];
-		let args: Vec<(String, String, String)> = signature
-			.values()
-			.enumerate()
-			.map(
-				|(i, typename)| {
-					(
-						(str::parse::<usize>(&node.register).unwrap() + i).to_string(),
-						node.nodes[i].register.clone(),
-						typename.clone()
-					)
-				}
-			)
-			.collect();
-		instructions.extend(
-			args
-			.iter()
-			.map(
-				|(address, register, typename)| {
-					Instruction::new_check(
-						address,
-						register,
-						match typename.as_str() {
-							"?" => None,
-							_ => Some(typename.clone())
-						}
-					)
-				}
-			)
-		);
-		instructions.push(
+		println!("{node:?}");
+		vec![
 			Instruction::new_bind(
-				args
-				.iter()
-				.map(|(address, ..)| address.clone())
+				node.nodes.iter()
+				.map(|node| node.register.clone())
 				.collect(),
 				signature.clone()
 			)
-		);
-		instructions
+		]
+		// let mut instructions = vec![Instruction::BIND];
+		// let args: Vec<(String, String, String)> = signature
+		// 	.values()
+		// 	.enumerate()
+		// 	.map(
+		// 		|(i, typename)| {
+		// 			(
+		// 				(str::parse::<usize>(&node.register).unwrap() + i).to_string(),
+		// 				node.nodes[i].register.clone(),
+		// 				typename.clone()
+		// 			)
+		// 		}
+		// 	)
+		// 	.collect();
+		// instructions.extend(
+		// 	args
+		// 	.iter()
+		// 	.map(
+		// 		|(address, register, typename)| {
+		// 			Instruction::new_check(
+		// 				address,
+		// 				register,
+		// 				match typename.as_str() {
+		// 					"?" => None,
+		// 					_ => Some(typename.clone())
+		// 				}
+		// 			)
+		// 		}
+		// 	)
+		// );
+		// instructions.push(
+		// 	Instruction::new_bind(
+		// 		args
+		// 		.iter()
+		// 		.map(|(address, ..)| address.clone())
+		// 		.collect(),
+		// 		signature.clone()
+		// 	)
+		// );
+		// instructions
 	}
 	fn if_end(node: &Node) -> Vec<Instruction>
 	{
@@ -729,44 +738,44 @@ impl Instruction {
 	}
 }
 
-impl Instruction
-// Instruction generation for optimisations.
-{
-	pub fn resolve_bind(instructions: &mut VecDeque<Instruction>, acc: &mut Vec<Instruction>)
-	// Evaluates type checking for name binding, removing instructions if the type check is known to succeed.
-	// Currently does not bother to remove unnecessary type checks.
-	{
-		let mut registers: Vec<String> = vec![];
-		loop {
-			match instructions
-			.pop_front()
-			.unwrap() {
-				Instruction::Bind{signature, ..} => {
-					acc.push(
-						Instruction::new_bind(
-							registers,
-							signature.clone()
-						)
-					);
-					break
-				},
-				Instruction::Check{address, register, typename} => {
-					match typename {
-						Some(_) => registers.push(register.clone()),
-						None => {
-							registers.push(address.clone());
-							acc.push(
-								Instruction::new_check(
-									&address,
-									&register,
-									None
-								)
-							)
-						}
-					}
-				},
-				_ => {}
-			}
-		}
-	}
-}
+// impl Instruction
+// // Instruction generation for optimisations.
+// {
+// 	pub fn resolve_bind(instructions: &mut VecDeque<Instruction>, acc: &mut Vec<Instruction>)
+// 	// Evaluates type checking for name binding, removing instructions if the type check is known to succeed.
+// 	// Currently does not bother to remove unnecessary type checks.
+// 	{
+// 		let mut registers: Vec<String> = vec![];
+// 		loop {
+// 			match instructions
+// 			.pop_front()
+// 			.unwrap() {
+// 				Instruction::Bind{signature, ..} => {
+// 					acc.push(
+// 						Instruction::new_bind(
+// 							registers,
+// 							signature.clone()
+// 						)
+// 					);
+// 					break
+// 				},
+// 				Instruction::Check{address, register, typename} => {
+// 					match typename {
+// 						Some(_) => registers.push(register.clone()),
+// 						None => {
+// 							registers.push(address.clone());
+// 							acc.push(
+// 								Instruction::new_check(
+// 									&address,
+// 									&register,
+// 									None
+// 								)
+// 							)
+// 						}
+// 					}
+// 				},
+// 				_ => {}
+// 			}
+// 		}
+// 	}
+// }

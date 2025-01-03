@@ -72,3 +72,14 @@ Boolean literals.
 
 Sophia has no concept of truthiness.
 Any expression in a boolean context (if statements, while statements) must evaluate to these values.
+
+# SI-6
+
+Assignment.
+
+`<N>: <E>`
+`<N>: <E>; <N>: <E; ...>`
+
+Assign a value to a name. Referencing the name yields the value.
+The name and the bound value persist until the end of scope, or until the name is reassigned.
+Multiple assignment requires all expressions to be evaluated from left to right, and then all names to be assigned simultaneously.

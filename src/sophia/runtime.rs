@@ -139,7 +139,7 @@ impl Task
             self.op = self.path;
 			// if debug_task:
 			// 	self.handler.debug_task(self)
-            println!("{:?}", self.op);
+            // println!("{:?}", self.op);
             self.path += 1;
             value = match self.instructions[self.op].clone() {
                 Instruction::Command{name, address, args, ..} => {
@@ -172,17 +172,20 @@ impl Task
                     self.path = 0;
                     value
                 },
-                // Instruction::Bind{args, signature} => {
-                //     for (index, (name, typename)) in signature.iter().enumerate() {
-                //         let value = self.read(&args[index])?;
-                //         let typedef = match self.read(&typename)? {
-                //             Value::Type(x) => *x,
-                //             _ => return error!(FIND, typename)
-                //         };
-                //         self.write(&name, value, typedef);
-                //     };
-                //     Value::new_none()
-                // },
+                Instruction::Bind{args, signature} => {
+                    let values: Vec<Value> = args
+                        .iter()
+                        .map(|arg| self.read(arg))
+                        .collect::<Result<Vec<Value>, String>>()?;
+                    self.signature = args
+                        .iter()
+                        .map(|arg| self.describe(arg))
+                        .collect::<Result<Vec<TypeDef>, String>>()?;
+                    for (index, (name, _)) in signature.iter().enumerate() {
+                        self.write(&name, values[index].clone(), self.signature[index].clone());
+                    };
+                    Value::new_none()
+                },
                 // Instruction::Check{address, register, typename} => {
                 //     match typename {
                 //         Some(name) => {},

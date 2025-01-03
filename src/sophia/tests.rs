@@ -105,6 +105,18 @@ mod integration
             Ok(Value::new_boolean(true))
         );
     }
+    #[test]
+    fn si_6()
+    {
+        assert_eq!(
+            Runtime::run("integration/SI-6/0.sph"),
+            Ok(Value::new_number(Rational::from_str("0").unwrap()))
+        );
+        assert_eq!(
+            Runtime::run("integration/SI-6/1.sph"),
+            Ok(Value::new_number(Rational::from_str("0").unwrap()))
+        );
+    }
 }
 // #[cfg(test)]
 // mod arche

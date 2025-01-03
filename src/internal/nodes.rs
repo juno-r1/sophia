@@ -218,13 +218,13 @@ impl Node
 					prototype: true
 				},
 				match cap.name("expression") {
-					Some(expression) => [
+					Some(expression) => vec![
 						Node::expression(prototype.into()),
 						Node::expression(expression.into())
-					].into(),
-					None => [
+					],
+					None => vec![
 						Node::expression(prototype.into())
-					].into()
+					]
 				}
 			),
 			None => Node::branch(
@@ -234,9 +234,9 @@ impl Node
 					prototype: false
 				},
 				match cap.name("expression") {
-					Some(expression) => [
+					Some(expression) => vec![
 						Node::expression(expression.into())
-					].into(),
+					],
 					None => vec![],
 				}
 			)
@@ -289,9 +289,9 @@ impl Node
 				signature
 			},
             match cap.name("expression") {
-                Some(expression) => [
+                Some(expression) => vec![
                     Node::expression(expression.into())
-                ].into(),
+                ],
                 None => vec![]
             }
         )
@@ -329,28 +329,28 @@ impl Node
     {
         Node::branch(
             Token::If,
-            [
+            vec![
                 Node::expression(
                     cap
                     .name("expression")
                     .unwrap()
                     .into()
                 )
-            ].into()
+            ]
         )
     }
     fn new_while(cap: Captures) -> Node
     {
         Node::branch(
             Token::While,
-            [
+            vec![
                 Node::expression(
                     cap
                     .name("expression")
                     .unwrap()
                     .into()
                 )
-            ].into()
+            ]
         )
     }
     fn new_for(cap: Captures) -> Node
@@ -362,14 +362,14 @@ impl Node
                 .unwrap()
                 .to_string()
 			),
-            [
+            vec![
                 Node::expression(
                     cap
                     .name("iterator")
                     .unwrap()
                     .into()
                 )
-            ].into()
+            ]
         )
     }
     fn new_return(cap: Captures) -> Node
@@ -377,13 +377,12 @@ impl Node
         Node::branch(
             Token::Return,
             match cap.name("expression") {
-                Some(expression) => 
-                    [
+                Some(expression) =>
+                    vec![
                         Node::expression(
-                            expression
-                            .into()
+                            expression.into()
                         )
-                    ].into(),
+                    ],
                 None => vec![]
             }
         )
@@ -531,9 +530,7 @@ impl Node
                             );
                             index
                         },
-                        _ => (path
-                            .iter()
-                            .sum::<usize>() + 1)
+                        _ => (path.iter().sum::<usize>() + 1)
                             .to_string()
                     }
 				},
