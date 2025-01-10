@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use malachite::{Natural, Rational};
 use malachite::num::basic::traits::{Zero, One};
@@ -8,7 +8,7 @@ use crate::sophia::runtime::Task;
 
 use super::methods::Predicate;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeDef {
 	types: Vec<Predicate>,
 	prototype: Value,
@@ -42,14 +42,15 @@ impl TypeDef
 	{
 		match value {
 			Value::None => TypeDef::std_none(),
-			Value::Type(_) => TypeDef::std_any(),
-			Value::Function(_) => TypeDef::std_any(),
-			Value::Boolean(_) => TypeDef::std_boolean(),
 			Value::Number(x) if x.denominator_ref() == &Natural::ONE => TypeDef::std_integer(),
 			Value::Number(_) => TypeDef::std_number(),
+			Value::Boolean(_) => TypeDef::std_boolean(),
 			Value::String(_) => TypeDef::std_string(),
 			Value::Range(_) => TypeDef::std_range(),
-			_ => panic!("Type not currently supported")
+			Value::Sequence(x) if x.has_keys() => TypeDef::std_record(),
+			Value::Sequence(_) => TypeDef::std_list(),
+			Value::Function(_) => TypeDef::std_any(),
+			Value::Type(_) => TypeDef::std_any(),
 		}
 	}
 // 		attributes = descriptor.split('.')
@@ -74,9 +75,14 @@ impl TypeDef
 			"boolean" => TypeDef::std_boolean(),
 			"number" => TypeDef::std_number(),
 			"integer" => TypeDef::std_integer(),
+			"sequence" => TypeDef::std_sequence(),
 			"string" => TypeDef::std_string(),
 			"range" => TypeDef::std_range(),
-			_ => panic!("Type not currently supported")
+			"list" => TypeDef::std_list(),
+			"record" => TypeDef::std_record(),
+			"function" => TypeDef::std_function(),
+			"type" => TypeDef::std_type(),
+			_ => panic!("Type not supported")
 		}
 	}
 	pub fn call(&self, value: &Value) -> bool
@@ -169,7 +175,7 @@ impl TypeDef
 			};
 		}
 		// Produces the standard type namespace.
-		HashMap::from(
+		BTreeMap::from(
 			[
 				new_type!("any", std_any),
 				new_type!("none", std_none),
@@ -177,8 +183,11 @@ impl TypeDef
 				new_type!("boolean", std_boolean),
 				new_type!("number", std_number),
 				new_type!("integer", std_integer),
+				new_type!("sequence", std_sequence),
 				new_type!("string", std_string),
 				new_type!("range", std_range),
+				new_type!("list", std_list),
+				new_type!("record", std_record),
 				new_type!("function", std_function),
 				new_type!("type", std_type),
 			]
@@ -261,10 +270,23 @@ impl TypeDef
 			None
 		)
 	}
-	pub fn std_string() -> TypeDef
+	pub fn std_sequence() -> TypeDef
 	{
 		TypeDef::from_super(
 			&TypeDef::std_some(),
+			vec![
+				Predicate::new_predicate_base(
+					"sequence",
+					Task::type_sequence
+				)
+			],
+			None
+		)
+	}
+	pub fn std_string() -> TypeDef
+	{
+		TypeDef::from_super(
+			&TypeDef::std_sequence(),
 			vec![
 				Predicate::new_predicate_base(
 					"string",
@@ -277,11 +299,37 @@ impl TypeDef
 	pub fn std_range() -> TypeDef
 	{
 		TypeDef::from_super(
-			&TypeDef::std_some(),
+			&TypeDef::std_sequence(),
 			vec![
 				Predicate::new_predicate_base(
 					"range",
 					Task::type_range
+				)
+			],
+			None
+		)
+	}
+	pub fn std_list() -> TypeDef
+	{
+		TypeDef::from_super(
+			&TypeDef::std_sequence(),
+			vec![
+				Predicate::new_predicate_base(
+					"list",
+					Task::type_list
+				)
+			],
+			None
+		)
+	}
+	pub fn std_record() -> TypeDef
+	{
+		TypeDef::from_super(
+			&TypeDef::std_sequence(),
+			vec![
+				Predicate::new_predicate_base(
+					"record",
+					Task::type_record
 				)
 			],
 			None
@@ -357,6 +405,15 @@ impl Task
 			_ => false
 		}
 	}
+	pub fn type_sequence(value: Value) -> bool
+	{
+		match value {
+			| Value::String(_)
+			| Value::Range(_)
+			| Value::Sequence(_) => true,
+			_ => false
+		}
+	}
 	pub fn type_string(value: Value) -> bool
 	{
 		match value {
@@ -368,6 +425,20 @@ impl Task
 	{
 		match value {
 			Value::Range(_) => true,
+			_ => false
+		}
+	}
+	pub fn type_list(value: Value) -> bool
+	{
+		match value {
+			Value::Sequence(x) if !x.has_keys() => true,
+			_ => false
+		}
+	}
+	pub fn type_record(value: Value) -> bool
+	{
+		match value {
+			Value::Sequence(x) if x.has_keys() => true,
 			_ => false
 		}
 	}

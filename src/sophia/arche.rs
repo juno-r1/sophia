@@ -1,31 +1,31 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
+use std::hash::Hash;
 
 use malachite::Rational;
 
 use crate::datatypes::functions::FuncDef;
 use crate::datatypes::range::Range;
+use crate::datatypes::sequence::Sequence;
 use crate::datatypes::types::TypeDef;
+use crate::internal::tokens::Token;
 
 use super::runtime::Task;
 
 // Enum of all concrete data types.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Value {
 	Boolean(Box<bool>),
 	Number(Box<Rational>),
 	String(Box<String>),
 	Range(Box<Range>),
-	List(Box<Vec<Value>>),
-	Record(Box<BTreeMap<Value, Value>>),
+	Sequence(Box<Sequence>),
 	Function(Box<FuncDef>),
 	Type(Box<TypeDef>),
 	None,
-	Err(String),
 }
 
 impl Value
 {
-	
 	pub fn new_any(x: Value) -> Value
 	{
 		x
@@ -48,11 +48,11 @@ impl Value
 	}
 	pub fn new_list(x: Vec<Value>) -> Value
 	{
-		Value::List(Box::new(x))
+		Value::Sequence(Box::new(Sequence::new_list(&x)))
 	}
-	pub fn new_record(x: BTreeMap<Value, Value>) -> Value
+	pub fn new_record(k: Vec<Value>, v: Vec<Value>) -> Value
 	{
-		Value::Record(Box::new(x))
+		Value::Sequence(Box::new(Sequence::new_record(&k, &v)))
 	}
 	pub fn new_function(x: FuncDef) -> Value
 	{
@@ -66,12 +66,50 @@ impl Value
 	{
 		Value::None
 	}
+	pub fn constant(token: &Token) -> Value
+	// Map literals to constants.
+	{
+		match token {
+			Token::Number(x) => Value::new_number(x.clone()),
+			Token::String(x) => Value::new_string(x.clone()),
+			Token::Boolean(x) => Value::new_boolean(*x),
+			Token::List => Value::new_list(vec![]),
+			Token::Record => Value::new_record(vec![], vec![]),
+			_ => Value::new_none()
+		}
+	}
+}
+
+impl PartialOrd for Value
+{
+	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering>
+	{
+		self.to_key().partial_cmp(&other.to_key())
+	}
+}
+
+impl Ord for Value
+{
+	fn cmp(&self, other: &Self) -> std::cmp::Ordering
+	{
+		self.partial_cmp(other).unwrap()
+	}
+}
+
+impl Value
+{
+	fn to_key(&self) -> String
+	// Converts value to ordered hashable key.
+	// Unstable implementation.
+	{
+		format!("{self:?}")
+	}
 }
 
 pub type Function = fn(&mut Task, Vec<Value>) -> Result<Value, String>;
 pub type Type = fn(Value) -> bool;
-pub type Namespace = HashMap<String, Value>;
-pub type Typespace = HashMap<String, TypeDef>;
+pub type Namespace = BTreeMap<String, Value>;
+pub type Typespace = BTreeMap<String, TypeDef>;
 
 pub fn stdlib(user: Namespace) -> Namespace
 // Build the standard library.
@@ -84,7 +122,7 @@ pub fn stdlib(user: Namespace) -> Namespace
 pub fn new_namespace() -> Namespace
 // Generates the minimum required namespace.
 {
-	HashMap::from([
+	BTreeMap::from([
 		(format!("0"), Value::new_none()),
 		(format!("-1"), Value::new_none())
 	])

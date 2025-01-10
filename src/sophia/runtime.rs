@@ -115,7 +115,6 @@ impl Task
         // Build standard library.
         let lib = stdlib(namespace);
         let types = infer_namespace(&lib);
-        // let instructions = parser.analyse();
         // Initialise task.
         Ok(Task::new(instructions, lib, types))
     }
@@ -167,12 +166,7 @@ impl Task
                         _ => return error!(CALL, name)
                     }
                 },
-                Instruction::Return(register) => {
-                    let value = self.read(&register)?;
-                    self.path = 0;
-                    value
-                },
-                Instruction::Bind{args, signature} => {
+                Instruction::Bind{args, params, types} => {
                     let values: Vec<Value> = args
                         .iter()
                         .map(|arg| self.read(arg))
@@ -181,10 +175,43 @@ impl Task
                         .iter()
                         .map(|arg| self.describe(arg))
                         .collect::<Result<Vec<TypeDef>, String>>()?;
-                    for (index, (name, _)) in signature.iter().enumerate() {
+                    for (index, (name, _)) in Iterator::zip(params.iter(), types.iter()).enumerate() {
                         self.write(&name, values[index].clone(), self.signature[index].clone());
                     };
                     Value::new_none()
+                },
+                Instruction::List{address, args} => {
+                    let values: Vec<Value> = args
+                        .iter()
+                        .map(|arg| self.read(arg))
+                        .collect::<Result<Vec<Value>, String>>()?;
+                    self.write(
+                        &address,
+                        Value::new_list(values),
+                        TypeDef::std_some()
+                    );
+                    Value::new_none()
+                },
+                Instruction::Record{address, keys, values} => {
+                    let keys: Vec<Value> = keys
+                        .iter()
+                        .map(|arg| self.read(arg))
+                        .collect::<Result<Vec<Value>, String>>()?;
+                    let values: Vec<Value> = values
+                        .iter()
+                        .map(|arg| self.read(arg))
+                        .collect::<Result<Vec<Value>, String>>()?;
+                    self.write(
+                        &address,
+                        Value::new_record(keys, values),
+                        TypeDef::std_some()
+                    );
+                    Value::new_none()
+                },
+                Instruction::Return(register) => {
+                    let value = self.read(&register)?;
+                    self.path = 0;
+                    value
                 },
                 // Instruction::Check{address, register, typename} => {
                 //     match typename {

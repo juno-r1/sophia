@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use malachite::Rational;
 use regex::Regex;
 use utils::coerce::Coerce;
@@ -49,15 +47,15 @@ pub enum Token {
 		supertype: String,
 		prototype: bool,
 	},
-    // Event{
-	// 	name: String,
-	// 	signature: BTreeMap<String, String>
-	// },
     Function{
 		name: String,
-		signature: BTreeMap<String, String>
+		params: Vec<String>,
+        types: Vec<String>,
 	},
-    Assign(BTreeMap<String, String>),
+    Assign{
+        params: Vec<String>,
+        types: Vec<String>,
+    },
     If,
     While,
     For(String),
@@ -74,6 +72,8 @@ pub enum Token {
     Number(Rational),
     String(String),
     Boolean(bool),
+    List,
+    Record,
     Null,
     Env(String),
     Name(String),
@@ -140,60 +140,61 @@ impl Token
 							vec![expression]
 						)
                     }
-                } else if let Some(cap) = Regex::new(patterns::FUNC_EXPR)
-                    .unwrap()
-                    .captures(&expr) {
-                    let funname: String = format!("@");
-                    let funtype: String = match cap.name("final") {
-                        Some(x) => x.to_string(),
-                        None => format!("any")
-                    };
-                    let params = cap
-                        .name("params")
-                        .unwrap()
-                        .as_str();
-                    let signature: BTreeMap<String, String> = if params.is_empty() {
-                        BTreeMap::from(
-							[
-								(funname.clone(), funtype.clone())
-							]
-						)
-                    } else {
-                        Regex::new(r"\s*,\s*")
-                        .unwrap()
-                        .split(params)
-                        .fold(
-                            BTreeMap::new(),
-                            |mut acc, param| {
-                                let mut split = param.split(" ");
-                                let left = split.next().unwrap();
-                                match split.next() {
-                                    Some(right) => acc.insert(
-                                        right.into(),
-                                        left.into()
-                                    ),
-                                    None => acc.insert(
-                                        left.into(),
-                                        format!("any")
-                                    )
-                                };
-                                acc
-                            }
-                        )
-                    };
-                    let expression: Node = Node::expression(
-                        cap
-                        .name("expression")
-                        .unwrap()
-                        .as_str()
-                    );
-                    Node::branch(
-                        Token::Function{
-							name: funname,
-							signature
-						},
-                        vec![expression]
-                    )
+                // } else if let Some(cap) = Regex::new(patterns::FUNC_EXPR)
+                //     .unwrap()
+                //     .captures(&expr) {
+                //     let funname: String = format!("@");
+                //     let funtype: String = match cap.name("final") {
+                //         Some(x) => x.to_string(),
+                //         None => format!("any")
+                //     };
+                //     let signature = cap
+                //         .name("params")
+                //         .unwrap()
+                //         .as_str();
+                //     let (params, types) = (vec![funname.clone()], vec![funtype.clone()]);
+                //     let signature: IndexMap<String, String> = if params.is_empty() {
+                //         IndexMap::from(
+				// 			[
+				// 				(funname.clone(), funtype.clone())
+				// 			]
+				// 		)
+                //     } else {
+                //         Regex::new(r"\s*,\s*")
+                //         .unwrap()
+                //         .split(params)
+                //         .fold(
+                //             IndexMap::new(),
+                //             |mut acc, param| {
+                //                 let mut split = param.split(" ");
+                //                 let left = split.next().unwrap();
+                //                 match split.next() {
+                //                     Some(right) => acc.insert(
+                //                         right.into(),
+                //                         left.into()
+                //                     ),
+                //                     None => acc.insert(
+                //                         left.into(),
+                //                         format!("any")
+                //                     )
+                //                 };
+                //                 acc
+                //             }
+                //         )
+                //     };
+                //     let expression: Node = Node::expression(
+                //         cap
+                //         .name("expression")
+                //         .unwrap()
+                //         .as_str()
+                //     );
+                //     Node::branch(
+                //         Token::Function{
+				// 			name: funname,
+				// 			signature
+				// 		},
+                //         vec![expression]
+                //     )
                 } else {
                     Node::branch(
                         Token::Parenthesis(expr.clone()),
@@ -261,7 +262,7 @@ impl Token
             },
             Token::LeftConditional => {
                 let right = lex.parse(self.lbp());
-                println!("{left:?} {right:?}");
+                // println!("{left:?} {right:?}");
                 let mut nodes: Vec<Node> = vec![left.clone()];
                 if right.nodes.len() > 1 {
                     nodes.extend(

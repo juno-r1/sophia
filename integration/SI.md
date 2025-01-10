@@ -83,3 +83,20 @@ Assignment.
 Assign a value to a name. Referencing the name yields the value.
 The name and the bound value persist until the end of scope, or until the name is reassigned.
 Multiple assignment requires all expressions to be evaluated from left to right, and then all names to be assigned simultaneously.
+
+# SI-7
+
+Sequence constructors.
+
+`[]`
+`[<E>]`
+`[<E>, <E>, ...]`
+
+`[:]`
+`[<E>: <E>]`
+`[<E>: <E>, <E>: <E>, ...]`
+
+Sequences are data types that contain data. When the key is unspecified, a list is constructed. When the key is specified, a record is constructed.
+The constructor `[]` creates an empty list, equivalent to `new list`.
+The constructor `[:]` creates an empty record, equivalent to `new record`.
+Constructors cannot be mixed: either all or none of the keys must be specified.

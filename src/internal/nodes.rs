@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::VecDeque;
 use std::ops::Not;
 
 use regex::{Captures, Regex};
@@ -136,6 +136,8 @@ impl Node
             patterns::NAME,
             patterns::ENV,
             patterns::RECEIVE,
+            patterns::RECORD,
+            patterns::LIST,
             patterns::L_PARENS,
             patterns::R_PARENS,
             patterns::OPERATOR
@@ -152,10 +154,10 @@ impl Node
 		.unwrap()
 		.captures(&pattern) {
 			Node::new_type(cap)
-		} else if let Some(cap) = Regex::new(patterns::FUNCTION)
-		.unwrap()
-		.captures(&pattern) {
-			Node::new_function(cap)
+		// } else if let Some(cap) = Regex::new(patterns::FUNCTION)
+		// .unwrap()
+		// .captures(&pattern) {
+		// 	Node::new_function(cap)
 		} else if Regex::new(patterns::ASSIGN)
 		.unwrap()
 		.is_match(&pattern) {
@@ -242,77 +244,84 @@ impl Node
 			)
 		}
     }
-    fn new_function(cap: Captures) -> Node
-    {
-        let funname: String = cap
-            .name("name")
-            .unwrap()
-            .to_string();
-        let funtype: String = match cap.name("final") {
-            Some(x) => x.to_string(),
-            None => format!("any")
-        };
-        let params = cap
-            .name("params")
-            .unwrap()
-            .as_str();
-        let signature: BTreeMap<String, String> = if params.is_empty() {
-            BTreeMap::from([
-                (funname.clone(), funtype.clone())
-			])
-        } else {
-            Regex::new(r"\s*,\s*")
-            .unwrap()
-            .split(params)
-            .fold(
-                BTreeMap::new(),
-                |mut acc, param| {
-                    let mut split = param.split(" ");
-                    let left = split.next().unwrap();
-                    match split.next() {
-                        Some(right) => acc.insert(
-                            right.into(),
-                            left.into()
-                        ),
-                        None => acc.insert(
-                            left.into(),
-                            format!("any")
-                        )
-                    };
-                    acc
-                }
-            )
-        };
-        Node::branch(
-            Token::Function{
-				name: funname,
-				signature
-			},
-            match cap.name("expression") {
-                Some(expression) => vec![
-                    Node::expression(expression.into())
-                ],
-                None => vec![]
-            }
-        )
-    }
+    // fn new_function(cap: Captures) -> Node
+    // {
+    //     let funname: String = cap
+    //         .name("name")
+    //         .unwrap()
+    //         .to_string();
+    //     let funtype: String = match cap.name("final") {
+    //         Some(x) => x.to_string(),
+    //         None => format!("any")
+    //     };
+    //     let params = cap
+    //         .name("params")
+    //         .unwrap()
+    //         .as_str();
+    //     let signature: IndexMap<String, String> = if params.is_empty() {
+    //         IndexMap::from([
+    //             (funname.clone(), funtype.clone())
+	// 		])
+    //     } else {
+    //         Regex::new(r"\s*,\s*")
+    //         .unwrap()
+    //         .split(params)
+    //         .fold(
+    //             IndexMap::new(),
+    //             |mut acc, param| {
+    //                 let mut split = param.split(" ");
+    //                 let left = split.next().unwrap();
+    //                 match split.next() {
+    //                     Some(right) => acc.insert(
+    //                         right.into(),
+    //                         left.into()
+    //                     ),
+    //                     None => acc.insert(
+    //                         left.into(),
+    //                         format!("any")
+    //                     )
+    //                 };
+    //                 acc
+    //             }
+    //         )
+    //     };
+    //     Node::branch(
+    //         Token::Function{
+	// 			name: funname,
+	// 			params,
+    //             types
+	// 		},
+    //         match cap.name("expression") {
+    //             Some(expression) => vec![
+    //                 Node::expression(expression.into())
+    //             ],
+    //             None => vec![]
+    //         }
+    //     )
+    // }
     fn new_assign(pattern: &str) -> Node
     {
-        let (signature, nodes) = Regex::new(patterns::BIND)
+        let (params, types, nodes) = Regex::new(patterns::BIND)
         .unwrap()
         .captures_iter(pattern)
         .fold(
-            (BTreeMap::new(), vec![]),
-            |mut acc: (BTreeMap<String, String>, Vec<Node>), cap| {
+            (vec![], vec![], vec![]),
+            |mut acc: (Vec<String>, Vec<String>, Vec<Node>), cap| {
                 let name = cap
                     .name("name")
                     .unwrap()
                     .to_string();
                 match cap.name("type") {
-                    Some(x) => acc.0.insert(x.to_string(), name),
-                    None => acc.0.insert(name, format!("?"))
+                    Some(x) => {
+                        acc.0.push(x.to_string());
+                        acc.1.push(name);
+                    },
+                    None => {
+                        acc.0.push(name);
+                        acc.1.push(format!("?"));
+                    }
                 };
-                acc.1.push(
+                acc.2.push(
                     Node::expression(
                         cap
                         .name("expression")
@@ -323,7 +332,7 @@ impl Node
                 acc
             }
         );
-        Node::branch(Token::Assign(signature), nodes)
+        Node::branch(Token::Assign{params, types}, nodes)
     }
     fn new_if(cap: Captures) -> Node
     {
@@ -481,9 +490,9 @@ impl Node
 					.get_mut(*i)
 					.unwrap();
 			}
-			instructions.extend( // Get initial instructions.
-				Instruction::execute(head, index)
-			); // Never called for leaf nodes, and doesn't need to be.
+            // Get initial instructions.
+			instructions.extend(Instruction::execute(head, index));
+            // Never called for leaf nodes, and doesn't need to be.
 			match head.nodes.get_mut(index) { // Get current node.
 				Some(node) => { // Going down?
 					path.push(index); // Push index to path.
@@ -493,51 +502,26 @@ impl Node
                         | Token::Name(name)
                         | Token::Receive(name)
                         => name.clone(),
+                        | Token::Number(_)
+                        | Token::String(_)
+                        | Token::Boolean(_)
+                        | Token::List
+                        | Token::Record
+                        => {
+                            constant -= 1;
+                            namespace.insert(
+                                constant.to_string(),
+                                Value::constant(&node.token)
+                            );
+                            constant.to_string()
+                        },
                         Token::Null => format!("-1"),
-                        Token::Sequence(_) if node.nodes.is_empty() => {
-                            constant -= 1;
-                            let index = constant.to_string();
-                            namespace.insert(
-                                index.clone(),
-                                Value::new_list(vec![])
-                            );
-                            index
-                        },
-                        Token::Number(x) => {
-                            constant -= 1;
-                            let index = constant.to_string();
-                            namespace.insert(
-                                index.clone(),
-                                Value::new_number(x.clone())
-                            );
-                            index
-                        },
-                        Token::String(x) => {
-                            constant -= 1;
-                            let index = constant.to_string();
-                            namespace.insert(
-                                index.clone(),
-                                Value::new_string(x.clone())
-                            );
-                            index
-                        },
-                        Token::Boolean(x) => {
-                            constant -= 1;
-                            let index = constant.to_string();
-                            namespace.insert(
-                                index.clone(),
-                                Value::new_boolean(x.clone())
-                            );
-                            index
-                        },
-                        _ => (path.iter().sum::<usize>() + 1)
-                            .to_string()
+                        _ => (path.iter().sum::<usize>() + 1).to_string()
                     }
 				},
 				None => { // Going up?
-					instructions.extend( // Get final instructions.
-						Instruction::end(head)
-					);
+                    // Get final instructions.
+					instructions.extend(Instruction::end(head));
 					index = match path.pop() { // Increment path or exit.
 						Some(i) => i + 1,
 						None => return (instructions, namespace)

@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 
 use crate::error;
 use crate::internal::instructions::Instruction;
@@ -7,13 +7,13 @@ use crate::sophia::runtime::Task;
 
 use super::types::TypeDef;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Routine {
 	Std(Function),
 	User(Vec<Instruction>)
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Method {
 	pub routine: Routine,
 	pub name: String,
@@ -26,44 +26,28 @@ pub struct Method {
 
 impl Method
 {
-	pub fn new_method_std(routine: Function, signature: BTreeMap<String, TypeDef>) -> Method
+	pub fn new_method_std(routine: Function, params: Vec<String>, types: Vec<TypeDef>) -> Method
 	{
-		let names: Vec<String> = signature
-			.keys()
-			.cloned()
-			.collect();
-		let types: Vec<TypeDef> = signature
-			.values()
-			.cloned()
-			.collect();
 		Method{
 			routine: Routine::Std(routine),
-			name: names[0].clone(),
-			params: names[1..].to_vec(),
+			name: params[0].clone(),
+			params: params[1..].to_vec(),
 			last: types[0].clone(),
 			signature: types[1..].to_vec(),
-			arity: names.len() - 1,
-			closure: HashMap::new()
+			arity: params.len() - 1,
+			closure: BTreeMap::new()
 		}
 	}
-	pub fn new_method_user(instructions: Vec<Instruction>, signature: BTreeMap<String, TypeDef>) -> Method
+	pub fn new_method_user(instructions: Vec<Instruction>, params: Vec<String>, types: Vec<TypeDef>) -> Method
 	{
-		let names: Vec<String> = signature
-			.keys()
-			.cloned()
-			.collect();
-		let types: Vec<TypeDef> = signature
-			.values()
-			.cloned()
-			.collect();
 		Method{
 			routine: Routine::User(instructions),
-			name: names[0].clone(),
-			params: names[1..].to_vec(),
+			name: params[0].clone(),
+			params: params[1..].to_vec(),
 			last: types[0].clone(),
 			signature: types[1..].to_vec(),
-			arity: names.len() - 1,
-			closure: HashMap::new()
+			arity: params.len() - 1,
+			closure: BTreeMap::new()
 		}
 	}
 	pub fn call(&self, task: &mut Task, args: Vec<Value>) -> Result<Value, String>
@@ -75,7 +59,7 @@ impl Method
 	}
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Predicate{
 	// Non-capturing built-in predicates.
 	Base{

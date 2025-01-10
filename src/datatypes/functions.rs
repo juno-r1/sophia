@@ -5,7 +5,7 @@
 // Dispatch is implemented using a singly linked binary search
 // tree. It is only ever necessary to traverse downward.
 
-use std::collections::{HashMap, BTreeMap};
+use std::collections::{BTreeMap, HashMap};
 use std::env::current_dir;
 
 use serde::Deserialize;
@@ -18,7 +18,7 @@ use crate::sophia::runtime::Task;
 use super::methods::{Method, Predicate};
 use super::types::TypeDef;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum FuncDef {
 	// Branch node.
 	Node{
@@ -302,15 +302,23 @@ impl FuncDef
 							let data = &metadata.methods
 								.get(stringify!($method))
 								.unwrap();
-							let mut signature = BTreeMap::from([
-								($name.into(), TypeDef::read(&data.returns))
-							]);
+							let mut signature = vec![$name.into()];
 							signature.extend(
-								BTreeMap::from_iter(
-									data.signature
-									.iter()
-									.map(|x| (format!("_"), TypeDef::read(x)))
-								)
+								data.signature
+								.iter()
+								.map(|_| format!("_"))
+							);
+							signature
+						},
+						{
+							let data = &metadata.methods
+								.get(stringify!($method))
+								.unwrap();
+							let mut signature = vec![TypeDef::read(&data.returns)];
+							signature.extend(
+								data.signature
+								.iter()
+								.map(|x| TypeDef::read(x))
 							);
 							signature
 						}
@@ -319,7 +327,7 @@ impl FuncDef
 			}};
 		}
 		// Produces the standard function namespace.
-		HashMap::from(
+		BTreeMap::from(
 			[
 				// Built-ins.
 				// new_function!(

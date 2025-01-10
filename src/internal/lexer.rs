@@ -79,6 +79,10 @@ impl <'a> Lexer<'a>
                         Token::Env(String::new())
                     } else if let Some(x) = cap.name("receive") {
                         Token::Receive(x.to_string())
+                    } else if let Some(_) = cap.name("record") {
+                        Token::Record
+                    } else if let Some(_) = cap.name("list") {
+                        Token::List
                     } else if let Some(x) = cap.name("l_parens") {
                         if self.prefix() {
                             match x.as_str() {

@@ -1,11 +1,7 @@
-use std::collections::BTreeMap;
-
 use crate::internal::nodes::Node;
 use crate::internal::tokens::Token;
 
-pub type Signature = BTreeMap<String, String>;
-
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Instruction
 {
 	// User functions and dispatched commands.
@@ -22,7 +18,8 @@ pub enum Instruction
 	// Their names are prefixed with '.' by convention.
 	Bind{
 		args: Vec<String>,				// Readable addresses.
-		signature: Signature,			// Binding signature.
+		params: Vec<String>,			// Binding names.
+		types: Vec<String>,				// Binding signature.
 	},
 	Break,
 	// Check{
@@ -31,11 +28,11 @@ pub enum Instruction
 	// 	typename: Option<String>, 		// Checked type.
 	// },
 	Continue,
-	Function{
-		name: String,					// Function name.
-		signature: Signature,			// Parameter signature.
-		arity: usize,					// Number of arguments.
-	},
+	// Function{
+	// 	name: String,					// Function name.
+	// 	signature: Signature,			// Parameter signature.
+	// 	arity: usize,					// Number of arguments.
+	// },
 	Future{
 		address: String,
 		args: Vec<String>,
@@ -94,83 +91,71 @@ pub enum Instruction
 	END,
 }
 
-impl ToString for Instruction
-{
-    fn to_string(&self) -> String
-    {
-		match self {
-			Instruction::Command{name, address, args, arity} => {
-				let body: String = format!("{name} {address}");
-				let args: String = args.join(" ");
-				match arity {
-					0 => body,
-					_ => format!("{body} {args}")
-				}
-			},
-			Instruction::Bind{args, signature, ..} => {
-				let args: String = args.join(" ");
-				let signature: String = signature
-					.iter()
-					.fold(
-						format!(""),
-						|mut acc, (name, typename)| {
-							acc.push_str(
-								&format!("; {typename} {name}")
-							);
-							acc
-						}
-					);
-				format!("bind {args}{signature}")
-				// let mut buf: String = format!("bind");
-				// for arg in args {
-				// 	buf.push_str(" ");
-				// 	buf.push_str(arg);
-				// };
-				// for (name, typename) in signature {
-				// 	buf.push_str("; ");
-				// 	buf.push_str(typename);
-				// 	buf.push_str(" ");
-				// 	buf.push_str(name);
-				// };
-				// buf
-			}
-			_ => format!("")
-			// Instruction::Internal{name, address, args, labels, arity, count} => {
-			// 	let mut buf: String = name.into();
-			// 	buf.push_str(" "); buf.push_str(address);
-			// 	match arity {
-			// 		0 => {},
-			// 		_ => {buf.push_str(" "); buf.push_str(&args.join(" "))},
-			// 	};
-			// 	buf.push_str(";");
-			// 	match count {
-			// 		0 => {},
-			// 		_ => {buf.push_str(" "); buf.push_str(&labels.join(" "))},
-			// 	};
-			// 	buf
-			// },
-			// Instruction::Bind(signature) => {
-			// 	let mut buf: String = format!(".bind:");
-			// 	for (k, v) in signature {
-			// 		buf.push_str(
-			// 			format!(" {v} {k};")
-			// 			.as_str()
-			// 		);
-			// 	}
-			// 	buf
-			// }
-			// Instruction::Label(name) => {
-			// 	let mut buf: String = name.into();
-			// 	buf.push_str(";");
-			// 	// match label {
-			// 	// 	0 => {},
-			// 	// 	_ => {buf.push_str(" "); buf.push_str(&labels.join(" "))},
-			// 	// };
-			// 	buf
-			// }
-		}
-    }
-}
+// impl ToString for Instruction
+// {
+//     fn to_string(&self) -> String
+//     {
+// 		match self {
+// 			Instruction::Command{name, address, args, arity} => {
+// 				let body: String = format!("{name} {address}");
+// 				let args: String = args.join(" ");
+// 				match arity {
+// 					0 => body,
+// 					_ => format!("{body} {args}")
+// 				}
+// 			},
+// 			Instruction::Bind{args, signature, ..} => {
+// 				let args: String = args.join(" ");
+// 				let signature: String = signature
+// 					.iter()
+// 					.fold(
+// 						format!(""),
+// 						|mut acc, (name, typename)| {
+// 							acc.push_str(
+// 								&format!("; {typename} {name}")
+// 							);
+// 							acc
+// 						}
+// 					);
+// 				format!("bind {args}{signature}")
+// 			}
+// 			_ => format!("")
+// 			// Instruction::Internal{name, address, args, labels, arity, count} => {
+// 			// 	let mut buf: String = name.into();
+// 			// 	buf.push_str(" "); buf.push_str(address);
+// 			// 	match arity {
+// 			// 		0 => {},
+// 			// 		_ => {buf.push_str(" "); buf.push_str(&args.join(" "))},
+// 			// 	};
+// 			// 	buf.push_str(";");
+// 			// 	match count {
+// 			// 		0 => {},
+// 			// 		_ => {buf.push_str(" "); buf.push_str(&labels.join(" "))},
+// 			// 	};
+// 			// 	buf
+// 			// },
+// 			// Instruction::Bind(signature) => {
+// 			// 	let mut buf: String = format!(".bind:");
+// 			// 	for (k, v) in signature {
+// 			// 		buf.push_str(
+// 			// 			format!(" {v} {k};")
+// 			// 			.as_str()
+// 			// 		);
+// 			// 	}
+// 			// 	buf
+// 			// }
+// 			// Instruction::Label(name) => {
+// 			// 	let mut buf: String = name.into();
+// 			// 	buf.push_str(";");
+// 			// 	// match label {
+// 			// 	// 	0 => {},
+// 			// 	// 	_ => {buf.push_str(" "); buf.push_str(&labels.join(" "))},
+// 			// 	// };
+// 			// 	buf
+// 			// }
+// 		}
+//     }
+// }
 
 impl Instruction
 // Instruction constructors.
@@ -185,11 +170,12 @@ impl Instruction
 			arity
 		}
 	}
-	pub fn new_bind(args: Vec<String>, signature: Signature) -> Instruction
+	pub fn new_bind(args: Vec<String>, params: Vec<String>, types: Vec<String>) -> Instruction
 	{
 		Instruction::Bind{
 			args,
-			signature
+			params,
+			types
 		}
 	}
 	// pub fn new_check(address: &str, register: &str, typename: Option<String>) -> Instruction
@@ -200,15 +186,15 @@ impl Instruction
 	// 		typename
 	// 	}
 	// }
-	pub fn new_function(name: &str, signature: Signature) -> Instruction
-	{
-		let arity = signature.len();
-		Instruction::Function{
-			name: name.into(),
-			signature,
-			arity,
-		}
-	}
+	// pub fn new_function(name: &str, signature: Signature) -> Instruction
+	// {
+	// 	let arity = signature.len();
+	// 	Instruction::Function{
+	// 		name: name.into(),
+	// 		signature,
+	// 		arity,
+	// 	}
+	// }
 	pub fn new_future(address: &str, args: Vec<String>) -> Instruction
 	{
 		Instruction::Future{
@@ -309,10 +295,10 @@ impl Instruction
 					supertype,
 					prototype
 				} => Instruction::type_execute(node, &name, &supertype, prototype),
-				Token::Function{
-					name,
-					signature
-				} => Instruction::function_execute(&name, &signature),
+				// Token::Function{
+				// 	name,
+				// 	signature
+				// } => Instruction::function_execute(&name, &signature),
 				| Token::Module
 				| Token::If
 				| Token::While 
@@ -361,16 +347,16 @@ impl Instruction
 			]
 		}
 	}
-	pub fn function_execute(name: &str, signature: &BTreeMap<String, String>) -> Vec<Instruction>
-	{
-		vec![
-			Instruction::new_function(
-				name,
-				signature.clone()
-			),
-			Instruction::START
-		]
-	}
+	// pub fn function_execute(name: &str, signature: &IndexMap<String, String>) -> Vec<Instruction>
+	// {
+	// 	vec![
+	// 		Instruction::new_function(
+	// 			name,
+	// 			signature.clone()
+	// 		),
+	// 		Instruction::START
+	// 	]
+	// }
 	pub fn branch_execute(node: &Node) -> Vec<Instruction>
 	{
 		vec![
@@ -422,7 +408,7 @@ impl Instruction {
 			Token::Type{..} => Instruction::type_end(),
 			| Token::Module
 			| Token::Function{..} => Instruction::method_end(node),
-			Token::Assign(binds) => Instruction::assign_end(node, &binds),
+			Token::Assign{params, types} => Instruction::assign_end(node, params, types),
 			Token::If => Instruction::if_end(node),
 			| Token::While
 			| Token::For{..} => Instruction::loop_end(),
@@ -471,15 +457,15 @@ impl Instruction {
 			Instruction::END
 		]
 	}
-	fn assign_end(node: &Node, signature: &Signature) -> Vec<Instruction>
+	fn assign_end(node: &Node, params: &Vec<String>, types: &Vec<String>) -> Vec<Instruction>
 	{
-		println!("{node:?}");
 		vec![
 			Instruction::new_bind(
 				node.nodes.iter()
 				.map(|node| node.register.clone())
 				.collect(),
-				signature.clone()
+				params.clone(),
+				types.clone()
 			)
 		]
 		// let mut instructions = vec![Instruction::BIND];

@@ -4,7 +4,7 @@ use malachite::num::arithmetic::traits::Abs;
 use malachite::Rational;
 use malachite::num::basic::traits::One;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Range {
     start: Rational,
     end: Rational,
