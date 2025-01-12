@@ -2,6 +2,8 @@ use std::env::current_dir;
 use std::path::PathBuf;
 use std::thread;
 
+use crate::datatypes::range::Range;
+use crate::datatypes::sequence::Sequence;
 use crate::error;
 use crate::datatypes::types::TypeDef;
 use crate::internal::instructions::Instruction;
@@ -187,11 +189,27 @@ impl Task
                         .collect::<Result<Vec<Value>, String>>()?;
                     self.write(
                         &address,
-                        Value::new_list(values),
-                        TypeDef::std_some()
+                        Value::new_list(Sequence::new_list(values)),
+                        TypeDef::std_list()
                     );
                     Value::new_none()
                 },
+                Instruction::Range{address, start, end, step} => {
+                    let start = self.read(&start)?;
+                    let end = self.read(&end)?;
+                    let step = self.read(&step)?;
+                    match (start, end, step) {
+                        (Value::Number(start), Value::Number(end), Value::Number(step)) => {
+                            self.write(
+                                &address,
+                                Value::new_range(Range::new(*start, *end, *step)),
+                                TypeDef::std_range()
+                            );
+                            Value:: new_none()
+                        },
+                        _ => return error!(IMPL)
+                    }
+                }
                 Instruction::Record{address, keys, values} => {
                     let keys: Vec<Value> = keys
                         .iter()
@@ -203,8 +221,8 @@ impl Task
                         .collect::<Result<Vec<Value>, String>>()?;
                     self.write(
                         &address,
-                        Value::new_record(keys, values),
-                        TypeDef::std_some()
+                        Value::new_record(Sequence::new_record(keys, values)),
+                        TypeDef::std_record()
                     );
                     Value::new_none()
                 },

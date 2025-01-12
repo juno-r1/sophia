@@ -33,7 +33,7 @@ Numeric literals.
 `1e2`
 
 Sophia has one numeric data type: arbitrary-precision rationals.
-It should be able to parse as constant with the sign and either a fraction sign or a decimal point and an exponent.
+It should be able to parse as constant with the sign and either a solidus or a decimal point and an exponent.
 
 # SI-4
 
@@ -100,3 +100,19 @@ Sequences are data types that contain data. When the key is unspecified, a list 
 The constructor `[]` creates an empty list, equivalent to `new list`.
 The constructor `[:]` creates an empty record, equivalent to `new record`.
 Constructors cannot be mixed: either all or none of the keys must be specified.
+
+# SI-8
+
+Ranges.
+
+`[::]`
+`[<E>:<E>:<E>]`
+
+Ranges represent arithmetic sequences between two rationals.
+The constructor `[::]` creates an empty range, equivalent to `new range`.
+Using a step value of 0 also creates an empty range, since otherwise it would generate an infinite range.
+In Sophia, ranges are inclusive-inclusive. This means that both bounds are included in the sequence.
+For instance, a range of 0:10:1 generates numbers from 0 to 10.
+This approach is preferred because it is useful to reference only those numbers that actually exist within the range.
+This helps to minimise confusion since ranges are also used for indexing, so there aren't any unexpected omissions.
+The start, the end, and the step must all be specified. This is to prevent incorrect assumptions about implict values.

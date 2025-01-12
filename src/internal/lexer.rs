@@ -79,6 +79,8 @@ impl <'a> Lexer<'a>
                         Token::Env(String::new())
                     } else if let Some(x) = cap.name("receive") {
                         Token::Receive(x.to_string())
+                    } else if let Some(_) = cap.name("range") {
+                        Token::Range
                     } else if let Some(_) = cap.name("record") {
                         Token::Record
                     } else if let Some(_) = cap.name("list") {
@@ -100,13 +102,14 @@ impl <'a> Lexer<'a>
                         }
                     } else if let Some(_) = cap.name("r_parens") {
                         Token::RightBracket
+                    } else if let Some(_) = cap.name("pair") {
+                        Token::Pair
                     } else if let Some(x) = cap.name("operator") {
                         if self.prefix() {
                             Token::Prefix(x.to_string())
                         } else {
                             match x.as_str() {
                                 "," => Token::Concatenator,
-                                ":" => Token::Pair,
                                 "^" | "->" | "=>" | "." => Token::InfixR(x.to_string()),
                                 "<-" => Token::Bind,
                                 _ => Token::Infix(x.to_string())

@@ -65,12 +65,6 @@ pub enum Instruction
 		values: Vec<String>,
 	},
 	Return(String),
-	Sequence{
-		address: String,
-		start: String,
-		end: String,
-		step: String,
-	},
 	Skip,
 	Type{
 		name: String,
@@ -238,15 +232,6 @@ impl Instruction
 			address: address.into(),
 			keys,
 			values
-		}
-	}
-	pub fn new_sequence(address: &str, start: &str, end: &str, step: &str) -> Instruction
-	{
-		Instruction::Sequence{
-			address: address.into(),
-			start: start.into(),
-			end: end.into(),
-			step: step.into(),
 		}
 	}
 	pub fn new_type(name: &str, supertype: &str) -> Instruction
@@ -423,7 +408,6 @@ impl Instruction {
 			// Token::Meta(_) 				=> Instruction::meta_end(node),
 			Token::Bind => Instruction::bind_end(node),
 			Token::RightConditional => Instruction::right_con_end(node),
-			Token::Pair => Instruction::pair_end(node),
 			Token::Call => Instruction::call_end(node),
 			Token::Index => Instruction::index_end(node),
 			| Token::Prefix(symbol)
@@ -577,41 +561,37 @@ impl Instruction {
 	}
 	fn sequence_end(node: &Node) -> Vec<Instruction>
 	{
-		if node.nodes.is_empty() {
-			vec![]
-		} else {
-			match node.nodes[0].token {
-				Token::Pair if node.nodes[0].nodes.len() == 3 => vec![
-					Instruction::new_sequence(
-						&node.register,
-						&node.nodes[0].nodes[0].register,
-						&node.nodes[0].nodes[1].register,
-						&node.nodes[0].nodes[2].register
-					)
-				],
-				Token::Pair => vec![
-					Instruction::new_record(
-						&node.register,
-						node.nodes
-						.iter()
-						.map(|x| x.nodes[0].register.clone())
-						.collect(),
-						node.nodes
-						.iter()
-						.map(|x| x.nodes[1].register.clone())
-						.collect()
-					)
-				],
-				_ => vec![
-					Instruction::new_list(
-						&node.register,
-						node.nodes
-						.iter()
-						.map(|x| x.register.clone())
-						.collect()
-					)
-				] 
-			}
+		match node.nodes[0].token {
+			Token::Pair if node.nodes[0].nodes.len() == 3 => vec![
+				Instruction::new_range(
+					&node.register,
+					&node.nodes[0].nodes[0].register,
+					&node.nodes[0].nodes[1].register,
+					&node.nodes[0].nodes[2].register
+				)
+			],
+			Token::Pair => vec![
+				Instruction::new_record(
+					&node.register,
+					node.nodes
+					.iter()
+					.map(|x| x.nodes[0].register.clone())
+					.collect(),
+					node.nodes
+					.iter()
+					.map(|x| x.nodes[1].register.clone())
+					.collect()
+				)
+			],
+			_ => vec![
+				Instruction::new_list(
+					&node.register,
+					node.nodes
+					.iter()
+					.map(|x| x.register.clone())
+					.collect()
+				)
+			] 
 		}
 	}
 	// fn meta_end(node: &Node) -> Vec<Instruction>

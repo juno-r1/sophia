@@ -136,11 +136,13 @@ impl Node
             patterns::NAME,
             patterns::ENV,
             patterns::RECEIVE,
+            patterns::RANGE,
             patterns::RECORD,
             patterns::LIST,
             patterns::L_PARENS,
             patterns::R_PARENS,
-            patterns::OPERATOR
+            patterns::PAIR,
+            patterns::OPERATOR,
         ].join("|"))
             .unwrap();
         let mut lexer = Lexer::new(re.captures_iter(pattern));
@@ -505,6 +507,7 @@ impl Node
                         | Token::Number(_)
                         | Token::String(_)
                         | Token::Boolean(_)
+                        | Token::Range
                         | Token::List
                         | Token::Record
                         => {

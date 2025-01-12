@@ -72,6 +72,7 @@ pub enum Token {
     Number(Rational),
     String(String),
     Boolean(bool),
+    Range,
     List,
     Record,
     Null,
@@ -206,7 +207,8 @@ impl Token
                     )
                 }
             },
-            Token::Sequence(expr) => Node::branch(
+            Token::Sequence(expr) => {println!("{:}", expr); Node::branch(
+                
                 Token::Sequence(expr.clone()),
                 if expr.is_empty() {
                     vec![]
@@ -217,7 +219,7 @@ impl Token
                         _ => vec![contents]
                     }
                 }
-            ),
+            )},
             Token::Meta(expr) => Node::branch(
                 Token::Meta(expr.clone()),
                 vec![Node::expression(&expr)]

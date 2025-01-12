@@ -2,7 +2,7 @@ use std::ops::{Add, Div, Mul, Neg, Sub};
 
 use malachite::num::arithmetic::traits::Abs;
 use malachite::Rational;
-use malachite::num::basic::traits::One;
+use malachite::num::basic::traits::{One, Zero};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Range {
@@ -23,13 +23,17 @@ impl Range
     }
     pub fn contains(&self, x: &Rational) -> bool
     {
-        &self.start <= x
+        self.step != 0
+        && &self.start <= x
         && x <= &self.end
         && ((x - &self.start) / &self.step).into_denominator() == Rational::ONE
     }
     pub fn get(&self, index: Rational) -> Option<Rational>
     // Enables O(1) indexing without mutation.
     {
+        if self.step == 0 {
+            return None;
+        };
         let x = if index >= 0 {
             &self.start + &self.step * index
         } else {
@@ -43,7 +47,11 @@ impl Range
     }
     pub fn len(&self) -> Rational
     {
-        ((&self.end - &self.start) / &self.step) + Rational::ONE
+        if self.step == 0 {
+            Rational::ZERO
+        } else {
+            ((&self.end - &self.start) / &self.step) + Rational::ONE
+        }
     }
 }
 
@@ -147,6 +155,9 @@ impl Iterator for Range
     fn next(&mut self) -> Option<Self::Item>
     // Uses self.start as the accumulator.
     {
+        if self.step == 0 {
+            return None;
+        };
         let x = self.start.clone();
         self.start += &self.step;
         if

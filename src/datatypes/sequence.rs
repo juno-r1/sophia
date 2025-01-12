@@ -22,17 +22,28 @@ pub struct Sequence {
     l: usize,
 }
 
+// pub trait Access
+// {
+//     type Output;
+
+//     fn get<T: Debug>(&self, index: T) -> Self::Output
+//     {
+//         panic!("Unimplemented sequence access: {index:?}")
+//     }
+// }
+
 impl Sequence
 {
-    pub fn new_list(x: &Vec<Value>) -> Sequence
+    pub fn new_list(x: Vec<Value>) -> Sequence
     {
+        let l = x.len();
         Sequence{
             k: None,
-            v: x.clone(),
-            l: x.len()
+            v: x,
+            l
         }
     }
-    pub fn new_record(k: &Vec<Value>, v: &Vec<Value>) -> Sequence
+    pub fn new_record(k: Vec<Value>, v: Vec<Value>) -> Sequence
     {
         if k.len() == v.len() {
             Sequence{
@@ -43,7 +54,7 @@ impl Sequence
                         .map(|(index, value)| (value.clone(), index))
                     )
                 ),
-                v: v.clone(),
+                v,
                 l: k.len()
             }
         } else {
@@ -106,6 +117,49 @@ impl Index<Value> for Sequence
 
 impl Sequence
 {
+    pub fn safe_index(&self, index: Rational) -> Option<Value>
+    // Index list without panic.
+    {
+        match self {
+            Sequence{k: None, v, l} => {
+                // Integer indices only!
+                if index.denominator_ref() != &Natural::ONE {
+                    return None;
+                };
+                // Convert index to usize to play nice with Rust.
+                let i: usize = if index >= 0 {
+                    index.to_usize()
+                } else if -(&index) > *l {
+                    *l - index.to_usize()
+                } else {
+                    return None;
+                };
+                // Use normalised index.
+                // Rust is smart enough to know that usize can't be less than 0.
+                if &i < l {
+                    Some(v[i].clone())
+                } else {
+                    None
+                }
+            },
+            Sequence{..} => None,
+        }
+    }
+    pub fn safe_get(&self, index: Value) -> Option<Value>
+    // Index record without panic.
+    {
+        match self {
+            Sequence{k: Some(k), v, ..} => {
+                if k.contains_key(&index) {
+                    Some(v[k[&index]].clone())
+                } else {
+                    None
+                }
+            },
+            Sequence{..} => None,
+        }
+
+    }
     pub fn has_keys(&self) -> bool
     {
         self.k.is_some()

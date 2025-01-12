@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 use std::hash::Hash;
 
+use malachite::num::basic::traits::Zero;
 use malachite::Rational;
 
 use crate::datatypes::functions::FuncDef;
@@ -25,6 +26,8 @@ pub enum Value {
 }
 
 impl Value
+// Value constructors must take only 1 argument.
+// This is because they have to work with std_fn!.
 {
 	pub fn new_any(x: Value) -> Value
 	{
@@ -46,13 +49,13 @@ impl Value
 	{
 		Value::Range(Box::new(x))
 	}
-	pub fn new_list(x: Vec<Value>) -> Value
+	pub fn new_list(x: Sequence) -> Value
 	{
-		Value::Sequence(Box::new(Sequence::new_list(&x)))
+		Value::Sequence(Box::new(x))
 	}
-	pub fn new_record(k: Vec<Value>, v: Vec<Value>) -> Value
+	pub fn new_record(x: Sequence) -> Value
 	{
-		Value::Sequence(Box::new(Sequence::new_record(&k, &v)))
+		Value::Sequence(Box::new(x))
 	}
 	pub fn new_function(x: FuncDef) -> Value
 	{
@@ -71,10 +74,11 @@ impl Value
 	{
 		match token {
 			Token::Number(x) => Value::new_number(x.clone()),
-			Token::String(x) => Value::new_string(x.clone()),
 			Token::Boolean(x) => Value::new_boolean(*x),
-			Token::List => Value::new_list(vec![]),
-			Token::Record => Value::new_record(vec![], vec![]),
+			Token::String(x) => Value::new_string(x.clone()),
+			Token::Range => Value::new_range(Range::new(Rational::ZERO, Rational::ZERO, Rational::ZERO)),
+			Token::List => Value::new_list(Sequence::new_list(vec![])),
+			Token::Record => Value::new_record(Sequence::new_record(vec![], vec![])),
 			_ => Value::new_none()
 		}
 	}

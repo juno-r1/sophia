@@ -1,5 +1,4 @@
 #![allow(dead_code)]
-#![forbid(unsafe_code)]
 #![recursion_limit="1024"]
 
 extern crate macros;

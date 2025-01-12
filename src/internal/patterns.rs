@@ -34,10 +34,12 @@ pub const STRING:       &str = r#"(?<string>('.*?')|(".*?"))"#; // Any symbols b
 pub const NAME:         &str = r#"(?<name>\w+)"#; // Any word.
 pub const ENV:          &str = r#"(?<env>@)"#;
 pub const RECEIVE:      &str = r#"(?<receive>\>\w+)"#;
+pub const RANGE:        &str = r#"(?<range>\[::\])"#;
 pub const RECORD:       &str = r#"(?<record>\[:\])"#;
 pub const LIST:         &str = r#"(?<list>\[\])"#;
 pub const L_PARENS:     &str = r#"(?<l_parens>[\(\[\{])"#;
 pub const R_PARENS:     &str = r#"(?<r_parens>[\)\]\}])"#;
+pub const PAIR:         &str = r#"(?<pair>:)"#;
 pub const OPERATOR:     &str = r#"(?<operator>[^\s\d\w\(\[\{\'\"\@]+)"#; // Any other symbol.
 
 pub fn is_empty(source: &str) -> bool
@@ -51,7 +53,7 @@ pub fn is_unquoted(source: &str) -> bool
     Regex::new(UNQUOTED)
     .unwrap()
     .captures_iter(source)
-    .fold(false, |acc, cap| acc || cap.name("open").is_some())
+    .any(|cap| cap.name("open").is_some())
 }
 pub fn is_unmatched(source: &str) -> bool
 {
@@ -77,12 +79,8 @@ pub fn is_unmatched(source: &str) -> bool
                         "{" if x.as_str() == "}" => Some(acc),
                         _ => None
                     }
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
+                } else {None}
+            } else {None}
         }
     ) {
         Some(x) => !x.is_empty(),
@@ -139,9 +137,7 @@ pub fn normalise(source: &str) -> String
                     "str" => "string",
                     _ => x.as_str()
                 }
-            } else {
-                ""
-            }.into()
+            } else {""}.into()
         }
     ).into()
 }
@@ -182,5 +178,5 @@ pub fn split(source: &str) -> Vec<String>
     .to_string()
     .split("\n")
     .map(|line| line.into())
-    .collect()
+    .collect::<Vec<String>>()
 }
