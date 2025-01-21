@@ -266,6 +266,74 @@ mod integration
             )))
         );
     }
+    #[test]
+    fn si_9()
+    {
+        // None type.
+        assert_eq!(
+            Runtime::run("integration/SI-9/0.sph"),
+            Ok(Value::new_list(Sequence::new_list(vec![
+                Value::new_boolean(true),
+                Value::new_boolean(false),
+            ])))
+        );
+        // Number type.
+        assert_eq!(
+            Runtime::run("integration/SI-9/1.sph"),
+            Ok(Value::new_list(Sequence::new_list(vec![
+                Value::new_boolean(true),
+                Value::new_boolean(false),
+            ])))
+        );
+        // Integer type.
+        assert_eq!(
+            Runtime::run("integration/SI-9/2.sph"),
+            Ok(Value::new_list(Sequence::new_list(vec![
+                Value::new_boolean(true),
+                Value::new_boolean(false),
+            ])))
+        );
+        // Boolean type.
+        assert_eq!(
+            Runtime::run("integration/SI-9/3.sph"),
+            Ok(Value::new_list(Sequence::new_list(vec![
+                Value::new_boolean(true),
+                Value::new_boolean(false),
+            ])))
+        );
+        // String type.
+        assert_eq!(
+            Runtime::run("integration/SI-9/4.sph"),
+            Ok(Value::new_list(Sequence::new_list(vec![
+                Value::new_boolean(true),
+                Value::new_boolean(false),
+            ])))
+        );
+        // Range type.
+        assert_eq!(
+            Runtime::run("integration/SI-9/5.sph"),
+            Ok(Value::new_list(Sequence::new_list(vec![
+                Value::new_boolean(true),
+                Value::new_boolean(false),
+            ])))
+        );
+        // List type.
+        assert_eq!(
+            Runtime::run("integration/SI-9/6.sph"),
+            Ok(Value::new_list(Sequence::new_list(vec![
+                Value::new_boolean(true),
+                Value::new_boolean(false),
+            ])))
+        );
+        // Record type.
+        assert_eq!(
+            Runtime::run("integration/SI-9/7.sph"),
+            Ok(Value::new_list(Sequence::new_list(vec![
+                Value::new_boolean(true),
+                Value::new_boolean(false),
+            ])))
+        );
+    }
 }
 // #[cfg(test)]
 // mod arche

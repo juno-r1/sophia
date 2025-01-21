@@ -116,3 +116,28 @@ For instance, a range of 0:10:1 generates numbers from 0 to 10.
 This approach is preferred because it is useful to reference only those numbers that actually exist within the range.
 This helps to minimise confusion since ranges are also used for indexing, so there aren't any unexpected omissions.
 The start, the end, and the step must all be specified. This is to prevent incorrect assumptions about implict values.
+
+# SI-9
+
+Typing.
+
+`<T>(<E>)`
+`<T> <N>: <E>`
+
+Sophia is structurally typed.
+Types are conceptualised as a set of values for which a set of predicates hold true.
+Types with the same predicates are considered to be equal.
+Subtypes have the predicates of their supertypes.
+
+Types can be passed a value to perform a type check that returns boolean.
+
+The types that are available in this integration are as follows:
+
+none
+number (num)
+integer (int)
+boolean (bool)
+string (str)
+range
+list
+record
