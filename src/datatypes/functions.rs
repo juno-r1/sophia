@@ -11,7 +11,7 @@ use std::env::current_dir;
 use serde::Deserialize;
 use serde_json;
 
-use crate::error;
+use crate::{error, new_fn};
 use crate::sophia::arche::{Namespace, Value};
 use crate::sophia::runtime::Task;
 
@@ -271,72 +271,17 @@ struct Signature {
 // Standard library functions.
 impl FuncDef
 {
-		// for item in methods:
-		// 	data = metadata[item.__name__] # Retrieve method signature from Kleio
-		// 	names = [data['name']] + [str(i) for i in range(len(data['signature']))]
-		// 	types = [typedef.read(data['final'])] + [typedef.read(i) for i in data['signature']]
-		// 	self.extend(function_method(item, names, types))
 	pub fn stdlib() -> Namespace
+	// Produces the standard function namespace.
 	{
-		macro_rules! new_function
-		// Creates a standard library function.
-		// Deserialises signature file, then constructs function from methods.
-		{
-			($name:expr) => {
-				($name.into(), Value::new_function(FuncDef::new(vec![])))
-			};
-			($name:expr, $($method:ident),*) => {{
-				let metadata: Metadata = serde_json::from_str(
-					&std::fs::read_to_string(
-						std::fs::canonicalize(
-							current_dir()
-							.expect("Couldn't find signature file")
-							.join(format!("src/kleio/{:}.json", $name))
-						).expect("Couldn't canonicalise signature file")
-					).expect("Couldn't read signature file")
-				).expect("Couldn't deserialise signature file");
-				(metadata.name.into(), Value::new_function(FuncDef::new(vec![$(
-					Method::new_method_std(
-						Task::$method,
-						{
-							let data = &metadata.methods
-								.get(stringify!($method))
-								.unwrap();
-							let mut signature = vec![$name.into()];
-							signature.extend(
-								data.signature
-								.iter()
-								.map(|_| format!("_"))
-							);
-							signature
-						},
-						{
-							let data = &metadata.methods
-								.get(stringify!($method))
-								.unwrap();
-							let mut signature = vec![TypeDef::read(&data.returns)];
-							signature.extend(
-								data.signature
-								.iter()
-								.map(|x| TypeDef::read(x))
-							);
-							signature
-						}
-					)
-				),*])))
-			}};
-		}
-		// Produces the standard function namespace.
 		BTreeMap::from(
 			[
-				// Built-ins.
-				// new_function!(
-				// 	"return",
-				// 	return_none,
-				// 	return_any
-				// ),
 				// Operators.
-				new_function!(
+				new_fn!(
+					"std/sfe",
+					sfe_u
+				),
+				new_fn!(
 					"std/add",
 					add_u,
 					add_b,

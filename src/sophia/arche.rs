@@ -170,3 +170,53 @@ macro_rules! std_mod
 		}
 	};
 }
+
+#[macro_export]
+macro_rules! new_fn
+// Creates a standard library function.
+// Deserialises signature file, then constructs function from methods.
+{
+	($name:expr) => {
+		($name.into(), Value::new_function(FuncDef::new(vec![])))
+	};
+	($name:expr, $($method:ident),*) => {{
+		let metadata: Metadata = serde_json::from_str(
+			&std::fs::read_to_string(
+				std::fs::canonicalize(
+					current_dir()
+					.expect("Couldn't find signature file")
+					.join(format!("src/kleio/{:}.json", $name))
+				).expect("Couldn't canonicalise signature file")
+			).expect("Couldn't read signature file")
+		).expect("Couldn't deserialise signature file");
+		(metadata.name.into(), Value::new_function(FuncDef::new(vec![$(
+			Method::new_method_std(
+				Task::$method,
+				{
+					let data = &metadata.methods
+						.get(stringify!($method))
+						.unwrap();
+					let mut signature = vec![$name.into()];
+					signature.extend(
+						data.signature
+						.iter()
+						.map(|_| format!("_"))
+					);
+					signature
+				},
+				{
+					let data = &metadata.methods
+						.get(stringify!($method))
+						.unwrap();
+					let mut signature = vec![TypeDef::read(&data.returns)];
+					signature.extend(
+						data.signature
+						.iter()
+						.map(|x| TypeDef::read(x))
+					);
+					signature
+				}
+			)
+		),*])))
+	}};
+}

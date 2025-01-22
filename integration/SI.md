@@ -6,13 +6,11 @@ Sophia Integrations, abbreviated as SIs, are internal tickets used to implement 
 
 SIs are associated with a description of their requirements, an integration test, and the unit tests used for the components associated with the SI. Unit tests may be changed and reordered as is necessary.
 
-## SI-1
+## SI-1: Initialisation
 
 Initialise the Sophia runtime.
 
-## SI-2
-
-Return statement.
+## SI-2: Return statement
 
 `return`
 `return <E>`
@@ -21,9 +19,7 @@ Ends execution of the current routine and returns null to the calling routine.
 It is possible to return from the global routine.
 The returned value may be used by external utilities in future.
 
-## SI-3
-
-Numeric literals.
+## SI-3: Numeric literals
 
 `1`
 `+1`
@@ -35,9 +31,7 @@ Numeric literals.
 Sophia has one numeric data type: arbitrary-precision rationals.
 It should be able to parse as constant with the sign and either a solidus or a decimal point and an exponent.
 
-# SI-4
-
-String literals.
+# SI-4: String literals
 
 `"Hello world!"`
 `'Hello world!'`
@@ -63,9 +57,7 @@ ASCII characters can be specified with \x and then 2 hex digits:
 Unicode characters can be specified with \u and then up to 6 hex digits in curly brackets:
 \u{000000}
 
-# SI-5
-
-Boolean literals.
+# SI-5: Boolean literals
 
 `true`
 `false`
@@ -73,9 +65,7 @@ Boolean literals.
 Sophia has no concept of truthiness.
 Any expression in a boolean context (if statements, while statements) must evaluate to these values.
 
-# SI-6
-
-Assignment.
+# SI-6: Assignment
 
 `<N>: <E>`
 `<N>: <E>; <N>: <E; ...>`
@@ -84,9 +74,7 @@ Assign a value to a name. Referencing the name yields the value.
 The name and the bound value persist until the end of scope, or until the name is reassigned.
 Multiple assignment requires all expressions to be evaluated from left to right, and then all names to be assigned simultaneously.
 
-# SI-7
-
-Sequence constructors.
+# SI-7: Sequence constructors
 
 `[]`
 `[<E>]`
@@ -101,9 +89,7 @@ The constructor `[]` creates an empty list, equivalent to `new list`.
 The constructor `[:]` creates an empty record, equivalent to `new record`.
 Constructors cannot be mixed: either all or none of the keys must be specified.
 
-# SI-8
-
-Ranges.
+# SI-8: Ranges
 
 `[::]`
 `[<E>:<E>:<E>]`
@@ -117,12 +103,9 @@ This approach is preferred because it is useful to reference only those numbers 
 This helps to minimise confusion since ranges are also used for indexing, so there aren't any unexpected omissions.
 The start, the end, and the step must all be specified. This is to prevent incorrect assumptions about implict values.
 
-# SI-9
-
-Typing.
+# SI-9: Typing
 
 `<T>(<E>)`
-`<T> <N>: <E>`
 
 Sophia is structurally typed.
 Types are conceptualised as a set of values for which a set of predicates hold true.
@@ -141,3 +124,10 @@ string (str)
 range
 list
 record
+
+# SI-10: Type operator
+
+`?<E>`
+
+While values have no nominal type in Sophia, all expressions have a final type.
+Using the type operator yields the type of the expression as a first-class value.

@@ -8,6 +8,7 @@ mod integration
 
     use crate::datatypes::range::Range;
     use crate::datatypes::sequence::Sequence;
+    use crate::datatypes::types::TypeDef;
     use crate::sophia::arche::Value;
     use crate::sophia::runtime::Runtime;
 
@@ -332,6 +333,20 @@ mod integration
                 Value::new_boolean(true),
                 Value::new_boolean(false),
             ])))
+        );
+    }
+    #[test]
+    fn si_10()
+    {
+        // Type operator.
+        assert_eq!(
+            Runtime::run("integration/SI-10/0.sph"),
+            Ok(Value::new_type(TypeDef::std_none()))
+        );
+        // Type inferral.
+        assert_eq!(
+            Runtime::run("integration/SI-10/1.sph"),
+            Ok(Value::new_type(TypeDef::std_integer()))
         );
     }
 }

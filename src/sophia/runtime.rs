@@ -56,8 +56,8 @@ pub struct Task {
 	instructions: Vec<Instruction>,
 	values: Namespace,
     types: Typespace,
-    signature: Vec<TypeDef>,
     // Program state.
+    pub signature: Vec<TypeDef>,
     pub path: usize,
     op: usize,
 }
