@@ -131,3 +131,11 @@ record
 
 While values have no nominal type in Sophia, all expressions have a final type.
 Using the type operator yields the type of the expression as a first-class value.
+
+# SI-11: Typed assignment
+
+`<T> <N>: <E>`
+
+Typed assignments determine the type of a bound value.
+The assignment performs a type check. If the value does not match the stated type, an error is thrown.
+The value is assigned exactly the stated type, and not more or less specific.

@@ -349,6 +349,25 @@ mod integration
             Ok(Value::new_type(TypeDef::std_integer()))
         );
     }
+    #[test]
+    fn si_11()
+    {
+        // Type assignment.
+        assert_eq!(
+            Runtime::run("integration/SI-11/0.sph"),
+            Ok(Value::new_type(TypeDef::std_number()))
+        );
+        // Downcasting.
+        assert_eq!(
+            Runtime::run("integration/SI-11/1.sph"),
+            Ok(Value::new_type(TypeDef::std_integer()))
+        );
+        // Invalid assignment.
+        assert_eq!(
+            Runtime::run("integration/SI-11/2.sph"),
+            Err(format!("Invalid value for type string: Number(1)"))
+        );
+    }
 }
 // #[cfg(test)]
 // mod arche

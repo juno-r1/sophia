@@ -177,8 +177,21 @@ impl Task
                         .iter()
                         .map(|arg| self.describe(arg))
                         .collect::<Result<Vec<TypeDef>, String>>()?;
-                    for (index, (name, _)) in Iterator::zip(params.iter(), types.iter()).enumerate() {
-                        self.write(&name, values[index].clone(), self.signature[index].clone());
+                    for (index, (name, typename)) in Iterator::zip(params.iter(), types.iter()).enumerate() {
+                        let value = values[index].clone();
+                        match typename.as_str() {
+                            "?" => {
+                                self.write(&name, value, self.signature[index].clone());
+                            },
+                            _ => {
+                                let Value::Type(check) = self.read(typename)? else {return error!(CALL, typename)};
+                                if check.call(&value) {
+                                    self.write(&name, value, *check);
+                                } else {
+                                    return error!(TYPE, typename, value);
+                                };
+                            }
+                        }
                     };
                     Value::new_none()
                 },
