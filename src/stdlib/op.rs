@@ -86,6 +86,54 @@ std_mod!
 
 std_mod!
 {
+	lnt;
+	std_fn!
+	{
+		boolean lnt_u(boolean x0)
+		{
+			!x0
+		}
+	}
+}
+
+std_mod!
+{
+	lnd;
+	std_fn!
+	{
+		boolean lnd_b(boolean x0, boolean x1)
+		{
+			x0 & x1
+		}
+	}
+}
+
+std_mod!
+{
+	lor;
+	std_fn!
+	{
+		boolean lor_b(boolean x0, boolean x1)
+		{
+			x0 | x1
+		}
+	}
+}
+
+std_mod!
+{
+	lxr;
+	std_fn!
+	{
+		boolean lxr_b(boolean x0, boolean x1)
+		{
+			x0 != x1
+		}
+	}
+}
+
+std_mod!
+{
 	add: {
 		use malachite::num::arithmetic::traits::Abs;
 	};
@@ -254,54 +302,6 @@ std_mod!
 // 		boolean b_sbs_range(number x0, range x1)
 // 		{
 // 			x1.contains(&x0)
-// 		}
-// 	}
-// }
-
-// std_mod!
-// {
-// 	lnt;
-// 	std_fn!
-// 	{
-// 		boolean u_lnt(boolean x0)
-// 		{
-// 			!x0
-// 		}
-// 	}
-// }
-
-// std_mod!
-// {
-// 	lnd;
-// 	std_fn!
-// 	{
-// 		boolean b_lnd(boolean x0, boolean x1)
-// 		{
-// 			x0 & x1
-// 		}
-// 	}
-// }
-
-// std_mod!
-// {
-// 	lor;
-// 	std_fn!
-// 	{
-// 		boolean b_lor(boolean x0, boolean x1)
-// 		{
-// 			x0 | x1
-// 		}
-// 	}
-// }
-
-// std_mod!
-// {
-// 	lxr;
-// 	std_fn!
-// 	{
-// 		boolean b_lxr(boolean x0, boolean x1)
-// 		{
-// 			x0 != x1
 // 		}
 // 	}
 // }

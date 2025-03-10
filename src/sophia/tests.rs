@@ -299,6 +299,18 @@ mod integration
         // Greater than or equal to.
         assert_true(test(12, 5));
     }
+    #[test]
+    fn si_13()
+    {
+        // NOT.
+        assert_true(test(13, 0));
+        // AND.
+        assert_true(test(13, 1));
+        // OR.
+        assert_true(test(13, 2));
+        // XOR.
+        assert_true(test(13, 3));
+    }
 }
 // #[cfg(test)]
 // mod arche

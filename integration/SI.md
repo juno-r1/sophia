@@ -160,3 +160,19 @@ Sophia has by default:
 
 Equality requires values to be the same data type. There is no loose equality in Sophia.
 Overloading these operators does not change their internal implementation.
+
+# SI-13: Boolean operators
+
+`not <E>`
+`<E> and <E>`
+`<E> or <E>`
+`<E> xor <E>`
+
+The boolean operators implement basic logical connectives.
+Sophia has by default:
+- Negation (NOT);
+- Conjunction (AND);
+- Disjunction (OR);
+- Non-equivalence (XOR).
+
+Logical XOR is equivalent to inequality. It is included here to indicate a semantic difference.

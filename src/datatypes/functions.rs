@@ -305,6 +305,22 @@ impl FuncDef
 					gql_b
 				),
 				new_fn!(
+					"op/lnt",
+					lnt_u
+				),
+				new_fn!(
+					"op/lnd",
+					lnd_b
+				),
+				new_fn!(
+					"op/lor",
+					lor_b
+				),
+				new_fn!(
+					"op/lxr",
+					lxr_b
+				),
+				new_fn!(
 					"op/add",
 					add_u,
 					add_b,
@@ -336,22 +352,6 @@ impl FuncDef
 				// 	"in",
 				// 	b_sbs_string,
 				// 	b_sbs_range
-				// ),
-				// new_function!(
-				// 	"not",
-				// 	u_lnt
-				// ),
-				// new_function!(
-				// 	"and",
-				// 	b_lnd
-				// ),
-				// new_function!(
-				// 	"or",
-				// 	b_lor
-				// ),
-				// new_function!(
-				// 	"xor",
-				// 	b_lxr
 				// ),
 			]
 		)

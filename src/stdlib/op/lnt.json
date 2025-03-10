@@ -1,0 +1,11 @@
+{
+	"name": "not",
+	"methods": {
+		"lnt_u": {
+			"signature": [
+				"boolean"
+			],
+			"returns": "boolean"
+		}
+	}
+}
