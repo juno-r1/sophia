@@ -1,1 +1,1 @@
-return [bool(true), bool(1)]
+return none(0)

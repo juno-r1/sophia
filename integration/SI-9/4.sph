@@ -1,1 +1,1 @@
-return [str(""), str(0)]
+return some(0)

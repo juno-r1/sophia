@@ -14,7 +14,7 @@ pub struct Lexer<'a> {
 
 impl <'a> Lexer<'a>
 {
-    pub fn new(iterator: CaptureMatches<'a, 'a>) -> Lexer
+    pub fn new(iterator: CaptureMatches<'a, 'a>) -> Lexer<'a>
     // Implements a Pratt parser for expressions.
     // These sources helped with expression parsing:
     // https://eli.thegreenplace.net/2010/01/02/top-down-operator-precedence-parsing

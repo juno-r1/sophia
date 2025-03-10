@@ -1,1 +1,1 @@
-return [list([]), list([:])]
+return num(0)

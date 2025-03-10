@@ -1,0 +1,12 @@
+{
+	"name": ">=",
+	"methods": {
+		"gql_b": {
+			"signature": [
+				"number",
+                "number"
+			],
+			"returns": "boolean"
+		}
+	}
+}

@@ -1,1 +1,1 @@
-return [record([:]), record([])]
+return num(null)

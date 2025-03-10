@@ -1,0 +1,12 @@
+{
+	"name": "=",
+	"methods": {
+		"eql_b": {
+			"signature": [
+				"any",
+                "any"
+			],
+			"returns": "boolean"
+		}
+	}
+}

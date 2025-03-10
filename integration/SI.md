@@ -16,7 +16,7 @@ Initialise the Sophia runtime.
 `return <E>`
 
 Ends execution of the current routine and returns null to the calling routine.
-It is possible to return from the global routine.
+It is possible to return from the main routine.
 The returned value may be used by external utilities in future.
 
 ## SI-3: Numeric literals
@@ -114,16 +114,16 @@ Subtypes have the predicates of their supertypes.
 
 Types can be passed a value to perform a type check that returns boolean.
 
-The types that are available in this integration are as follows:
+This integration implements Sophia's basic non-capturing types.
 
+any
 none
+some
 number (num)
 integer (int)
 boolean (bool)
 string (str)
 range
-list
-record
 
 # SI-10: Type operator
 
@@ -136,6 +136,27 @@ Using the type operator yields the type of the expression as a first-class value
 
 `<T> <N>: <E>`
 
-Typed assignments determine the type of a bound value.
+Typed assignments determine the type of a name.
 The assignment performs a type check. If the value does not match the stated type, an error is thrown.
-The value is assigned exactly the stated type, and not more or less specific.
+The name is assigned exactly the stated type, and not more or less specific.
+
+# SI-12: Equality operators
+
+`<E> = <E>`
+`<E> != <E>`
+`<E> < <E>`
+`<E> > <E>`
+`<E> <= <E>`
+`<E> >= <E>`
+
+The equality and comparison operators compare two values and return boolean.
+Sophia has by default:
+- Equality;
+- Inequality;
+- Less than;
+- Greater than;
+- Less than or equal to;
+- Greater than or equal to.
+
+Equality requires values to be the same data type. There is no loose equality in Sophia.
+Overloading these operators does not change their internal implementation.

@@ -185,7 +185,7 @@ macro_rules! new_fn
 				std::fs::canonicalize(
 					current_dir()
 					.expect("Couldn't find signature file")
-					.join(format!("src/kleio/{:}.json", $name))
+					.join(format!("src/stdlib/{:}.json", $name))
 				).expect("Couldn't canonicalise signature file")
 			).expect("Couldn't read signature file")
 		).expect("Couldn't deserialise signature file");
@@ -195,7 +195,7 @@ macro_rules! new_fn
 				{
 					let data = &metadata.methods
 						.get(stringify!($method))
-						.unwrap();
+						.expect("Couldn't find method signature");
 					let mut signature = vec![$name.into()];
 					signature.extend(
 						data.signature
@@ -207,7 +207,7 @@ macro_rules! new_fn
 				{
 					let data = &metadata.methods
 						.get(stringify!($method))
-						.unwrap();
+						.expect("Couldn't find method signature");
 					let mut signature = vec![TypeDef::read(&data.returns)];
 					signature.extend(
 						data.signature

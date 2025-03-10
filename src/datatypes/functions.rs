@@ -265,7 +265,6 @@ struct Metadata {
 struct Signature {
 	signature: Vec<String>,
 	returns: String,
-	partial: bool,
 }
 
 // Standard library functions.
@@ -278,11 +277,35 @@ impl FuncDef
 			[
 				// Operators.
 				new_fn!(
-					"std/sfe",
+					"op/sfe",
 					sfe_u
 				),
 				new_fn!(
-					"std/add",
+					"op/eql",
+					eql_b
+				),
+				new_fn!(
+					"op/nql",
+					nql_b
+				),
+				new_fn!(
+					"op/ltn",
+					ltn_b
+				),
+				new_fn!(
+					"op/gtn",
+					gtn_b
+				),
+				new_fn!(
+					"op/lql",
+					lql_b
+				),
+				new_fn!(
+					"op/gql",
+					gql_b
+				),
+				new_fn!(
+					"op/add",
 					add_u,
 					add_b,
 					add_r,
@@ -308,30 +331,6 @@ impl FuncDef
 				// new_function!(
 				// 	"%",
 				// 	b_mdl
-				// ),
-				// new_function!(
-				// 	"=",
-				// 	b_eql
-				// ),
-				// new_function!(
-				// 	"!=",
-				// 	b_nql
-				// ),
-				// new_function!(
-				// 	"<",
-				// 	b_ltn
-				// ),
-				// new_function!(
-				// 	">",
-				// 	b_gtn
-				// ),
-				// new_function!(
-				// 	"<=",
-				// 	b_lql
-				// ),
-				// new_function!(
-				// 	">=",
-				// 	b_gql
 				// ),
 				// new_function!(
 				// 	"in",

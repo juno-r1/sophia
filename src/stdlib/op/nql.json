@@ -1,0 +1,12 @@
+{
+	"name": "!=",
+	"methods": {
+		"nql_b": {
+			"signature": [
+				"any",
+                "any"
+			],
+			"returns": "boolean"
+		}
+	}
+}

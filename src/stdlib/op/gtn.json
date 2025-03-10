@@ -1,0 +1,12 @@
+{
+	"name": ">",
+	"methods": {
+		"gtn_b": {
+			"signature": [
+				"number",
+                "number"
+			],
+			"returns": "boolean"
+		}
+	}
+}

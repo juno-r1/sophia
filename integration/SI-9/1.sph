@@ -1,1 +1,1 @@
-return [num(0), num(null)]
+return any(0)

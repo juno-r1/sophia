@@ -12,153 +12,123 @@ mod integration
     use crate::sophia::arche::Value;
     use crate::sophia::runtime::Runtime;
 
+    fn test(integration: usize, file: usize) -> Result<Value, String>
+    {
+        Runtime::run(format!("integration/SI-{integration:}/{file:}.sph").as_str())
+    }
+    fn assert_true(test: Result<Value, String>)
+    {
+        assert_eq!(test, Ok(Value::new_boolean(true)))
+    }
+    fn assert_false(test: Result<Value, String>)
+    {
+        assert_eq!(test, Ok(Value::new_boolean(false)))
+    }
+    fn assert_null(test: Result<Value, String>)
+    {
+        assert_eq!(test, Ok(Value::new_none()))
+    }
+    fn assert_number(test: Result<Value, String>, value: &str)
+    {
+        assert_eq!(test, Ok(Value::new_number(Rational::from_sci_string(value).unwrap())));
+    }
+    fn assert_string(test: Result<Value, String>, value: &str)
+    {
+        assert_eq!(test, Ok(Value::new_string(value.into())));
+    }
+    fn assert_type(test: Result<Value, String>, typedef: TypeDef)
+    {
+        assert_eq!(test, Ok(Value::new_type(typedef)))
+    }
+    fn assert_error(test: Result<Value, String>, error: &str)
+    {
+        assert_eq!(test, Err(error.into()));
+    }
+
     #[test]
     fn si_1()
     {
         // Empty file.
-        assert_eq!(
-            Runtime::run("integration/SI-1/0.sph"),
-            Ok(Value::new_none())
-        );
+        assert_null(test(1, 0));
     }
     #[test]
     fn si_2()
     {
         // Empty return.
-        assert_eq!(
-            Runtime::run("integration/SI-2/0.sph"),
-            Ok(Value::new_none())
-        );
+        assert_null(test(2, 0));
         // Return with null constant.
-        assert_eq!(
-            Runtime::run("integration/SI-2/1.sph"),
-            Ok(Value::new_none())
-        );
+        assert_null(test(2, 1));
     }
     #[test]
     fn si_3()
     {
         // Simple integer.
-        assert_eq!(
-            Runtime::run("integration/SI-3/0.sph"),
-            Ok(Value::new_number(Rational::from_str("0").unwrap()))
-        );
+        assert_number(test(3, 0), "0");
         // Integer with positive sign.
-        assert_eq!(
-            Runtime::run("integration/SI-3/1.sph"),
-            Ok(Value::new_number(Rational::from_str("1").unwrap()))
-        );
+        assert_number(test(3, 1), "1");
         // Integer with negative sign.
-        assert_eq!(
-            Runtime::run("integration/SI-3/2.sph"),
-            Ok(Value::new_number(Rational::from_str("-1").unwrap()))
-        );
+        assert_number(test(3, 2), "-1");
         // Rational with decimal point.
-        assert_eq!(
-            Runtime::run("integration/SI-3/3.sph"),
-            Ok(Value::new_number(Rational::from_sci_string("1.2").unwrap()))
-        );
+        assert_number(test(3, 3), "1.2");
         // Rational with solidus.
-        assert_eq!(
-            Runtime::run("integration/SI-3/4.sph"),
-            Ok(Value::new_number(Rational::from_str("1/2").unwrap()))
-        );
+        assert_number(test(3, 4), "0.5");
         // Large integer in exponential notation.
-        assert_eq!(
-            Runtime::run("integration/SI-3/5.sph"),
-            Ok(Value::new_number(Rational::from_sci_string("1e1111").unwrap()))
-        );
+        assert_number(test(3, 5), "1e1111");
         // Complex rational with solidus.
-        assert_eq!(
-            Runtime::run("integration/SI-3/6.sph"),
-            Ok(Value::new_number(Rational::from_str("-1/2").unwrap()))
-        );
+        assert_number(test(3, 6), "-0.5");
         // Complex rational with decimal point and exponential notation.
-        assert_eq!(
-            Runtime::run("integration/SI-3/7.sph"),
-            Ok(Value::new_number(Rational::from_sci_string("-1.2e-2").unwrap()))
-        );
+        assert_number(test(3, 7), "-1.2e-2");
     }
     #[test]
     fn si_4()
     {
         // Double quotes.
-        assert_eq!(
-            Runtime::run("integration/SI-4/0.sph"),
-            Ok(Value::new_string(format!("Hello world!")))
-        );
+        assert_string(test(4, 0), "Hello world!");
         // Single quotes.
-        assert_eq!(
-            Runtime::run("integration/SI-4/1.sph"),
-            Ok(Value::new_string(format!("Hello world!")))
-        );
+        assert_string(test(4, 1), "Hello world!");
         // Double quotes containing unmatched single quotes.
-        assert_eq!(
-            Runtime::run("integration/SI-4/2.sph"),
-            Ok(Value::new_string(format!("'")))
-        );
+        assert_string(test(4, 2), "'");
         // Single quotes containing unmatched double quotes.
-        assert_eq!(
-            Runtime::run("integration/SI-4/3.sph"),
-            Ok(Value::new_string(format!("\"")))
-        );
+        assert_string(test(4, 3), "\"");
         // Escape characters.
-        assert_eq!(
-            Runtime::run("integration/SI-4/4.sph"),
-            Ok(Value::new_string(format!("\0\t\n\r\"\'\\")))
-        );
+        assert_string(test(4, 4), "\0\t\n\r\"\'\\");
         // Unicode escapes.
-        assert_eq!(
-            Runtime::run("integration/SI-4/5.sph"),
-            Ok(Value::new_string(format!("\0\0")))
-        );
+        assert_string(test(4, 5), "\0\0");
     }
     #[test]
     fn si_5()
     {
         // False.
-        assert_eq!(
-            Runtime::run("integration/SI-5/0.sph"),
-            Ok(Value::new_boolean(false))
-        );
+        assert_false(test(5, 0));
         // True.
-        assert_eq!(
-            Runtime::run("integration/SI-5/1.sph"),
-            Ok(Value::new_boolean(true))
-        );
+        assert_true(test(5, 1));
     }
     #[test]
     fn si_6()
     {
         // Single assignment.
-        assert_eq!(
-            Runtime::run("integration/SI-6/0.sph"),
-            Ok(Value::new_number(Rational::from_str("0").unwrap()))
-        );
+        assert_number(test(6, 0), "0");
         // Multiple assignment with assignment order check.
-        assert_eq!(
-            Runtime::run("integration/SI-6/1.sph"),
-            Ok(Value::new_number(Rational::from_str("0").unwrap()))
-        );
+        assert_number(test(6, 1), "0");
     }
     #[test]
     fn si_7()
     {
         // Empty list.
         assert_eq!(
-            Runtime::run("integration/SI-7/0.sph"),
+            test(7, 0),
             Ok(Value::new_list(Sequence::new_list(vec![])))
         );
         // Single-element list.
         assert_eq!(
-            Runtime::run("integration/SI-7/1.sph"),
+            test(7, 1),
             Ok(Value::new_list(Sequence::new_list(vec![
                 Value::new_number(Rational::from_str("0").unwrap()),
             ])))
         );
         // Multiple-element list.
         assert_eq!(
-            Runtime::run("integration/SI-7/2.sph"),
+            test(7, 2),
             Ok(Value::new_list(Sequence::new_list(vec![
                 Value::new_number(Rational::from_str("0").unwrap()),
                 Value::new_number(Rational::from_str("1").unwrap()),
@@ -167,12 +137,12 @@ mod integration
         );
         // Empty record.
         assert_eq!(
-            Runtime::run("integration/SI-7/3.sph"),
+            test(7, 3),
             Ok(Value::new_record(Sequence::new_record(vec![], vec![])))
         );
         // Single-element record.
         assert_eq!(
-            Runtime::run("integration/SI-7/4.sph"),
+            test(7, 4),
             Ok(Value::new_record(Sequence::new_record(vec![
                 Value::new_string(format!("0")),
             ], vec![
@@ -181,7 +151,7 @@ mod integration
         );
         // Multiple-element record.
         assert_eq!(
-            Runtime::run("integration/SI-7/5.sph"),
+            test(7, 5),
             Ok(Value::new_record(Sequence::new_record(vec![
                 Value::new_string(format!("0")),
                 Value::new_string(format!("1")),
@@ -194,7 +164,7 @@ mod integration
         );
         // Nested list.
         assert_eq!(
-            Runtime::run("integration/SI-7/6.sph"),
+            test(7, 6),
             Ok(Value::new_list(Sequence::new_list(vec![
                 Value::new_number(Rational::from_str("0").unwrap()),
                 Value::new_list(Sequence::new_list(vec![
@@ -209,7 +179,7 @@ mod integration
         );
         // Nested record.
         assert_eq!(
-            Runtime::run("integration/SI-7/7.sph"),
+            test(7, 7),
             Ok(Value::new_record(Sequence::new_record(vec![
                 Value::new_string(format!("0")),
                 Value::new_string(format!("1")),
@@ -232,7 +202,7 @@ mod integration
     {
         // Empty range.
         assert_eq!(
-            Runtime::run("integration/SI-8/0.sph"),
+            test(8, 0),
             Ok(Value::new_range(Range::new(
                 Rational::from_str("0").unwrap(),
                 Rational::from_str("0").unwrap(),
@@ -241,7 +211,7 @@ mod integration
         );
         // Zero-step range.
         assert_eq!(
-            Runtime::run("integration/SI-8/1.sph"),
+            test(8, 1),
             Ok(Value::new_range(Range::new(
                 Rational::from_str("0").unwrap(),
                 Rational::from_str("0").unwrap(),
@@ -250,7 +220,7 @@ mod integration
         );
         // Ascending range.
         assert_eq!(
-            Runtime::run("integration/SI-8/2.sph"),
+            test(8, 2),
             Ok(Value::new_range(Range::new(
                 Rational::from_str("0").unwrap(),
                 Rational::from_str("2").unwrap(),
@@ -259,7 +229,7 @@ mod integration
         );
         // Descending range.
         assert_eq!(
-            Runtime::run("integration/SI-8/3.sph"),
+            test(8, 3),
             Ok(Value::new_range(Range::new(
                 Rational::from_str("-1").unwrap(),
                 Rational::from_str("-5").unwrap(),
@@ -270,103 +240,64 @@ mod integration
     #[test]
     fn si_9()
     {
+        // Any type.
+        assert_true(test(9, 0));
+        assert_true(test(9, 1));
         // None type.
-        assert_eq!(
-            Runtime::run("integration/SI-9/0.sph"),
-            Ok(Value::new_list(Sequence::new_list(vec![
-                Value::new_boolean(true),
-                Value::new_boolean(false),
-            ])))
-        );
+        assert_true(test(9, 2));
+        assert_false(test(9, 3));
+        // Some type.
+        assert_true(test(9, 4));
+        assert_false(test(9, 5));
         // Number type.
-        assert_eq!(
-            Runtime::run("integration/SI-9/1.sph"),
-            Ok(Value::new_list(Sequence::new_list(vec![
-                Value::new_boolean(true),
-                Value::new_boolean(false),
-            ])))
-        );
+        assert_true(test(9, 6));
+        assert_false(test(9, 7));
         // Integer type.
-        assert_eq!(
-            Runtime::run("integration/SI-9/2.sph"),
-            Ok(Value::new_list(Sequence::new_list(vec![
-                Value::new_boolean(true),
-                Value::new_boolean(false),
-            ])))
-        );
+        assert_true(test(9, 8));
+        assert_false(test(9, 9));
         // Boolean type.
-        assert_eq!(
-            Runtime::run("integration/SI-9/3.sph"),
-            Ok(Value::new_list(Sequence::new_list(vec![
-                Value::new_boolean(true),
-                Value::new_boolean(false),
-            ])))
-        );
+        assert_true(test(9, 10));
+        assert_false(test(9, 11));
         // String type.
-        assert_eq!(
-            Runtime::run("integration/SI-9/4.sph"),
-            Ok(Value::new_list(Sequence::new_list(vec![
-                Value::new_boolean(true),
-                Value::new_boolean(false),
-            ])))
-        );
+        assert_true(test(9, 12));
+        assert_false(test(9, 13));
         // Range type.
-        assert_eq!(
-            Runtime::run("integration/SI-9/5.sph"),
-            Ok(Value::new_list(Sequence::new_list(vec![
-                Value::new_boolean(true),
-                Value::new_boolean(false),
-            ])))
-        );
-        // List type.
-        assert_eq!(
-            Runtime::run("integration/SI-9/6.sph"),
-            Ok(Value::new_list(Sequence::new_list(vec![
-                Value::new_boolean(true),
-                Value::new_boolean(false),
-            ])))
-        );
-        // Record type.
-        assert_eq!(
-            Runtime::run("integration/SI-9/7.sph"),
-            Ok(Value::new_list(Sequence::new_list(vec![
-                Value::new_boolean(true),
-                Value::new_boolean(false),
-            ])))
-        );
+        assert_true(test(9, 14));
+        assert_false(test(9, 15));
     }
     #[test]
     fn si_10()
     {
         // Type operator.
-        assert_eq!(
-            Runtime::run("integration/SI-10/0.sph"),
-            Ok(Value::new_type(TypeDef::std_none()))
-        );
+        assert_type(test(10, 0), TypeDef::std_none());
         // Type inferral.
-        assert_eq!(
-            Runtime::run("integration/SI-10/1.sph"),
-            Ok(Value::new_type(TypeDef::std_integer()))
-        );
+        assert_type(test(10, 1), TypeDef::std_integer());
     }
     #[test]
     fn si_11()
     {
         // Type assignment.
-        assert_eq!(
-            Runtime::run("integration/SI-11/0.sph"),
-            Ok(Value::new_type(TypeDef::std_number()))
-        );
+        assert_type(test(11, 0), TypeDef::std_number());
         // Downcasting.
-        assert_eq!(
-            Runtime::run("integration/SI-11/1.sph"),
-            Ok(Value::new_type(TypeDef::std_integer()))
-        );
+        assert_type(test(11, 1), TypeDef::std_integer());
         // Invalid assignment.
-        assert_eq!(
-            Runtime::run("integration/SI-11/2.sph"),
-            Err(format!("Invalid value for type string: Number(1)"))
-        );
+        assert_error(test(11, 2), "Invalid value for type string: Number(1)");
+    }
+    #[test]
+    fn si_12()
+    {
+        // Equality.
+        assert_true(test(12, 0));
+        // Inequality.
+        assert_true(test(12, 1));
+        // Less than.
+        assert_true(test(12, 2));
+        // Greater than.
+        assert_true(test(12, 3));
+        // Less than or equal to.
+        assert_true(test(12, 4));
+        // Greater than or equal to.
+        assert_true(test(12, 5));
     }
 }
 // #[cfg(test)]

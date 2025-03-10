@@ -5,8 +5,7 @@
 			"signature": [
 				"any"
 			],
-			"returns": "type",
-			"partial": false
+			"returns": "type"
 		}
 	}
 }

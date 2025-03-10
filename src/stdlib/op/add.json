@@ -5,31 +5,27 @@
 			"signature": [
 				"number"
 			],
-			"returns": "number",
-			"partial": false
+			"returns": "number"
 		},
 		"add_b": {
 			"signature": [
 				"number",
 				"number"
 			],
-			"returns": "number",
-			"partial": false
+			"returns": "number"
 		},
 		"add_r": {
 			"signature": [
 				"range"
 			],
-			"returns": "range",
-			"partial": false
+			"returns": "range"
 		},
 		"add_rn": {
 			"signature": [
 				"range",
 				"number"
 			],
-			"returns": "range",
-			"partial": false
+			"returns": "range"
 		}
 	}
 }
