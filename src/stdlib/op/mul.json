@@ -1,0 +1,21 @@
+{
+	"name": "*",
+	"methods": {
+		"mul_b": {
+			"signature": [
+				"number",
+				"number"
+			],
+			"returns": "number",
+			"partial": false
+		},
+		"mul_rn": {
+			"signature": [
+				"range",
+				"number"
+			],
+			"returns": "range",
+			"partial": false
+		}
+	}
+}

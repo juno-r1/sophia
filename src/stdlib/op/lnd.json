@@ -6,7 +6,8 @@
 				"boolean",
                 "boolean"
 			],
-			"returns": "boolean"
+			"returns": "boolean",
+			"partial": false
 		}
 	}
 }

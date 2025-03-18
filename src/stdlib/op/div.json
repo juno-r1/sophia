@@ -1,0 +1,21 @@
+{
+	"name": "/",
+	"methods": {
+		"div_b": {
+			"signature": [
+				"number",
+				"number"
+			],
+			"returns": "number",
+			"partial": true
+		},
+		"div_rn": {
+			"signature": [
+				"range",
+				"number"
+			],
+			"returns": "range",
+			"partial": true
+		}
+	}
+}

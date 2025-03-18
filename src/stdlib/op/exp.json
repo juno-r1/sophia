@@ -1,0 +1,21 @@
+{
+	"name": "^",
+	"methods": {
+		"exp_b": {
+			"signature": [
+				"number",
+				"number"
+			],
+			"returns": "number",
+			"partial": false
+		},
+		"exp_rn": {
+			"signature": [
+				"range",
+				"number"
+			],
+			"returns": "range",
+			"partial": false
+		}
+	}
+}

@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 use std::hash::Hash;
 
 use malachite::num::basic::traits::Zero;
@@ -9,8 +8,6 @@ use crate::datatypes::range::Range;
 use crate::datatypes::sequence::Sequence;
 use crate::datatypes::types::TypeDef;
 use crate::internal::tokens::Token;
-
-use super::runtime::Task;
 
 // Enum of all concrete data types.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -108,115 +105,4 @@ impl Value
 	{
 		format!("{self:?}")
 	}
-}
-
-pub type Function = fn(&mut Task, Vec<Value>) -> Result<Value, String>;
-pub type Type = fn(Value) -> bool;
-pub type Namespace = BTreeMap<String, Value>;
-pub type Typespace = BTreeMap<String, TypeDef>;
-
-pub fn stdlib(user: Namespace) -> Namespace
-// Build the standard library.
-{
-	let mut namespace: Namespace = user;
-	namespace.extend(TypeDef::stdlib());
-	namespace.extend(FuncDef::stdlib());
-	namespace
-}
-pub fn new_namespace() -> Namespace
-// Generates the minimum required namespace.
-{
-	BTreeMap::from([
-		(format!("0"), Value::new_none()),
-		(format!("-1"), Value::new_none())
-	])
-}
-pub fn infer_namespace(values: &Namespace) -> Typespace
-// Build a typespace from a namespace.
-{
-	values
-	.iter()
-	.map(|(k, v)| (k.clone(), TypeDef::infer(v)))
-	.collect()
-}
-
-#[macro_export]
-macro_rules! std_mod
-// Defines a standard library function with its associated dependencies.
-{
-	($name:ident; $(std_fn!$method:tt)+) => {
-		pub mod $name
-		{
-			use macros::std_fn;
-
-			use crate::error;
-			use crate::sophia::arche::Value;
-			use crate::sophia::runtime::Task;
-
-			$(std_fn!$method)+
-		}
-	};
-	($name:ident: {$($statement:item)+}; $(std_fn!$method:tt)+) => {
-		pub mod $name
-		{
-			use macros::std_fn;
-
-			use crate::error;
-			use crate::sophia::arche::Value;
-			use crate::sophia::runtime::Task;
-
-			$($statement)+
-			$(std_fn!$method)+
-		}
-	};
-}
-
-#[macro_export]
-macro_rules! new_fn
-// Creates a standard library function.
-// Deserialises signature file, then constructs function from methods.
-{
-	($name:expr) => {
-		($name.into(), Value::new_function(FuncDef::new(vec![])))
-	};
-	($name:expr, $($method:ident),*) => {{
-		let metadata: Metadata = serde_json::from_str(
-			&std::fs::read_to_string(
-				std::fs::canonicalize(
-					current_dir()
-					.expect("Couldn't find signature file")
-					.join(format!("src/stdlib/{:}.json", $name))
-				).expect("Couldn't canonicalise signature file")
-			).expect("Couldn't read signature file")
-		).expect("Couldn't deserialise signature file");
-		(metadata.name.into(), Value::new_function(FuncDef::new(vec![$(
-			Method::new_method_std(
-				Task::$method,
-				{
-					let data = &metadata.methods
-						.get(stringify!($method))
-						.expect("Couldn't find method signature");
-					let mut signature = vec![$name.into()];
-					signature.extend(
-						data.signature
-						.iter()
-						.map(|_| format!("_"))
-					);
-					signature
-				},
-				{
-					let data = &metadata.methods
-						.get(stringify!($method))
-						.expect("Couldn't find method signature");
-					let mut signature = vec![TypeDef::read(&data.returns)];
-					signature.extend(
-						data.signature
-						.iter()
-						.map(|x| TypeDef::read(x))
-					);
-					signature
-				}
-			)
-		),*])))
-	}};
 }

@@ -1,10 +1,9 @@
 use malachite::Rational;
-use regex::Regex;
-use utils::coerce::Coerce;
 
+use crate::error;
 use crate::internal::lexer::Lexer;
 use crate::internal::nodes::Node;
-use crate::internal::patterns;
+use crate::sophia::hemera::Partial;
 
 const LBP_MAP: [(&str, usize); 29] = [
     ("RIGHT_BRACKET", 1),
@@ -38,7 +37,7 @@ const LBP_MAP: [(&str, usize); 29] = [
     (".", 20)
 ];
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Token {
     // Statements.
     Module,
@@ -81,7 +80,6 @@ pub enum Token {
     Receive(String),
     Parenthesis(String),
     Sequence(String),
-    Meta(String),
     // Expression groups.
     Prefix(String),
     Infix(String),
@@ -100,59 +98,45 @@ pub enum Token {
 
 impl Token
 {
-    pub fn nud(self, lex: &mut Lexer) -> Node
+    pub fn nud(&self, lex: &mut Lexer) -> Partial<Node>
     // Creates the node for the null denotation of the token.
     // Creating the node consumes the token.
     {
-        match self {
+        // Construct node.
+        let node: Node = match self {
             Token::Parenthesis(expr) => {
-                if let Some(cap) = Regex::new(patterns::TYPE_EXPR)
-                    .unwrap()
-                    .captures(&expr) {
-                    let name = format!("@");
-                    let supertype: String = cap
-                        .name("supertype")
-                        .unwrap()
-                        .to_string();
-                    let expression: Node = Node::expression(
-                        cap
-                        .name("expression")
-                        .unwrap()
-                        .as_str()
-                    );
-					match cap.name("prototype") {
-						Some(prototype) => Node::branch(
-							Token::Type{
-								name,
-								supertype,
-								prototype: true
-							},
-                         	vec![
-                                Node::expression(prototype.as_str()),
-                                expression
-                            ]
-						),
-                        None => Node::branch(
-							Token::Type{
-								name,
-								supertype,
-								prototype: false
-							},
-							vec![expression]
-						)
-                    }
-                // } else if let Some(cap) = Regex::new(patterns::FUNC_EXPR)
-                //     .unwrap()
-                //     .captures(&expr) {
+                // if let Some(cap) = re_const(patterns::TYPE_EXPR).captures(&expr) {
+                //     let name = format!("@");
+                //     let supertype: String = re_extract(&cap, "supertype");
+                //     let expression: Node = Node::expression(&re_extract(&cap, "expression"));
+				// 	match cap.name("prototype") {
+				// 		Some(prototype) => Node::branch(
+				// 			Token::Type{
+				// 				name,
+				// 				supertype,
+				// 				prototype: true
+				// 			},
+                //          	vec![
+                //                 Node::expression(prototype.as_str()),
+                //                 expression
+                //             ]
+				// 		),
+                //         None => Node::branch(
+				// 			Token::Type{
+				// 				name,
+				// 				supertype,
+				// 				prototype: false
+				// 			},
+				// 			vec![expression]
+				// 		)
+                //     }
+                // } else if let Some(cap) = re_const(patterns::FUNC_EXPR).captures(&expr) {
                 //     let funname: String = format!("@");
                 //     let funtype: String = match cap.name("final") {
                 //         Some(x) => x.to_string(),
                 //         None => format!("any")
                 //     };
-                //     let signature = cap
-                //         .name("params")
-                //         .unwrap()
-                //         .as_str();
+                //     let signature = &cap_to_string(&cap, "params");
                 //     let (params, types) = (vec![funname.clone()], vec![funtype.clone()]);
                 //     let signature: IndexMap<String, String> = if params.is_empty() {
                 //         IndexMap::from(
@@ -161,8 +145,7 @@ impl Token
 				// 			]
 				// 		)
                 //     } else {
-                //         Regex::new(r"\s*,\s*")
-                //         .unwrap()
+                //         re_const(r"\s*,\s*")
                 //         .split(params)
                 //         .fold(
                 //             IndexMap::new(),
@@ -183,12 +166,7 @@ impl Token
                 //             }
                 //         )
                 //     };
-                //     let expression: Node = Node::expression(
-                //         cap
-                //         .name("expression")
-                //         .unwrap()
-                //         .as_str()
-                //     );
+                //     let expression: Node = Node::expression(&cap_to_string(&cap, "expression"));
                 //     Node::branch(
                 //         Token::Function{
 				// 			name: funname,
@@ -196,57 +174,68 @@ impl Token
 				// 		},
                 //         vec![expression]
                 //     )
-                } else {
-                    Node::branch(
-                        Token::Parenthesis(expr.clone()),
-                        if expr.is_empty() {
-                            vec![]
-                        } else {
-                            vec![Node::expression(&expr)]
-                        }
-                    )
-                }
+                Node::branch(
+                    Token::Parenthesis(expr.clone()),
+                    if expr.is_empty() {
+                        vec![]
+                    } else {
+                        vec![Node::expression(&expr)?]
+                    }
+                )
             },
-            Token::Sequence(expr) => {println!("{:}", expr); Node::branch(
-                
+            Token::Sequence(expr) => Node::branch(
                 Token::Sequence(expr.clone()),
                 if expr.is_empty() {
                     vec![]
                 } else {
-                    let contents = Node::expression(&expr);
+                    let contents = Node::expression(&expr)?;
                     match contents.token {
                         Token::Concatenator => contents.nodes,
                         _ => vec![contents]
                     }
                 }
-            )},
-            Token::Meta(expr) => Node::branch(
-                Token::Meta(expr.clone()),
-                vec![Node::expression(&expr)]
             ),
+            // Token::Meta(expr) => Node::branch(
+            //     Token::Meta(expr.clone()),
+            //     vec![Node::expression(&expr)]
+            // ),
             Token::Prefix(_) => {
                 Node::branch(
                     self.clone(),
-                    vec![lex.parse(self.lbp())]
+                    vec![lex.parse(self.lbp())?]
                 )
             },
-            _ => Node::leaf(self)
-        }
+            | Token::Number(_)
+            | Token::String(_)
+            | Token::Boolean(_)
+            | Token::Range
+            | Token::List
+            | Token::Record
+            | Token::Null
+            | Token::Env(_)
+            | Token::Name(_)
+            | Token::Receive(_)
+            => Node::leaf(self.clone()),
+            Token::EOL => return error!(SNTX, "Reached end of expression"),
+            _ => return error!(SNTX, format!("Invalid token: {self:?}"))
+        };
+        Ok(node)
     }
-    pub fn led(self, lex: &mut Lexer, left: Node) -> Node
+    pub fn led(&self, lex: &mut Lexer, left: Node) -> Partial<Node>
     // Creates the node for the left denotation of the token.
     // Creating the node consumes the token.
     {
-        match self {
+        // Construct node.
+        let node: Node = match self {
             Token::Infix(symbol) => Node::branch(
                 Token::Infix(symbol.clone()),
                 vec![
                     left.clone(),
-                    lex.parse(Token::Infix(symbol.clone()).lbp())
+                    lex.parse(self.lbp())?
                 ]
             ),
             Token::Bind => {
-                let right = lex.parse(self.lbp());
+                let right = lex.parse(self.lbp())?;
                 Node::branch(
                     self.clone(),
                     if right.nodes.is_empty() {
@@ -263,7 +252,7 @@ impl Token
                 )
             },
             Token::LeftConditional => {
-                let right = lex.parse(self.lbp());
+                let right = lex.parse(self.lbp())?;
                 // println!("{left:?} {right:?}");
                 let mut nodes: Vec<Node> = vec![left.clone()];
                 if right.nodes.len() > 1 {
@@ -288,18 +277,18 @@ impl Token
                 self.clone(),
                 vec![
                     left.clone(),
-                    lex.parse(self.lbp())
+                    lex.parse(self.lbp())?
                 ]
             ),
             Token::InfixR(symbol) => Node::branch(
                 Token::InfixR(symbol.clone()),
                 vec![
                     left.clone(),
-                    lex.parse(Token::InfixR(symbol.clone()).lbp() - 1)
+                    lex.parse(self.lbp() - 1)?
                 ]
             ),
             Token::Concatenator => {
-                let right = lex.parse(self.lbp() - 1);
+                let right = lex.parse(self.lbp() - 1)?;
                 let mut nodes: Vec<Node> = vec![left.clone()];
                 Node::branch(
                     self.clone(),
@@ -311,9 +300,9 @@ impl Token
                         nodes
                     }
                 )
-            }
+            },
             Token::Pair => {
-                let right = lex.parse(self.lbp() - 1);
+                let right = lex.parse(self.lbp() - 1)?;
                 let mut nodes: Vec<Node> = vec![left.clone()];
                 Node::branch(
                     self.clone(),
@@ -325,7 +314,7 @@ impl Token
                         nodes
                     }
                 )
-            }
+            },
             Token::Call => {
                 let mut nodes: Vec<Node> = vec![left.clone()];
                 Node::branch(
@@ -334,7 +323,7 @@ impl Token
                         lex.next();
                         nodes
                     } else {
-                        let right = lex.parse(1);
+                        let right = lex.parse(1)?;
                         if let Token::Concatenator = right.token {
                             nodes.extend(right.nodes.clone());
                             lex.next();
@@ -346,7 +335,7 @@ impl Token
                         }
                     }
                 )
-            }
+            },
             Token::Index => {
                 let mut nodes: Vec<Node> = vec![left.clone()];
                 Node::branch(
@@ -355,7 +344,7 @@ impl Token
                         lex.next();
                         nodes
                     } else {
-                        let right = lex.parse(1);
+                        let right = lex.parse(1)?;
                         if let Token::Concatenator = right.token {
                             nodes.extend(right.nodes.clone());
                             lex.next();
@@ -367,9 +356,11 @@ impl Token
                         }
                     }
                 )
-            }
-            _ => Node::leaf(self)
-        }
+            },
+            Token::EOL => return error!(SNTX, "Reached end of expression"),
+            _ => return error!(SNTX, format!("Invalid token: {self:?}"))
+        };
+        Ok(node)
     }
     pub fn lbp(&self) -> usize
     // Get left-binding power of token.

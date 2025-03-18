@@ -146,16 +146,16 @@ std_mod!
 	}
 	std_fn!
 	{
-		number add_b(number x0, number x1)
+		range add_r(range x0)
 		{
-			x0 + x1
+			x0.abs()
 		}
 	}
 	std_fn!
 	{
-		range add_r(range x0)
+		number add_b(number x0, number x1)
 		{
-			x0.abs()
+			x0 + x1
 		}
 	}
 	std_fn!
@@ -167,125 +167,154 @@ std_mod!
 	}
 }
 
-// std_mod!
-// {
-// 	sub;
-// 	std_fn!
-// 	{
-// 		number u_sub(number x0)
-// 		{
-// 			-x0
-// 		}
-// 	}
-// 	std_fn!
-// 	{
-// 		number b_sub(number x0, number x1)
-// 		{
-// 			x0 - x1
-// 		}
-// 	}
-// 	std_fn!
-// 	{
-// 		range range_u_sub(range x0)
-// 		{
-// 			-x0
-// 		}
-// 	}
-// 	std_fn!
-// 	{
-// 		range range_b_sub(range x0, number x1)
-// 		{
-// 			x0 - x1
-// 		}
-// 	}
-// }
+std_mod!
+{
+	sub;
+	std_fn!
+	{
+		number sub_u(number x0)
+		{
+			-x0
+		}
+	}
+	std_fn!
+	{
+		range sub_r(range x0)
+		{
+			-x0
+		}
+	}
+	std_fn!
+	{
+		number sub_b(number x0, number x1)
+		{
+			x0 - x1
+		}
+	}
+	std_fn!
+	{
+		range sub_rn(range x0, number x1)
+		{
+			x0 - x1
+		}
+	}
+}
 
-// std_mod!
-// {
-// 	mul;
-// 	std_fn!
-// 	{
-// 		number b_mul(number x0, number x1)
-// 		{
-// 			x0 * x1
-// 		}
-// 	}
-// 	std_fn!
-// 	{
-// 		range range_b_mul(range x0, number x1)
-// 		{
-// 			x0 * x1
-// 		}
-// 	}
-// }
+std_mod!
+{
+	mul;
+	std_fn!
+	{
+		number mul_b(number x0, number x1)
+		{
+			x0 * x1
+		}
+	}
+	std_fn!
+	{
+		range mul_rn(range x0, number x1)
+		{
+			x0 * x1
+		}
+	}
+}
 
-// std_mod!
-// {
-// 	div;
-// 	std_fn!
-// 	{
-// 		number b_div(number x0, number x1)
-// 		{
-// 			x0 / x1
-// 		}
-// 	}
-// 	std_fn!
-// 	{
-// 		range range_b_div(range x0, number x1)
-// 		{
-// 			x0 / x1
-// 		}
-// 	}
-// }
+std_mod!
+{
+	div: {
+		use malachite::Rational;
+		use malachite::num::basic::traits::Zero;
+	};
+	std_fn!
+	{
+		number div_b(number x0, number x1)
+		{
+			if x1 == Rational::ZERO {
+				return Ok(Value::new_none());
+			};
+			x0 / x1
+		}
+	}
+	std_fn!
+	{
+		range div_rn(range x0, number x1)
+		{
+			if x1 == Rational::ZERO {
+				return Ok(Value::new_none());
+			};
+			x0 / x1
+		}
+	}
+}
 
-// std_mod!
-// {
-// 	exp: {
-// 		use malachite::Rational;
-// 		use malachite::num::basic::traits::One;
-// 	};
-// 	std_fn!
-// 	{
-// 		number b_exp(number x0, number x1)
-// 		{
-// 			let mut acc = Rational::ONE;
-// 			let mut i = x1;
-// 			if i > 0 {
-// 				while i != 0 {
-// 					acc *= &x0;
-// 					i -= Rational::ONE;
-// 				};
-// 			} else if i < 0 {
-// 				while i != 0 {
-// 					acc /= &x0;
-// 					i -= Rational::ONE;
-// 				};
-// 			};
-// 			acc
-// 		}
-// 	}
-// }
+std_mod!
+{
+	exp: {
+		use malachite::Rational;
+		use malachite::num::arithmetic::traits::Pow;
+		use malachite::num::basic::traits::One;
+	};
+	std_fn!
+	{
+		number exp_b(number x0, number x1)
+		{
+			let mut acc = Rational::ONE;
+			let mut i = x1;
+			if i > 0 {
+				while i != 0 {
+					acc *= &x0;
+					i -= Rational::ONE;
+				};
+			} else if i < 0 {
+				while i != 0 {
+					acc /= &x0;
+					i -= Rational::ONE;
+				};
+			};
+			acc
+		}
+	}
+	std_fn!
+	{
+		range exp_rn(range x0, number x1)
+		{
+			x0.pow(x1)
+		}
+	}
+}
 
-// std_mod!
-// {
-// 	mdl: {
-// 		use malachite::Rational;
-// 	};
-// 	std_fn!
-// 	{
-// 		number b_mdl(number x0, number x1)
-// 		// Implementation borrowed from Python's Rational module.
-// 		{
-// 			let (nx, dx) = x0.into_numerator_and_denominator();
-// 			let (ny, dy) = x1.into_numerator_and_denominator();
-// 			let (a, b) = (nx * &dy, ny * &dx);
-// 			Rational::from_naturals(
-// 				((a % &b) + &b) % &b, // Rust doesn't have the modulo operator!
-// 				&dx * &dy
-// 			)
-// 		}
-// 	}
-// }
+std_mod!
+{
+	mdl: {
+		use malachite::Rational;
+		use malachite::num::basic::traits::Zero;
+	};
+	std_fn!
+	{
+		number mdl_r(range x0)
+		{
+			x0.rem()
+		}
+	}
+	std_fn!
+	{
+		number mdl_b(number x0, number x1)
+		// Implementation borrowed from Python's Rational module.
+		// Rust doesn't have the modulo operator!
+		{
+			if x1 == Rational::ZERO {
+				return Ok(Value::new_none());
+			};
+			let (nx, dx) = x0.into_numerator_and_denominator();
+			let (ny, dy) = x1.into_numerator_and_denominator();
+			let (a, b) = (nx * &dy, ny * &dx);
+			Rational::from_naturals(
+				((a % &b) + &b) % &b,
+				&dx * &dy
+			)
+		}
+	}
+}
 
 // std_mod!
 // {

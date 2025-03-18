@@ -175,4 +175,28 @@ Sophia has by default:
 - Disjunction (OR);
 - Non-equivalence (XOR).
 
-Logical XOR is equivalent to inequality. It is included here to indicate a semantic difference.
+Logical XOR is equivalent to inequality. It is included here to indicate a semantic distinction.
+
+# SI-14: Arithmetic operators
+
+`+<E>`
+`-<E>`
+`<E> + <E>`
+`<E> - <E>`
+`<E> * <E>`
+`<E> / <E>`
+`<E> ^ <E>`
+`<E> % <E>`
+
+The arithmetic operators implement basic arithmetic operations.
+Sophia has by default:
+- Modulus and addition (+);
+- Negation and subtraction (-);
+- Multiplication (*);
+- Division (/);
+- Exponentiation (^);
+- Modulo (%);
+
+All of these operations can also be applied to ranges.
+
+Some of these operations are partial: there are some inputs in the input type that do not map to an output (for example, division by 0). In these cases, these operations return null, to indicate the absence of a return value.

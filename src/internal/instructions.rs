@@ -445,7 +445,8 @@ impl Instruction {
 	{
 		vec![
 			Instruction::new_bind(
-				node.nodes.iter()
+				node.nodes
+				.iter()
 				.map(|node| node.register.clone())
 				.collect(),
 				params.clone(),

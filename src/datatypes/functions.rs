@@ -5,17 +5,11 @@
 // Dispatch is implemented using a singly linked binary search
 // tree. It is only ever necessary to traverse downward.
 
-use std::collections::{BTreeMap, HashMap};
-use std::env::current_dir;
+use crate::error;
+use crate::sophia::hemera::Partial;
 
-use serde::Deserialize;
-use serde_json;
-
-use crate::{error, new_fn};
-use crate::sophia::arche::{Namespace, Value};
-use crate::sophia::runtime::Task;
-
-use super::methods::{Method, Predicate};
+use super::methods::Method;
+use super::predicates::Predicate;
 use super::types::TypeDef;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -50,7 +44,7 @@ impl FuncDef
 		FuncDef::Node{
 			truepath: Box::new(truepath),
 			falsepath: Box::new(falsepath),
-			property: Predicate::new_any(),
+			property: Predicate::std_any(),
 			index: arity
 		}
 	}
@@ -139,7 +133,7 @@ impl FuncDef
 			}
 		}
 	}
-	pub fn dispatch(&self, signature: &Vec<TypeDef>) -> Result<&Method, String>
+	pub fn dispatch(&self, signature: &Vec<TypeDef>) -> Partial<&Method>
 	// Multiple dispatch algorithm, with help from Julia:
 	// https://github.com/JeffBezanson/phdthesis
 	// Binary search tree yields closest key for method, then key is verified.
@@ -149,13 +143,13 @@ impl FuncDef
 				if signature.len() != 0 &&
 				match signature.get(*index) {
 					Some(x) => x.check(property),
-					None => return error!(DISP, "<function>", signature)
+					None => false
 				}
 				{truepath.dispatch(signature)} else
 				{falsepath.dispatch(signature)}
 			},
 			FuncDef::Leaf(method) => Ok(method),
-			FuncDef::Undefined => error!(DISP, "<function>", signature)
+			FuncDef::Undefined => error!(DISP, signature)
 		}
 	}
 }
@@ -254,106 +248,3 @@ impl FuncDef
 // 				self.true.debug(level + 1)
 // 			if self.false is not None:
 // 				self.false.debug(level + 1)
-
-#[derive(Debug, Deserialize)]
-struct Metadata {
-	name: String,
-	methods: HashMap<String, Signature>,
-}
-
-#[derive(Debug, Deserialize)]
-struct Signature {
-	signature: Vec<String>,
-	returns: String,
-}
-
-// Standard library functions.
-impl FuncDef
-{
-	pub fn stdlib() -> Namespace
-	// Produces the standard function namespace.
-	{
-		BTreeMap::from(
-			[
-				// Operators.
-				new_fn!(
-					"op/sfe",
-					sfe_u
-				),
-				new_fn!(
-					"op/eql",
-					eql_b
-				),
-				new_fn!(
-					"op/nql",
-					nql_b
-				),
-				new_fn!(
-					"op/ltn",
-					ltn_b
-				),
-				new_fn!(
-					"op/gtn",
-					gtn_b
-				),
-				new_fn!(
-					"op/lql",
-					lql_b
-				),
-				new_fn!(
-					"op/gql",
-					gql_b
-				),
-				new_fn!(
-					"op/lnt",
-					lnt_u
-				),
-				new_fn!(
-					"op/lnd",
-					lnd_b
-				),
-				new_fn!(
-					"op/lor",
-					lor_b
-				),
-				new_fn!(
-					"op/lxr",
-					lxr_b
-				),
-				new_fn!(
-					"op/add",
-					add_u,
-					add_b,
-					add_r,
-					add_rn
-				),
-				// new_function!(
-				// 	"-",
-				// 	u_sub,
-				// 	b_sub
-				// ),
-				// new_function!(
-				// 	"*",
-				// 	b_mul
-				// ),
-				// new_function!(
-				// 	"/",
-				// 	b_div
-				// ),
-				// new_function!(
-				// 	"^",
-				// 	b_exp
-				// ),
-				// new_function!(
-				// 	"%",
-				// 	b_mdl
-				// ),
-				// new_function!(
-				// 	"in",
-				// 	b_sbs_string,
-				// 	b_sbs_range
-				// ),
-			]
-		)
-	}
-}

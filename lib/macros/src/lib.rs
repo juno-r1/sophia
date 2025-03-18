@@ -1,8 +1,8 @@
 extern crate proc_macro;
 use proc_macro::{TokenStream, TokenTree};
 
-extern crate regex;
-use regex::Regex;
+extern crate utils;
+use utils::re::re_const;
 
 #[proc_macro]
 pub fn std_fn(stream: TokenStream) -> TokenStream
@@ -24,13 +24,9 @@ pub fn std_fn(stream: TokenStream) -> TokenStream
 		_ => panic!("Invalid parameters for std_fn")
 	};
 	// Remove parentheses from params.
-	let substring = match Regex::new(r"[^\(\)]+") {
-		Ok(x) => x.find(&params),
-		Err(_) => panic!("Parentheses required for arguments of std_fn")
-	};
+	let substring = re_const(r"[^\(\)]+").find(&params);
 	let signature = match substring {
-		Some(sub) => Regex::new(r"\s*,\s*")
-			.unwrap()
+		Some(sub) => re_const(r"\s*,\s*")
 			.split(sub.into())
 			.fold(
 				String::new(),
@@ -62,8 +58,7 @@ pub fn std_fn(stream: TokenStream) -> TokenStream
 	};
 	// Bring borrowed values into local scope.
 	let bindings = match substring {
-		Some(sub) => Regex::new(r"\s*,\s*")
-			.unwrap()
+		Some(sub) => re_const(r"\s*,\s*")
 			.split(sub.into())
 			.fold(
 				vec![],
@@ -97,11 +92,11 @@ pub fn std_fn(stream: TokenStream) -> TokenStream
 		"
 		impl Task
 		{{
-			pub fn {name}(&mut self, args: Vec<Value>) -> Result<Value, String>
+			pub fn {name}(&mut self, args: Vec<Value>) -> Partial<Value>
 			{{
 				match &args[..] {{
 					[{signature}] => {{{bindings}{result}}},
-					_ => error!(CALL, \"{name}\")
+					_ => unreachable!()
 				}}
 			}}
 		}}

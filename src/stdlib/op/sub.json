@@ -1,0 +1,35 @@
+{
+	"name": "-",
+	"methods": {
+		"sub_u": {
+			"signature": [
+				"number"
+			],
+			"returns": "number",
+			"partial": false
+		},
+		"sub_r": {
+			"signature": [
+				"range"
+			],
+			"returns": "range",
+			"partial": false
+		},
+		"sub_b": {
+			"signature": [
+				"number",
+				"number"
+			],
+			"returns": "number",
+			"partial": false
+		},
+		"sub_rn": {
+			"signature": [
+				"range",
+				"number"
+			],
+			"returns": "range",
+			"partial": false
+		}
+	}
+}

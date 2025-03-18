@@ -3,46 +3,48 @@ mod integration
 {
     use std::str::FromStr;
 
-    use malachite::num::conversion::traits::FromSciString;
     use malachite::Rational;
+    use utils::coerce::Coerce;
 
     use crate::datatypes::range::Range;
     use crate::datatypes::sequence::Sequence;
     use crate::datatypes::types::TypeDef;
+    use crate::error;
     use crate::sophia::arche::Value;
+    use crate::sophia::hemera::Partial;
     use crate::sophia::runtime::Runtime;
 
-    fn test(integration: usize, file: usize) -> Result<Value, String>
+    fn test(integration: usize, file: usize) -> Partial<Value>
     {
         Runtime::run(format!("integration/SI-{integration:}/{file:}.sph").as_str())
     }
-    fn assert_true(test: Result<Value, String>)
+    fn assert_true(test: Partial<Value>)
     {
         assert_eq!(test, Ok(Value::new_boolean(true)))
     }
-    fn assert_false(test: Result<Value, String>)
+    fn assert_false(test: Partial<Value>)
     {
         assert_eq!(test, Ok(Value::new_boolean(false)))
     }
-    fn assert_null(test: Result<Value, String>)
+    fn assert_null(test: Partial<Value>)
     {
         assert_eq!(test, Ok(Value::new_none()))
     }
-    fn assert_number(test: Result<Value, String>, value: &str)
+    fn assert_number(test: Partial<Value>, value: &str)
     {
-        assert_eq!(test, Ok(Value::new_number(Rational::from_sci_string(value).unwrap())));
+        assert_eq!(test, Ok(Value::new_number(value.to_rational().unwrap())));
     }
-    fn assert_string(test: Result<Value, String>, value: &str)
+    fn assert_string(test: Partial<Value>, value: &str)
     {
         assert_eq!(test, Ok(Value::new_string(value.into())));
     }
-    fn assert_type(test: Result<Value, String>, typedef: TypeDef)
+    fn assert_type(test: Partial<Value>, typedef: TypeDef)
     {
         assert_eq!(test, Ok(Value::new_type(typedef)))
     }
-    fn assert_error(test: Result<Value, String>, error: &str)
+    fn assert_error(test: Partial<Value>, error: Partial<Value>)
     {
-        assert_eq!(test, Err(error.into()));
+        assert_eq!(test, error);
     }
 
     #[test]
@@ -281,7 +283,7 @@ mod integration
         // Downcasting.
         assert_type(test(11, 1), TypeDef::std_integer());
         // Invalid assignment.
-        assert_error(test(11, 2), "Invalid value for type string: Number(1)");
+        assert_error(test(11, 2), error!(TYPE, "string", Value::new_number(Rational::from_str("1").unwrap())));
     }
     #[test]
     fn si_12()
@@ -311,19 +313,37 @@ mod integration
         // XOR.
         assert_true(test(13, 3));
     }
+    #[test]
+    fn si_14()
+    {
+        // Modulus.
+        assert_true(test(14, 0));
+        assert_true(test(14, 1));
+        // Addition.
+        assert_true(test(14, 2));
+        assert_true(test(14, 3));
+        // Negation.
+        assert_true(test(14, 4));
+        assert_true(test(14, 5));
+        // Subtraction.
+        assert_true(test(14, 6));
+        assert_true(test(14, 7));
+        // Multiplication.
+        assert_true(test(14, 8));
+        assert_true(test(14, 9));
+        // Division.
+        assert_true(test(14, 10));
+        assert_true(test(14, 11));
+        // Division by zero.
+        assert_true(test(14, 12));
+        assert_true(test(14, 13));
+        // Exponentiation.
+        assert_true(test(14, 14));
+        assert_true(test(14, 15));
+        // Modulo.
+        assert_true(test(14, 16));
+        assert_true(test(14, 17));
+        // Modulo by zero.
+        assert_true(test(14, 18));
+    }
 }
-// #[cfg(test)]
-// mod arche
-// {
-//     use crate::sophia::arche;
-// }
-// #[cfg(test)]
-// mod kadmos
-// {
-//     use crate::sophia::kadmos;
-// }
-// #[cfg(test)]
-// mod runtime
-// {
-//     use crate::sophia::runtime;
-// }

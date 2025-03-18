@@ -4,6 +4,7 @@ use utils::string::unescape;
 
 use crate::internal::nodes::Node;
 use crate::internal::tokens::Token;
+use crate::sophia::hemera::Partial;
 
 #[derive(Debug)]
 pub struct Lexer<'a> {
@@ -28,20 +29,22 @@ impl <'a> Lexer<'a>
             peek: Token::EOL
         }
     }
-    pub fn parse(&mut self, lbp: usize) -> Node
+    pub fn parse(&mut self, lbp: usize) -> Partial<Node>
     // LBP: left-binding power.
     // NUD: null denotation (prefixes).
     // LED: left denotation (infixes).
     {
+        // Execute null denotation of current token.
         self.next();
-        if let Token::EOL = self.token {return Node::leaf(self.token.clone())}; // End of line.
-        let mut left = self.token.clone().nud(self); // Executes null denotation of current token.
-        while lbp < self.peek.lbp() { // Collect all tokens under this one.
+        let mut left: Node = self.token.clone().nud(self)?;
+        // Collect all tokens that bind more tightly than this one.
+        while lbp < self.peek.lbp() && self.peek != Token::EOL {
+            // Execute left denotation of current token.
             self.next();
-            left = self.token.clone().led(self, left); // Executes left denotation of current token.
-            if let Token::EOL = self.token {return Node::leaf(self.token.clone())}; // End of line.
+            left = self.token.clone().led(self, left)?;
         };
-        left
+        // Return head node of expression.
+        Ok(left)
     }
     pub fn next(&mut self)
     // Gets the next token, ignoring whitespace.
@@ -90,7 +93,7 @@ impl <'a> Lexer<'a>
                             match x.as_str() {
                                 "(" => Token::Parenthesis(self.collect()),
                                 "[" => Token::Sequence(self.collect()),
-                                "{" => Token::Meta(self.collect()),
+                                // "{" => Token::Meta(self.collect()),
                                 _ => Token::EOL
                             }
                         } else {
@@ -156,7 +159,8 @@ impl <'a> Lexer<'a>
                 .get(0)
                 .unwrap()
                 .as_str();
-            match value { // Parentheses are guaranteed to be balanced and matched.
+            // Parentheses are guaranteed to be balanced and matched.
+            match value {
                 "(" | "[" | "{" => {
                     count += 1;
                 },

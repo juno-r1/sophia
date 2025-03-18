@@ -1,5 +1,5 @@
-use regex::Regex;
 use utils::coerce::Coerce;
+use utils::re::re_const;
 
 // Regex line patterns.
 pub const EMPTY:        &str = r#"^((?:\s*\n?)|(?:\s*//.*\n?))*$"#;
@@ -44,25 +44,21 @@ pub const OPERATOR:     &str = r#"(?<operator>[^\s\d\w\(\[\{\'\"\@]+)"#; // Any 
 
 pub fn is_empty(source: &str) -> bool
 {
-    Regex::new(EMPTY)
-    .unwrap()
-    .is_match(source)
+    re_const(EMPTY).is_match(source)
 }
 pub fn is_unquoted(source: &str) -> bool
 {
-    Regex::new(UNQUOTED)
-    .unwrap()
+    re_const(UNQUOTED)
     .captures_iter(source)
     .any(|cap| cap.name("open").is_some())
 }
 pub fn is_unmatched(source: &str) -> bool
 {
-    match Regex::new(&[
+    match re_const(&[
         STRING,
         L_PARENS,
         R_PARENS
     ].join("|"))
-    .unwrap()
     .captures_iter(source)
     .try_fold(
         vec![],
@@ -89,42 +85,39 @@ pub fn is_unmatched(source: &str) -> bool
 }
 pub fn normalise(source: &str) -> String
 {
-	let mut source: String = Regex::new(COMMENT) // Remove comments.
-		.unwrap()
+     // Remove comments.
+	let mut source: String = re_const(COMMENT)
 		.replace_all(source, "\n")
 		.into();
-	source = Regex::new(TABSPACE) // Replace sequences of 4 spaces with tabs.
-		.unwrap()
+    // Replace sequences of 4 spaces with tabs.
+	source = re_const(TABSPACE)
 		.replace_all(&source, "\t")
 		.into();
-    source = Regex::new(ESCAPE) // Convert escape characters to Unicode escapes.
-        .unwrap()
-        .replace_all(
-            &source,
-            |cap: &regex::Captures| -> String {
-                if let Some(x) = cap.name("char") {
-                    match x.as_str() {
-                        "u" => "\\u",
-                        "0" => "\\u{00}",
-                        "t" => "\\u{09}",
-                        "n" => "\\u{0A}",
-                        "r" => "\\u{0D}",
-                        "\"" => "\\u{22}",
-                        "\'" => "\\u{27}",
-                        "\\" => "\\u{5C}",
-                        _ => ""
-                    }.into()
-                } else if let Some(x) = cap.name("x") {
-                    format!("\\u{{{:}}}", x.as_str())
-                } else {
-                    format!("")
-                }
+    // Convert escape characters to Unicode escapes.
+    source = re_const(ESCAPE).replace_all(
+        &source,
+        |cap: &regex::Captures| -> String {
+            if let Some(x) = cap.name("char") {
+                match x.as_str() {
+                    "u" => "\\u",
+                    "0" => "\\u{00}",
+                    "t" => "\\u{09}",
+                    "n" => "\\u{0A}",
+                    "r" => "\\u{0D}",
+                    "\"" => "\\u{22}",
+                    "\'" => "\\u{27}",
+                    "\\" => "\\u{5C}",
+                    _ => ""
+                }.into()
+            } else if let Some(x) = cap.name("x") {
+                format!("\\u{{{:}}}", x.as_str())
+            } else {
+                format!("")
             }
-        ).into();
+        }
+    ).into();
     println!("{source}");
-    Regex::new(&[STRING, NAME].join("|"))
-    .unwrap()
-    .replace_all(
+    re_const(&[STRING, NAME].join("|")).replace_all(
         &source,
         |cap: &regex::Captures| -> String {
             if let Some(x) = cap.name("string") {
@@ -143,9 +136,7 @@ pub fn normalise(source: &str) -> String
 }
 pub fn split(source: &str) -> Vec<String>
 {
-    Regex::new(TRAILING)
-    .unwrap()
-    .replace_all(
+    re_const(TRAILING).replace_all(
         source,
         |cap: &regex::Captures| -> String {
             // Trailing after a newline.

@@ -1,4 +1,4 @@
-use regex::Regex;
+use crate::re::re_const;
 
 pub fn count(pattern: &str, symbol: char) -> usize
 // Counts occurences of a character in a string.
@@ -16,9 +16,7 @@ pub fn count(pattern: &str, symbol: char) -> usize
 pub fn unescape(pattern: &str) -> String
 // Converts unicode escape characters to their canonical forms.
 {
-    Regex::new(r#"\\u\{(?<code>.+?)\}"#)
-    .unwrap()
-    .replace_all(
+    re_const(r#"\\u\{(?<code>.+?)\}"#).replace_all(
         pattern,
         |cap: &regex::Captures| -> String {
             match cap.name("code") {

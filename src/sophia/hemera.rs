@@ -1,76 +1,55 @@
+use crate::datatypes::types::TypeDef;
+
+use super::arche::Value;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Error {
+    CALL(Value),
+    DISP(Vec<TypeDef>),
+    FILE(String),
+    FIND(String),
+    IMPL,
+    SNTX(String),
+    TYPE(String, Value),
+    USER(String),
+}
+
+pub type Partial<T> = Result<T, Error>;
+
 #[macro_export]
 macro_rules! error
 // Defines a runtime error.
 {
+    // "Value {:?} is not callable"
 	(CALL, $value:expr) => {
-		Err(
-            format!(
-                "Value {:?} is not callable",
-                $value,
-            )
-        )
+		Err(crate::sophia::hemera::Error::CALL($value.clone()))
 	};
-    (DISP, $name:expr, $signature:expr) => {
-        Err(
-            format!(
-                "Failed dispatch: {} has no signature {:?}",
-                $name,
-                $signature,
-            )
-        )
+    // "Failed dispatch: {} has no signature {:?}"
+    (DISP, $signature:expr) => {
+        Err(crate::sophia::hemera::Error::DISP($signature.clone()))
 	};
+    // "Invalid file: {}"
     (FILE, $name:expr) => {
-        Err(
-            format!(
-                "Invalid file: {}",
-                $name,
-            )
-        )
+        Err(crate::sophia::hemera::Error::FILE($name.into()))
 	};
+    // "Undefined name: {}"
     (FIND, $name:expr) => {
-        Err(
-            format!(
-                "Undefined name: {}",
-                $name,
-            )
-        )
+        Err(crate::sophia::hemera::Error::FIND($name.into()))
 	};
+    // "Not implemented"
     (IMPL) => {
-        Err(
-            format!(
-                "Not implemented",
-            )
-        )
+        Err(crate::sophia::hemera::Error::IMPL)
 	};
+    // "Invalid value for type {}: {:?}"
     (TYPE, $name:expr, $value:expr) => {
-        Err(
-            format!(
-                "Invalid value for type {}: {:?}",
-                $name,
-                $value,
-            )
-        )
+        Err(crate::sophia::hemera::Error::TYPE($name.into(), $value.clone()))
 	};
-    (UPRN) => {
-        Err(
-            format!(
-                "Unmatched parentheses",
-            )
-        )
-	};
-    (UQTE) => {
-        Err(
-            format!(
-                "Unmatched quotes",
-            )
-        )
-	};
+    // Syntax error
+    (SNTX, $message:expr) => {
+        Err(crate::sophia::hemera::Error::SNTX($message.into()))
+    };
+    // User error
     (USER, $message:expr) => {
-        Err(
-            format!(
-                "{}",
-                $message,
-            )
-        )
-	};
+        Err(crate::sophia::hemera::Error::USER($message.into()))
+    };
 }

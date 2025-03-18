@@ -15,5 +15,5 @@ mod stdlib;
 
 fn main() -> Result<(), String>
 {
-	Runtime::run("user/main.sph").map(|_| ())
+	Runtime::run("user/main.sph").map_or_else(|e| Err(format!("{e:?}")), |_| Ok(()))
 }

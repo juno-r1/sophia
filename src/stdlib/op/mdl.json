@@ -1,0 +1,20 @@
+{
+	"name": "%",
+	"methods": {
+		"mdl_r": {
+			"signature": [
+				"range"
+			],
+			"returns": "number",
+			"partial": false
+		},
+		"mdl_b": {
+			"signature": [
+				"number",
+				"number"
+			],
+			"returns": "number",
+			"partial": true
+		}
+	}
+}

@@ -1,6 +1,6 @@
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
-use malachite::num::arithmetic::traits::Abs;
+use malachite::num::arithmetic::traits::{Abs, Pow};
 use malachite::Rational;
 use malachite::num::basic::traits::{One, Zero};
 
@@ -148,6 +148,33 @@ impl Div<Rational> for Range
     }
 }
 
+impl Pow<Rational> for Range
+{
+    type Output = Range;
+
+    fn pow(self, exp: Rational) -> Self::Output
+    {
+        let mut acc = Rational::ONE;
+        let mut i = exp;
+        if i > 0 {
+            while i != 0 {
+                acc *= &self.step;
+                i -= Rational::ONE;
+            };
+        } else if i < 0 {
+            while i != 0 {
+                acc /= &self.step;
+                i -= Rational::ONE;
+            };
+        };
+        Range::new(
+            self.start * &acc / &self.step,
+            self.end * &acc / &self.step,
+            acc
+        )
+    }
+}
+
 impl Iterator for Range
 {
     type Item = Rational;
@@ -181,5 +208,13 @@ impl ToString for Range
             self.end,
             self.step
         )
+    }
+}
+
+impl Range
+{
+    pub fn rem(self) -> Rational
+    {
+        self.step
     }
 }
