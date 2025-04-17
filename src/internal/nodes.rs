@@ -1,6 +1,3 @@
-use std::collections::VecDeque;
-use std::ops::Not;
-
 use regex::Captures;
 use utils::coerce::Coerce;
 use utils::re::{re_extract, re_const};
@@ -26,17 +23,6 @@ pub struct Node {
 impl Node
 // Generic constructors.
 {
-    pub fn module() -> Node
-    // Creates the head node of a module.
-    {
-        Node{
-            token: Token::Module,
-            nodes: vec![],
-            scope: 0,
-            branch: false,
-			register: format!("0")
-        }
-    }
     pub fn leaf(token: Token) -> Node
     // Creates an unlinked leaf node.
     // The node takes ownership of the token.
@@ -66,128 +52,57 @@ impl Node
 impl Node
 // AST generation.
 {
-	pub fn tree(source: Vec<String>) -> Partial<Node>
-	// Creates an AST from a list of logical lines.
+	pub fn tree(source: &str) -> Partial<Node>
     // Here's tree!
-	{
-		// Parse lines into statement nodes.
-		let mut lines: VecDeque<Node> = source
-        .into_iter()
-        .filter( // Ignore empty lines.
-            |line: &String| -> bool {
-                re_const(patterns::WHITESPACE)
-                .is_match(line)
-                .not()
-            }
-        )
-         // Parse lines as nodes.
-        .map(
-            |line: String| -> Partial<Node> {
-                let scope = utils::string::count(&line, '\t');
-                let (pattern, branch): (String, bool) =
-                    if let Some(branch) = re_const(patterns::BRANCH).captures(&line[scope..]) {
-                        (re_extract(&branch, "branch"), true)
-                    } else {
-                        (line[scope..].into(), false)
-                    };
-                let mut node = Node::statement(pattern.trim())?;
-                node.scope = scope + 1;
-                node.branch = branch;
-                Ok(node)
-            }
-        ).collect::<Partial<VecDeque<Node>>>()?;
-        // Create head node.
-		let mut acc: VecDeque<Node> = VecDeque::from([Node::module()]);
-		// Link nodes into singly linked AST.
-        while let Some(line) = lines.pop_front() {
-            // While not below the scope of the last node:
-            while line.scope <= acc
-            .back()
-            .unwrap()
-            .scope {
-                 // Pop last node.
-                let last = acc
-                    .pop_back()
-                    .unwrap();
-                // Push last node to the nodes of its head.
-                acc
-                .back_mut()
-                .unwrap()
-                .nodes
-                .push(last);
-            };
-            // Push line to accumulator.
-            acc.push_back(line);
-        };
-        // Fold remaining nodes.
-        loop {
-            let last = acc
-                .pop_back()
-                .unwrap();
-            match acc.front_mut() {
-                // Push node to head.
-                Some(head) => head.nodes.push(last),
-                // Return module node.
-                None => break Ok(last)
-            }
-        }
-	}
-    pub fn expression(pattern: &str) -> Partial<Node>
-    // Creates a filled expression.
+	// Creates an AST from a file string.
     // The node takes ownership of the token.
     // The lexer must remain in this scope because CaptureMatches is horrible to work with.
-    {
-        let re = re_const(&[
-            patterns::NUMBER,
-            patterns::STRING,
-            patterns::NAME,
-            patterns::ENV,
-            patterns::RECEIVE,
-            patterns::RANGE,
-            patterns::RECORD,
-            patterns::LIST,
-            patterns::L_PARENS,
-            patterns::R_PARENS,
-            patterns::PAIR,
-            patterns::OPERATOR,
-        ].join("|"));
-        let mut lexer = Lexer::new(re.captures_iter(pattern));
+	{
+        let re = patterns::pattern();
+        let mut lexer = Lexer::new(re.captures_iter(source));
         lexer.next();
         lexer.parse(0)
-    }
-    pub fn statement(pattern: &str) -> Partial<Node>
-    // Creates a filled statement.
+	}
+    pub fn module(source: &str) -> Partial<Node>
+    // Creates a module from a file.
     {
-		// if let Some(cap) = re_const(patterns::TYPE).captures(&pattern) {
-		// 	Node::new_type(cap)
-		// } else if let Some(cap) = re_const(patterns::FUNCTION).captures(&pattern) {
-		// 	Node::new_function(cap)
         Ok(
-            if re_const(patterns::ASSIGN).is_match(&pattern) {
-                Node::new_assign(&pattern)?
-            } else if let Some(cap) = re_const(patterns::IF).captures(&pattern) {
-                Node::new_if(cap)?
-            } else if let Some(cap) = re_const(patterns::WHILE).captures(&pattern) {
-                Node::new_while(cap)?
-            } else if let Some(cap) = re_const(patterns::FOR).captures(&pattern) {
-                Node::new_for(cap)?
-            } else if let Some(cap) = re_const(patterns::RETURN).captures(&pattern) {
-                Node::new_return(cap)?
-            } else if let Some(cap) = re_const(patterns::LINK).captures(&pattern) {
-                Node::new_link(cap)
-            } else if let Some(cap) = re_const(patterns::USE).captures(&pattern) {
-                Node::new_use(cap)
-            } else if re_const(patterns::CONTINUE).is_match(&pattern) {
-                Node::new_continue()
-            } else if re_const(patterns::BREAK).is_match(&pattern) {
-                Node::new_break()
-            } else if re_const(patterns::ELSE).is_match(&pattern) {
-                Node::new_else()
-            } else {
-                Node::expression(&pattern)?
-            }
+            Node::branch(Token::Module, vec![Node::tree(source)?])
         )
     }
+    // pub fn statement(pattern: &str) -> Partial<Node>
+    // // Creates a filled statement.
+    // {
+	// 	// if let Some(cap) = re_const(patterns::TYPE).captures(&pattern) {
+	// 	// 	Node::new_type(cap)
+	// 	// } else if let Some(cap) = re_const(patterns::FUNCTION).captures(&pattern) {
+	// 	// 	Node::new_function(cap)
+    //     Ok(
+    //         if re_const(patterns::ASSIGN).is_match(&pattern) {
+    //             Node::new_assign(&pattern)?
+    //         } else if let Some(cap) = re_const(patterns::IF).captures(&pattern) {
+    //             Node::new_if(cap)?
+    //         } else if let Some(cap) = re_const(patterns::WHILE).captures(&pattern) {
+    //             Node::new_while(cap)?
+    //         } else if let Some(cap) = re_const(patterns::FOR).captures(&pattern) {
+    //             Node::new_for(cap)?
+    //         } else if let Some(cap) = re_const(patterns::RETURN).captures(&pattern) {
+    //             Node::new_return(cap)?
+    //         } else if let Some(cap) = re_const(patterns::LINK).captures(&pattern) {
+    //             Node::new_link(cap)
+    //         } else if let Some(cap) = re_const(patterns::USE).captures(&pattern) {
+    //             Node::new_use(cap)
+    //         } else if re_const(patterns::CONTINUE).is_match(&pattern) {
+    //             Node::new_continue()
+    //         } else if re_const(patterns::BREAK).is_match(&pattern) {
+    //             Node::new_break()
+    //         } else if re_const(patterns::ELSE).is_match(&pattern) {
+    //             Node::new_else()
+    //         } else {
+    //             Node::expression(&pattern)?
+    //         }
+    //     )
+    // }
 }
 
 // fn new_type(cap: Captures) -> Node
@@ -299,7 +214,7 @@ impl Node
                             acc.1.push(format!("?"));
                         }
                     };
-                    acc.2.push(Node::expression(&re_extract(&cap, "expression"))?);
+                    acc.2.push(Node::tree(&re_extract(&cap, "expression"))?);
                     Ok(acc)
                 }
             )?;
@@ -310,7 +225,7 @@ impl Node
         Ok(
             Node::branch(
                 Token::If,
-                vec![Node::expression(&re_extract(&cap, "expression"))?]
+                vec![Node::tree(&re_extract(&cap, "expression"))?]
             )
         )
     }
@@ -319,7 +234,7 @@ impl Node
         Ok(
             Node::branch(
                 Token::While,
-                vec![Node::expression(&re_extract(&cap, "expression"))?]
+                vec![Node::tree(&re_extract(&cap, "expression"))?]
             )
         )
     }
@@ -328,7 +243,7 @@ impl Node
         Ok(
             Node::branch(
                 Token::For(re_extract(&cap, "index")),
-                vec![Node::expression(&re_extract(&cap, "iterator"))?]
+                vec![Node::tree(&re_extract(&cap, "iterator"))?]
             )
         )
     }
@@ -338,7 +253,7 @@ impl Node
             Node::branch(
                 Token::Return,
                 match cap.name("expression") {
-                    Some(expression) => vec![Node::expression(expression.into())?],
+                    Some(expression) => vec![Node::tree(expression.into())?],
                     None => vec![]
                 }
             )
@@ -468,9 +383,9 @@ impl Node
                     // Set context-sensitive registers.
                     head.register = match &head.token {
                         Token::Parenthesis(_) => head.nodes[0].register.clone(),
+                        Token::Module => head.nodes.last().unwrap().register.clone(),
                         _ => head.register.clone()
                     };
-                    println!("{:?} {}", head.token, head.register);
                     // Get final instructions.
 					instructions.extend(Instruction::end(head));
                     // Increment path or exit.

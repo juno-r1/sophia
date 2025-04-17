@@ -38,8 +38,8 @@ impl TypeDef
 			Value::Boolean(_) => TypeDef::std_boolean(),
 			Value::String(_) => TypeDef::std_string(),
 			Value::Range(_) => TypeDef::std_range(),
-			Value::Sequence(x) if x.has_keys() => TypeDef::std_record(),
-			Value::Sequence(_) => TypeDef::std_list(),
+			Value::List(_) => TypeDef::std_list(),
+			Value::Record(_) => TypeDef::std_record(),
 			Value::Function(_) => TypeDef::std_any(),
 			Value::Type(_) => TypeDef::std_any(),
 		}

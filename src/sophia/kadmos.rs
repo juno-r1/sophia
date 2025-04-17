@@ -20,10 +20,8 @@ pub fn parse(source: &str) -> Partial<(Vec<Instruction>, Namespace)>
 	if patterns::is_unmatched(&source) {
 		return error!(SNTX, "Unmatched parentheses");
 	};
-	// Split source file into logical lines.
-	let lines: Vec<String> = patterns::split(&source);
-	// Generate AST from lines.
-	let tree: Node = Node::tree(lines)?;
+	// Generate AST from source.
+	let tree: Node = Node::module(&source)?;
 	// Generate instructions and namespace from AST.
 	Ok(tree.generate())
 }

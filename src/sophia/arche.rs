@@ -5,7 +5,7 @@ use malachite::Rational;
 
 use crate::datatypes::functions::FuncDef;
 use crate::datatypes::range::Range;
-use crate::datatypes::sequence::Sequence;
+use crate::datatypes::record::Record;
 use crate::datatypes::types::TypeDef;
 use crate::internal::tokens::Token;
 
@@ -16,7 +16,8 @@ pub enum Value {
 	Number(Box<Rational>),
 	String(Box<String>),
 	Range(Box<Range>),
-	Sequence(Box<Sequence>),
+	List(Box<Vec<Value>>),
+	Record(Box<Record>),
 	Function(Box<FuncDef>),
 	Type(Box<TypeDef>),
 	None,
@@ -46,13 +47,13 @@ impl Value
 	{
 		Value::Range(Box::new(x))
 	}
-	pub fn new_list(x: Sequence) -> Value
+	pub fn new_list(x: Vec<Value>) -> Value
 	{
-		Value::Sequence(Box::new(x))
+		Value::List(Box::new(x))
 	}
-	pub fn new_record(x: Sequence) -> Value
+	pub fn new_record(x: Record) -> Value
 	{
-		Value::Sequence(Box::new(x))
+		Value::Record(Box::new(x))
 	}
 	pub fn new_function(x: FuncDef) -> Value
 	{
@@ -74,8 +75,8 @@ impl Value
 			Token::Boolean(x) => Value::new_boolean(*x),
 			Token::String(x) => Value::new_string(x.clone()),
 			Token::Range => Value::new_range(Range::new(Rational::ZERO, Rational::ZERO, Rational::ZERO)),
-			Token::List => Value::new_list(Sequence::new_list(vec![])),
-			Token::Record => Value::new_record(Sequence::new_record(vec![], vec![])),
+			Token::List => Value::new_list(vec![]),
+			Token::Record => Value::new_record(Record::new(vec![], vec![])),
 			_ => Value::new_none()
 		}
 	}

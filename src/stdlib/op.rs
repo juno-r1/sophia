@@ -251,7 +251,7 @@ std_mod!
 {
 	exp: {
 		use malachite::Rational;
-		use malachite::num::arithmetic::traits::Pow;
+		// use malachite::num::arithmetic::traits::Pow;
 		use malachite::num::basic::traits::One;
 	};
 	std_fn!
@@ -274,13 +274,13 @@ std_mod!
 			acc
 		}
 	}
-	std_fn!
-	{
-		range exp_rn(range x0, number x1)
-		{
-			x0.pow(x1)
-		}
-	}
+	// std_fn!
+	// {
+	// 	range exp_rn(range x0, number x1)
+	// 	{
+	// 		x0.pow(x1)
+	// 	}
+	// }
 }
 
 std_mod!
@@ -289,13 +289,13 @@ std_mod!
 		use malachite::Rational;
 		use malachite::num::basic::traits::Zero;
 	};
-	std_fn!
-	{
-		number mdl_r(range x0)
-		{
-			x0.rem()
-		}
-	}
+	// std_fn!
+	// {
+	// 	number mdl_r(range x0)
+	// 	{
+	// 		x0.rem()
+	// 	}
+	// }
 	std_fn!
 	{
 		number mdl_b(number x0, number x1)
@@ -312,6 +312,46 @@ std_mod!
 				((a % &b) + &b) % &b,
 				&dx * &dy
 			)
+		}
+	}
+}
+
+std_mod!
+{
+	idx: {
+		use malachite::Natural;
+		use malachite::num::basic::traits::One;
+
+		use utils::coerce::Coerce;
+	};
+	std_fn!
+	{
+		string idx_si(string x0, number x1)
+		{
+			// Integer indices only!
+			if x1.denominator_ref() != &Natural::ONE {
+				return Ok(Value::new_none());
+			};
+			// Convert index to usize to play nice with Rust.
+			let i: usize = if x1 >= 0 {
+				x1.to_usize()
+			} else {
+				x0.len() - x1.to_usize()
+			};
+			// Use normalised index.
+			// Rust is smart enough to know that usize can't be less than 0.
+			match x0
+			.chars()
+			.collect::<Vec<char>>()
+			.get(i) {
+				Some(c) => c.to_string(),
+				None => return Ok(Value::new_none())
+			}
+			// let length = x0.len();
+			// if (x1 >= 0 && x1 >= length) || -length < x1 {
+			// 	return Ok(Value::new_none());
+			// };
+			// x0[x1]
 		}
 	}
 }

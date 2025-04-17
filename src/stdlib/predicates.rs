@@ -72,7 +72,8 @@ impl Predicate
 			|x| match x {
 				| Value::String(_)
 				| Value::Range(_)
-				| Value::Sequence(_) => true,
+				| Value::List(_)
+				| Value::Record(_) => true,
 				_ => false
 			}
 		)
@@ -102,7 +103,7 @@ impl Predicate
 		Predicate::new_std(
 			"list",
 			|x| match x {
-				Value::Sequence(x) if !x.has_keys() => true,
+				Value::List(_) => true,
 				_ => false
 			}
 		)
@@ -112,7 +113,7 @@ impl Predicate
 		Predicate::new_std(
 			"record",
 			|x| match x {
-				Value::Sequence(x) if x.has_keys() => true,
+				Value::Record(_) => true,
 				_ => false
 			}
 		)

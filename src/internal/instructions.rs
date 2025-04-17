@@ -275,11 +275,11 @@ impl Instruction
     {
 		match index {
 			0 => match &node.token {
-				Token::Type{
-					name,
-					supertype,
-					prototype
-				} => Instruction::type_execute(node, &name, &supertype, prototype),
+				// Token::Type{
+				// 	name,
+				// 	supertype,
+				// 	prototype
+				// } => Instruction::type_execute(node, &name, &supertype, prototype),
 				// Token::Function{
 				// 	name,
 				// 	signature
@@ -306,32 +306,32 @@ impl Instruction
 	{
 		vec![if node.branch {Instruction::ELSE} else {Instruction::START}]
 	}
-	pub fn type_execute(node: &Node, name: &str, supertype: &str, prototype: &bool) -> Vec<Instruction>
-	{
-		if *prototype {
-			vec![
-				// Instruction::new_check(
-				// 	&node.register,
-				// 	&node.nodes[0].register,
-				// 	Some(supertype.into())
-				// ),
-				Instruction::new_type_prototype(
-					name,
-					&supertype,
-					&node.register
-				),
-				Instruction::START
-			]
-		} else {
-			vec![
-				Instruction::new_type(
-					name,
-					&supertype
-				),
-				Instruction::START
-			]
-		}
-	}
+	// pub fn type_execute(node: &Node, name: &str, supertype: &str, prototype: &bool) -> Vec<Instruction>
+	// {
+	// 	if *prototype {
+	// 		vec![
+	// 			// Instruction::new_check(
+	// 			// 	&node.register,
+	// 			// 	&node.nodes[0].register,
+	// 			// 	Some(supertype.into())
+	// 			// ),
+	// 			Instruction::new_type_prototype(
+	// 				name,
+	// 				&supertype,
+	// 				&node.register
+	// 			),
+	// 			Instruction::START
+	// 		]
+	// 	} else {
+	// 		vec![
+	// 			Instruction::new_type(
+	// 				name,
+	// 				&supertype
+	// 			),
+	// 			Instruction::START
+	// 		]
+	// 	}
+	// }
 	// pub fn function_execute(name: &str, signature: &IndexMap<String, String>) -> Vec<Instruction>
 	// {
 	// 	vec![
@@ -427,17 +427,10 @@ impl Instruction {
 			Instruction::END
 		]
 	}
-	fn method_end(_: &Node) -> Vec<Instruction>
+	fn method_end(node: &Node) -> Vec<Instruction>
 	{
 		vec![
-			Instruction::Return(
-				format!("-1")
-				// node.nodes
-				// .last()
-				// .unwrap()
-				// .register
-				// .clone()
-			),
+			Instruction::Return(node.register.clone()),
 			Instruction::END
 		]
 	}

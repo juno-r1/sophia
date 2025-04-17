@@ -2,22 +2,22 @@
 
 ## SI-0
 
-Sophia Integrations, abbreviated as SIs, are internal tickets used to implement the specification of the Sophia interpreter. SIs are numbered in order of creation: this one is SI-0. The ordering is permanent.
-
-SIs are associated with a description of their requirements, an integration test, and the unit tests used for the components associated with the SI. Unit tests may be changed and reordered as is necessary.
+Sophia Integrations, abbreviated as SIs, are internal tickets used to implement the specification of the Sophia interpreter. SIs are associated with a description of their requirements, an integration test, and the unit tests used for the components associated with the SI. Unit tests may be changed and reordered as is necessary.
 
 ## SI-1: Initialisation
 
 Initialise the Sophia runtime.
+The runtime returns the value from the main file, or null if the main file is empty. Null indicates the absence of a value.
 
-## SI-2: Return statement
+A file consists of a group of expressions. Groups return the value of the last expression.
 
-`return`
-`return <E>`
+## SI-2: Boolean literals
 
-Ends execution of the current routine and returns null to the calling routine.
-It is possible to return from the main routine.
-The returned value may be used by external utilities in future.
+`true`
+`false`
+
+Sophia has no concept of truthiness.
+Any expression in a boolean context (if statements, while statements) must evaluate to these values.
 
 ## SI-3: Numeric literals
 
@@ -31,7 +31,7 @@ The returned value may be used by external utilities in future.
 Sophia has one numeric data type: arbitrary-precision rationals.
 It should be able to parse as constant with the sign and either a solidus or a decimal point and an exponent.
 
-# SI-4: String literals
+## SI-4: String literals
 
 `"Hello world!"`
 `'Hello world!'`
@@ -57,39 +57,23 @@ ASCII characters can be specified with \x and then 2 hex digits:
 Unicode characters can be specified with \u and then up to 6 hex digits in curly brackets:
 \u{000000}
 
-# SI-5: Boolean literals
-
-`true`
-`false`
-
-Sophia has no concept of truthiness.
-Any expression in a boolean context (if statements, while statements) must evaluate to these values.
-
-# SI-6: Assignment
-
-`<N>: <E>`
-`<N>: <E>; <N>: <E; ...>`
-
-Assign a value to a name. Referencing the name yields the value.
-The name and the bound value persist until the end of scope, or until the name is reassigned.
-Multiple assignment requires all expressions to be evaluated from left to right, and then all names to be assigned simultaneously.
-
-# SI-7: Sequence constructors
+## SI-5: Lists
 
 `[]`
 `[<E>]`
 `[<E>, <E>, ...]`
 
+Lists are sequences whose keys are unspecified. The constructor `[]` creates an empty list, equivalent to `new list`.
+
+## SI-6: Records
+
 `[:]`
 `[<E>: <E>]`
 `[<E>: <E>, <E>: <E>, ...]`
 
-Sequences are data types that contain data. When the key is unspecified, a list is constructed. When the key is specified, a record is constructed.
-The constructor `[]` creates an empty list, equivalent to `new list`.
-The constructor `[:]` creates an empty record, equivalent to `new record`.
-Constructors cannot be mixed: either all or none of the keys must be specified.
+Records are sequences whose keys are specified. The constructor `[:]` creates an empty record, equivalent to `new record`.
 
-# SI-8: Ranges
+## SI-7: Ranges
 
 `[::]`
 `[<E>:<E>:<E>]`
@@ -103,7 +87,7 @@ This approach is preferred because it is useful to reference only those numbers 
 This helps to minimise confusion since ranges are also used for indexing, so there aren't any unexpected omissions.
 The start, the end, and the step must all be specified. This is to prevent incorrect assumptions about implict values.
 
-# SI-9: Typing
+## SI-8: Typing
 
 `<T>(<E>)`
 
@@ -125,22 +109,14 @@ boolean (bool)
 string (str)
 range
 
-# SI-10: Type operator
+## SI-9: Type operator
 
 `?<E>`
 
 While values have no nominal type in Sophia, all expressions have a final type.
 Using the type operator yields the type of the expression as a first-class value.
 
-# SI-11: Typed assignment
-
-`<T> <N>: <E>`
-
-Typed assignments determine the type of a name.
-The assignment performs a type check. If the value does not match the stated type, an error is thrown.
-The name is assigned exactly the stated type, and not more or less specific.
-
-# SI-12: Equality operators
+## SI-10: Equality operators
 
 `<E> = <E>`
 `<E> != <E>`
@@ -161,7 +137,7 @@ Sophia has by default:
 Equality requires values to be the same data type. There is no loose equality in Sophia.
 Overloading these operators does not change their internal implementation.
 
-# SI-13: Boolean operators
+## SI-11: Boolean operators
 
 `not <E>`
 `<E> and <E>`
@@ -177,7 +153,7 @@ Sophia has by default:
 
 Logical XOR is equivalent to inequality. It is included here to indicate a semantic distinction.
 
-# SI-14: Arithmetic operators
+## SI-12: Numeric operators
 
 `+<E>`
 `-<E>`
@@ -188,15 +164,92 @@ Logical XOR is equivalent to inequality. It is included here to indicate a seman
 `<E> ^ <E>`
 `<E> % <E>`
 
-The arithmetic operators implement basic arithmetic operations.
+The numeric operators implement basic arithmetic operations on numbers.
 Sophia has by default:
 - Modulus and addition (+);
 - Negation and subtraction (-);
 - Multiplication (*);
 - Division (/);
 - Exponentiation (^);
-- Modulo (%);
-
-All of these operations can also be applied to ranges.
+- Modulo (%).
 
 Some of these operations are partial: there are some inputs in the input type that do not map to an output (for example, division by 0). In these cases, these operations return null, to indicate the absence of a return value.
+
+## SI-13: Range operators
+
+`+<E>`
+`-<E>`
+`<E> + <E>`
+`<E> - <E>`
+`<E> * <E>`
+`<E> / <E>`
+
+`<E>[<E>]`
+`<E> in <E>`
+`<E> | <E>`
+`<E> & <E>`
+
+The range operators implement basic arithmetic operations on ranges.
+Sophia has by default:
+- Modulus and addition (+);
+- Negation and subtraction (-);
+- Multiplication (*);
+- Division (/).
+
+Where a range is represented as a linear sequence mx + c:
+- Modulus reverses the range if m is negative.
+- Negation reverses the range.
+- Addition and subtraction add and subtract from the sequence.
+- Multiplication and division multiply and divide the sequence.
+
+Ranges also implement sequence operations:
+- Index ([]);
+- Membership (in);
+- Union (|);
+- Intersection (&).
+
+## SI-14: String operators
+
+`<E>[<E>]`
+`<E> in <E>`
+`<E> + <E>`
+`<E> - <E>`
+`<E> | <E>`
+`<E> & <E>`
+
+The string operators implement basic string operations.
+Sophia has by default:
+- Index ([]);
+- Membership (in);
+- Concatenation (+);
+- Difference (-);
+- Union (|);
+- Intersection (&).
+
+## SI-?: Assignment
+
+`<N>: <E>`
+`<N>: <E>; <N>: <E>`
+`<N>: <E[]>; <N>: <E[]]`
+
+`<T> <N>: <E>`
+`<T> <N>: <E>; <T> <N>: <E>`
+`<T> <N>: <E[]>; <T> <N>: <E[]]`
+
+Assign a value to a name. Referencing the name yields the value.
+The name and the bound value persist until the end of scope, or until the name is reassigned.
+Multiple assignment requires all expressions to be evaluated from left to right, and then all names to be assigned simultaneously.
+
+Typed assignments determine the type of a name.
+The assignment performs a type check. If the value does not match the stated type, an error is thrown.
+The name is assigned exactly the stated type, and not more or less specific.
+
+## SI-?: Return statement
+
+`return`
+`return <E>`
+`return <E[]>`
+
+Ends execution of the current routine and returns to the calling routine.
+It is possible to return from the main routine.
+The returned value may be used by external utilities in future.

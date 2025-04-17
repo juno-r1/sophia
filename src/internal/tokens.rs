@@ -41,6 +41,7 @@ const LBP_MAP: [(&str, usize); 29] = [
 pub enum Token {
     // Statements.
     Module,
+    Group(String),
 	Type{
 		name: String,
 		supertype: String,
@@ -179,7 +180,7 @@ impl Token
                     if expr.is_empty() {
                         vec![]
                     } else {
-                        vec![Node::expression(&expr)?]
+                        vec![Node::tree(&expr)?]
                     }
                 )
             },
@@ -188,7 +189,7 @@ impl Token
                 if expr.is_empty() {
                     vec![]
                 } else {
-                    let contents = Node::expression(&expr)?;
+                    let contents = Node::tree(&expr)?;
                     match contents.token {
                         Token::Concatenator => contents.nodes,
                         _ => vec![contents]

@@ -242,13 +242,11 @@ impl FuncDef
 				),
 				new_fn!(
 					"op/exp",
-					exp_b,
-					exp_rn
+					exp_b
 				),
 				new_fn!(
 					"op/mdl",
-					mdl_b,
-					mdl_r
+					mdl_b
 				),
 				// new_function!(
 				// 	"in",

@@ -118,14 +118,14 @@ mod patterns
     fn split()
     {
         const FILE: [&str; 2] = [
-            "function(\nargs\n),\nvalue",
+            "function(\nargs,\nkwargs\n),\nvalue",
             "x\ny\nz",
         ];
         // Groups logical lines with trailing symbols.
         assert_eq!(
             patterns::split(FILE[0]),
             vec![
-                "function(args),value"
+                "function(args,kwargs),value"
             ]
         );
         // Splits logical lines with terminating symbols.

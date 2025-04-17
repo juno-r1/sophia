@@ -1,3 +1,4 @@
+use regex::Regex;
 use utils::coerce::Coerce;
 use utils::re::re_const;
 
@@ -42,6 +43,23 @@ pub const R_PARENS:     &str = r#"(?<r_parens>[\)\]\}])"#;
 pub const PAIR:         &str = r#"(?<pair>:)"#;
 pub const OPERATOR:     &str = r#"(?<operator>[^\s\d\w\(\[\{\'\"\@]+)"#; // Any other symbol.
 
+pub fn pattern() -> Regex
+{
+    re_const(&[
+        NUMBER,
+        STRING,
+        NAME,
+        ENV,
+        RECEIVE,
+        RANGE,
+        RECORD,
+        LIST,
+        L_PARENS,
+        R_PARENS,
+        PAIR,
+        OPERATOR,
+    ].join("|"))
+}
 pub fn is_empty(source: &str) -> bool
 {
     re_const(EMPTY).is_match(source)

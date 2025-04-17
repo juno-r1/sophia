@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::thread;
 
 use crate::datatypes::range::Range;
-use crate::datatypes::sequence::Sequence;
+use crate::datatypes::record::Record;
 use crate::error;
 use crate::datatypes::types::TypeDef;
 use crate::internal::instructions::Instruction;
@@ -60,7 +60,7 @@ pub struct Task {
     types: Typespace,
     // Program state.
     pub signature: Vec<TypeDef>,
-    pub path: usize,
+    path: usize,
     op: usize,
 }
 
@@ -210,7 +210,7 @@ impl Task
                         .collect::<Partial<Vec<Value>>>()?;
                     self.write(
                         &address,
-                        Value::new_list(Sequence::new_list(values)),
+                        Value::new_list(values),
                         TypeDef::std_list()
                     );
                     Value::new_none()
@@ -242,7 +242,7 @@ impl Task
                         .collect::<Partial<Vec<Value>>>()?;
                     self.write(
                         &address,
-                        Value::new_record(Sequence::new_record(keys, values)),
+                        Value::new_record(Record::new(keys, values)),
                         TypeDef::std_record()
                     );
                     Value::new_none()

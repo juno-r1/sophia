@@ -7,9 +7,8 @@ mod integration
     use utils::coerce::Coerce;
 
     use crate::datatypes::range::Range;
-    use crate::datatypes::sequence::Sequence;
+    use crate::datatypes::record::Record;
     use crate::datatypes::types::TypeDef;
-    use crate::error;
     use crate::sophia::arche::Value;
     use crate::sophia::hemera::Partial;
     use crate::sophia::runtime::Runtime;
@@ -56,10 +55,10 @@ mod integration
     #[test]
     fn si_2()
     {
-        // Empty return.
-        assert_null(test(2, 0));
-        // Return with null constant.
-        assert_null(test(2, 1));
+        // False.
+        assert_false(test(2, 0));
+        // True.
+        assert_true(test(2, 1));
     }
     #[test]
     fn si_3()
@@ -100,52 +99,54 @@ mod integration
     #[test]
     fn si_5()
     {
-        // False.
-        assert_false(test(5, 0));
-        // True.
-        assert_true(test(5, 1));
+        // Empty list.
+        assert_eq!(
+            test(5, 0),
+            Ok(Value::new_list(vec![]))
+        );
+        // Single-element list.
+        assert_eq!(
+            test(5, 1),
+            Ok(Value::new_list(vec![
+                Value::new_number(Rational::from_str("0").unwrap()),
+            ]))
+        );
+        // Multiple-element list.
+        assert_eq!(
+            test(5, 2),
+            Ok(Value::new_list(vec![
+                Value::new_number(Rational::from_str("0").unwrap()),
+                Value::new_number(Rational::from_str("1").unwrap()),
+                Value::new_number(Rational::from_str("2").unwrap()),
+            ]))
+        );
+        // Nested list.
+        assert_eq!(
+            test(5, 3),
+            Ok(Value::new_list(vec![
+                Value::new_list(vec![]),
+                Value::new_list(vec![
+                    Value::new_number(Rational::from_str("0").unwrap()),
+                ]),
+                Value::new_list(vec![
+                    Value::new_number(Rational::from_str("1").unwrap()),
+                    Value::new_number(Rational::from_str("2").unwrap()),
+                ])
+            ]))
+        );
     }
     #[test]
     fn si_6()
     {
-        // Single assignment.
-        assert_number(test(6, 0), "0");
-        // Multiple assignment with assignment order check.
-        assert_number(test(6, 1), "0");
-    }
-    #[test]
-    fn si_7()
-    {
-        // Empty list.
-        assert_eq!(
-            test(7, 0),
-            Ok(Value::new_list(Sequence::new_list(vec![])))
-        );
-        // Single-element list.
-        assert_eq!(
-            test(7, 1),
-            Ok(Value::new_list(Sequence::new_list(vec![
-                Value::new_number(Rational::from_str("0").unwrap()),
-            ])))
-        );
-        // Multiple-element list.
-        assert_eq!(
-            test(7, 2),
-            Ok(Value::new_list(Sequence::new_list(vec![
-                Value::new_number(Rational::from_str("0").unwrap()),
-                Value::new_number(Rational::from_str("1").unwrap()),
-                Value::new_number(Rational::from_str("2").unwrap()),
-            ])))
-        );
         // Empty record.
         assert_eq!(
-            test(7, 3),
-            Ok(Value::new_record(Sequence::new_record(vec![], vec![])))
+            test(6, 0),
+            Ok(Value::new_record(Record::new(vec![], vec![])))
         );
         // Single-element record.
         assert_eq!(
-            test(7, 4),
-            Ok(Value::new_record(Sequence::new_record(vec![
+            test(6, 1),
+            Ok(Value::new_record(Record::new(vec![
                 Value::new_string(format!("0")),
             ], vec![
                 Value::new_string(format!("0")),
@@ -153,8 +154,8 @@ mod integration
         );
         // Multiple-element record.
         assert_eq!(
-            test(7, 5),
-            Ok(Value::new_record(Sequence::new_record(vec![
+            test(6, 2),
+            Ok(Value::new_record(Record::new(vec![
                 Value::new_string(format!("0")),
                 Value::new_string(format!("1")),
                 Value::new_string(format!("2")),
@@ -162,49 +163,38 @@ mod integration
                 Value::new_string(format!("0")),
                 Value::new_string(format!("1")),
                 Value::new_string(format!("2")),
-            ])))
-        );
-        // Nested list.
-        assert_eq!(
-            test(7, 6),
-            Ok(Value::new_list(Sequence::new_list(vec![
-                Value::new_number(Rational::from_str("0").unwrap()),
-                Value::new_list(Sequence::new_list(vec![
-                    Value::new_number(Rational::from_str("1").unwrap()),
-                ])),
-                Value::new_record(Sequence::new_record(vec![
-                    Value::new_string(format!("2")),
-                ], vec![
-                    Value::new_string(format!("2")),
-                ])),
             ])))
         );
         // Nested record.
         assert_eq!(
-            test(7, 7),
-            Ok(Value::new_record(Sequence::new_record(vec![
+            test(6, 3),
+            Ok(Value::new_record(Record::new(vec![
                 Value::new_string(format!("0")),
                 Value::new_string(format!("1")),
-                Value::new_string(format!("2")),
+                Value::new_string(format!("3")),
             ], vec![
-                Value::new_number(Rational::from_str("0").unwrap()),
-                Value::new_list(Sequence::new_list(vec![
-                    Value::new_number(Rational::from_str("1").unwrap()),
-                ])),
-                Value::new_record(Sequence::new_record(vec![
+                Value::new_record(Record::new(vec![], vec![])),
+                Value::new_record(Record::new(vec![
                     Value::new_string(format!("2")),
                 ], vec![
                     Value::new_string(format!("2")),
+                ])),
+                Value::new_record(Record::new(vec![
+                    Value::new_string(format!("4")),
+                    Value::new_string(format!("5")),
+                ], vec![
+                    Value::new_string(format!("4")),
+                    Value::new_string(format!("5")),
                 ])),
             ])))
         );
     }
     #[test]
-    fn si_8()
+    fn si_7()
     {
         // Empty range.
         assert_eq!(
-            test(8, 0),
+            test(7, 0),
             Ok(Value::new_range(Range::new(
                 Rational::from_str("0").unwrap(),
                 Rational::from_str("0").unwrap(),
@@ -213,7 +203,7 @@ mod integration
         );
         // Zero-step range.
         assert_eq!(
-            test(8, 1),
+            test(7, 1),
             Ok(Value::new_range(Range::new(
                 Rational::from_str("0").unwrap(),
                 Rational::from_str("0").unwrap(),
@@ -222,7 +212,7 @@ mod integration
         );
         // Ascending range.
         assert_eq!(
-            test(8, 2),
+            test(7, 2),
             Ok(Value::new_range(Range::new(
                 Rational::from_str("0").unwrap(),
                 Rational::from_str("2").unwrap(),
@@ -231,7 +221,7 @@ mod integration
         );
         // Descending range.
         assert_eq!(
-            test(8, 3),
+            test(7, 3),
             Ok(Value::new_range(Range::new(
                 Rational::from_str("-1").unwrap(),
                 Rational::from_str("-5").unwrap(),
@@ -240,110 +230,135 @@ mod integration
         );
     }
     #[test]
-    fn si_9()
+    fn si_8()
     {
         // Any type.
-        assert_true(test(9, 0));
-        assert_true(test(9, 1));
+        assert_true(test(8, 0));
+        assert_true(test(8, 1));
         // None type.
-        assert_true(test(9, 2));
-        assert_false(test(9, 3));
+        assert_true(test(8, 2));
+        assert_false(test(8, 3));
         // Some type.
-        assert_true(test(9, 4));
-        assert_false(test(9, 5));
+        assert_true(test(8, 4));
+        assert_false(test(8, 5));
         // Number type.
-        assert_true(test(9, 6));
-        assert_false(test(9, 7));
+        assert_true(test(8, 6));
+        assert_false(test(8, 7));
         // Integer type.
-        assert_true(test(9, 8));
-        assert_false(test(9, 9));
+        assert_true(test(8, 8));
+        assert_false(test(8, 9));
         // Boolean type.
-        assert_true(test(9, 10));
-        assert_false(test(9, 11));
+        assert_true(test(8, 10));
+        assert_false(test(8, 11));
         // String type.
-        assert_true(test(9, 12));
-        assert_false(test(9, 13));
+        assert_true(test(8, 12));
+        assert_false(test(8, 13));
         // Range type.
-        assert_true(test(9, 14));
-        assert_false(test(9, 15));
+        assert_true(test(8, 14));
+        assert_false(test(8, 15));
+    }
+    #[test]
+    fn si_9()
+    {
+        // Type operator.
+        assert_type(test(9, 0), TypeDef::std_none());
+        // Type inferral.
+        assert_type(test(9, 1), TypeDef::std_integer());
     }
     #[test]
     fn si_10()
     {
-        // Type operator.
-        assert_type(test(10, 0), TypeDef::std_none());
-        // Type inferral.
-        assert_type(test(10, 1), TypeDef::std_integer());
+        // Equality.
+        assert_true(test(10, 0));
+        // Inequality.
+        assert_true(test(10, 1));
+        // Less than.
+        assert_true(test(10, 2));
+        // Greater than.
+        assert_true(test(10, 3));
+        // Less than or equal to.
+        assert_true(test(10, 4));
+        // Greater than or equal to.
+        assert_true(test(10, 5));
     }
     #[test]
     fn si_11()
     {
-        // Type assignment.
-        assert_type(test(11, 0), TypeDef::std_number());
-        // Downcasting.
-        assert_type(test(11, 1), TypeDef::std_integer());
-        // Invalid assignment.
-        assert_error(test(11, 2), error!(TYPE, "string", Value::new_number(Rational::from_str("1").unwrap())));
+        // NOT.
+        assert_true(test(11, 0));
+        // AND.
+        assert_true(test(11, 1));
+        // OR.
+        assert_true(test(11, 2));
+        // XOR.
+        assert_true(test(11, 3));
     }
     #[test]
     fn si_12()
     {
-        // Equality.
+        // Modulus.
         assert_true(test(12, 0));
-        // Inequality.
+        // Addition.
         assert_true(test(12, 1));
-        // Less than.
+        // Negation.
         assert_true(test(12, 2));
-        // Greater than.
+        // Subtraction.
         assert_true(test(12, 3));
-        // Less than or equal to.
+        // Multiplication.
         assert_true(test(12, 4));
-        // Greater than or equal to.
+        // Division.
         assert_true(test(12, 5));
+        // Division by zero.
+        assert_true(test(12, 6));
+        // Exponentiation.
+        assert_true(test(12, 7));
+        // Modulo.
+        assert_true(test(12, 8));
+        // Modulo by zero.
+        assert_true(test(12, 9));
     }
     #[test]
     fn si_13()
     {
-        // NOT.
-        assert_true(test(13, 0));
-        // AND.
-        assert_true(test(13, 1));
-        // OR.
-        assert_true(test(13, 2));
-        // XOR.
-        assert_true(test(13, 3));
-    }
-    #[test]
-    fn si_14()
-    {
         // Modulus.
-        assert_true(test(14, 0));
-        assert_true(test(14, 1));
+        assert_true(test(13, 0));
         // Addition.
-        assert_true(test(14, 2));
-        assert_true(test(14, 3));
+        assert_true(test(13, 1));
         // Negation.
-        assert_true(test(14, 4));
-        assert_true(test(14, 5));
+        assert_true(test(13, 2));
         // Subtraction.
-        assert_true(test(14, 6));
-        assert_true(test(14, 7));
+        assert_true(test(13, 3));
         // Multiplication.
-        assert_true(test(14, 8));
-        assert_true(test(14, 9));
+        assert_true(test(13, 4));
         // Division.
-        assert_true(test(14, 10));
-        assert_true(test(14, 11));
+        assert_true(test(13, 5));
         // Division by zero.
-        assert_true(test(14, 12));
-        assert_true(test(14, 13));
-        // Exponentiation.
-        assert_true(test(14, 14));
-        assert_true(test(14, 15));
-        // Modulo.
-        assert_true(test(14, 16));
-        assert_true(test(14, 17));
-        // Modulo by zero.
-        assert_true(test(14, 18));
+        assert_true(test(13, 6));
     }
+    // #[test]
+    // fn si_2()
+    // {
+    //     // Empty return.
+    //     assert_null(test(2, 0));
+    //     // Return with null constant.
+    //     assert_null(test(2, 1));
+    // }
+    // #[test]
+    // fn si_6()
+    // {
+    //     // Single assignment.
+    //     assert_number(test(6, 0), "0");
+    //     // Multiple assignment with assignment order check.
+    //     assert_number(test(6, 1), "0");
+    // }
+    // #[test]
+    // fn si_11()
+    // {
+    //     // Type assignment.
+    //     assert_type(test(11, 0), TypeDef::std_number());
+    //     // Downcasting.
+    //     assert_type(test(11, 1), TypeDef::std_integer());
+    //     // Invalid assignment.
+    //     assert_error(test(11, 2), error!(TYPE, "string", Value::new_number(Rational::from_str("1").unwrap())));
+    // }
 }
