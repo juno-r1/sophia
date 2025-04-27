@@ -15,10 +15,10 @@ pub fn parse(source: &str) -> Partial<(Vec<Instruction>, Namespace)>
 		return Ok((Instruction::default(), new_namespace()));
 	};
 	if patterns::is_unquoted(&source) {
-		return error!(SNTX, "Unmatched quotes");
+		error!(SNTX, "Unmatched quotes");
 	};
 	if patterns::is_unmatched(&source) {
-		return error!(SNTX, "Unmatched parentheses");
+		error!(SNTX, "Unmatched parentheses");
 	};
 	// Generate AST from source.
 	let tree: Node = Node::module(&source)?;

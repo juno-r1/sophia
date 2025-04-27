@@ -17,7 +17,7 @@ A file consists of a group of expressions. Groups return the value of the last e
 `false`
 
 Sophia has no concept of truthiness.
-Any expression in a boolean context (if statements, while statements) must evaluate to these values.
+Any expression in a boolean context (if, while) must evaluate to these values.
 
 ## SI-3: Numeric literals
 

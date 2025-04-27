@@ -85,14 +85,14 @@ pub fn std_fn(stream: TokenStream) -> TokenStream
 		_ => panic!("Invalid body for std_fn")
 	};
 	let result = match last.as_str() {
-		"none" => format!("{{{block}; Ok(Value::None)}}"),
-		_ => format!("Ok(Value::new_{last}({block}))")
+		"none" => format!("{{{block}; Value::None}}"),
+		_ => format!("Value::new_{last}({block})")
 	};
 	format!(
 		"
 		impl Task
 		{{
-			pub fn {name}(&mut self, args: Vec<Value>) -> Partial<Value>
+			pub fn {name}(&mut self, args: Vec<Value>) -> Value
 			{{
 				match &args[..] {{
 					[{signature}] => {{{bindings}{result}}},

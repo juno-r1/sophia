@@ -1,15 +1,13 @@
 use std::collections::BTreeMap;
 
-use crate::error;
 use crate::internal::instructions::Instruction;
 use crate::sophia::arche::Value;
-use crate::sophia::hemera::Partial;
 use crate::sophia::runtime::Task;
 use crate::stdlib::std::Namespace;
 
 use super::types::TypeDef;
 
-type BuiltIn = fn(&mut Task, Vec<Value>) -> Partial<Value>;
+type BuiltIn = fn(&mut Task, Vec<Value>) -> Value;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum Routine {
@@ -57,11 +55,11 @@ impl Method
 			arity: params.len() - 1
 		}
 	}
-	pub fn call(&self, task: &mut Task, args: Vec<Value>) -> Partial<Value>
+	pub fn call(&self, task: &mut Task, args: Vec<Value>) -> Value
 	{
 		match self.routine {
 			Routine::Std(function) => function(task, args),
-			Routine::User(_) => error!(IMPL)
+			Routine::User(_) => unreachable!()
 		}
 	}
 }

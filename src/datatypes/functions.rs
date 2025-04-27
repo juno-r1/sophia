@@ -6,7 +6,6 @@
 // tree. It is only ever necessary to traverse downward.
 
 use crate::error;
-use crate::sophia::hemera::Partial;
 
 use super::methods::Method;
 use super::predicates::Predicate;
@@ -133,7 +132,7 @@ impl FuncDef
 			}
 		}
 	}
-	pub fn dispatch(&self, signature: &Vec<TypeDef>) -> Partial<&Method>
+	pub fn dispatch(&self, signature: &Vec<TypeDef>) -> &Method
 	// Multiple dispatch algorithm, with help from Julia:
 	// https://github.com/JeffBezanson/phdthesis
 	// Binary search tree yields closest key for method, then key is verified.
@@ -148,7 +147,7 @@ impl FuncDef
 				{truepath.dispatch(signature)} else
 				{falsepath.dispatch(signature)}
 			},
-			FuncDef::Leaf(method) => Ok(method),
+			FuncDef::Leaf(method) => method,
 			FuncDef::Undefined => error!(DISP, signature)
 		}
 	}

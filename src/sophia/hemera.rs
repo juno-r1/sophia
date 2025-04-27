@@ -22,34 +22,34 @@ macro_rules! error
 {
     // "Value {:?} is not callable"
 	(CALL, $value:expr) => {
-		Err(crate::sophia::hemera::Error::CALL($value.clone()))
+		panic!("{:?}", crate::sophia::hemera::Error::CALL($value.clone()))
 	};
     // "Failed dispatch: {} has no signature {:?}"
     (DISP, $signature:expr) => {
-        Err(crate::sophia::hemera::Error::DISP($signature.clone()))
+        panic!("{:?}", crate::sophia::hemera::Error::DISP($signature.clone()))
 	};
     // "Invalid file: {}"
     (FILE, $name:expr) => {
-        Err(crate::sophia::hemera::Error::FILE($name.into()))
+        panic!("{:?}", crate::sophia::hemera::Error::FILE($name.into()))
 	};
     // "Undefined name: {}"
     (FIND, $name:expr) => {
-        Err(crate::sophia::hemera::Error::FIND($name.into()))
+        panic!("{:?}", crate::sophia::hemera::Error::FIND($name.into()))
 	};
     // "Not implemented"
     (IMPL) => {
-        Err(crate::sophia::hemera::Error::IMPL)
+        panic!("{:?}", crate::sophia::hemera::Error::IMPL)
 	};
     // "Invalid value for type {}: {:?}"
     (TYPE, $name:expr, $value:expr) => {
-        Err(crate::sophia::hemera::Error::TYPE($name.into(), $value.clone()))
+        panic!("{:?}", crate::sophia::hemera::Error::TYPE($name.into(), $value.clone()))
 	};
     // Syntax error
     (SNTX, $message:expr) => {
-        Err(crate::sophia::hemera::Error::SNTX($message.into()))
+        panic!("{:?}", crate::sophia::hemera::Error::SNTX($message.into()))
     };
     // User error
     (USER, $message:expr) => {
-        Err(crate::sophia::hemera::Error::USER($message.into()))
+        panic!("{:?}", crate::sophia::hemera::Error::USER($message.into()))
     };
 }

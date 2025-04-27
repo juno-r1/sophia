@@ -82,7 +82,6 @@ macro_rules! std_mod
 			use macros::std_fn;
 
 			use crate::sophia::arche::Value;
-			use crate::sophia::hemera::Partial;
 			use crate::sophia::runtime::Task;
 
 			$(std_fn!$method)+
@@ -94,7 +93,6 @@ macro_rules! std_mod
 			use macros::std_fn;
 
 			use crate::sophia::arche::Value;
-			use crate::sophia::hemera::Partial;
 			use crate::sophia::runtime::Task;
 
 			$($statement)+

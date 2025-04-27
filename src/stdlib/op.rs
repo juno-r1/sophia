@@ -230,7 +230,7 @@ std_mod!
 		number div_b(number x0, number x1)
 		{
 			if x1 == Rational::ZERO {
-				return Ok(Value::new_none());
+				return Value::new_none();
 			};
 			x0 / x1
 		}
@@ -240,7 +240,7 @@ std_mod!
 		range div_rn(range x0, number x1)
 		{
 			if x1 == Rational::ZERO {
-				return Ok(Value::new_none());
+				return Value::new_none();
 			};
 			x0 / x1
 		}
@@ -303,7 +303,7 @@ std_mod!
 		// Rust doesn't have the modulo operator!
 		{
 			if x1 == Rational::ZERO {
-				return Ok(Value::new_none());
+				return Value::new_none();
 			};
 			let (nx, dx) = x0.into_numerator_and_denominator();
 			let (ny, dy) = x1.into_numerator_and_denominator();
@@ -330,7 +330,7 @@ std_mod!
 		{
 			// Integer indices only!
 			if x1.denominator_ref() != &Natural::ONE {
-				return Ok(Value::new_none());
+				return Value::new_none();
 			};
 			// Convert index to usize to play nice with Rust.
 			let i: usize = if x1 >= 0 {
@@ -345,7 +345,7 @@ std_mod!
 			.collect::<Vec<char>>()
 			.get(i) {
 				Some(c) => c.to_string(),
-				None => return Ok(Value::new_none())
+				None => return Value::new_none()
 			}
 			// let length = x0.len();
 			// if (x1 >= 0 && x1 >= length) || -length < x1 {

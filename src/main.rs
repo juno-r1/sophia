@@ -13,7 +13,7 @@ mod internal;
 
 mod stdlib;
 
-fn main() -> Result<(), String>
+fn main()
 {
-	Runtime::run("user/main.sph").map_or_else(|e| Err(format!("{e:?}")), |_| Ok(()))
+	println!("{:?}", Runtime::run("user/main.sph"))
 }

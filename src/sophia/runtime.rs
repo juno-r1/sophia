@@ -1,22 +1,26 @@
-use std::env::current_dir;
-use std::path::PathBuf;
+use std::env;
+use std::io;
+use std::panic;
+use std::path;
 use std::thread;
 
 use crate::datatypes::range::Range;
 use crate::datatypes::record::Record;
-use crate::error;
 use crate::datatypes::types::TypeDef;
+use crate::error;
 use crate::internal::instructions::Instruction;
 use crate::stdlib::std::{infer_namespace, stdlib, Namespace, Typespace};
 
 use super::arche::Value;
+use super::hemera::Error;
 use super::hemera::Partial;
+use super::iris::Pool;
 use super::kadmos::parse;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Runtime {
-    pool_size: usize,
-    root: PathBuf,
+    root: path::PathBuf,
+    pool: Pool,
 }
 
 impl Runtime
@@ -24,31 +28,41 @@ impl Runtime
     pub fn new() -> Runtime
     {
         Runtime{
-            pool_size: match thread::available_parallelism() {
-                Ok(x) => x.into(),
-                Err(_) => 1
-            },
-            root: current_dir().unwrap_or(PathBuf::from("~/"))
+            root: env::current_dir().unwrap_or(path::PathBuf::from("~/")),
+            pool: Pool::new() 
         }
     }
     pub fn run(file: &str) -> Partial<Value>
     {
         // Construct runtime.
         let runtime = Runtime::new();
-        // Read source file.
-        let source = runtime.open(file)?;
         // Spawn main task.
-        let mut main = Task::spawn(&source)?;
+        let mut main = runtime.spawn(file)?;
+        let builder = thread::Builder::new().name(format!("sph_main"));
+        let handler = builder.spawn(move || main.run()).unwrap();
+        Ok(handler.join().unwrap())
         // Execute main task.
-        main.execute()
+        // Ok(main.run())
     }
 }
 
 impl Runtime
 {
-    pub fn open(&self, file: &str) -> Partial<String>
+    pub fn open(&self, file: &str) -> io::Result<String>
     {
-        std::fs::read_to_string(self.root.join(file)).or(error!(FILE, file))
+        std::fs::read_to_string(self.root.join(file))
+    }
+    pub fn spawn(&self, file: &str) -> Partial<Task>
+    {
+        // Read source file.
+        let source = self.open(file).or(Err(Error::FILE(file.into())))?;
+        // Parse input source.
+        let (instructions, namespace) = parse(&source)?;
+        for item in &instructions {
+            println!("{:?}", item)
+        };
+        // Initialise task.
+        Ok(Task::new(instructions, namespace))
     }
 }
 
@@ -98,8 +112,12 @@ pub struct Task {
 
 impl Task
 {
-	fn new(instructions: Vec<Instruction>, values: Namespace, types: Typespace) -> Task
+	fn new(instructions: Vec<Instruction>, namespace: Namespace) -> Task
 	{
+        // Build standard library.
+        let values = stdlib(namespace);
+        let types = infer_namespace(&values);
+        // Create new task.
 		Task{
 			instructions,
 			values,
@@ -109,28 +127,7 @@ impl Task
             op: 0
 		}
 	}
-    pub fn spawn(file: &str) -> Partial<Task>
-    {
-        // Parse input source.
-        let (instructions, namespace) = parse(file)?;
-        for item in &instructions {
-            println!("{:?}", item)
-        };
-        // Build standard library.
-        let lib = stdlib(namespace);
-        let types = infer_namespace(&lib);
-        // Initialise task.
-        Ok(Task::new(instructions, lib, types))
-    }
-    pub fn execute(&mut self) -> Partial<Value>
-    // Task exception layer.
-    // Catches runtime errors and terminates the task safely.
-    {
-        let value = self.run();
-        println!("{:?}", value);
-        value
-    }
-    pub fn run(&mut self) -> Partial<Value>
+    pub fn run(&mut self) -> Value
     // Task runtime loop.
     // Performs dispatch and executes instructions.
     // Errors are returned immediately to the caller.
@@ -149,16 +146,16 @@ impl Task
                     let values: Vec<Value> = args
                         .iter()
                         .map(|arg| self.read(arg))
-                        .collect::<Partial<Vec<Value>>>()?;
+                        .collect();
                     self.signature = args
                         .iter()
                         .map(|arg| self.describe(arg))
-                        .collect::<Partial<Vec<TypeDef>>>()?;
-                    let command: Value = self.read(&name)?;
+                        .collect();
+                    let command: Value = self.read(&name);
                     match command {
                         Value::Function(function) => {
-                            let method = function.dispatch(&self.signature)?;
-                            let value: Value = method.call(self, values)?;
+                            let method = function.dispatch(&self.signature);
+                            let value: Value = method.call(self, values);
                             let last: TypeDef = match value {
                                 Value::None if method.partial => TypeDef::std_none(),
                                 _ => method.last.clone()
@@ -168,22 +165,22 @@ impl Task
                         Value::Type(check) => {
                             let value: bool = match &values[..] {
                                 [x] => check.call(&x),
-                                _ => return error!(DISP, self.signature)
+                                _ => error!(DISP, self.signature)
                             };
                             self.write(&address, Value::new_boolean(value), TypeDef::std_boolean())
                         },
-                        _ => return error!(CALL, command)
+                        _ => error!(CALL, command)
                     }
                 },
                 Instruction::Bind{args, params, types} => {
                     let values: Vec<Value> = args
                         .iter()
                         .map(|arg| self.read(arg))
-                        .collect::<Partial<Vec<Value>>>()?;
+                        .collect();
                     self.signature = args
                         .iter()
                         .map(|arg| self.describe(arg))
-                        .collect::<Partial<Vec<TypeDef>>>()?;
+                        .collect();
                     for (index, (name, typename)) in Iterator::zip(params.iter(), types.iter()).enumerate() {
                         let value = values[index].clone();
                         match typename.as_str() {
@@ -191,12 +188,12 @@ impl Task
                                 self.write(&name, value, self.signature[index].clone());
                             },
                             _ => {
-                                let typedef = self.read(typename)?;
-                                let Value::Type(check) = typedef else {return error!(CALL, typedef)};
+                                let typedef = self.read(typename);
+                                let Value::Type(check) = typedef else {error!(CALL, typedef)};
                                 if check.call(&value) {
                                     self.write(&name, value, *check);
                                 } else {
-                                    return error!(TYPE, typename, value);
+                                    error!(TYPE, typename, value);
                                 };
                             }
                         }
@@ -207,7 +204,7 @@ impl Task
                     let values: Vec<Value> = args
                         .iter()
                         .map(|arg| self.read(arg))
-                        .collect::<Partial<Vec<Value>>>()?;
+                        .collect();
                     self.write(
                         &address,
                         Value::new_list(values),
@@ -216,9 +213,9 @@ impl Task
                     Value::new_none()
                 },
                 Instruction::Range{address, start, end, step} => {
-                    let start = self.read(&start)?;
-                    let end = self.read(&end)?;
-                    let step = self.read(&step)?;
+                    let start = self.read(&start);
+                    let end = self.read(&end);
+                    let step = self.read(&step);
                     match (start, end, step) {
                         (Value::Number(start), Value::Number(end), Value::Number(step)) => {
                             self.write(
@@ -228,18 +225,18 @@ impl Task
                             );
                             Value:: new_none()
                         },
-                        _ => return error!(IMPL)
+                        _ => error!(IMPL)
                     }
                 }
                 Instruction::Record{address, keys, values} => {
                     let keys: Vec<Value> = keys
                         .iter()
                         .map(|arg| self.read(arg))
-                        .collect::<Partial<Vec<Value>>>()?;
+                        .collect();
                     let values: Vec<Value> = values
                         .iter()
                         .map(|arg| self.read(arg))
-                        .collect::<Partial<Vec<Value>>>()?;
+                        .collect();
                     self.write(
                         &address,
                         Value::new_record(Record::new(keys, values)),
@@ -248,7 +245,7 @@ impl Task
                     Value::new_none()
                 },
                 Instruction::Return(register) => {
-                    let value = self.read(&register)?;
+                    let value = self.read(&register);
                     self.path = 0;
                     value
 
@@ -325,23 +322,23 @@ impl Task
                 | Instruction::BIND
                 | Instruction::END
                 => continue,
-                _ => return error!(IMPL)
+                _ => error!(IMPL)
             };
-        } Ok(value)
+        } value
     }
-    fn read(&mut self, address: &str) -> Partial<Value>
+    fn read(&mut self, address: &str) -> Value
     // Reads a value and returns a copy.
     {
         match self.values.get(address) {
-            Some(x) => Ok(x.clone()),
+            Some(x) => x.clone(),
             None => error!(FIND, address)
         }
     }
-    fn describe(&mut self, address: &str) -> Partial<TypeDef>
+    fn describe(&mut self, address: &str) -> TypeDef
     // Reads a type and returns a copy.
     {
         match self.types.get(address) {
-            Some(x) => Ok(x.clone()),
+            Some(x) => x.clone(),
             None => error!(FIND, address)
         }
     }

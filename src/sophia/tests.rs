@@ -10,40 +10,35 @@ mod integration
     use crate::datatypes::record::Record;
     use crate::datatypes::types::TypeDef;
     use crate::sophia::arche::Value;
-    use crate::sophia::hemera::Partial;
     use crate::sophia::runtime::Runtime;
 
-    fn test(integration: usize, file: usize) -> Partial<Value>
+    fn test(integration: usize, file: usize) -> Value
     {
-        Runtime::run(format!("integration/SI-{integration:}/{file:}.sph").as_str())
+        Runtime::run(format!("integration/SI-{integration:}/{file:}.sph").as_str()).unwrap()
     }
-    fn assert_true(test: Partial<Value>)
+    fn assert_true(test: Value)
     {
-        assert_eq!(test, Ok(Value::new_boolean(true)))
+        assert_eq!(test, Value::new_boolean(true))
     }
-    fn assert_false(test: Partial<Value>)
+    fn assert_false(test: Value)
     {
-        assert_eq!(test, Ok(Value::new_boolean(false)))
+        assert_eq!(test, Value::new_boolean(false))
     }
-    fn assert_null(test: Partial<Value>)
+    fn assert_null(test: Value)
     {
-        assert_eq!(test, Ok(Value::new_none()))
+        assert_eq!(test, Value::new_none())
     }
-    fn assert_number(test: Partial<Value>, value: &str)
+    fn assert_number(test: Value, value: &str)
     {
-        assert_eq!(test, Ok(Value::new_number(value.to_rational().unwrap())));
+        assert_eq!(test, Value::new_number(value.to_rational().unwrap()));
     }
-    fn assert_string(test: Partial<Value>, value: &str)
+    fn assert_string(test: Value, value: &str)
     {
-        assert_eq!(test, Ok(Value::new_string(value.into())));
+        assert_eq!(test, Value::new_string(value.into()));
     }
-    fn assert_type(test: Partial<Value>, typedef: TypeDef)
+    fn assert_type(test: Value, typedef: TypeDef)
     {
-        assert_eq!(test, Ok(Value::new_type(typedef)))
-    }
-    fn assert_error(test: Partial<Value>, error: Partial<Value>)
-    {
-        assert_eq!(test, error);
+        assert_eq!(test, Value::new_type(typedef))
     }
 
     #[test]
@@ -102,28 +97,28 @@ mod integration
         // Empty list.
         assert_eq!(
             test(5, 0),
-            Ok(Value::new_list(vec![]))
+            Value::new_list(vec![])
         );
         // Single-element list.
         assert_eq!(
             test(5, 1),
-            Ok(Value::new_list(vec![
+            Value::new_list(vec![
                 Value::new_number(Rational::from_str("0").unwrap()),
-            ]))
+            ])
         );
         // Multiple-element list.
         assert_eq!(
             test(5, 2),
-            Ok(Value::new_list(vec![
+            Value::new_list(vec![
                 Value::new_number(Rational::from_str("0").unwrap()),
                 Value::new_number(Rational::from_str("1").unwrap()),
                 Value::new_number(Rational::from_str("2").unwrap()),
-            ]))
+            ])
         );
         // Nested list.
         assert_eq!(
             test(5, 3),
-            Ok(Value::new_list(vec![
+            Value::new_list(vec![
                 Value::new_list(vec![]),
                 Value::new_list(vec![
                     Value::new_number(Rational::from_str("0").unwrap()),
@@ -132,7 +127,7 @@ mod integration
                     Value::new_number(Rational::from_str("1").unwrap()),
                     Value::new_number(Rational::from_str("2").unwrap()),
                 ])
-            ]))
+            ])
         );
     }
     #[test]
@@ -141,21 +136,21 @@ mod integration
         // Empty record.
         assert_eq!(
             test(6, 0),
-            Ok(Value::new_record(Record::new(vec![], vec![])))
+            Value::new_record(Record::new(vec![], vec![]))
         );
         // Single-element record.
         assert_eq!(
             test(6, 1),
-            Ok(Value::new_record(Record::new(vec![
+            Value::new_record(Record::new(vec![
                 Value::new_string(format!("0")),
             ], vec![
                 Value::new_string(format!("0")),
-            ])))
+            ]))
         );
         // Multiple-element record.
         assert_eq!(
             test(6, 2),
-            Ok(Value::new_record(Record::new(vec![
+            Value::new_record(Record::new(vec![
                 Value::new_string(format!("0")),
                 Value::new_string(format!("1")),
                 Value::new_string(format!("2")),
@@ -163,12 +158,12 @@ mod integration
                 Value::new_string(format!("0")),
                 Value::new_string(format!("1")),
                 Value::new_string(format!("2")),
-            ])))
+            ]))
         );
         // Nested record.
         assert_eq!(
             test(6, 3),
-            Ok(Value::new_record(Record::new(vec![
+            Value::new_record(Record::new(vec![
                 Value::new_string(format!("0")),
                 Value::new_string(format!("1")),
                 Value::new_string(format!("3")),
@@ -186,7 +181,7 @@ mod integration
                     Value::new_string(format!("4")),
                     Value::new_string(format!("5")),
                 ])),
-            ])))
+            ]))
         );
     }
     #[test]
@@ -195,38 +190,38 @@ mod integration
         // Empty range.
         assert_eq!(
             test(7, 0),
-            Ok(Value::new_range(Range::new(
+            Value::new_range(Range::new(
                 Rational::from_str("0").unwrap(),
                 Rational::from_str("0").unwrap(),
                 Rational::from_str("0").unwrap(),
-            )))
+            ))
         );
         // Zero-step range.
         assert_eq!(
             test(7, 1),
-            Ok(Value::new_range(Range::new(
+            Value::new_range(Range::new(
                 Rational::from_str("0").unwrap(),
                 Rational::from_str("0").unwrap(),
                 Rational::from_str("0").unwrap(),
-            )))
+            ))
         );
         // Ascending range.
         assert_eq!(
             test(7, 2),
-            Ok(Value::new_range(Range::new(
+            Value::new_range(Range::new(
                 Rational::from_str("0").unwrap(),
                 Rational::from_str("2").unwrap(),
                 Rational::from_str("1").unwrap(),
-            )))
+            ))
         );
         // Descending range.
         assert_eq!(
             test(7, 3),
-            Ok(Value::new_range(Range::new(
+            Value::new_range(Range::new(
                 Rational::from_str("-1").unwrap(),
                 Rational::from_str("-5").unwrap(),
                 Rational::from_str("-2").unwrap(),
-            )))
+            ))
         );
     }
     #[test]

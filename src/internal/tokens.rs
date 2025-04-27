@@ -217,8 +217,8 @@ impl Token
             | Token::Name(_)
             | Token::Receive(_)
             => Node::leaf(self.clone()),
-            Token::EOL => return error!(SNTX, "Reached end of expression"),
-            _ => return error!(SNTX, format!("Invalid token: {self:?}"))
+            Token::EOL => error!(SNTX, "Reached end of expression"),
+            _ => error!(SNTX, format!("Invalid token: {self:?}"))
         };
         Ok(node)
     }
@@ -358,8 +358,8 @@ impl Token
                     }
                 )
             },
-            Token::EOL => return error!(SNTX, "Reached end of expression"),
-            _ => return error!(SNTX, format!("Invalid token: {self:?}"))
+            Token::EOL => error!(SNTX, "Reached end of expression"),
+            _ => error!(SNTX, format!("Invalid token: {self:?}"))
         };
         Ok(node)
     }
