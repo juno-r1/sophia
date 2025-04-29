@@ -1,7 +1,7 @@
 use malachite::Natural;
 use malachite::num::basic::traits::One;
 
-use crate::sophia::arche::Value;
+use crate::sophia::Value;
 
 use super::predicates::Predicate;
 

@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
-use crate::internal::instructions::Instruction;
-use crate::sophia::arche::Value;
-use crate::stdlib::std::Namespace;
+use crate::internal::Instruction;
+use crate::sophia::Value;
+use crate::stdlib::Namespace;
 
 type BuiltIn = fn(&Value) -> bool;
 type BuiltInCapturing = fn(&Value, Vec<&Value>) -> bool;

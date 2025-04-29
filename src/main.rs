@@ -5,7 +5,7 @@ extern crate macros;
 extern crate utils;
 
 mod sophia;
-use sophia::runtime::Runtime;
+use sophia::Runtime;
 
 mod datatypes;
 

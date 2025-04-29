@@ -1,8 +1,6 @@
 use crate::error;
-use crate::internal::instructions::Instruction;
-use crate::internal::nodes::Node;
-use crate::internal::patterns;
-use crate::stdlib::std::{new_namespace, Namespace};
+use crate::internal::{patterns, Instruction, Node};
+use crate::stdlib::{namespace, Namespace};
 
 use super::hemera::Partial;
 
@@ -12,7 +10,7 @@ pub fn parse(source: &str) -> Partial<(Vec<Instruction>, Namespace)>
 	let source: String = patterns::normalise(source);
 	// Check validity of source file.
 	if patterns::is_empty(&source) {
-		return Ok((Instruction::default(), new_namespace()));
+		return Ok((Instruction::default(), namespace::new()));
 	};
 	if patterns::is_unquoted(&source) {
 		error!(SNTX, "Unmatched quotes");

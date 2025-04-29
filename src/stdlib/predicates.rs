@@ -1,9 +1,8 @@
 use malachite::Natural;
 use malachite::num::basic::traits::One;
 
-use crate::sophia::arche::Value;
-
-use crate::datatypes::predicates::Predicate;
+use crate::datatypes::Predicate;
+use crate::sophia::Value;
 
 impl Predicate
 // Standard library predicates.

@@ -2,14 +2,10 @@ use regex::Captures;
 use utils::coerce::Coerce;
 use utils::re::{re_extract, re_const};
 
-use crate::internal::lexer::Lexer;
-use crate::internal::patterns;
-use crate::internal::tokens::Token;
-use crate::sophia::arche::Value;
-use crate::sophia::hemera::Partial;
-use crate::stdlib::std::{new_namespace, Namespace};
+use crate::sophia::{Partial, Value};
+use crate::stdlib::{namespace, Namespace};
 
-use super::instructions::Instruction;
+use super::{patterns, Instruction, Lexer, Token};
 
 #[derive(Debug, Clone)]
 pub struct Node {
@@ -329,7 +325,7 @@ impl Node
 	// Rust is a bit annoying about mutable references, so reaching a node is O(n).
 	{
         let mut instructions: Vec<Instruction> = vec![];
-        let mut namespace: Namespace = new_namespace();
+        let mut namespace: Namespace = namespace::new();
 		let mut path: Vec<usize> = vec![];
 		let mut index: usize = 0;
         let mut constant: isize = -1;

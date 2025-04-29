@@ -4,39 +4,10 @@ use std::env::current_dir;
 use serde::Deserialize;
 use serde_json;
 
-use crate::datatypes::functions::FuncDef;
-use crate::datatypes::methods::Method;
-use crate::datatypes::types::TypeDef;
-use crate::sophia::arche::Value;
-use crate::sophia::runtime::Task;
+use crate::datatypes::{FuncDef, Method, TypeDef};
+use crate::sophia::{Task, Value};
 
-pub type Namespace = BTreeMap<String, Value>;
-pub type Typespace = BTreeMap<String, TypeDef>;
-
-pub fn stdlib(user: Namespace) -> Namespace
-// Build the standard library.
-{
-	let mut namespace: Namespace = user;
-	namespace.extend(TypeDef::stdlib());
-	namespace.extend(FuncDef::stdlib());
-	namespace
-}
-pub fn new_namespace() -> Namespace
-// Generates the minimum required namespace.
-{
-	BTreeMap::from([
-		(format!("0"), Value::new_none()),
-		(format!("-1"), Value::new_none())
-	])
-}
-pub fn infer_namespace(values: &Namespace) -> Typespace
-// Build a typespace from a namespace.
-{
-	values
-	.iter()
-	.map(|(k, v)| (k.clone(), TypeDef::infer(v)))
-	.collect()
-}
+use super::Namespace;
 
 macro_rules! new_type
 // Produces a key-value pair with a standard library type.
@@ -81,8 +52,7 @@ macro_rules! std_mod
 		{
 			use macros::std_fn;
 
-			use crate::sophia::arche::Value;
-			use crate::sophia::runtime::Task;
+			use crate::sophia::{Task, Value};
 
 			$(std_fn!$method)+
 		}
@@ -92,8 +62,7 @@ macro_rules! std_mod
 		{
 			use macros::std_fn;
 
-			use crate::sophia::arche::Value;
-			use crate::sophia::runtime::Task;
+			use crate::sophia::{Task, Value};
 
 			$($statement)+
 			$(std_fn!$method)+

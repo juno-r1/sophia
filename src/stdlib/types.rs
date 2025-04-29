@@ -1,10 +1,9 @@
-use crate::datatypes::predicates::Predicate;
-use crate::datatypes::types::TypeDef;
+use crate::datatypes::{Predicate, TypeDef};
 
 use malachite::Rational;
 use malachite::num::basic::traits::Zero;
 
-use crate::sophia::arche::Value;
+use crate::sophia::Value;
 
 impl TypeDef
 // Standard library types.

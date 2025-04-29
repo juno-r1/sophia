@@ -3,11 +3,8 @@ use std::hash::Hash;
 use malachite::num::basic::traits::Zero;
 use malachite::Rational;
 
-use crate::datatypes::functions::FuncDef;
-use crate::datatypes::range::Range;
-use crate::datatypes::record::Record;
-use crate::datatypes::types::TypeDef;
-use crate::internal::tokens::Token;
+use crate::datatypes::{FuncDef, Range, Record, TypeDef};
+use crate::internal::Token;
 
 // Enum of all concrete data types.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

@@ -6,11 +6,8 @@ mod integration
     use malachite::Rational;
     use utils::coerce::Coerce;
 
-    use crate::datatypes::range::Range;
-    use crate::datatypes::record::Record;
-    use crate::datatypes::types::TypeDef;
-    use crate::sophia::arche::Value;
-    use crate::sophia::runtime::Runtime;
+    use crate::datatypes::{Range, Record, TypeDef};
+    use crate::sophia::{Runtime, Value};
 
     fn test(integration: usize, file: usize) -> Value
     {

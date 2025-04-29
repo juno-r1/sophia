@@ -4,12 +4,10 @@ use std::panic;
 use std::path;
 use std::thread;
 
-use crate::datatypes::range::Range;
-use crate::datatypes::record::Record;
-use crate::datatypes::types::TypeDef;
+use crate::datatypes::{Range, Record, TypeDef};
 use crate::error;
-use crate::internal::instructions::Instruction;
-use crate::stdlib::std::{infer_namespace, stdlib, Namespace, Typespace};
+use crate::internal::Instruction;
+use crate::stdlib::{namespace, Namespace, Typespace};
 
 use super::arche::Value;
 use super::hemera::Error;
@@ -38,11 +36,10 @@ impl Runtime
         let runtime = Runtime::new();
         // Spawn main task.
         let mut main = runtime.spawn(file)?;
+        // Execute main task.
         let builder = thread::Builder::new().name(format!("sph_main"));
         let handler = builder.spawn(move || main.run()).unwrap();
         Ok(handler.join().unwrap())
-        // Execute main task.
-        // Ok(main.run())
     }
 }
 
@@ -115,8 +112,8 @@ impl Task
 	fn new(instructions: Vec<Instruction>, namespace: Namespace) -> Task
 	{
         // Build standard library.
-        let values = stdlib(namespace);
-        let types = infer_namespace(&values);
+        let values = namespace::stdlib(namespace);
+        let types = namespace::infer(&values);
         // Create new task.
 		Task{
 			instructions,

@@ -1,9 +1,8 @@
 use std::collections::BTreeMap;
 
-use crate::internal::instructions::Instruction;
-use crate::sophia::arche::Value;
-use crate::sophia::runtime::Task;
-use crate::stdlib::std::Namespace;
+use crate::internal::Instruction;
+use crate::sophia::{Task, Value};
+use crate::stdlib::Namespace;
 
 use super::types::TypeDef;
 

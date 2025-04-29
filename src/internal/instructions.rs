@@ -1,5 +1,4 @@
-use crate::internal::nodes::Node;
-use crate::internal::tokens::Token;
+use super::{Node, Token};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Instruction
@@ -152,6 +151,19 @@ pub enum Instruction
 // }
 
 impl Instruction
+// Utility methods.
+{
+	pub fn default() -> Vec<Instruction>
+	{
+		vec![
+			Instruction::START,
+			Instruction::Return(format!("-1")),
+			Instruction::END
+		]
+	}
+}
+
+impl Instruction
 // Instruction constructors.
 {
 	pub fn new_command(name: &str, address: &str, args: Vec<String>) -> Instruction
@@ -256,14 +268,6 @@ impl Instruction
 			address: address.into(),
 			register: register.into()
 		}
-	}
-	pub fn default() -> Vec<Instruction>
-	{
-		vec![
-			Instruction::START,
-			Instruction::Return(format!("-1")),
-			Instruction::END
-		]
 	}
 }
 

@@ -1,9 +1,9 @@
 use malachite::Rational;
 
 use crate::error;
-use crate::internal::lexer::Lexer;
-use crate::internal::nodes::Node;
-use crate::sophia::hemera::Partial;
+use crate::sophia::Partial;
+
+use super::{Lexer, Node};
 
 const LBP_MAP: [(&str, usize); 29] = [
     ("RIGHT_BRACKET", 1),

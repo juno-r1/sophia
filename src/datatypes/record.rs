@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 // use malachite::num::basic::traits::One;
 // use utils::coerce::Coerce;
 
-use crate::sophia::arche::Value;
+use crate::sophia::Value;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 // Custom implementation for insertion order keymap.

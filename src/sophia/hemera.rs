@@ -1,4 +1,4 @@
-use crate::datatypes::types::TypeDef;
+use crate::datatypes::TypeDef;
 
 use super::arche::Value;
 
@@ -22,34 +22,34 @@ macro_rules! error
 {
     // "Value {:?} is not callable"
 	(CALL, $value:expr) => {
-		panic!("{:?}", crate::sophia::hemera::Error::CALL($value.clone()))
+		panic!("{:?}", crate::sophia::Error::CALL($value.clone()))
 	};
     // "Failed dispatch: {} has no signature {:?}"
     (DISP, $signature:expr) => {
-        panic!("{:?}", crate::sophia::hemera::Error::DISP($signature.clone()))
+        panic!("{:?}", crate::sophia::Error::DISP($signature.clone()))
 	};
     // "Invalid file: {}"
     (FILE, $name:expr) => {
-        panic!("{:?}", crate::sophia::hemera::Error::FILE($name.into()))
+        panic!("{:?}", crate::sophia::Error::FILE($name.into()))
 	};
     // "Undefined name: {}"
     (FIND, $name:expr) => {
-        panic!("{:?}", crate::sophia::hemera::Error::FIND($name.into()))
+        panic!("{:?}", crate::sophia::Error::FIND($name.into()))
 	};
     // "Not implemented"
     (IMPL) => {
-        panic!("{:?}", crate::sophia::hemera::Error::IMPL)
+        panic!("{:?}", crate::sophia::Error::IMPL)
 	};
     // "Invalid value for type {}: {:?}"
     (TYPE, $name:expr, $value:expr) => {
-        panic!("{:?}", crate::sophia::hemera::Error::TYPE($name.into(), $value.clone()))
+        panic!("{:?}", crate::sophia::Error::TYPE($name.into(), $value.clone()))
 	};
     // Syntax error
     (SNTX, $message:expr) => {
-        panic!("{:?}", crate::sophia::hemera::Error::SNTX($message.into()))
+        panic!("{:?}", crate::sophia::Error::SNTX($message.into()))
     };
     // User error
     (USER, $message:expr) => {
-        panic!("{:?}", crate::sophia::hemera::Error::USER($message.into()))
+        panic!("{:?}", crate::sophia::Error::USER($message.into()))
     };
 }

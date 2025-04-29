@@ -2,9 +2,9 @@ use regex::CaptureMatches;
 use utils::coerce::Coerce;
 use utils::string::unescape;
 
-use crate::internal::nodes::Node;
-use crate::internal::tokens::Token;
-use crate::sophia::hemera::Partial;
+use crate::sophia::Partial;
+
+use super::{Node, Token};
 
 #[derive(Debug)]
 pub struct Lexer<'a> {
