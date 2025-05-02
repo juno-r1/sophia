@@ -16,7 +16,7 @@
 #[cfg(test)]
 mod patterns
 {
-    use crate::internal::patterns;
+    use crate::parser::patterns;
     
     #[test]
     fn is_empty()

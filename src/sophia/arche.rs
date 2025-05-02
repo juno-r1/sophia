@@ -1,10 +1,9 @@
-use std::hash::Hash;
+use std::hash::{DefaultHasher, Hash};
 
-use malachite::num::basic::traits::Zero;
 use malachite::Rational;
 
 use crate::datatypes::{FuncDef, Range, Record, TypeDef};
-use crate::internal::Token;
+use crate::parser::{patterns, Node};
 
 // Enum of all concrete data types.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -64,26 +63,14 @@ impl Value
 	{
 		Value::None
 	}
-	pub fn constant(token: &Token) -> Value
-	// Map literals to constants.
-	{
-		match token {
-			Token::Number(x) => Value::new_number(x.clone()),
-			Token::Boolean(x) => Value::new_boolean(*x),
-			Token::String(x) => Value::new_string(x.clone()),
-			Token::Range => Value::new_range(Range::new(Rational::ZERO, Rational::ZERO, Rational::ZERO)),
-			Token::List => Value::new_list(vec![]),
-			Token::Record => Value::new_record(Record::new(vec![], vec![])),
-			_ => Value::new_none()
-		}
-	}
 }
 
 impl PartialOrd for Value
 {
 	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering>
 	{
-		self.to_key().partial_cmp(&other.to_key())
+		let mut hasher = DefaultHasher::new();
+		self.hash(&mut hasher).partial_cmp(&other.hash(&mut hasher))
 	}
 }
 
@@ -96,11 +83,47 @@ impl Ord for Value
 }
 
 impl Value
+// Testing utilities.
 {
-	fn to_key(&self) -> String
-	// Converts value to ordered hashable key.
-	// Unstable implementation.
+	pub fn test(source: &str) -> Value
+	// Test utility for parsing a value from a string.
 	{
-		format!("{self:?}")
+		let tree: Node = Node::tree(&patterns::normalise(source)).expect(&format!("Invalid test value: {source}"));
+		tree.constant()
 	}
+	pub fn assert(self, other: &str)
+	{
+		assert_eq!(self, Value::test(other));
+	}
+	pub fn assert_type(self, other: TypeDef)
+	{
+		match self {
+			Value::Type(x) => assert_eq!(*x, other),
+			_ => panic!()
+		}
+	}
+	// pub fn assert_true(self)
+    // {
+    //     assert_eq!(self, Value::new_boolean(true))
+    // }
+    // pub fn assert_false(self)
+    // {
+    //     assert_eq!(self, Value::new_boolean(false))
+    // }
+    // pub fn assert_null(self)
+    // {
+    //     assert_eq!(self, Value::new_none())
+    // }
+    // pub fn assert_number(self, value: &str)
+    // {
+    //     assert_eq!(self, Value::new_number(value.to_rational().unwrap()));
+    // }
+    // pub fn assert_string(self, value: &str)
+    // {
+    //     assert_eq!(self, Value::new_string(value.into()));
+    // }
+    // pub fn assert_type(self, typedef: TypeDef)
+    // {
+    //     assert_eq!(self, Value::new_type(typedef))
+    // }
 }

@@ -1,7 +1,6 @@
 mod arche;
 mod hemera;
 mod iris;
-mod kadmos;
 mod runtime;
 mod tests;
 

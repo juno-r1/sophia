@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::internal::Instruction;
+use crate::parser::Instruction;
 use crate::sophia::{Task, Value};
 use crate::stdlib::Namespace;
 

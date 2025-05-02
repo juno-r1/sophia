@@ -560,6 +560,7 @@ impl Instruction {
 	fn sequence_end(node: &Node) -> Vec<Instruction>
 	{
 		match node.nodes[0].token {
+			// Range constructor.
 			Token::Pair if node.nodes[0].nodes.len() == 3 => vec![
 				Instruction::new_range(
 					&node.register,
@@ -568,6 +569,7 @@ impl Instruction {
 					&node.nodes[0].nodes[2].register
 				)
 			],
+			// Record constructor.
 			Token::Pair => vec![
 				Instruction::new_record(
 					&node.register,
@@ -581,6 +583,7 @@ impl Instruction {
 					.collect()
 				)
 			],
+			// List constructor.
 			_ => vec![
 				Instruction::new_list(
 					&node.register,

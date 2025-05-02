@@ -2,6 +2,10 @@ use regex::Captures;
 use utils::coerce::Coerce;
 use utils::re::{re_extract, re_const};
 
+use malachite::num::basic::traits::Zero;
+use malachite::Rational;
+
+use crate::datatypes::{Range, Record};
 use crate::sophia::{Partial, Value};
 use crate::stdlib::{namespace, Namespace};
 
@@ -366,7 +370,7 @@ impl Node
                             constant -= 1;
                             namespace.insert(
                                 constant.to_string(),
-                                Value::constant(&node.token)
+                                node.token.constant()
                             );
                             constant.to_string()
                         },
@@ -391,6 +395,59 @@ impl Node
 					}
 				}
 			}
+		}
+	}
+}
+
+impl Node
+// Testing utilities.
+{
+	pub fn constant(&self) -> Value
+	// Recursive parse of constant values.
+	{
+		match &self.token {
+			Token::Number(x) => Value::new_number(x.clone()),
+			Token::String(x) => Value::new_string(x.clone()),
+			Token::Boolean(x) => Value::new_boolean(x.clone()),
+			Token::Range => Value::new_range(Range::new(Rational::ZERO, Rational::ZERO, Rational::ZERO)),
+			Token::List => Value::new_list(vec![]),
+			Token::Record => Value::new_record(Record::new(vec![], vec![])),
+			Token::Null => Value::None,
+			Token::Sequence(_) => match self.nodes[0].token {
+				// Range constructor.
+				Token::Pair if self.nodes[0].nodes.len() == 3 =>
+                    match (
+                        self.nodes[0].nodes[0].constant(),
+                        self.nodes[0].nodes[1].constant(),
+                        self.nodes[0].nodes[2].constant()
+                    ) {
+                        (
+                            Value::Number(x),
+                            Value::Number(y),
+                            Value::Number(z)
+                        ) => Value::new_range(Range::new(*x, *y, *z)),
+                        _ => panic!("Invalid test parse: {self:?}")
+                    },
+				// Record constructor.
+				Token::Pair => Value::new_record(Record::new(
+                    self.nodes
+                    .iter()
+                    .map(|x| x.nodes[0].constant())
+                    .collect(),
+                    self.nodes
+                    .iter()
+                    .map(|x| x.nodes[1].constant())
+                    .collect()
+                )),
+				// List constructor.
+				_ => Value::new_list(
+                    self.nodes
+                    .iter()
+                    .map(|x| x.constant())
+                    .collect()
+				)
+			},
+			_ => panic!("Invalid test parse: {self:?}")
 		}
 	}
 }

@@ -1,7 +1,9 @@
 use malachite::Rational;
+use malachite::num::basic::traits::Zero;
 
+use crate::datatypes::{Range, Record};
 use crate::error;
-use crate::sophia::Partial;
+use crate::sophia::{Partial, Value};
 
 use super::{Lexer, Node};
 
@@ -186,9 +188,7 @@ impl Token
             },
             Token::Sequence(expr) => Node::branch(
                 Token::Sequence(expr.clone()),
-                if expr.is_empty() {
-                    vec![]
-                } else {
+                {
                     let contents = Node::tree(&expr)?;
                     match contents.token {
                         Token::Concatenator => contents.nodes,
@@ -386,5 +386,18 @@ impl Token
             }
         };
         return 0
-    }
+    } 
+	pub fn constant(&self) -> Value
+	// Map literals to constants.
+	{
+		match self {
+			Token::Number(x) => Value::new_number(x.clone()),
+			Token::Boolean(x) => Value::new_boolean(*x),
+			Token::String(x) => Value::new_string(x.clone()),
+			Token::Range => Value::new_range(Range::new(Rational::ZERO, Rational::ZERO, Rational::ZERO)),
+			Token::List => Value::new_list(vec![]),
+			Token::Record => Value::new_record(Record::new(vec![], vec![])),
+			_ => Value::new_none()
+		}
+	}
 }

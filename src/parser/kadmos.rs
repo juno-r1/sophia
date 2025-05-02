@@ -1,10 +1,10 @@
 use crate::error;
-use crate::internal::{patterns, Instruction, Node};
+use crate::parser::{patterns, Instruction, Node};
+use crate::sophia::Partial;
 use crate::stdlib::{namespace, Namespace};
 
-use super::hemera::Partial;
-
 pub fn parse(source: &str) -> Partial<(Vec<Instruction>, Namespace)>
+// Parse a source file into a module.
 {
 	// Normalise source file.
 	let source: String = patterns::normalise(source);

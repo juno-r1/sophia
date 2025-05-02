@@ -6,14 +6,13 @@ use std::thread;
 
 use crate::datatypes::{Range, Record, TypeDef};
 use crate::error;
-use crate::internal::Instruction;
+use crate::parser::{parse, Instruction};
 use crate::stdlib::{namespace, Namespace, Typespace};
 
 use super::arche::Value;
 use super::hemera::Error;
 use super::hemera::Partial;
 use super::iris::Pool;
-use super::kadmos::parse;
 
 #[derive(Debug)]
 pub struct Runtime {
@@ -109,7 +108,7 @@ pub struct Task {
 
 impl Task
 {
-	fn new(instructions: Vec<Instruction>, namespace: Namespace) -> Task
+	pub fn new(instructions: Vec<Instruction>, namespace: Namespace) -> Task
 	{
         // Build standard library.
         let values = namespace::stdlib(namespace);

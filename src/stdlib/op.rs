@@ -251,7 +251,6 @@ std_mod!
 {
 	exp: {
 		use malachite::Rational;
-		// use malachite::num::arithmetic::traits::Pow;
 		use malachite::num::basic::traits::One;
 	};
 	std_fn!
@@ -268,7 +267,7 @@ std_mod!
 			} else if i < 0 {
 				while i != 0 {
 					acc /= &x0;
-					i -= Rational::ONE;
+					i += Rational::ONE;
 				};
 			};
 			acc

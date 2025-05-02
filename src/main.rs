@@ -9,7 +9,7 @@ use sophia::Runtime;
 
 mod datatypes;
 
-mod internal;
+mod parser;
 
 mod stdlib;
 

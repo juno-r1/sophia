@@ -1,7 +1,7 @@
 pub mod op;
 pub mod predicates;
 pub mod std;
-pub mod test;
+pub mod tests;
 pub mod types;
 
 pub mod namespace;
