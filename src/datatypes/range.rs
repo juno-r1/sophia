@@ -1,8 +1,10 @@
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
-use malachite::num::arithmetic::traits::{Abs, Pow};
+use malachite::num::arithmetic::traits::Abs;
 use malachite::Rational;
-use malachite::num::basic::traits::{One, Zero};
+use malachite::num::basic::traits::One;
+use utils::coerce::Coerce;
+use utils::number::modulo;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Range {
@@ -28,16 +30,17 @@ impl Range
         && x <= &self.end
         && ((x - &self.start) / &self.step).into_denominator() == Rational::ONE
     }
-    pub fn get(&self, index: Rational) -> Option<Rational>
+    pub fn get(&self, index: usize) -> Option<Rational>
     // Enables O(1) indexing without mutation.
     {
+        let i = Rational::from(index);
         if self.step == 0 {
             return None;
         };
-        let x = if index >= 0 {
-            &self.start + &self.step * index
+        let x = if i >= 0 {
+            &self.start + &self.step * i
         } else {
-            &self.end + &self.step * (index + Rational::ONE)
+            &self.end + &self.step * (i + Rational::ONE)
         };
         if self.start <= x && x <= self.end {
             Some(x)
@@ -45,12 +48,12 @@ impl Range
             None
         }
     }
-    pub fn len(&self) -> Rational
+    pub fn len(&self) -> usize
     {
         if self.step == 0 {
-            Rational::ZERO
+            0
         } else {
-            ((&self.end - &self.start) / &self.step) + Rational::ONE
+            ((&self.end - &self.start) / &self.step).to_usize() + 1
         }
     }
 }
@@ -148,31 +151,30 @@ impl Div<Rational> for Range
     }
 }
 
-impl Pow<Rational> for Range
+impl Range
+// Set operations.
 {
-    type Output = Range;
-
-    fn pow(self, exp: Rational) -> Self::Output
+    pub fn intersection(self, other: Range) -> Range
+    // Creates a range containing the numbers in both inputs.
     {
-        let mut acc = Rational::ONE;
-        let mut i = exp;
-        if i > 0 {
-            while i != 0 {
-                acc *= &self.step;
-                i -= Rational::ONE;
-            };
-        } else if i < 0 {
-            while i != 0 {
-                acc /= &self.step;
-                i -= Rational::ONE;
-            };
+        let (mut n, mut m) = (self.step.clone(), other.step.clone());
+        // Euclidean algorithm for greatest common divisor.
+        while m != 0 {
+            (n, m) = (m.clone(), modulo(n, m.clone()));
         };
-        Range::new(
-            self.start * &acc / &self.step,
-            self.end * &acc / &self.step,
-            acc
-        )
+
+        self
     }
+    // n, m = self.step, other.step
+    // while m != 0: # Euclidean algorithm for greatest common divisor
+    // 	n, m = m, n % m
+    // if n % (other.start - self.start) == 0: # Solution for intersection of slices
+    // 	step = (self.step * other.step) / n # Step of intersection
+    // 	ranges = [self.start, self.end, other.start, other.end].sort()
+    // 	lower, upper = ranges[1], ranges[2]
+    // 	lower = lower - (lower % step) + step # Gets highest lower bound
+    // 	upper = upper - (upper % step) # Gets lowest upper bound
+    // 	return slice(lower, upper, m)
 }
 
 impl Iterator for Range
@@ -208,13 +210,5 @@ impl ToString for Range
             self.end,
             self.step
         )
-    }
-}
-
-impl Range
-{
-    pub fn rem(self) -> Rational
-    {
-        self.step
     }
 }

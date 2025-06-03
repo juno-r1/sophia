@@ -1,0 +1,21 @@
+{
+	"name": "&",
+	"methods": {
+		"ins_ss": {
+			"signature": [
+				"string",
+				"string"
+			],
+			"returns": "string",
+			"partial": false
+		},
+        "ins_rr": {
+			"signature": [
+				"range",
+				"range"
+			],
+			"returns": "range",
+			"partial": false
+		}
+	}
+}

@@ -94,6 +94,11 @@ mod functions
             Value::test("[1:5:1]"),
             Value::test("1")
         ]).assert("[2:6:1]");
+        // string (string, string)
+        task.add_ss(vec![
+            Value::test(r#"'abc'"#),
+            Value::test(r#"'def'"#)
+        ]).assert(r#"'abcdef'"#);
     }
     #[test]
     fn div()
@@ -143,8 +148,12 @@ mod functions
         ]).assert("8");
         task.exp_b(vec![
             Value::test("2"),
-            Value::test("-1")
-        ]).assert("0.5");
+            Value::test("-2")
+        ]).assert("0.25");
+        task.exp_b(vec![
+            Value::test("2"),
+            Value::test("0")
+        ]).assert("1");
     }
     #[test]
     fn gql()
@@ -181,6 +190,73 @@ mod functions
             Value::test("1"),
             Value::test("2")
         ]).assert("false");
+    }
+    #[test]
+    fn idx()
+    {
+        let mut task = Task::new(vec![], BTreeMap::new());
+        // string? (string, integer)
+        task.idx_si(vec![
+            Value::test(r#"'abc'"#),
+            Value::test("0")
+        ]).assert(r#"'a'"#);
+        task.idx_si(vec![
+            Value::test(r#"'abc'"#),
+            Value::test("-1")
+        ]).assert(r#"'c'"#);
+        task.idx_si(vec![
+            Value::test(r#"'abc'"#),
+            Value::test("3")
+        ]).assert("null");
+        // string? (string, range)
+        task.idx_sr(vec![
+            Value::test(r#"'abcde'"#),
+            Value::test("[0:4:2]")
+        ]).assert(r#"'ace'"#);
+        task.idx_sr(vec![
+            Value::test(r#"'abcde'"#),
+            Value::test("[4:0:-2]")
+        ]).assert(r#"'eca'"#);
+        task.idx_sr(vec![
+            Value::test(r#"'abcde'"#),
+            Value::test("[0:4:0.5]")
+        ]).assert("null");
+        // number? (range, integer)
+        task.idx_ri(vec![
+            Value::test("[0:4:2]"),
+            Value::test("0")
+        ]).assert("0");
+        task.idx_ri(vec![
+            Value::test("[0:4:2]"),
+            Value::test("-1")
+        ]).assert("4");
+        task.idx_ri(vec![
+            Value::test("[0:4:2]"),
+            Value::test("3")
+        ]).assert("null");
+        // range? (range, range)
+        task.idx_rr(vec![
+            Value::test("[0:8:2]"),
+            Value::test("[0:4:2]")
+        ]).assert("[0:8:4]");
+        task.idx_rr(vec![
+            Value::test("[0:8:2]"),
+            Value::test("[4:0:-2]")
+        ]).assert("[8:0:-4]");
+        task.idx_rr(vec![
+            Value::test("[0:8:2]"),
+            Value::test("[0:4:0.5]")
+        ]).assert("null");
+    }
+    #[test]
+    fn ins()
+    {
+        let mut task = Task::new(vec![], BTreeMap::new());
+        // string (string, string)
+        task.ins_ss(vec![
+            Value::test(r#"'abc'"#),
+            Value::test(r#"'cde'"#)
+        ]).assert(r#"'c'"#);
     }
     #[test]
     fn lnd()
@@ -306,6 +382,18 @@ mod functions
             Value::test("2")
         ]).assert("1");
         task.mdl_b(vec![
+            Value::test("-5"),
+            Value::test("2")
+        ]).assert("1");
+        task.mdl_b(vec![
+            Value::test("5"),
+            Value::test("-2")
+        ]).assert("1");
+        task.mdl_b(vec![
+            Value::test("-5"),
+            Value::test("-2")
+        ]).assert("1");
+        task.mdl_b(vec![
             Value::test("1"),
             Value::test("0")
         ]).assert("null");
@@ -340,6 +428,45 @@ mod functions
         ]).assert("true");
     }
     #[test]
+    fn sbs()
+    {
+        let mut task = Task::new(vec![], BTreeMap::new());
+        // boolean (string, string)
+        task.sbs_ss(vec![
+            Value::test(r#"'a'"#),
+            Value::test(r#"'abc'"#)
+        ]).assert("true");
+        task.sbs_ss(vec![
+            Value::test(r#"'ab'"#),
+            Value::test(r#"'abc'"#)
+        ]).assert("true");
+        task.sbs_ss(vec![
+            Value::test(r#"'ac'"#),
+            Value::test(r#"'abc'"#)
+        ]).assert("false");
+        task.sbs_ss(vec![
+            Value::test(r#"'d'"#),
+            Value::test(r#"'abc'"#)
+        ]).assert("false");
+        // boolean (number, range)
+        task.sbs_nr(vec![
+            Value::test("1"),
+            Value::test("[1:5:2]")
+        ]).assert("true");
+        task.sbs_nr(vec![
+            Value::test("0"),
+            Value::test("[1:5:2]")
+        ]).assert("false");
+        task.sbs_nr(vec![
+            Value::test("6"),
+            Value::test("[1:5:2]")
+        ]).assert("false");
+        task.sbs_nr(vec![
+            Value::test("2"),
+            Value::test("[1:5:2]")
+        ]).assert("false");
+    }
+    #[test]
     fn sfe()
     {
         // type (any)
@@ -371,34 +498,20 @@ mod functions
             Value::test("[1:5:1]"),
             Value::test("1")
         ]).assert("[0:4:1]");
+        // string (string, string)
+        task.sub_ss(vec![
+            Value::test(r#"'abcdef'"#),
+            Value::test(r#"'ace'"#)
+        ]).assert(r#"'bdf'"#);
+    }
+    #[test]
+    fn uni()
+    {
+        let mut task = Task::new(vec![], BTreeMap::new());
+        // string (string, string)
+        task.uni_ss(vec![
+            Value::test(r#"'abc'"#),
+            Value::test(r#"'cde'"#)
+        ]).assert(r#"'abcde'"#);
     }
 }
-
-// pub fn safe_index(&self, index: Rational) -> Option<Value>
-// // Index list without panic.
-// {
-//     match self {
-//         Record{k: None, v, l} => {
-//             // Integer indices only!
-//             if index.denominator_ref() != &Natural::ONE {
-//                 return None;
-//             };
-//             // Convert index to usize to play nice with Rust.
-//             let i: usize = if index >= 0 {
-//                 index.to_usize()
-//             } else if -(&index) > *l {
-//                 *l - index.to_usize()
-//             } else {
-//                 return None;
-//             };
-//             // Use normalised index.
-//             // Rust is smart enough to know that usize can't be less than 0.
-//             if &i < l {
-//                 Some(v[i].clone())
-//             } else {
-//                 None
-//             }
-//         },
-//         Record{..} => None,
-//     }
-// }

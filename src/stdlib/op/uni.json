@@ -1,0 +1,21 @@
+{
+	"name": "|",
+	"methods": {
+		"uni_ss": {
+			"signature": [
+				"string",
+				"string"
+			],
+			"returns": "string",
+			"partial": false
+		},
+        "uni_rr": {
+			"signature": [
+				"range",
+				"range"
+			],
+			"returns": "range",
+			"partial": false
+		}
+	}
+}

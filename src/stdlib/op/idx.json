@@ -1,0 +1,37 @@
+{
+	"name": "[",
+	"methods": {
+		"idx_si": {
+			"signature": [
+				"string",
+				"integer"
+			],
+			"returns": "string",
+			"partial": true
+		},
+        "idx_sr": {
+			"signature": [
+				"string",
+				"range"
+			],
+			"returns": "string",
+			"partial": true
+		},
+        "idx_ri": {
+			"signature": [
+				"range",
+				"integer"
+			],
+			"returns": "number",
+			"partial": true
+		},
+        "idx_rr": {
+			"signature": [
+				"range",
+				"range"
+			],
+			"returns": "range",
+			"partial": true
+		}
+	}
+}

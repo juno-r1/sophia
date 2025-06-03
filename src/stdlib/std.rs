@@ -140,67 +140,12 @@ impl FuncDef
 			[
 				// Operators.
 				new_fn!(
-					"op/sfe",
-					sfe_u
-				),
-				new_fn!(
-					"op/eql",
-					eql_b
-				),
-				new_fn!(
-					"op/nql",
-					nql_b
-				),
-				new_fn!(
-					"op/ltn",
-					ltn_b
-				),
-				new_fn!(
-					"op/gtn",
-					gtn_b
-				),
-				new_fn!(
-					"op/lql",
-					lql_b
-				),
-				new_fn!(
-					"op/gql",
-					gql_b
-				),
-				new_fn!(
-					"op/lnt",
-					lnt_u
-				),
-				new_fn!(
-					"op/lnd",
-					lnd_b
-				),
-				new_fn!(
-					"op/lor",
-					lor_b
-				),
-				new_fn!(
-					"op/lxr",
-					lxr_b
-				),
-				new_fn!(
 					"op/add",
 					add_u,
 					add_r,
 					add_b,
-					add_rn
-				),
-				new_fn!(
-					"op/sub",
-					sub_u,
-					sub_r,
-					sub_b,
-					sub_rn
-				),
-				new_fn!(
-					"op/mul",
-					mul_b,
-					mul_rn
+					add_rn,
+					add_ss
 				),
 				new_fn!(
 					"op/div",
@@ -208,18 +153,90 @@ impl FuncDef
 					div_rn
 				),
 				new_fn!(
+					"op/eql",
+					eql_b
+				),
+				new_fn!(
 					"op/exp",
 					exp_b
+				),
+				new_fn!(
+					"op/gql",
+					gql_b
+				),
+				new_fn!(
+					"op/gtn",
+					gtn_b
+				),
+				new_fn!(
+					"op/idx",
+					idx_si,
+					idx_sr,
+					idx_ri,
+					idx_rr
+				),
+				new_fn!(
+					"op/ins",
+					ins_ss
+				),
+				new_fn!(
+					"op/lnd",
+					lnd_b
+				),
+				new_fn!(
+					"op/lnt",
+					lnt_u
+				),
+				new_fn!(
+					"op/lor",
+					lor_b
+				),
+				new_fn!(
+					"op/lql",
+					lql_b
+				),
+				new_fn!(
+					"op/ltn",
+					ltn_b
+				),
+				new_fn!(
+					"op/lxr",
+					lxr_b
 				),
 				new_fn!(
 					"op/mdl",
 					mdl_b
 				),
-				// new_function!(
-				// 	"in",
-				// 	b_sbs_string,
-				// 	b_sbs_range
-				// ),
+				new_fn!(
+					"op/mul",
+					mul_b,
+					mul_rn
+				),
+				new_fn!(
+					"op/nql",
+					nql_b
+				),
+				new_fn!(
+					"op/sbs",
+					sbs_ss,
+					sbs_nr
+				),
+				new_fn!(
+					"op/sfe",
+					sfe_u
+				),
+				new_fn!(
+					"op/sub",
+					sub_u,
+					sub_r,
+					sub_b,
+					sub_rn,
+					sub_ss
+				),
+				new_fn!(
+					"op/uni",
+					uni_ss
+				),
 			]
 		)
 	}

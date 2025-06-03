@@ -4,17 +4,9 @@
 		"exp_b": {
 			"signature": [
 				"number",
-				"number"
+				"integer"
 			],
 			"returns": "number",
-			"partial": false
-		},
-		"exp_rn": {
-			"signature": [
-				"range",
-				"number"
-			],
-			"returns": "range",
 			"partial": false
 		}
 	}

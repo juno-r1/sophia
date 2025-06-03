@@ -1,0 +1,21 @@
+{
+	"name": "in",
+	"methods": {
+		"sbs_ss": {
+			"signature": [
+				"string",
+				"string"
+			],
+			"returns": "boolean",
+			"partial": false
+		},
+        "sbs_nr": {
+			"signature": [
+				"number",
+				"range"
+			],
+			"returns": "boolean",
+			"partial": false
+		}
+	}
+}

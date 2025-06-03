@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use malachite::Rational;
+use malachite::num::arithmetic::traits::Abs;
 use malachite::num::conversion::traits::{FromSciString, RoundingInto};
 use malachite::rounding_modes::RoundingMode;
 use regex::Match;
@@ -50,15 +51,15 @@ impl Coerce for Rational
     fn to_usize(&self) -> usize
     {
         RoundingInto::<usize>::rounding_into(
-            self,
-            RoundingMode::Down
+            &self.abs(),
+            RoundingMode::Exact
         ).0
     }
     fn to_isize(&self) -> isize
     {
         RoundingInto::<isize>::rounding_into(
             self,
-            RoundingMode::Down
+            RoundingMode::Exact
         ).0
     }
 }
