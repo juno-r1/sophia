@@ -160,7 +160,7 @@ impl Task
                         },
                         Value::Type(check) => {
                             let value: bool = match &values[..] {
-                                [x] => check.call(&x),
+                                [x] => check.check(&x),
                                 _ => error!(DISP, self.signature)
                             };
                             self.write(&address, Value::new_boolean(value), TypeDef::std_boolean())
@@ -184,10 +184,10 @@ impl Task
                                 self.write(&name, value, self.signature[index].clone());
                             },
                             _ => {
-                                let typedef = self.read(typename);
-                                let Value::Type(check) = typedef else {error!(CALL, typedef)};
-                                if check.call(&value) {
-                                    self.write(&name, value, *check);
+                                let read = self.read(typename);
+                                let Value::Type(typedef) = read else {error!(CALL, read)};
+                                if typedef.check(&value) {
+                                    self.write(&name, value, *typedef);
                                 } else {
                                     error!(TYPE, typename, value);
                                 };
@@ -201,10 +201,14 @@ impl Task
                         .iter()
                         .map(|arg| self.read(arg))
                         .collect();
+                    let types: Vec<TypeDef> = args
+                        .iter()
+                        .map(|arg| self.describe(arg))
+                        .collect();
                     self.write(
                         &address,
                         Value::new_list(values),
-                        TypeDef::std_list()
+                        TypeDef::std_list(TypeDef::union_fold(types))
                     );
                     Value::new_none()
                 },
@@ -225,18 +229,29 @@ impl Task
                     }
                 }
                 Instruction::Record{address, keys, values} => {
-                    let keys: Vec<Value> = keys
+                    let k_values: Vec<Value> = keys
                         .iter()
                         .map(|arg| self.read(arg))
                         .collect();
-                    let values: Vec<Value> = values
+                    let v_values: Vec<Value> = values
                         .iter()
                         .map(|arg| self.read(arg))
+                        .collect();
+                    let k_types: Vec<TypeDef> = keys
+                        .iter()
+                        .map(|arg| self.describe(arg))
+                        .collect();
+                    let v_types: Vec<TypeDef> = values
+                        .iter()
+                        .map(|arg| self.describe(arg))
                         .collect();
                     self.write(
                         &address,
-                        Value::new_record(Record::new(keys, values)),
-                        TypeDef::std_record()
+                        Value::new_record(Record::new(k_values, v_values)),
+                        TypeDef::std_record(
+                            TypeDef::union_fold(k_types),
+                            TypeDef::union_fold(v_types)
+                        )
                     );
                     Value::new_none()
                 },

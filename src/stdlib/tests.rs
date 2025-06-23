@@ -6,60 +6,83 @@ mod types
     use crate::sophia::Value;
 
     #[test]
-    fn any()
+    fn std_any()
     {
         let test = TypeDef::std_any();
-        assert_eq!(test.call(&Value::test("null")), true);
-        assert_eq!(test.call(&Value::test("0")), true);
+        assert_eq!(test.check(&Value::test("null")), true);
+        assert_eq!(test.check(&Value::test("0")), true);
     }
     #[test]
-    fn none()
+    fn std_none()
     {
         let test = TypeDef::std_none();
-        assert_eq!(test.call(&Value::test("null")), true);
-        assert_eq!(test.call(&Value::test("0")), false);
+        assert_eq!(test.check(&Value::test("null")), true);
+        assert_eq!(test.check(&Value::test("0")), false);
     }
     #[test]
-    fn some()
+    fn std_some()
     {
         let test = TypeDef::std_some();
-        assert_eq!(test.call(&Value::test("0")), true);
-        assert_eq!(test.call(&Value::test("null")), false);
+        assert_eq!(test.check(&Value::test("0")), true);
+        assert_eq!(test.check(&Value::test("null")), false);
     }
     #[test]
-    fn number()
+    fn std_number()
     {
         let test = TypeDef::std_number();
-        assert_eq!(test.call(&Value::test("0")), true);
-        assert_eq!(test.call(&Value::test("''")), false);
+        assert_eq!(test.check(&Value::test("0")), true);
+        assert_eq!(test.check(&Value::test("''")), false);
     }
     #[test]
-    fn integer()
+    fn std_integer()
     {
         let test = TypeDef::std_integer();
-        assert_eq!(test.call(&Value::test("0")), true);
-        assert_eq!(test.call(&Value::test("0.5")), false);
+        assert_eq!(test.check(&Value::test("0")), true);
+        assert_eq!(test.check(&Value::test("0.5")), false);
     }
     #[test]
-    fn boolean()
+    fn std_boolean()
     {
         let test = TypeDef::std_boolean();
-        assert_eq!(test.call(&Value::test("true")), true);
-        assert_eq!(test.call(&Value::test("1")), false);
+        assert_eq!(test.check(&Value::test("true")), true);
+        assert_eq!(test.check(&Value::test("1")), false);
     }
     #[test]
-    fn string()
+    fn std_string()
     {
         let test = TypeDef::std_string();
-        assert_eq!(test.call(&Value::test("''")), true);
-        assert_eq!(test.call(&Value::test("0")), false);
+        assert_eq!(test.check(&Value::test("''")), true);
+        assert_eq!(test.check(&Value::test("0")), false);
     }
     #[test]
-    fn range()
+    fn std_range()
     {
         let test = TypeDef::std_range();
-        assert_eq!(test.call(&Value::test("[::]")), true);
-        assert_eq!(test.call(&Value::test("0")), false);
+        assert_eq!(test.check(&Value::test("[::]")), true);
+        assert_eq!(test.check(&Value::test("0")), false);
+    }
+    #[test]
+    fn std_list()
+    {
+        let test = TypeDef::std_list(
+            TypeDef::std_integer()
+        );
+        assert_eq!(test.check(&Value::test("[0, 1, 2]")), true);
+        assert_eq!(test.check(&Value::test("[]")), true);
+        assert_eq!(test.check(&Value::test("[0, 0.5, 1]")), false);
+        assert_eq!(test.check(&Value::test("0")), false);
+    }
+    #[test]
+    fn std_record()
+    {
+        let test = TypeDef::std_record(
+            TypeDef::std_integer(),
+            TypeDef::std_integer()
+        );
+        assert_eq!(test.check(&Value::test("[0: 0, 1: 1, 2: 2]")), true);
+        assert_eq!(test.check(&Value::test("[:]")), true);
+        assert_eq!(test.check(&Value::test("[0: 0, 0.5: 0.5, 1: 1]")), false);
+        assert_eq!(test.check(&Value::test("0")), false);
     }
 }
 

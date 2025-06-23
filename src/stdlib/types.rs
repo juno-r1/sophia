@@ -1,4 +1,5 @@
 use crate::datatypes::{Predicate, TypeDef};
+use crate::std_mod;
 
 use malachite::Rational;
 use malachite::num::basic::traits::Zero;
@@ -56,18 +57,10 @@ impl TypeDef
 			None
 		)
 	}
-	pub fn std_sequence() -> TypeDef
-	{
-		TypeDef::from_super(
-			&TypeDef::std_some(),
-			Predicate::std_sequence(),
-			None
-		)
-	}
 	pub fn std_string() -> TypeDef
 	{
 		TypeDef::from_super(
-			&TypeDef::std_sequence(),
+			&TypeDef::std_some(),
 			Predicate::std_string(),
 			Some(Value::new_string(String::new()))
 		)
@@ -75,24 +68,8 @@ impl TypeDef
 	pub fn std_range() -> TypeDef
 	{
 		TypeDef::from_super(
-			&TypeDef::std_sequence(),
+			&TypeDef::std_some(),
 			Predicate::std_range(),
-			None
-		)
-	}
-	pub fn std_list() -> TypeDef
-	{
-		TypeDef::from_super(
-			&TypeDef::std_sequence(),
-			Predicate::std_list(),
-			None
-		)
-	}
-	pub fn std_record() -> TypeDef
-	{
-		TypeDef::from_super(
-			&TypeDef::std_sequence(),
-			Predicate::std_record(),
 			None
 		)
 	}
@@ -111,5 +88,54 @@ impl TypeDef
 			Predicate::std_type(),
 			Some(Value::new_type(TypeDef::std_any()))
 		)
+	}
+}
+
+impl TypeDef
+// Internal type constructors.
+{
+	pub fn std_list(x0: TypeDef) -> TypeDef
+	{
+		TypeDef::from_super(
+			&TypeDef::std_some(),
+			Predicate::std_list(Value::new_type(x0)),
+			None
+		)
+	}
+	pub fn std_record(x0: TypeDef, x1: TypeDef) -> TypeDef
+	{
+		TypeDef::from_super(
+			&TypeDef::std_some(),
+			Predicate::std_record(Value::new_type(x0), Value::new_type(x1)),
+			None
+		)
+	}
+}
+
+std_mod!
+{
+	list: {
+		use crate::datatypes::TypeDef;
+	};
+	std_fn!
+	{
+		type list_t(type x0)
+		{
+			TypeDef::std_list(x0)
+		}
+	}
+}
+
+std_mod!
+{
+	record: {
+		use crate::datatypes::TypeDef;
+	};
+	std_fn!
+	{
+		type record_tt(type x0, type x1)
+		{
+			TypeDef::std_record(x0, x1)
+		}
 	}
 }

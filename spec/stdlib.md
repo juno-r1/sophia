@@ -64,6 +64,20 @@ The set of UTF-8 strings.
 
 Bounded arithmetic sequences between 2 rationals.
 
+**list(T)**
+- any
+- some
+- list(T)
+
+A list of element type T. Lists are 0-indexed in Sophia.
+
+**record(K, V)**
+- any
+- some
+- record(K, V)
+
+A record of key type K and value type V. Records maintain insertion order.
+
 ## Functions
 
 ## SI-9: Type operator

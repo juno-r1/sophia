@@ -1,0 +1,13 @@
+{
+	"name": "record",
+	"methods": {
+		"record_tt": {
+			"signature": [
+				"type",
+                "type"
+			],
+			"returns": "type",
+			"partial": false
+		}
+	}
+}

@@ -1,5 +1,4 @@
-use malachite::Natural;
-use malachite::num::basic::traits::One;
+use std::collections::BTreeMap;
 
 use crate::datatypes::Predicate;
 use crate::sophia::Value;
@@ -11,130 +10,91 @@ impl Predicate
 	{
 		Predicate::new_std(
 			"any",
-			|_| true
+			Predicate::impl_any
 		)
 	}
 	pub fn std_none() -> Predicate
 	{
 		Predicate::new_std(
 			"none",
-			|x| match x {
-				Value::None => true,
-				_ => false
-			}
+			Predicate::impl_none
 		)
 	}
 	pub fn std_some() -> Predicate
 	{
 		Predicate::new_std(
 			"some",
-			|x| match x {
-				Value::None => false,
-				_ => true
-			}
+			Predicate::impl_some
 		)
 	}
 	pub fn std_boolean() -> Predicate
 	{
 		Predicate::new_std(
 			"boolean",
-			|x| match x {
-				Value::Boolean(_) => true,
-				_ => false
-			}
+			Predicate::impl_boolean
 		)
 	}
 	pub fn std_number() -> Predicate
 	{
 		Predicate::new_std(
 			"number",
-			|x| match x {
-				Value::Number(_) => true,
-				_ => false
-			}
+			Predicate::impl_number
 		)
 	}
 	pub fn std_integer() -> Predicate
 	{
 		Predicate::new_std(
 			"integer",
-			|x| match x {
-				Value::Number(x) if x.denominator_ref() == &Natural::ONE => true,
-				_ => false
-			}
-		)
-	}
-	pub fn std_sequence() -> Predicate
-	{
-		Predicate::new_std(
-			"sequence",
-			|x| match x {
-				| Value::String(_)
-				| Value::Range(_)
-				| Value::List(_)
-				| Value::Record(_) => true,
-				_ => false
-			}
+			Predicate::impl_integer
 		)
 	}
 	pub fn std_string() -> Predicate
 	{
 		Predicate::new_std(
 			"string",
-			|x| match x {
-				Value::String(_) => true,
-				_ => false
-			}
+			Predicate::impl_string
 		)
 	}
 	pub fn std_range() -> Predicate
 	{
 		Predicate::new_std(
 			"range",
-			|x| match x {
-				Value::Range(_) => true,
-				_ => false
-			}
+			Predicate::impl_range
 		)
 	}
-	pub fn std_list() -> Predicate
+	pub fn std_list(x0: Value) -> Predicate
 	{
-		Predicate::new_std(
+		Predicate::new_capturing(
 			"list",
-			|x| match x {
-				Value::List(_) => true,
-				_ => false
-			}
+			Predicate::impl_list,
+			BTreeMap::from([
+				(format!("x0"), x0)
+			])
 		)
 	}
-	pub fn std_record() -> Predicate
+	pub fn std_record(x0: Value, x1: Value) -> Predicate
 	{
-		Predicate::new_std(
+		Predicate::new_capturing(
 			"record",
-			|x| match x {
-				Value::Record(_) => true,
-				_ => false
-			}
+			Predicate::impl_record,
+			BTreeMap::from([
+				(format!("x0"), x0),
+				(format!("x1"), x1)
+			])
 		)
 	}
 	pub fn std_function() -> Predicate
 	{
 		Predicate::new_std(
 			"function",
-			|x| match x {
-				Value::Function(_) => true,
-				_ => false
-			}
+			Predicate::impl_function
 		)
 	}
 	pub fn std_type() -> Predicate
 	{
 		Predicate::new_std(
 			"type",
-			|x| match x {
-				Value::Type(_) => true,
-				_ => false
-			}
+			Predicate::impl_type
 		)
 	}
 }

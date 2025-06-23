@@ -31,11 +31,8 @@ impl TypeDef
 				new_type!("boolean", std_boolean),
 				new_type!("number", std_number),
 				new_type!("integer", std_integer),
-				new_type!("sequence", std_sequence),
 				new_type!("string", std_string),
 				new_type!("range", std_range),
-				new_type!("list", std_list),
-				new_type!("record", std_record),
 				new_type!("function", std_function),
 				new_type!("type", std_type),
 			]
@@ -138,6 +135,15 @@ impl FuncDef
 	{
 		BTreeMap::from(
 			[
+				// Type constructors.
+				new_fn!(
+					"types/list",
+					list_t
+				),
+				new_fn!(
+					"types/record",
+					record_tt
+				),
 				// Operators.
 				new_fn!(
 					"op/add",

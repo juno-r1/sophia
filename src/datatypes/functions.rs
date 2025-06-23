@@ -69,7 +69,7 @@ impl FuncDef
 						// Null method does not already exist.
 						_ => FuncDef::new_arity(self.clone(), FuncDef::Leaf(new), 0)
 					}
-				} else if *index < new.arity && new.signature[*index].check(property) {
+				} else if *index < new.arity && new.signature[*index].has(property) {
 					FuncDef::new_node(
 						truepath.extend(new),
 						*falsepath.clone(),
@@ -141,7 +141,7 @@ impl FuncDef
 			FuncDef::Node{truepath, falsepath, property, index} => {
 				if signature.len() != 0 &&
 				match signature.get(*index) {
-					Some(x) => x.check(property),
+					Some(x) => x.has(property),
 					None => false
 				}
 				{truepath.dispatch(signature)} else

@@ -44,15 +44,12 @@ std_mod!
 
 std_mod!
 {
-	div: {
-		use malachite::Rational;
-		use malachite::num::basic::traits::Zero;
-	};
+	div;
 	std_fn!
 	{
 		number div_b(number x0, number x1)
 		{
-			if x1 == Rational::ZERO {
+			if x1 == 0 {
 				return Value::new_none();
 			};
 			x0 / x1
@@ -62,7 +59,7 @@ std_mod!
 	{
 		range div_rn(range x0, number x1)
 		{
-			if x1 == Rational::ZERO {
+			if x1 == 0 {
 				return Value::new_none();
 			};
 			x0 / x1
@@ -137,8 +134,8 @@ std_mod!
 std_mod!
 {
 	idx: {
-		use malachite::{Natural, Rational};
-		use malachite::num::basic::traits::{Zero, One};
+		use malachite::Rational;
+		use malachite::num::basic::traits::Zero;
 		use utils::coerce::Coerce;
 
 		use crate::datatypes::Range;
@@ -167,7 +164,7 @@ std_mod!
 			match x1.clone().try_fold(
 				String::new(),
 				|mut acc, n| {
-					if n.denominator_ref() != &Natural::ONE {
+					if *n.denominator_ref() != 1 {
 						return None;
 					}
 					let i: usize = if n >= 0 {n.to_usize()} else {x0.len() - n.to_usize()};
@@ -200,7 +197,7 @@ std_mod!
 			match x1.clone().try_fold(
 				Vec::new(),
 				|mut acc, n| {
-					if n.denominator_ref() != &Natural::ONE {
+					if *n.denominator_ref() != 1 {
 						return None;
 					}
 					let i: usize = if n >= 0 {n.to_usize()} else {x0.len() - n.to_usize()};
@@ -319,15 +316,13 @@ std_mod!
 std_mod!
 {
 	mdl: {
-		use malachite::Rational;
-		use malachite::num::basic::traits::Zero;
 		use utils::number::modulo;
 	};
 	std_fn!
 	{
 		number mdl_b(number x0, number x1)
 		{
-			if x1 == Rational::ZERO {
+			if x1 == 0 {
 				return Value::new_none();
 			};
 			modulo(x0, x1)

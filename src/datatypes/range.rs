@@ -28,7 +28,7 @@ impl Range
         self.step != 0
         && &self.start <= x
         && x <= &self.end
-        && ((x - &self.start) / &self.step).into_denominator() == Rational::ONE
+        && ((x - &self.start) / &self.step).into_denominator() == 1
     }
     pub fn get(&self, index: usize) -> Option<Rational>
     // Enables O(1) indexing without mutation.

@@ -1,4 +1,4 @@
-# Sophia Integrations
+# sophia
 
 ## SI-0
 
@@ -95,7 +95,7 @@ The start, the end, and the step must all be specified. This is to prevent incor
 
 `<T> <N>: <E>`
 `<T> <N>: <E>; <T> <N>: <E>`
-`<T> <N>: <E[]>; <T> <N>: <E[]]`
+`<T> <N>: <E[]>; <T> <N>: <E[]>`
 
 Assign a value to a name. Referencing the name yields the value.
 The name and the bound value persist until the end of scope, or until the name is reassigned.

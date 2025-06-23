@@ -1,6 +1,3 @@
-use malachite::Natural;
-use malachite::num::basic::traits::One;
-
 use crate::sophia::Value;
 
 use super::predicates::Predicate;
@@ -20,12 +17,19 @@ impl TypeDef
 			prototype: Value::new_none()
 		}
 	}
+	pub fn from_predicates(predicates: Vec<Predicate>, prototype: Option<Value>) -> TypeDef
+	{
+		TypeDef{
+			predicates,
+			prototype: prototype.unwrap_or(Value::new_none())
+		}
+	}
 	pub fn from_super(supertype: &TypeDef, predicate: Predicate, prototype: Option<Value>) -> TypeDef
 	{
-		let mut methods = supertype.predicates.clone();
-		methods.push(predicate);
+		let mut predicates = supertype.predicates.clone();
+		predicates.push(predicate);
 		TypeDef{
-			predicates: methods,
+			predicates,
 			prototype: prototype.unwrap_or(supertype.prototype.clone())
 		}
 	}
@@ -33,13 +37,24 @@ impl TypeDef
 	{
 		match value {
 			Value::None => TypeDef::std_none(),
-			Value::Number(x) if x.denominator_ref() == &Natural::ONE => TypeDef::std_integer(),
+			Value::Number(x) if *x.denominator_ref() == 1 => TypeDef::std_integer(),
 			Value::Number(_) => TypeDef::std_number(),
 			Value::Boolean(_) => TypeDef::std_boolean(),
 			Value::String(_) => TypeDef::std_string(),
 			Value::Range(_) => TypeDef::std_range(),
-			Value::List(_) => TypeDef::std_list(),
-			Value::Record(_) => TypeDef::std_record(),
+			Value::List(x) => TypeDef::std_list(
+				TypeDef::union_fold(
+					x.iter().map(|x| TypeDef::infer(x)).collect()
+				)
+			),
+			Value::Record(x) => TypeDef::std_record(
+				TypeDef::union_fold(
+					x.keys().iter().map(|x| TypeDef::infer(x)).collect()
+				),
+				TypeDef::union_fold(
+					x.values().iter().map(|x| TypeDef::infer(x)).collect()
+				),
+			),
 			Value::Function(_) => TypeDef::std_any(),
 			Value::Type(_) => TypeDef::std_any(),
 		}
@@ -55,29 +70,28 @@ impl TypeDef
 			"boolean" => TypeDef::std_boolean(),
 			"number" => TypeDef::std_number(),
 			"integer" => TypeDef::std_integer(),
-			"sequence" => TypeDef::std_sequence(),
 			"string" => TypeDef::std_string(),
 			"range" => TypeDef::std_range(),
-			"list" => TypeDef::std_list(),
-			"record" => TypeDef::std_record(),
+			"list" => TypeDef::std_list(TypeDef::std_any()),
+			"record" => TypeDef::std_record(TypeDef::std_any(), TypeDef::std_any()),
 			"function" => TypeDef::std_function(),
 			"type" => TypeDef::std_type(),
 			_ => panic!("Type not supported: {}", descriptor)
 		}
 	}
-	pub fn call(&self, value: &Value) -> bool
+	pub fn check(&self, value: &Value) -> bool
+	// Type check on the passed value.
 	{
 		self.predicates
 		.iter()
 		.all(|predicate| {predicate.call(value)})
 	}
-	pub fn check(&self, predicate: &Predicate) -> bool
+	pub fn has(&self, predicate: &Predicate) -> bool
 	// Universal dispatch check exploiting properties of structural typing.
 	{
 		self.predicates
 		.iter()
-		.find(|x| *x == predicate)
-		.is_some()
+		.any(|x| x == predicate)
 	}
 	pub fn criterion(&self, other: &Self) -> Option<&Predicate>
 	// Gets the most specific predicate that two typedefs don't share.
@@ -96,6 +110,31 @@ impl TypeDef
 				}
 			).collect();
 		criteria.last().map(|x| *x)
+	}
+	pub fn union_fold(types: Vec<TypeDef>) -> TypeDef
+	// Gets the common supertype of a list of types.
+	// Only has a prototype if all types have the same prototype.
+	{
+		types.iter().fold(
+			types.get(0).unwrap_or(&TypeDef::std_any()).clone(),
+			|lhs, rhs| {
+				TypeDef::from_predicates(
+					lhs.predicates
+					.iter()
+					.filter_map(
+						|x| {
+							for y in &rhs.predicates {
+								if *x == *y {
+									return None
+								}
+							}
+							Some(x.clone())
+						}
+					).collect(),
+					if lhs.prototype == rhs.prototype {Some(lhs.prototype.clone())} else {None}
+				)
+			}
+		)
 	}
 }
 

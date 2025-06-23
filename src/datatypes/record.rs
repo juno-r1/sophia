@@ -39,6 +39,14 @@ impl Record
 
 impl Record
 {
+    pub fn keys(&self) -> Vec<&Value>
+    {
+        self.k.keys().collect()
+    }
+    pub fn values(&self) -> Vec<&Value>
+    {
+        self.v.iter().collect()
+    }
     pub fn safe_get(&self, index: Value) -> Option<&Value>
     // Index record without panic.
     {

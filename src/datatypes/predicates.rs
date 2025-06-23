@@ -4,13 +4,11 @@ use crate::parser::Instruction;
 use crate::sophia::Value;
 use crate::stdlib::Namespace;
 
-type BuiltIn = fn(&Value) -> bool;
-type BuiltInCapturing = fn(&Value, Vec<&Value>) -> bool;
+type BuiltIn = fn(&Predicate, &Value) -> bool;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum Routine {
 	Std(BuiltIn),
-	Capturing(BuiltInCapturing),
 	User(Vec<Instruction>)
 }
 
@@ -31,10 +29,10 @@ impl Predicate
 			name: name.into()
 		}
 	}
-	pub fn new_capturing(name: &str, routine: BuiltInCapturing, closure: Namespace) -> Predicate
+	pub fn new_capturing(name: &str, routine: BuiltIn, closure: Namespace) -> Predicate
 	{
 		Predicate{
-			routine: Routine::Capturing(routine),
+			routine: Routine::Std(routine),
 			closure,
 			name: name.into()
 		}
@@ -42,8 +40,7 @@ impl Predicate
 	pub fn call(&self, value: &Value) -> bool
 	{
 		match &self.routine {
-			Routine::Std(routine) => routine(value),
-			Routine::Capturing(routine) => routine(value, self.closure.values().collect()),
+			Routine::Std(routine) => routine(self, value),
 			Routine::User(_) => unimplemented!()
 		}
 	}
@@ -63,5 +60,99 @@ impl ToString for Predicate
 	fn to_string(&self) -> String
 	{
 		self.name.clone()
+	}
+}
+
+impl Predicate
+// Built-in predicate implementations.
+{
+	pub fn impl_any(&self, _: &Value) -> bool
+	{
+		true
+	}
+	pub fn impl_none(&self, x: &Value) -> bool
+	{
+		match x {
+			Value::None => true,
+			_ => false
+		}
+	}
+	pub fn impl_some(&self, x: &Value) -> bool
+	{
+		match x {
+			Value::None => false,
+			_ => true
+		}
+	}
+	pub fn impl_boolean(&self, x: &Value) -> bool
+	{
+		match x {
+			Value::Boolean(_) => true,
+			_ => false
+		}
+	}
+	pub fn impl_number(&self, x: &Value) -> bool
+	{
+		match x {
+			Value::Number(_) => true,
+			_ => false
+		}
+	}
+	pub fn impl_integer(&self, x: &Value) -> bool
+	{
+		match x {
+			Value::Number(x) if *x.denominator_ref() == 1 => true,
+			_ => false
+		}
+	}
+	pub fn impl_string(&self, x: &Value) -> bool
+	{
+		match x {
+			Value::String(_) => true,
+			_ => false
+		}	
+	}
+	pub fn impl_range(&self, x: &Value) -> bool
+	{
+		match x {
+			Value::Range(_) => true,
+			_ => false
+		}
+	}
+	pub fn impl_list(&self, x: &Value) -> bool
+	{
+		match x {
+			Value::List(value) => {
+				let Value::Type(x0) = self.closure.get("x0").unwrap() else {unreachable!()};
+				value.iter().all(|x| x0.check(&x))
+			},
+			_ => false
+		}
+	}
+	pub fn impl_record(&self, x: &Value) -> bool
+	{
+		match x {
+			Value::Record(value) => {
+				let Value::Type(x0) = self.closure.get("x0").unwrap() else {unreachable!()};
+				let Value::Type(x1) = self.closure.get("x1").unwrap() else {unreachable!()};
+				value.keys().iter().all(|x| x0.check(*x)) &&
+				value.values().iter().all(|x| x1.check(*x))
+			},
+			_ => false
+		}
+	}
+	pub fn impl_function(&self, x: &Value) -> bool
+	{
+		match x {
+			Value::Function(_) => true,
+			_ => false
+		}
+	}
+	pub fn impl_type(&self, x: &Value) -> bool
+	{
+		match x {
+			Value::Type(_) => true,
+			_ => false
+		}	
 	}
 }
