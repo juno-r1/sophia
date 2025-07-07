@@ -3,18 +3,18 @@
 	"methods": {
 		"div_b": {
 			"signature": [
-				"number",
-				"number"
+				"Number",
+				"Number"
 			],
-			"returns": "number",
+			"returns": "Number",
 			"partial": true
 		},
 		"div_rn": {
 			"signature": [
-				"range",
-				"number"
+				"Range",
+				"Number"
 			],
-			"returns": "range",
+			"returns": "Range",
 			"partial": true
 		}
 	}

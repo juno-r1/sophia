@@ -142,10 +142,10 @@ pub fn normalise(source: &str) -> String
                 x.as_str()
             } else if let Some(x) = cap.name("name") {
                 match x.as_str() {
-                    "bool" => "boolean",
-                    "int" => "integer",
-                    "num" => "number",
-                    "str" => "string",
+                    "bool" => "Boolean",
+                    "int" => "Integer",
+                    "num" => "Number",
+                    "str" => "String",
                     _ => x.as_str()
                 }
             } else {""}.into()

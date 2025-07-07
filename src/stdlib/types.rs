@@ -119,7 +119,7 @@ std_mod!
 	};
 	std_fn!
 	{
-		type list_t(type x0)
+		Type list_t(Type x0)
 		{
 			TypeDef::std_list(x0)
 		}
@@ -133,7 +133,7 @@ std_mod!
 	};
 	std_fn!
 	{
-		type record_tt(type x0, type x1)
+		Type record_tt(Type x0, Type x1)
 		{
 			TypeDef::std_record(x0, x1)
 		}

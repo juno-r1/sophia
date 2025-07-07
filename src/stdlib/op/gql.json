@@ -3,10 +3,10 @@
 	"methods": {
 		"gql_b": {
 			"signature": [
-				"number",
-                "number"
+				"Number",
+                "Number"
 			],
-			"returns": "boolean",
+			"returns": "Boolean",
 			"partial": false
 		}
 	}

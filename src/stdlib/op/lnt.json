@@ -3,9 +3,9 @@
 	"methods": {
 		"lnt_u": {
 			"signature": [
-				"boolean"
+				"Boolean"
 			],
-			"returns": "boolean",
+			"returns": "Boolean",
 			"partial": false
 		}
 	}

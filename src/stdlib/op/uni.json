@@ -3,18 +3,18 @@
 	"methods": {
 		"uni_ss": {
 			"signature": [
-				"string",
-				"string"
+				"String",
+				"String"
 			],
-			"returns": "string",
+			"returns": "String",
 			"partial": false
 		},
         "uni_rr": {
 			"signature": [
-				"range",
-				"range"
+				"Range",
+				"Range"
 			],
-			"returns": "range",
+			"returns": "Range",
 			"partial": false
 		}
 	}

@@ -3,18 +3,18 @@
 	"methods": {
 		"mul_b": {
 			"signature": [
-				"number",
-				"number"
+				"Number",
+				"Number"
 			],
-			"returns": "number",
+			"returns": "Number",
 			"partial": false
 		},
 		"mul_rn": {
 			"signature": [
-				"range",
-				"number"
+				"Range",
+				"Number"
 			],
-			"returns": "range",
+			"returns": "Range",
 			"partial": false
 		}
 	}

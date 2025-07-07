@@ -25,16 +25,16 @@ impl TypeDef
 	{
 		BTreeMap::from(
 			[
-				new_type!("any", std_any),
-				new_type!("none", std_none),
-				new_type!("some", std_some),
-				new_type!("boolean", std_boolean),
-				new_type!("number", std_number),
-				new_type!("integer", std_integer),
-				new_type!("string", std_string),
-				new_type!("range", std_range),
-				new_type!("function", std_function),
-				new_type!("type", std_type),
+				new_type!("Any", std_any),
+				new_type!("None", std_none),
+				new_type!("Some", std_some),
+				new_type!("Boolean", std_boolean),
+				new_type!("Number", std_number),
+				new_type!("Integer", std_integer),
+				new_type!("String", std_string),
+				new_type!("Range", std_range),
+				new_type!("Function", std_function),
+				new_type!("Type", std_type),
 			]
 		)
 	}

@@ -3,34 +3,34 @@
 	"methods": {
 		"idx_si": {
 			"signature": [
-				"string",
-				"integer"
+				"String",
+				"Integer"
 			],
-			"returns": "string",
+			"returns": "String",
 			"partial": true
 		},
         "idx_sr": {
 			"signature": [
-				"string",
-				"range"
+				"String",
+				"Range"
 			],
-			"returns": "string",
+			"returns": "String",
 			"partial": true
 		},
         "idx_ri": {
 			"signature": [
-				"range",
-				"integer"
+				"Range",
+				"Integer"
 			],
-			"returns": "number",
+			"returns": "Number",
 			"partial": true
 		},
         "idx_rr": {
 			"signature": [
-				"range",
-				"range"
+				"Range",
+				"Range"
 			],
-			"returns": "range",
+			"returns": "Range",
 			"partial": true
 		}
 	}

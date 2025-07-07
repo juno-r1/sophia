@@ -3,18 +3,18 @@
 	"methods": {
 		"ins_ss": {
 			"signature": [
-				"string",
-				"string"
+				"String",
+				"String"
 			],
-			"returns": "string",
+			"returns": "String",
 			"partial": false
 		},
         "ins_rr": {
 			"signature": [
-				"range",
-				"range"
+				"Range",
+				"Range"
 			],
-			"returns": "range",
+			"returns": "Range",
 			"partial": false
 		}
 	}

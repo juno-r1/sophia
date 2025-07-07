@@ -7,35 +7,35 @@ std_mod!
 	};
 	std_fn!
 	{
-		number add_u(number x0)
+		Number add_u(Number x0)
 		{
 			x0.abs()
 		}
 	}
 	std_fn!
 	{
-		range add_r(range x0)
+		Range add_r(Range x0)
 		{
 			x0.abs()
 		}
 	}
 	std_fn!
 	{
-		number add_b(number x0, number x1)
+		Number add_b(Number x0, Number x1)
 		{
 			x0 + x1
 		}
 	}
 	std_fn!
 	{
-		range add_rn(range x0, number x1)
+		Range add_rn(Range x0, Number x1)
 		{
 			x0 + x1
 		}
 	}
 	std_fn!
 	{
-		string add_ss(string x0, string x1)
+		String add_ss(String x0, String x1)
 		{
 			format!("{x0}{x1}")
 		}
@@ -47,7 +47,7 @@ std_mod!
 	div;
 	std_fn!
 	{
-		number div_b(number x0, number x1)
+		Number div_b(Number x0, Number x1)
 		{
 			if x1 == 0 {
 				return Value::new_none();
@@ -57,7 +57,7 @@ std_mod!
 	}
 	std_fn!
 	{
-		range div_rn(range x0, number x1)
+		Range div_rn(Range x0, Number x1)
 		{
 			if x1 == 0 {
 				return Value::new_none();
@@ -72,7 +72,7 @@ std_mod!
 	eql;
 	std_fn!
 	{
-		boolean eql_b(any x0, any x1)
+		Boolean eql_b(Any x0, Any x1)
 		{
 			x0 == x1
 		}
@@ -87,7 +87,7 @@ std_mod!
 	};
 	std_fn!
 	{
-		number exp_b(number x0, number x1)
+		Number exp_b(Number x0, Number x1)
 		{
 			let mut acc = Rational::ONE;
 			let mut i = x1;
@@ -112,7 +112,7 @@ std_mod!
 	gql;
 	std_fn!
 	{
-		boolean gql_b(number x0, number x1)
+		Boolean gql_b(Number x0, Number x1)
 		{
 			x0 >= x1
 		}
@@ -124,7 +124,7 @@ std_mod!
 	gtn;
 	std_fn!
 	{
-		boolean gtn_b(number x0, number x1)
+		Boolean gtn_b(Number x0, Number x1)
 		{
 			x0 > x1
 		}
@@ -142,7 +142,7 @@ std_mod!
 	};
 	std_fn!
 	{
-		string idx_si(string x0, number x1)
+		String idx_si(String x0, Number x1)
 		{
 			let i: usize = if x1 >= 0 {x1.to_usize()} else {x0.len() - x1.to_usize()};
 			match x0
@@ -156,7 +156,7 @@ std_mod!
 	}
 	std_fn!
 	{
-		string idx_sr(string x0, range x1)
+		String idx_sr(String x0, Range x1)
 		{
 			let chars = x0
 				.chars()
@@ -181,7 +181,7 @@ std_mod!
 	}
 	std_fn!
 	{
-		number idx_ri(range x0, number x1)
+		Number idx_ri(Range x0, Number x1)
 		{
 			let i: usize = if x1 >= 0 {x1.to_usize()} else {x0.len() - x1.to_usize()};
 			match x0.get(i) {
@@ -192,7 +192,7 @@ std_mod!
 	}
 	std_fn!
 	{
-		range idx_rr(range x0, range x1)
+		Range idx_rr(Range x0, Range x1)
 		{
 			match x1.clone().try_fold(
 				Vec::new(),
@@ -229,7 +229,7 @@ std_mod!
 	ins;
 	std_fn!
 	{
-		string ins_ss(string x0, string x1)
+		String ins_ss(String x0, String x1)
 		{
 			x0.chars().fold(
 				String::new(),
@@ -246,7 +246,7 @@ std_mod!
 	lnd;
 	std_fn!
 	{
-		boolean lnd_b(boolean x0, boolean x1)
+		Boolean lnd_b(Boolean x0, Boolean x1)
 		{
 			x0 & x1
 		}
@@ -258,7 +258,7 @@ std_mod!
 	lnt;
 	std_fn!
 	{
-		boolean lnt_u(boolean x0)
+		Boolean lnt_u(Boolean x0)
 		{
 			!x0
 		}
@@ -270,7 +270,7 @@ std_mod!
 	lor;
 	std_fn!
 	{
-		boolean lor_b(boolean x0, boolean x1)
+		Boolean lor_b(Boolean x0, Boolean x1)
 		{
 			x0 | x1
 		}
@@ -282,7 +282,7 @@ std_mod!
 	lql;
 	std_fn!
 	{
-		boolean lql_b(number x0, number x1)
+		Boolean lql_b(Number x0, Number x1)
 		{
 			x0 <= x1
 		}
@@ -294,7 +294,7 @@ std_mod!
 	ltn;
 	std_fn!
 	{
-		boolean ltn_b(number x0, number x1)
+		Boolean ltn_b(Number x0, Number x1)
 		{
 			x0 < x1
 		}
@@ -306,7 +306,7 @@ std_mod!
 	lxr;
 	std_fn!
 	{
-		boolean lxr_b(boolean x0, boolean x1)
+		Boolean lxr_b(Boolean x0, Boolean x1)
 		{
 			x0 != x1
 		}
@@ -320,7 +320,7 @@ std_mod!
 	};
 	std_fn!
 	{
-		number mdl_b(number x0, number x1)
+		Number mdl_b(Number x0, Number x1)
 		{
 			if x1 == 0 {
 				return Value::new_none();
@@ -335,14 +335,14 @@ std_mod!
 	mul;
 	std_fn!
 	{
-		number mul_b(number x0, number x1)
+		Number mul_b(Number x0, Number x1)
 		{
 			x0 * x1
 		}
 	}
 	std_fn!
 	{
-		range mul_rn(range x0, number x1)
+		Range mul_rn(Range x0, Number x1)
 		{
 			x0 * x1
 		}
@@ -354,7 +354,7 @@ std_mod!
 	nql;
 	std_fn!
 	{
-		boolean nql_b(any x0, any x1)
+		Boolean nql_b(Any x0, Any x1)
 		{
 			x0 != x1
 		}
@@ -366,14 +366,14 @@ std_mod!
 	sbs;
 	std_fn!
 	{
-		boolean sbs_ss(string x0, string x1)
+		Boolean sbs_ss(String x0, String x1)
 		{
 			x1.contains(&x0)
 		}
 	}
 	std_fn!
 	{
-		boolean sbs_nr(number x0, range x1)
+		Boolean sbs_nr(Number x0, Range x1)
 		{
 			x1.contains(&x0)
 		}
@@ -385,7 +385,7 @@ std_mod!
 	sfe;
 	std_fn!
 	{
-		type sfe_u(any x0)
+		type sfe_u(Any x0)
 		{
 			self.signature[0].clone()
 		}
@@ -397,35 +397,35 @@ std_mod!
 	sub;
 	std_fn!
 	{
-		number sub_u(number x0)
+		Number sub_u(Number x0)
 		{
 			-x0
 		}
 	}
 	std_fn!
 	{
-		range sub_r(range x0)
+		Range sub_r(Range x0)
 		{
 			-x0
 		}
 	}
 	std_fn!
 	{
-		number sub_b(number x0, number x1)
+		Number sub_b(Number x0, Number x1)
 		{
 			x0 - x1
 		}
 	}
 	std_fn!
 	{
-		range sub_rn(range x0, number x1)
+		Range sub_rn(Range x0, Number x1)
 		{
 			x0 - x1
 		}
 	}
 	std_fn!
 	{
-		string sub_ss(string x0, string x1)
+		String sub_ss(String x0, String x1)
 		{
 			x1.chars().fold(
 				x0.clone(),
@@ -440,7 +440,7 @@ std_mod!
 	uni;
 	std_fn!
 	{
-		string uni_ss(string x0, string x1)
+		String uni_ss(String x0, String x1)
 		{
 			format!("{x0}{x1}").chars().fold(
 				String::new(),

@@ -3,9 +3,9 @@
 	"methods": {
 		"sfe_u": {
 			"signature": [
-				"any"
+				"Any"
 			],
-			"returns": "type",
+			"returns": "Type",
 			"partial": false
 		}
 	}

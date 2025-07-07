@@ -64,19 +64,19 @@ impl TypeDef
 	{
 		match descriptor {
 			"?" => TypeDef::new(), // Infer return type.
-			"any" => TypeDef::std_any(),
-			"none" => TypeDef::std_none(),
-			"some" => TypeDef::std_some(),
-			"boolean" => TypeDef::std_boolean(),
-			"number" => TypeDef::std_number(),
-			"integer" => TypeDef::std_integer(),
-			"string" => TypeDef::std_string(),
-			"range" => TypeDef::std_range(),
-			"list" => TypeDef::std_list(TypeDef::std_any()),
-			"record" => TypeDef::std_record(TypeDef::std_any(), TypeDef::std_any()),
-			"function" => TypeDef::std_function(),
-			"type" => TypeDef::std_type(),
-			_ => panic!("Type not supported: {}", descriptor)
+			"Any" => TypeDef::std_any(),
+			"None" => TypeDef::std_none(),
+			"Some" => TypeDef::std_some(),
+			"Boolean" => TypeDef::std_boolean(),
+			"Number" => TypeDef::std_number(),
+			"Integer" => TypeDef::std_integer(),
+			"String" => TypeDef::std_string(),
+			"Range" => TypeDef::std_range(),
+			"List" => TypeDef::std_list(TypeDef::std_any()),
+			"Record" => TypeDef::std_record(TypeDef::std_any(), TypeDef::std_any()),
+			"Function" => TypeDef::std_function(),
+			"Type" => TypeDef::std_type(),
+			_ => panic!("Type not supported: {descriptor}")
 		}
 	}
 	pub fn check(&self, value: &Value) -> bool

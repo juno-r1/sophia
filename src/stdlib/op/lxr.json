@@ -3,10 +3,10 @@
 	"methods": {
 		"lxr_b": {
 			"signature": [
-				"boolean",
-                "boolean"
+				"Boolean",
+                "Boolean"
 			],
-			"returns": "boolean",
+			"returns": "Boolean",
 			"partial": false
 		}
 	}

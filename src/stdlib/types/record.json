@@ -1,12 +1,12 @@
 {
-	"name": "record",
+	"name": "Record",
 	"methods": {
 		"record_tt": {
 			"signature": [
-				"type",
-                "type"
+				"Type",
+                "Type"
 			],
-			"returns": "type",
+			"returns": "Type",
 			"partial": false
 		}
 	}

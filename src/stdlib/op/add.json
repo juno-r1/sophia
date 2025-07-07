@@ -3,40 +3,40 @@
 	"methods": {
 		"add_u": {
 			"signature": [
-				"number"
+				"Number"
 			],
-			"returns": "number",
+			"returns": "Number",
 			"partial": false
 		},
 		"add_r": {
 			"signature": [
-				"range"
+				"Range"
 			],
-			"returns": "range",
+			"returns": "Range",
 			"partial": false
 		},
 		"add_b": {
 			"signature": [
-				"number",
-				"number"
+				"Number",
+				"Number"
 			],
-			"returns": "number",
+			"returns": "Number",
 			"partial": false
 		},
 		"add_rn": {
 			"signature": [
-				"range",
-				"number"
+				"Range",
+				"Number"
 			],
-			"returns": "range",
+			"returns": "Range",
 			"partial": false
 		},
 		"add_ss": {
 			"signature": [
-				"string",
-				"string"
+				"String",
+				"String"
 			],
-			"returns": "string",
+			"returns": "String",
 			"partial": false
 		}
 	}

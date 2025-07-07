@@ -1,11 +1,11 @@
 {
-	"name": "list",
+	"name": "List",
 	"methods": {
 		"list_t": {
 			"signature": [
-				"type"
+				"Type"
 			],
-			"returns": "type",
+			"returns": "Type",
 			"partial": false
 		}
 	}

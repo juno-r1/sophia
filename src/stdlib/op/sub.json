@@ -3,40 +3,40 @@
 	"methods": {
 		"sub_u": {
 			"signature": [
-				"number"
+				"Number"
 			],
-			"returns": "number",
+			"returns": "Number",
 			"partial": false
 		},
 		"sub_r": {
 			"signature": [
-				"range"
+				"Range"
 			],
-			"returns": "range",
+			"returns": "Range",
 			"partial": false
 		},
 		"sub_b": {
 			"signature": [
-				"number",
-				"number"
+				"Number",
+				"Number"
 			],
-			"returns": "number",
+			"returns": "Number",
 			"partial": false
 		},
 		"sub_rn": {
 			"signature": [
-				"range",
-				"number"
+				"Range",
+				"Number"
 			],
-			"returns": "range",
+			"returns": "Range",
 			"partial": false
 		},
 		"sub_ss": {
 			"signature": [
-				"string",
-				"string"
+				"String",
+				"String"
 			],
-			"returns": "string",
+			"returns": "String",
 			"partial": false
 		}
 	}

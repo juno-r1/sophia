@@ -37,16 +37,16 @@ pub fn std_fn(stream: TokenStream) -> TokenStream
 					acc.push_str(
 						// Capture concrete data types but not abstract.
 						match left {
-							"any" 		=> format!("_,"),
-							"none" 		=> format!("Value::None,"),
-							"boolean" 	=> format!("Value::Boolean({right}),"),
-							"number" 	=> format!("Value::Number({right}),"),
-							"string" 	=> format!("Value::String({right}),"),
-							"range"		=> format!("Value::Range({right}),"),
-							"list" 		=> format!("Value::List({right}),"),
-							"record" 	=> format!("Value::Record({right}),"),
-							"function" 	=> format!("Value::Function({right}),"),
-							"type" 		=> format!("Value::Type({right}),"),
+							"Any" 		=> format!("_,"),
+							"None" 		=> format!("Value::None,"),
+							"Boolean" 	=> format!("Value::Boolean({right}),"),
+							"Number" 	=> format!("Value::Number({right}),"),
+							"String" 	=> format!("Value::String({right}),"),
+							"Range"		=> format!("Value::Range({right}),"),
+							"List" 		=> format!("Value::List({right}),"),
+							"Record" 	=> format!("Value::Record({right}),"),
+							"Function" 	=> format!("Value::Function({right}),"),
+							"Type" 		=> format!("Value::Type({right}),"),
 							_ 			=> panic!("Invalid signature for std_fn: {left} {right}")
 						}
 						.as_str()
@@ -69,8 +69,8 @@ pub fn std_fn(stream: TokenStream) -> TokenStream
 					let right = split.next().unwrap();
 					acc.push(
 						match left {
-							"any" => format!("let {right} = args[{index}].clone();"),
-							"none" => format!("let {right} = Value::None;"),
+							"Any" => format!("let {right} = args[{index}].clone();"),
+							"None" => format!("let {right} = Value::None;"),
 							_ => format!("let {right} = *{right}.clone();")
 						}
 					);
@@ -85,8 +85,11 @@ pub fn std_fn(stream: TokenStream) -> TokenStream
 		_ => panic!("Invalid body for std_fn")
 	};
 	let result = match last.as_str() {
-		"none" => format!("{{{block}; Value::None}}"),
-		_ => format!("Value::new_{last}({block})")
+		"None" => format!("{{{block}; Value::None}}"),
+		_ => {
+			let fn_name = last.to_lowercase();
+			format!("Value::new_{fn_name}({block})")
+		}
 	};
 	format!(
 		"

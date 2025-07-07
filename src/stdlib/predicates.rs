@@ -9,63 +9,63 @@ impl Predicate
 	pub fn std_any() -> Predicate
 	{
 		Predicate::new_std(
-			"any",
+			"Any",
 			Predicate::impl_any
 		)
 	}
 	pub fn std_none() -> Predicate
 	{
 		Predicate::new_std(
-			"none",
+			"None",
 			Predicate::impl_none
 		)
 	}
 	pub fn std_some() -> Predicate
 	{
 		Predicate::new_std(
-			"some",
+			"Some",
 			Predicate::impl_some
 		)
 	}
 	pub fn std_boolean() -> Predicate
 	{
 		Predicate::new_std(
-			"boolean",
+			"Boolean",
 			Predicate::impl_boolean
 		)
 	}
 	pub fn std_number() -> Predicate
 	{
 		Predicate::new_std(
-			"number",
+			"Number",
 			Predicate::impl_number
 		)
 	}
 	pub fn std_integer() -> Predicate
 	{
 		Predicate::new_std(
-			"integer",
+			"Integer",
 			Predicate::impl_integer
 		)
 	}
 	pub fn std_string() -> Predicate
 	{
 		Predicate::new_std(
-			"string",
+			"String",
 			Predicate::impl_string
 		)
 	}
 	pub fn std_range() -> Predicate
 	{
 		Predicate::new_std(
-			"range",
+			"Range",
 			Predicate::impl_range
 		)
 	}
 	pub fn std_list(x0: Value) -> Predicate
 	{
 		Predicate::new_capturing(
-			"list",
+			"List",
 			Predicate::impl_list,
 			BTreeMap::from([
 				(format!("x0"), x0)
@@ -75,7 +75,7 @@ impl Predicate
 	pub fn std_record(x0: Value, x1: Value) -> Predicate
 	{
 		Predicate::new_capturing(
-			"record",
+			"Record",
 			Predicate::impl_record,
 			BTreeMap::from([
 				(format!("x0"), x0),
@@ -86,14 +86,14 @@ impl Predicate
 	pub fn std_function() -> Predicate
 	{
 		Predicate::new_std(
-			"function",
+			"Function",
 			Predicate::impl_function
 		)
 	}
 	pub fn std_type() -> Predicate
 	{
 		Predicate::new_std(
-			"type",
+			"Type",
 			Predicate::impl_type
 		)
 	}

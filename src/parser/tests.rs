@@ -102,17 +102,17 @@ mod patterns
         const FILE: [&str; 4] = [
             "// test",
             "    ",
-            "bool int num str",
-            "'bool' 'int' 'num' 'str'",
+            "bool num int str",
+            "'bool' 'num' 'int' 'str'",
         ];
         // Replaces comments with newlines.
         assert_eq!(patterns::normalise(FILE[0]), "\n");
         // Replaces sequences of 4 spaces with \t.
         assert_eq!(patterns::normalise(FILE[1]), "\t");
         // Replaces aliased names with their canonical forms.
-        assert_eq!(patterns::normalise(FILE[2]), "boolean integer number string");
+        assert_eq!(patterns::normalise(FILE[2]), "Boolean Number Integer String");
         // Does not replace aliased names in string literals.
-        assert_eq!(patterns::normalise(FILE[3]), "'bool' 'int' 'num' 'str'");
+        assert_eq!(patterns::normalise(FILE[3]), "'bool' 'num' 'int' 'str'");
     }
     #[test]
     fn split()

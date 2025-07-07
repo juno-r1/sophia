@@ -3,10 +3,10 @@
 	"methods": {
 		"exp_b": {
 			"signature": [
-				"number",
-				"integer"
+				"Number",
+				"Integer"
 			],
-			"returns": "number",
+			"returns": "Number",
 			"partial": false
 		}
 	}

@@ -3,10 +3,10 @@
 	"methods": {
 		"eql_b": {
 			"signature": [
-				"any",
-                "any"
+				"Any",
+                "Any"
 			],
-			"returns": "boolean",
+			"returns": "Boolean",
 			"partial": false
 		}
 	}

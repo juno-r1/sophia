@@ -1,3 +1,4 @@
+mod composite;
 mod functions;
 mod methods;
 mod predicates;

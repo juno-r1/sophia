@@ -3,10 +3,10 @@
 	"methods": {
 		"mdl_b": {
 			"signature": [
-				"number",
-				"number"
+				"Number",
+				"Number"
 			],
-			"returns": "number",
+			"returns": "Number",
 			"partial": true
 		}
 	}

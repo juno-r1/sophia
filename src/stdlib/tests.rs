@@ -99,25 +99,25 @@ mod functions
     fn add()
     {
         let mut task = Task::new(vec![], BTreeMap::new());
-        // number (number)
+        // Number (Number)
         task.add_u(vec![
             Value::test("-1")
         ]).assert("1");
-        // range (range)
+        // Range (Range)
         task.add_r(vec![
             Value::test("[5:1:-1]")
         ]).assert("[1:5:1]");
-        // number (number, number)
+        // Number (Number, Number)
         task.add_b(vec![
             Value::test("1"),
             Value::test("1")
         ]).assert("2");
-        // range (range, number)
+        // Range (Range, Number)
         task.add_rn(vec![
             Value::test("[1:5:1]"),
             Value::test("1")
         ]).assert("[2:6:1]");
-        // string (string, string)
+        // String (String, String)
         task.add_ss(vec![
             Value::test(r#"'abc'"#),
             Value::test(r#"'def'"#)
@@ -127,7 +127,7 @@ mod functions
     fn div()
     {
         let mut task = Task::new(vec![], BTreeMap::new());
-        // number? (number, number)
+        // Number? (Number, Number)
         task.div_b(vec![
             Value::test("2"),
             Value::test("2")
@@ -136,7 +136,7 @@ mod functions
             Value::test("1"),
             Value::test("0")
         ]).assert("null");
-        // range? (range, number)
+        // Range? (Range, Number)
         task.div_rn(vec![
             Value::test("[2:10:2]"),
             Value::test("2")
@@ -150,7 +150,7 @@ mod functions
     fn eql()
     {
         let mut task = Task::new(vec![], BTreeMap::new());
-        // boolean (any, any)
+        // Boolean (Any, Any)
         task.eql_b(vec![
             Value::test("0"),
             Value::test("0")
@@ -164,7 +164,7 @@ mod functions
     fn exp()
     {
         let mut task = Task::new(vec![], BTreeMap::new());
-        // number (number, number)
+        // Number (Number, Number)
         task.exp_b(vec![
             Value::test("2"),
             Value::test("3")
@@ -182,7 +182,7 @@ mod functions
     fn gql()
     {
         let mut task = Task::new(vec![], BTreeMap::new());
-        // boolean (number, number)
+        // Boolean (Number, Number)
         task.gql_b(vec![
             Value::test("1"),
             Value::test("0")
@@ -200,7 +200,7 @@ mod functions
     fn gtn()
     {
         let mut task = Task::new(vec![], BTreeMap::new());
-        // boolean (number, number)
+        // Boolean (Number, Number)
         task.gtn_b(vec![
             Value::test("1"),
             Value::test("0")
@@ -218,7 +218,7 @@ mod functions
     fn idx()
     {
         let mut task = Task::new(vec![], BTreeMap::new());
-        // string? (string, integer)
+        // String? (String, Integer)
         task.idx_si(vec![
             Value::test(r#"'abc'"#),
             Value::test("0")
@@ -231,7 +231,7 @@ mod functions
             Value::test(r#"'abc'"#),
             Value::test("3")
         ]).assert("null");
-        // string? (string, range)
+        // String? (String, Range)
         task.idx_sr(vec![
             Value::test(r#"'abcde'"#),
             Value::test("[0:4:2]")
@@ -244,7 +244,7 @@ mod functions
             Value::test(r#"'abcde'"#),
             Value::test("[0:4:0.5]")
         ]).assert("null");
-        // number? (range, integer)
+        // Number? (Range, Integer)
         task.idx_ri(vec![
             Value::test("[0:4:2]"),
             Value::test("0")
@@ -257,7 +257,7 @@ mod functions
             Value::test("[0:4:2]"),
             Value::test("3")
         ]).assert("null");
-        // range? (range, range)
+        // Range? (Range, Range)
         task.idx_rr(vec![
             Value::test("[0:8:2]"),
             Value::test("[0:4:2]")
@@ -275,7 +275,7 @@ mod functions
     fn ins()
     {
         let mut task = Task::new(vec![], BTreeMap::new());
-        // string (string, string)
+        // String (String, String)
         task.ins_ss(vec![
             Value::test(r#"'abc'"#),
             Value::test(r#"'cde'"#)
@@ -285,7 +285,7 @@ mod functions
     fn lnd()
     {
         let mut task = Task::new(vec![], BTreeMap::new());
-        // boolean (boolean, boolean)
+        // Boolean (Boolean, Boolean)
         task.lnd_b(vec![
             Value::test("false"),
             Value::test("false")
@@ -307,7 +307,7 @@ mod functions
     fn lnt()
     {
         let mut task = Task::new(vec![], BTreeMap::new());
-        // boolean (boolean)
+        // Boolean (Boolean)
         task.lnt_u(vec![
             Value::test("false")
         ]).assert("true");
@@ -319,7 +319,7 @@ mod functions
     fn lor()
     {
         let mut task = Task::new(vec![], BTreeMap::new());
-        // boolean (boolean, boolean)
+        // Boolean (Boolean, Boolean)
         task.lor_b(vec![
             Value::test("false"),
             Value::test("false")
@@ -341,7 +341,7 @@ mod functions
     fn lql()
     {
         let mut task = Task::new(vec![], BTreeMap::new());
-        // boolean (number, number)
+        // Boolean (Number, Number)
         task.lql_b(vec![
             Value::test("1"),
             Value::test("0")
@@ -359,7 +359,7 @@ mod functions
     fn ltn()
     {
         let mut task = Task::new(vec![], BTreeMap::new());
-        // boolean (number, number)
+        // Boolean (Number, Number)
         task.ltn_b(vec![
             Value::test("1"),
             Value::test("0")
@@ -377,7 +377,7 @@ mod functions
     fn lxr()
     {
         let mut task = Task::new(vec![], BTreeMap::new());
-        // boolean (boolean, boolean)
+        // Boolean (Boolean, Boolean)
         task.lxr_b(vec![
             Value::test("false"),
             Value::test("false")
@@ -399,7 +399,7 @@ mod functions
     fn mdl()
     {
         let mut task = Task::new(vec![], BTreeMap::new());
-        // number? (number, number)
+        // Number? (Number, Number)
         task.mdl_b(vec![
             Value::test("5"),
             Value::test("2")
@@ -425,12 +425,12 @@ mod functions
     fn mul()
     {
         let mut task = Task::new(vec![], BTreeMap::new());
-        // number (number, number)
+        // Number (Number, Number)
         task.mul_b(vec![
             Value::test("2"),
             Value::test("2")
         ]).assert("4");
-        // range (range, number)
+        // Range (Range, Number)
         task.mul_rn(vec![
             Value::test("[1:5:1]"),
             Value::test("2")
@@ -440,7 +440,7 @@ mod functions
     fn nql()
     {
         let mut task = Task::new(vec![], BTreeMap::new());
-        // boolean (any, any)
+        // Boolean (Any, Any)
         task.nql_b(vec![
             Value::test("0"),
             Value::test("0")
@@ -454,7 +454,7 @@ mod functions
     fn sbs()
     {
         let mut task = Task::new(vec![], BTreeMap::new());
-        // boolean (string, string)
+        // Boolean (String, String)
         task.sbs_ss(vec![
             Value::test(r#"'a'"#),
             Value::test(r#"'abc'"#)
@@ -471,7 +471,7 @@ mod functions
             Value::test(r#"'d'"#),
             Value::test(r#"'abc'"#)
         ]).assert("false");
-        // boolean (number, range)
+        // Boolean (Number, Range)
         task.sbs_nr(vec![
             Value::test("1"),
             Value::test("[1:5:2]")
@@ -492,7 +492,7 @@ mod functions
     #[test]
     fn sfe()
     {
-        // type (any)
+        // Type (Any)
         let mut task = Task::new(vec![], BTreeMap::new());
         task.signature = vec![TypeDef::std_none()];
         task.sfe_u(vec![
@@ -503,25 +503,25 @@ mod functions
     fn sub()
     {
         let mut task = Task::new(vec![], BTreeMap::new());
-        // number (number)
+        // Number (Number)
         task.sub_u(vec![
             Value::test("1")
         ]).assert("-1");
-        // range (range)
+        // Range (Range)
         task.sub_r(vec![
             Value::test("[1:5:1]")
         ]).assert("[5:1:-1]");
-        // number (number, number)
+        // Number (Number, Number)
         task.sub_b(vec![
             Value::test("1"),
             Value::test("1")
         ]).assert("0");
-        // range (range, number)
+        // Range (Range, Number)
         task.sub_rn(vec![
             Value::test("[1:5:1]"),
             Value::test("1")
         ]).assert("[0:4:1]");
-        // string (string, string)
+        // String (String, String)
         task.sub_ss(vec![
             Value::test(r#"'abcdef'"#),
             Value::test(r#"'ace'"#)
@@ -531,7 +531,7 @@ mod functions
     fn uni()
     {
         let mut task = Task::new(vec![], BTreeMap::new());
-        // string (string, string)
+        // String (String, String)
         task.uni_ss(vec![
             Value::test(r#"'abc'"#),
             Value::test(r#"'cde'"#)

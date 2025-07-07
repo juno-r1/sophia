@@ -3,18 +3,18 @@
 	"methods": {
 		"sbs_ss": {
 			"signature": [
-				"string",
-				"string"
+				"String",
+				"String"
 			],
-			"returns": "boolean",
+			"returns": "Boolean",
 			"partial": false
 		},
         "sbs_nr": {
 			"signature": [
-				"number",
-				"range"
+				"Number",
+				"Range"
 			],
-			"returns": "boolean",
+			"returns": "Boolean",
 			"partial": false
 		}
 	}
