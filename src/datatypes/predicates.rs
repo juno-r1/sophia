@@ -16,25 +16,22 @@ enum Routine {
 pub struct Predicate {
 	routine: Routine,
 	closure: Namespace,
-	name: String,
 }
 
 impl Predicate
 {
-	pub fn new_std(name: &str, routine: BuiltIn) -> Predicate
+	pub fn new_std(routine: BuiltIn) -> Predicate
 	{
 		Predicate{
 			routine: Routine::Std(routine),
-			closure: BTreeMap::new(),
-			name: name.into()
+			closure: BTreeMap::new()
 		}
 	}
-	pub fn new_capturing(name: &str, routine: BuiltIn, closure: Namespace) -> Predicate
+	pub fn new_capturing(routine: BuiltIn, closure: Namespace) -> Predicate
 	{
 		Predicate{
 			routine: Routine::Std(routine),
-			closure,
-			name: name.into()
+			closure
 		}
 	}
 	pub fn call(&self, value: &Value) -> bool
@@ -55,34 +52,12 @@ impl PartialEq for Predicate
 	}
 }
 
-impl ToString for Predicate
-{
-	fn to_string(&self) -> String
-	{
-		self.name.clone()
-	}
-}
-
 impl Predicate
 // Built-in predicate implementations.
 {
 	pub fn impl_any(&self, _: &Value) -> bool
 	{
 		true
-	}
-	pub fn impl_none(&self, x: &Value) -> bool
-	{
-		match x {
-			Value::None => true,
-			_ => false
-		}
-	}
-	pub fn impl_some(&self, x: &Value) -> bool
-	{
-		match x {
-			Value::None => false,
-			_ => true
-		}
 	}
 	pub fn impl_boolean(&self, x: &Value) -> bool
 	{
@@ -154,5 +129,21 @@ impl Predicate
 			Value::Type(_) => true,
 			_ => false
 		}	
+	}
+	pub fn impl_sum(&self, x: &Value) -> bool
+	// INCOMPLETE
+	{
+		match x {
+			Value::Sum(x) if self.closure.contains_key(&x.tag) => true,
+			_ => false
+		}
+	}
+	pub fn impl_struct(&self, x: &Value) -> bool
+	// INCOMPLETE
+	{
+		match x {
+			Value::Struct(_) => true,
+			_ => false
+		}
 	}
 }

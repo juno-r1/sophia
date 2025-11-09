@@ -7,8 +7,6 @@ This specification describes the JSON data format for internal function type inf
 Methods are named with the canonical name of their associated function, and then a string of letters describing their parameter types. The types are as follows:
 
 a	any
-_	none
-_	some
 n	number
 i	integer
 b	boolean

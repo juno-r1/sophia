@@ -26,8 +26,6 @@ impl TypeDef
 		BTreeMap::from(
 			[
 				new_type!("Any", std_any),
-				new_type!("None", std_none),
-				new_type!("Some", std_some),
 				new_type!("Boolean", std_boolean),
 				new_type!("Number", std_number),
 				new_type!("Integer", std_integer),
@@ -77,7 +75,6 @@ struct Metadata {
 struct Signature {
 	signature: Vec<String>,
 	returns: String,
-	partial: bool,
 }
 
 macro_rules! new_fn
@@ -120,8 +117,7 @@ macro_rules! new_fn
 						.map(|x| TypeDef::read(x))
 					);
 					signature
-				},
-				true
+				}
 			)
 		}),*])))
 	}};
@@ -143,6 +139,14 @@ impl FuncDef
 				new_fn!(
 					"types/record",
 					record_tt
+				),
+				new_fn!(
+					"types/option",
+					option_t
+				),
+				new_fn!(
+					"types/result",
+					result_tt
 				),
 				// Operators.
 				new_fn!(

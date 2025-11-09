@@ -2,7 +2,7 @@ use std::hash::{DefaultHasher, Hash};
 
 use malachite::Rational;
 
-use crate::datatypes::{FuncDef, Range, Record, TypeDef};
+use crate::datatypes::{Sum, FuncDef, Range, Record, Product, TypeDef};
 use crate::parser::{patterns, Node};
 
 // Enum of all concrete data types.
@@ -16,7 +16,8 @@ pub enum Value {
 	Record(Box<Record>),
 	Function(Box<FuncDef>),
 	Type(Box<TypeDef>),
-	None,
+	Sum(Box<Sum>),
+	Struct(Box<Product>),
 }
 
 impl Value
@@ -59,9 +60,13 @@ impl Value
 	{
 		Value::Type(Box::new(x))
 	}
-	pub fn new_none() -> Value
+	pub fn new_sum(x: Sum) -> Value
 	{
-		Value::None
+		Value::Sum(Box::new(x))
+	}
+	pub fn new_struct(x: Product) -> Value
+	{
+		Value::Struct(Box::new(x))
 	}
 }
 

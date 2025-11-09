@@ -20,7 +20,7 @@ pub const BIND:         &str = r#"(?<name>\w+)( (?<type>\w+))?\:\s*(?<expression
 pub const IF:           &str = r#"^if (?<expression>.+):$"#;
 pub const WHILE:        &str = r#"^while (?<expression>.+):$"#;
 pub const FOR:          &str = r#"^for (?<index>\w+) in (?<iterator>.+):$"#;
-pub const RETURN:       &str = r#"^return( (?<expression>.+))?$"#;
+pub const RETURN:       &str = r#"^return (?<expression>.+)$"#;
 pub const LINK:         &str = r#"^link (?<names>(\w+(\s*,\s*)?)+)$"#;
 pub const USE:          &str = r#"^use (?<names>(\w+(\s*,\s*)?)+)(\s*from\s+(?<source>\w+))?"#;
 pub const CONTINUE:     &str = r#"^continue$"#;
@@ -32,7 +32,7 @@ pub const TYPE_EXPR:    &str = r#"^extends (?<supertype>\w+)( with (?<prototype>
 pub const FUNC_EXPR:    &str = r#"^(?<params>(\w+( \w+)?(\s*,\s*)?)*)\s*=>\s*(?<expression>.+?)(\s*=>\s*(?<final>\w+)$)?"#;
 pub const NUMBER:       &str = r#"(?<number>[+-]?\d+([\./]\d*)?(e[+-]?\d*)?)"#; // Any number of the format described in SI-3.
 pub const STRING:       &str = r#"(?<string>('.*?')|(".*?"))"#; // Any symbols between single or double quotes.
-pub const NAME:         &str = r#"(?<name>\w+)"#; // Any word.
+pub const NAME:         &str = r#"(?<name>[\w\.]+)"#; // Any word or dot.
 pub const ENV:          &str = r#"(?<env>@)"#;
 pub const RECEIVE:      &str = r#"(?<receive>\>\w+)"#;
 pub const RANGE:        &str = r#"(?<range>\[::\])"#;
@@ -40,6 +40,7 @@ pub const RECORD:       &str = r#"(?<record>\[:\])"#;
 pub const LIST:         &str = r#"(?<list>\[\])"#;
 pub const L_PARENS:     &str = r#"(?<l_parens>[\(\[\{])"#;
 pub const R_PARENS:     &str = r#"(?<r_parens>[\)\]\}])"#;
+pub const CONSTRUCTOR:  &str = r#"(?<constructor>::)"#;
 pub const PAIR:         &str = r#"(?<pair>:)"#;
 pub const OPERATOR:     &str = r#"(?<operator>[^\s\d\w\(\[\{\'\"\@]+)"#; // Any other symbol.
 
@@ -56,6 +57,7 @@ pub fn pattern() -> Regex
         LIST,
         L_PARENS,
         R_PARENS,
+        CONSTRUCTOR,
         PAIR,
         OPERATOR,
     ].join("|"))
@@ -146,6 +148,10 @@ pub fn normalise(source: &str) -> String
                     "int" => "Integer",
                     "num" => "Number",
                     "str" => "String",
+                    "Some" => "Option::Some",
+                    "None" => "Option::None",
+                    "Ok" => "Result::Ok",
+                    "Error" => "Result::Error",
                     _ => x.as_str()
                 }
             } else {""}.into()

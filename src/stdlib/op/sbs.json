@@ -6,16 +6,14 @@
 				"String",
 				"String"
 			],
-			"returns": "Boolean",
-			"partial": false
+			"returns": "Boolean"
 		},
         "sbs_nr": {
 			"signature": [
 				"Number",
 				"Range"
 			],
-			"returns": "Boolean",
-			"partial": false
+			"returns": "Boolean"
 		}
 	}
 }

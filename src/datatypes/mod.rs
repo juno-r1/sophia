@@ -7,6 +7,7 @@ mod record;
 mod tests;
 mod types;
 
+pub use composite::{Product, Sum};
 pub use functions::FuncDef;
 pub use methods::Method;
 pub use predicates::Predicate;

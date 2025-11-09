@@ -6,16 +6,14 @@
 				"Number",
 				"Number"
 			],
-			"returns": "Number",
-			"partial": true
+			"returns": "Number?"
 		},
 		"div_rn": {
 			"signature": [
 				"Range",
 				"Number"
 			],
-			"returns": "Range",
-			"partial": true
+			"returns": "Range?"
 		}
 	}
 }

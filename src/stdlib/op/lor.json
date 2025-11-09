@@ -6,8 +6,7 @@
 				"Boolean",
                 "Boolean"
 			],
-			"returns": "Boolean",
-			"partial": false
+			"returns": "Boolean"
 		}
 	}
 }

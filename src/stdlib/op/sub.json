@@ -5,39 +5,34 @@
 			"signature": [
 				"Number"
 			],
-			"returns": "Number",
-			"partial": false
+			"returns": "Number"
 		},
 		"sub_r": {
 			"signature": [
 				"Range"
 			],
-			"returns": "Range",
-			"partial": false
+			"returns": "Range"
 		},
 		"sub_b": {
 			"signature": [
 				"Number",
 				"Number"
 			],
-			"returns": "Number",
-			"partial": false
+			"returns": "Number"
 		},
 		"sub_rn": {
 			"signature": [
 				"Range",
 				"Number"
 			],
-			"returns": "Range",
-			"partial": false
+			"returns": "Range"
 		},
 		"sub_ss": {
 			"signature": [
 				"String",
 				"String"
 			],
-			"returns": "String",
-			"partial": false
+			"returns": "String"
 		}
 	}
 }

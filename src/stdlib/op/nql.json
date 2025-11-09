@@ -6,8 +6,7 @@
 				"Any",
                 "Any"
 			],
-			"returns": "Boolean",
-			"partial": false
+			"returns": "Boolean"
 		}
 	}
 }

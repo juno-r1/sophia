@@ -1,9 +1,9 @@
 {
-	"name": "?",
+	"name": "Option",
 	"methods": {
-		"sfe_u": {
+		"option_t": {
 			"signature": [
-				"Any"
+				"Type"
 			],
 			"returns": "Type"
 		}

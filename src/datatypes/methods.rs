@@ -22,13 +22,12 @@ pub struct Method {
 	params: Vec<String>,
 	pub last: TypeDef,
 	pub signature: Vec<TypeDef>,
-	pub partial: bool,
 	pub arity: usize,
 }
 
 impl Method
 {
-	pub fn new_std(routine: BuiltIn, params: Vec<String>, types: Vec<TypeDef>, partial: bool) -> Method
+	pub fn new_std(routine: BuiltIn, params: Vec<String>, types: Vec<TypeDef>) -> Method
 	{
 		Method{
 			routine: Routine::Std(routine),
@@ -37,11 +36,10 @@ impl Method
 			params: params[1..].to_vec(),
 			last: types[0].clone(),
 			signature: types[1..].to_vec(),
-			partial,
 			arity: params.len() - 1
 		}
 	}
-	pub fn new_user(instructions: Vec<Instruction>, params: Vec<String>, types: Vec<TypeDef>, partial: bool) -> Method
+	pub fn new_user(instructions: Vec<Instruction>, params: Vec<String>, types: Vec<TypeDef>) -> Method
 	{
 		Method{
 			routine: Routine::User(instructions),
@@ -50,7 +48,6 @@ impl Method
 			params: params[1..].to_vec(),
 			last: types[0].clone(),
 			signature: types[1..].to_vec(),
-			partial,
 			arity: params.len() - 1
 		}
 	}

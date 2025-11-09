@@ -38,7 +38,6 @@ pub fn std_fn(stream: TokenStream) -> TokenStream
 						// Capture concrete data types but not abstract.
 						match left {
 							"Any" 		=> format!("_,"),
-							"None" 		=> format!("Value::None,"),
 							"Boolean" 	=> format!("Value::Boolean({right}),"),
 							"Number" 	=> format!("Value::Number({right}),"),
 							"String" 	=> format!("Value::String({right}),"),
@@ -47,6 +46,7 @@ pub fn std_fn(stream: TokenStream) -> TokenStream
 							"Record" 	=> format!("Value::Record({right}),"),
 							"Function" 	=> format!("Value::Function({right}),"),
 							"Type" 		=> format!("Value::Type({right}),"),
+							"Sum"		=> format!("Value::Sum({right}),"),
 							_ 			=> panic!("Invalid signature for std_fn: {left} {right}")
 						}
 						.as_str()
@@ -70,7 +70,6 @@ pub fn std_fn(stream: TokenStream) -> TokenStream
 					acc.push(
 						match left {
 							"Any" => format!("let {right} = args[{index}].clone();"),
-							"None" => format!("let {right} = Value::None;"),
 							_ => format!("let {right} = *{right}.clone();")
 						}
 					);
@@ -84,13 +83,7 @@ pub fn std_fn(stream: TokenStream) -> TokenStream
 		Some(TokenTree::Group(x)) => x,
 		_ => panic!("Invalid body for std_fn")
 	};
-	let result = match last.as_str() {
-		"None" => format!("{{{block}; Value::None}}"),
-		_ => {
-			let fn_name = last.to_lowercase();
-			format!("Value::new_{fn_name}({block})")
-		}
-	};
+	let result = format!("Value::new_{}({block})", last.to_lowercase());
 	format!(
 		"
 		impl Task

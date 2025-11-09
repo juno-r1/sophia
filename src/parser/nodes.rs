@@ -361,8 +361,8 @@ impl Node
                         | Token::Receive(name)
                         => name.clone(),
                         | Token::Number(_)
-                        | Token::String(_)
                         | Token::Boolean(_)
+                        | Token::String(_)
                         | Token::Range
                         | Token::List
                         | Token::Record
@@ -374,7 +374,6 @@ impl Node
                             );
                             constant.to_string()
                         },
-                        Token::Null => format!("-1"),
                         _ => (path.iter().sum::<usize>() + 1).to_string()
                     };
 				},
@@ -412,8 +411,7 @@ impl Node
 			Token::Range => Value::new_range(Range::new(Rational::ZERO, Rational::ZERO, Rational::ZERO)),
 			Token::List => Value::new_list(vec![]),
 			Token::Record => Value::new_record(Record::new(vec![], vec![])),
-			Token::Null => Value::None,
-			Token::Sequence(_) => match self.nodes[0].token {
+			Token::Sequence(_) => match &self.nodes[0].token {
 				// Range constructor.
 				Token::Pair if self.nodes[0].nodes.len() == 3 =>
                     match (

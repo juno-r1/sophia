@@ -5,8 +5,7 @@
 			"signature": [
 				"Boolean"
 			],
-			"returns": "Boolean",
-			"partial": false
+			"returns": "Boolean"
 		}
 	}
 }

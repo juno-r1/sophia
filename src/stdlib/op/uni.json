@@ -6,16 +6,14 @@
 				"String",
 				"String"
 			],
-			"returns": "String",
-			"partial": false
+			"returns": "String"
 		},
         "uni_rr": {
 			"signature": [
 				"Range",
 				"Range"
 			],
-			"returns": "Range",
-			"partial": false
+			"returns": "Range"
 		}
 	}
 }

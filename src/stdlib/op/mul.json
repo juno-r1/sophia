@@ -6,16 +6,14 @@
 				"Number",
 				"Number"
 			],
-			"returns": "Number",
-			"partial": false
+			"returns": "Number"
 		},
 		"mul_rn": {
 			"signature": [
 				"Range",
 				"Number"
 			],
-			"returns": "Range",
-			"partial": false
+			"returns": "Range"
 		}
 	}
 }

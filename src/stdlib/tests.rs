@@ -9,22 +9,14 @@ mod types
     fn std_any()
     {
         let test = TypeDef::std_any();
-        assert_eq!(test.check(&Value::test("null")), true);
         assert_eq!(test.check(&Value::test("0")), true);
     }
     #[test]
-    fn std_none()
+    fn std_boolean()
     {
-        let test = TypeDef::std_none();
-        assert_eq!(test.check(&Value::test("null")), true);
-        assert_eq!(test.check(&Value::test("0")), false);
-    }
-    #[test]
-    fn std_some()
-    {
-        let test = TypeDef::std_some();
-        assert_eq!(test.check(&Value::test("0")), true);
-        assert_eq!(test.check(&Value::test("null")), false);
+        let test = TypeDef::std_boolean();
+        assert_eq!(test.check(&Value::test("true")), true);
+        assert_eq!(test.check(&Value::test("1")), false);
     }
     #[test]
     fn std_number()
@@ -39,13 +31,6 @@ mod types
         let test = TypeDef::std_integer();
         assert_eq!(test.check(&Value::test("0")), true);
         assert_eq!(test.check(&Value::test("0.5")), false);
-    }
-    #[test]
-    fn std_boolean()
-    {
-        let test = TypeDef::std_boolean();
-        assert_eq!(test.check(&Value::test("true")), true);
-        assert_eq!(test.check(&Value::test("1")), false);
     }
     #[test]
     fn std_string()
@@ -494,10 +479,10 @@ mod functions
     {
         // Type (Any)
         let mut task = Task::new(vec![], BTreeMap::new());
-        task.signature = vec![TypeDef::std_none()];
+        task.signature = vec![TypeDef::std_boolean()];
         task.sfe_u(vec![
-            Value::test("null"),
-        ]).assert_type(TypeDef::std_none());
+            Value::test("true"),
+        ]).assert_type(TypeDef::std_boolean());
     }
     #[test]
     fn sub()

@@ -11,74 +11,133 @@ Subtypes have the predicates of their supertypes.
 
 Types can be passed a value to perform a type check that returns boolean.
 
-**any**
-- any
+### Non-capturing types
 
-Every value and `null`.
+These types do not capture any values.
+They are available in the standard namespace as-is.
 
-**none**
-- any
-- none
+**Any**
+- Any
 
-`null`. This type is the return type of partial functions when the input values do not map to an output value.
+The universal supertype (top type).
 
-**some**
-- any
-- some
+true
 
-Every value. Total functions must map all input values to an output value.
-
-**number** *num*
-- any
-- some
-- number
+**Number** *num*
+- Any
+- Number
 
 The set of rationals. Implemented with arbitrary precision.
 
-**integer** *int*
-- any
-- some
-- number
-- integer
+`Number` => true
+_ => false
+
+**Integer** *int*
+- Any
+- Number
+- Integer
 
 The set of integers.
 
-**boolean** *bool*
-- any
-- some
-- boolean
+`Number` where x % 1 = 0 => true
+_ => false
 
-The booleans, `true` and `false`. Sophia does not permit "truthy" and "falsy" values in boolean contexts.
-
-**string** *str*
-- any
-- some
-- string
+**String** *str*
+- Any
+- String
 
 The set of UTF-8 strings.
 
-**range**
-- any
-- some
-- range
+`String` => true
+_ => false
+
+**Range**
+- Any
+- Range
 
 Bounded arithmetic sequences between 2 rationals.
 
-**list(T)**
-- any
-- some
-- list(T)
+`Range` => true
+_ => false
 
-A list of element type T. Lists are 0-indexed in Sophia.
+**Type**
+- Any
+- Type
 
-**record(K, V)**
-- any
-- some
-- record(K, V)
+Types.
+Types are composed of a set of predicates that are true for a set of values.
+
+`Type` => true
+_ => false
+
+### Capturing types
+
+These types capture values.
+They are available in the standard namespace via type constructors.
+
+**List(T)**
+- Any
+- List(T)
+
+A list of element type T.
+Lists are 0-indexed in Sophia.
+
+`List` where T(n) for n in x => true
+_ => false
+
+**Record(K, V)**
+- Any
+- Record(K, V)
 
 A record of key type K and value type V. Records maintain insertion order.
 
-## Functions
+`Record` where K(n) and V(m) for n, m in x => true
+_ => false
+
+**Function**
+- Any
+- Function
+
+Functions.
+
+`Function` => true
+_ => false
+
+### Enum types
+
+These types represent enums.
+A value matches an enum type if it matches any of the variants of the type.
+
+**Boolean** *bool*
+- Any
+- Boolean
+
+The booleans, `true` and `false`.
+The boolean type is a special-case enum type that is not interchangeable with other enum types.
+Sophia does not permit "truthy" and "falsy" values in boolean contexts.
+
+true | false => true
+_ => false
+
+**Option(T)**
+- Any
+- Option(T)
+
+Enum representing the presence or absence of a value.
+
+Some(T) | None => true
+_ => false
+
+**Result(T, E)**
+- Any
+- Result(T, E)
+
+Enum representing the success or failure of an operation.
+
+Ok(T) | Error(E) => true
+_ => false
+
+``
 
 ## SI-9: Type operator
 

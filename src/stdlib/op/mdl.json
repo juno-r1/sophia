@@ -6,8 +6,7 @@
 				"Number",
 				"Number"
 			],
-			"returns": "Number",
-			"partial": true
+			"returns": "Number?"
 		}
 	}
 }

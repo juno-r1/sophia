@@ -73,7 +73,6 @@ impl <'a> Lexer<'a>
                                 .parse()
                                 .unwrap()
                             ),
-                            "null" => Token::Null,
                             "if" => Token::LeftConditional,
                             "else" => Token::RightConditional,
                             _ => Token::Name(x.to_string())
@@ -105,6 +104,8 @@ impl <'a> Lexer<'a>
                         }
                     } else if let Some(_) = cap.name("r_parens") {
                         Token::RightBracket
+                    } else if let Some(_) = cap.name("constructor") {
+                        Token::Constructor
                     } else if let Some(_) = cap.name("pair") {
                         Token::Pair
                     } else if let Some(x) = cap.name("operator") {

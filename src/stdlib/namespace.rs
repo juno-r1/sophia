@@ -17,10 +17,7 @@ pub fn stdlib(user: Namespace) -> Namespace
 pub fn new() -> Namespace
 // Generates the minimum required namespace.
 {
-	BTreeMap::from([
-		(format!("0"), Value::new_none()),
-		(format!("-1"), Value::new_none())
-	])
+	BTreeMap::from([])
 }
 pub fn infer(values: &Namespace) -> Typespace
 // Build a typespace from a namespace.

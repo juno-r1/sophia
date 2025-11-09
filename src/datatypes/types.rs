@@ -5,7 +5,7 @@ use super::predicates::Predicate;
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TypeDef {
 	predicates: Vec<Predicate>,
-	prototype: Value,
+	prototype: Option<Value>,
 }
 
 impl TypeDef
@@ -14,14 +14,14 @@ impl TypeDef
 	{
 		TypeDef{
 			predicates: vec![],
-			prototype: Value::new_none()
+			prototype: None
 		}
 	}
 	pub fn from_predicates(predicates: Vec<Predicate>, prototype: Option<Value>) -> TypeDef
 	{
 		TypeDef{
 			predicates,
-			prototype: prototype.unwrap_or(Value::new_none())
+			prototype
 		}
 	}
 	pub fn from_super(supertype: &TypeDef, predicate: Predicate, prototype: Option<Value>) -> TypeDef
@@ -30,13 +30,12 @@ impl TypeDef
 		predicates.push(predicate);
 		TypeDef{
 			predicates,
-			prototype: prototype.unwrap_or(supertype.prototype.clone())
+			prototype: prototype.or(supertype.prototype.clone())
 		}
 	}
 	pub fn infer(value: &Value) -> TypeDef
 	{
 		match value {
-			Value::None => TypeDef::std_none(),
 			Value::Number(x) if *x.denominator_ref() == 1 => TypeDef::std_integer(),
 			Value::Number(_) => TypeDef::std_number(),
 			Value::Boolean(_) => TypeDef::std_boolean(),
@@ -57,25 +56,33 @@ impl TypeDef
 			),
 			Value::Function(_) => TypeDef::std_any(),
 			Value::Type(_) => TypeDef::std_any(),
+			_ => unreachable!()
 		}
 	}
 	pub fn read(descriptor: &str) -> TypeDef
 	// Creates a TypeDef from a type descriptor.
 	{
+		if descriptor.chars().last().unwrap() == '?' {
+			return TypeDef::std_option(TypeDef::read(
+				&descriptor[0..descriptor.len() - 1]
+			));
+		};
 		match descriptor {
-			"?" => TypeDef::new(), // Infer return type.
+			// Infer type.
+			"?" => TypeDef::new(),
+			// Non-capturing types.
 			"Any" => TypeDef::std_any(),
-			"None" => TypeDef::std_none(),
-			"Some" => TypeDef::std_some(),
 			"Boolean" => TypeDef::std_boolean(),
 			"Number" => TypeDef::std_number(),
 			"Integer" => TypeDef::std_integer(),
 			"String" => TypeDef::std_string(),
 			"Range" => TypeDef::std_range(),
+			"Type" => TypeDef::std_type(),
+			// Capturing types.
 			"List" => TypeDef::std_list(TypeDef::std_any()),
 			"Record" => TypeDef::std_record(TypeDef::std_any(), TypeDef::std_any()),
 			"Function" => TypeDef::std_function(),
-			"Type" => TypeDef::std_type(),
+			// Unsupported types.
 			_ => panic!("Type not supported: {descriptor}")
 		}
 	}
@@ -131,40 +138,12 @@ impl TypeDef
 							Some(x.clone())
 						}
 					).collect(),
-					if lhs.prototype == rhs.prototype {Some(lhs.prototype.clone())} else {None}
+					if lhs.prototype == rhs.prototype {lhs.prototype.clone()} else {None}
 				)
 			}
 		)
 	}
 }
-
-impl ToString for TypeDef
-{
-	fn to_string(&self) -> String
-	{
-		self.predicates
-		.iter()
-		.map(|predicate| predicate.to_string())
-		.collect::<Vec<String>>()
-		.join(".")
-	}
-}
-
-// impl std::fmt::Debug for TypeDef
-// {
-// 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result
-// 	{
-// 		write!(
-// 			f,
-// 			"{}",
-// 			self.types
-// 			.iter()
-// 			.map(|predicate| format!("{predicate}"))
-// 			.collect::<Vec<String>>()
-// 			.join(".")
-// 		)
-// 	}
-// }
 
 impl PartialOrd for TypeDef
 // Structural typing relations.

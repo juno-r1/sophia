@@ -130,14 +130,13 @@ impl Task
     {
 		// debug_task = 'task' in self.handler.flags # Debug runtime loop
 		// self.caller = None # Reset caller
-        let mut value: Value = Value::new_none();
-        while self.path != 0 {
+        loop {
             self.op = self.path;
 			// if debug_task:
 			// 	self.handler.debug_task(self)
             // println!("{:?}", self.op);
             self.path += 1;
-            value = match self.instructions[self.op].clone() {
+            match self.instructions[self.op].clone() {
                 Instruction::Command{name, address, args, ..} => {
                     let values: Vec<Value> = args
                         .iter()
@@ -152,10 +151,7 @@ impl Task
                         Value::Function(function) => {
                             let method = function.dispatch(&self.signature);
                             let value: Value = method.call(self, values);
-                            let last: TypeDef = match value {
-                                Value::None if method.partial => TypeDef::std_none(),
-                                _ => method.last.clone()
-                            };
+                            let last: TypeDef = method.last.clone();
                             self.write(&address, value, last)
                         },
                         Value::Type(check) => {
@@ -166,7 +162,7 @@ impl Task
                             self.write(&address, Value::new_boolean(value), TypeDef::std_boolean())
                         },
                         _ => error!(CALL, command)
-                    }
+                    };
                 },
                 Instruction::Bind{args, params, types} => {
                     let values: Vec<Value> = args
@@ -194,8 +190,11 @@ impl Task
                             }
                         }
                     };
-                    Value::new_none()
                 },
+                // Instruction::Constructor{address, register, constructor, variant} => {
+                //     let read = self.read(&register);
+                //     let Value::Type(typedef) = read else {error!(CALL, read)};
+                // },
                 Instruction::List{address, args} => {
                     let values: Vec<Value> = args
                         .iter()
@@ -210,7 +209,6 @@ impl Task
                         Value::new_list(values),
                         TypeDef::std_list(TypeDef::union_fold(types))
                     );
-                    Value::new_none()
                 },
                 Instruction::Range{address, start, end, step} => {
                     let start = self.read(&start);
@@ -223,10 +221,9 @@ impl Task
                                 Value::new_range(Range::new(*start, *end, *step)),
                                 TypeDef::std_range()
                             );
-                            Value:: new_none()
                         },
                         _ => error!(IMPL)
-                    }
+                    };
                 }
                 Instruction::Record{address, keys, values} => {
                     let k_values: Vec<Value> = keys
@@ -253,81 +250,10 @@ impl Task
                             TypeDef::union_fold(v_types)
                         )
                     );
-                    Value::new_none()
                 },
                 Instruction::Return(register) => {
-                    let value = self.read(&register);
-                    self.path = 0;
-                    value
-
-                    // def return_none(task):
-	
-                    // 	if task.caller:
-                    // 		task.restore() # Restore namespace of calling routine
-                    // 	else:
-                    // 		task.path = 0 # End task
-                    // 	return None # Returns null
-
-                    // def return_any(task, sentinel):
-                        
-                    // 	task.properties = typedef(task.final)
-                    // 	if task.caller:
-                    // 		task.restore() # Restore namespace of calling routine
-                    // 	else:
-                    // 		task.path = 0 # End task
-                    // 	task.values[task.op.address] = sentinel # Different return address
-                    // 	return sentinel
+                    return self.read(&register);
                 },
-                // Instruction::Check{address, register, typename} => {
-                //     match typename {
-                //         Some(name) => {},
-                //         None => {}
-                //     };
-                //     // let definition = match self.describe(&register) {
-                //     //     Ok(x) => x,
-                //     //     Err(x) => return x
-                //     // };
-                //     // match typename {
-
-                //     // }
-                //     // let check = match self.read(&typename) {
-                //     //     Ok(Value::Type(x)) => *x,
-                //     //     Err(x) => return x,
-                //     //     _ => return error!(FIND, typename)
-                //     // };
-                //     Value::new_none()
-                // },
-                // address = self.op.address
-                // self.values[address] = value if check(self, value, write = False) else self.handler.error('TYPE', check, value)
-                // self.types[address] = typedef(check)
-                // return value
-
-                // address, definition = task.op.address, task.signature[0]
-                // if definition < self: # Value is subtype
-                //     check = True
-                // else:
-                //     known = typedef(definition) # Duplicate typedef
-                //     for item in self.types:
-                //         if item not in definition.types and not item.check(task, value, known):
-                //             check = False
-                //             break
-                //         else:
-                //             known = typedef(known, item) # Build typedef
-                //     else:
-                //         check = True
-                // if write:
-                //     task.values[address] = check
-                //     task.types[address] = typedef(std_boolean)
-                // return check
-
-                // def intern_bind(
-                //     self,
-                //     *args: tuple
-                //     ) -> None:
-
-                //     for i, name in enumerate(self.op.label):
-                //         self.values[name] = args[i]
-                //         self.types[name] = self.signature[i]
                 | Instruction::START
                 | Instruction::ELSE
                 | Instruction::BIND
@@ -335,7 +261,7 @@ impl Task
                 => continue,
                 _ => error!(IMPL)
             };
-        } value
+        }
     }
     fn read(&mut self, address: &str) -> Value
     // Reads a value and returns a copy.
@@ -353,12 +279,11 @@ impl Task
             None => error!(FIND, address)
         }
     }
-    fn write(&mut self, address: &str, value: Value, typedef: TypeDef) -> Value
-    // Writes the return value and type and returns a copy of the value.
+    fn write(&mut self, address: &str, value: Value, typedef: TypeDef)
+    // Writes the return value and type.
     {
-        self.values.insert(address.into(), value.clone());
-        self.types.insert(address.into(), typedef.clone());
-        value
+        self.values.insert(address.into(), value);
+        self.types.insert(address.into(), typedef);
     }
 }
 
@@ -373,3 +298,72 @@ impl Task
 // 			return self.handler.debug_final(self, value)
 // 		except SystemExit:
 // 			return self.handler.debug_final(self, None)
+
+// def return_none(task):
+
+// 	if task.caller:
+// 		task.restore() # Restore namespace of calling routine
+// 	else:
+// 		task.path = 0 # End task
+// 	return None # Returns null
+
+// def return_any(task, sentinel):
+    
+// 	task.properties = typedef(task.final)
+// 	if task.caller:
+// 		task.restore() # Restore namespace of calling routine
+// 	else:
+// 		task.path = 0 # End task
+// 	task.values[task.op.address] = sentinel # Different return address
+// 	return sentinel
+
+// Instruction::Check{address, register, typename} => {
+//     match typename {
+//         Some(name) => {},
+//         None => {}
+//     };
+//     // let definition = match self.describe(&register) {
+//     //     Ok(x) => x,
+//     //     Err(x) => return x
+//     // };
+//     // match typename {
+
+//     // }
+//     // let check = match self.read(&typename) {
+//     //     Ok(Value::Type(x)) => *x,
+//     //     Err(x) => return x,
+//     //     _ => return error!(FIND, typename)
+//     // };
+//     Value::new_none()
+// },
+// address = self.op.address
+// self.values[address] = value if check(self, value, write = False) else self.handler.error('TYPE', check, value)
+// self.types[address] = typedef(check)
+// return value
+
+// address, definition = task.op.address, task.signature[0]
+// if definition < self: # Value is subtype
+//     check = True
+// else:
+//     known = typedef(definition) # Duplicate typedef
+//     for item in self.types:
+//         if item not in definition.types and not item.check(task, value, known):
+//             check = False
+//             break
+//         else:
+//             known = typedef(known, item) # Build typedef
+//     else:
+//         check = True
+// if write:
+//     task.values[address] = check
+//     task.types[address] = typedef(std_boolean)
+// return check
+
+// def intern_bind(
+//     self,
+//     *args: tuple
+//     ) -> None:
+
+//     for i, name in enumerate(self.op.label):
+//         self.values[name] = args[i]
+//         self.types[name] = self.signature[i]

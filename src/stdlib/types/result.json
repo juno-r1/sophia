@@ -1,7 +1,7 @@
 {
-	"name": "Record",
+	"name": "Result",
 	"methods": {
-		"record_tt": {
+		"result_tt": {
 			"signature": [
 				"Type",
                 "Type"

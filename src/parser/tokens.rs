@@ -7,38 +7,6 @@ use crate::sophia::{Partial, Value};
 
 use super::{Lexer, Node};
 
-const LBP_MAP: [(&str, usize); 29] = [
-    ("RIGHT_BRACKET", 1),
-    (",", 2),
-    (":", 3),
-    ("->", 4),
-    ("if", 5),
-    ("else", 6),
-    ("or", 7),
-    ("and", 8),
-    ("xor", 9),
-    ("=", 10),
-    ("!=", 10),
-    ("in", 10),
-    ("<", 11),
-    (">", 11),
-    ("<=", 11),
-    (">=", 11),
-    ("&", 12),
-    ("|", 12),
-    ("+", 13),
-    ("-", 13),
-    ("*", 14),
-    ("/", 14),
-    ("%", 14),
-    ("^", 15),
-    ("?", 16),
-    ("<-", 17),
-    ("PREFIX", 18),
-    ("LEFT_BRACKET", 19),
-    (".", 20)
-];
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Token {
     // Statements.
@@ -65,7 +33,7 @@ pub enum Token {
     Link(Vec<String>),
     Use{
 		names: Vec<String>,
-		source: Option<String>
+		source: Option<String>,
 	},
     Else,
     Continue,
@@ -77,7 +45,6 @@ pub enum Token {
     Range,
     List,
     Record,
-    Null,
     Env(String),
     Name(String),
     Receive(String),
@@ -86,6 +53,7 @@ pub enum Token {
     // Expression groups.
     Prefix(String),
     Infix(String),
+    Constructor,
     Bind,
     LeftConditional,
     RightConditional,
@@ -212,7 +180,6 @@ impl Token
             | Token::Range
             | Token::List
             | Token::Record
-            | Token::Null
             | Token::Env(_)
             | Token::Name(_)
             | Token::Receive(_)
@@ -228,13 +195,42 @@ impl Token
     {
         // Construct node.
         let node: Node = match self {
-            Token::Infix(symbol) => Node::branch(
-                Token::Infix(symbol.clone()),
+            | Token::Infix(_)
+            | Token::RightConditional => Node::branch(
+                self.clone(),
                 vec![
                     left.clone(),
                     lex.parse(self.lbp())?
                 ]
             ),
+            Token::InfixR(_) => Node::branch(
+                self.clone(),
+                vec![
+                    left.clone(),
+                    lex.parse(self.lbp() - 1)?
+                ]
+            ),
+            Token::Constructor => {
+                let right = lex.parse(self.lbp())?;
+                match &right.token {
+                    Token::Name(_) => Node::branch(
+                        self.clone(),
+                        vec![
+                            left.clone(),
+                            right.clone()
+                        ]
+                    ),
+                    Token::Call => Node::branch(
+                        self.clone(),
+                        vec![
+                            left.clone(),
+                            right.nodes[0].clone(),
+                            right.nodes[1].clone()
+                        ]
+                    ),
+                    _ => unreachable!()
+                }
+            },
             Token::Bind => {
                 let right = lex.parse(self.lbp())?;
                 Node::branch(
@@ -274,20 +270,6 @@ impl Token
                     ]
                 )
             },
-            Token::RightConditional => Node::branch(
-                self.clone(),
-                vec![
-                    left.clone(),
-                    lex.parse(self.lbp())?
-                ]
-            ),
-            Token::InfixR(symbol) => Node::branch(
-                Token::InfixR(symbol.clone()),
-                vec![
-                    left.clone(),
-                    lex.parse(self.lbp() - 1)?
-                ]
-            ),
             Token::Concatenator => {
                 let right = lex.parse(self.lbp() - 1)?;
                 let mut nodes: Vec<Node> = vec![left.clone()];
@@ -370,6 +352,7 @@ impl Token
             Token::Prefix(_) 		=> "PREFIX",
             Token::Infix(x)         |
             Token::InfixR(x)        => x,
+            Token::Constructor      => "::",
             Token::Bind 			=> "<-",
             Token::LeftConditional 	=> "if",
             Token::RightConditional => "else",
@@ -397,7 +380,40 @@ impl Token
 			Token::Range => Value::new_range(Range::new(Rational::ZERO, Rational::ZERO, Rational::ZERO)),
 			Token::List => Value::new_list(vec![]),
 			Token::Record => Value::new_record(Record::new(vec![], vec![])),
-			_ => Value::new_none()
+			_ => unreachable!()
 		}
 	}
 }
+
+const LBP_MAP: [(&str, usize); 30] = [
+    ("RIGHT_BRACKET", 1),
+    (",", 2),
+    (":", 3),
+    ("->", 4),
+    ("if", 5),
+    ("else", 6),
+    ("or", 7),
+    ("and", 8),
+    ("xor", 9),
+    ("=", 10),
+    ("!=", 10),
+    ("in", 10),
+    ("<", 11),
+    (">", 11),
+    ("<=", 11),
+    (">=", 11),
+    ("&", 12),
+    ("|", 12),
+    ("+", 13),
+    ("-", 13),
+    ("*", 14),
+    ("/", 14),
+    ("%", 14),
+    ("^", 15),
+    ("?", 16),
+    ("<-", 17),
+    ("PREFIX", 18),
+    ("::", 19),
+    ("LEFT_BRACKET", 20),
+    (".", 21)
+];

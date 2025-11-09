@@ -44,25 +44,33 @@ std_mod!
 
 std_mod!
 {
-	div;
+	div: {
+		use crate::datatypes::Sum;
+	};
 	std_fn!
 	{
-		Number div_b(Number x0, Number x1)
+		Sum div_b(Number x0, Number x1)
 		{
 			if x1 == 0 {
-				return Value::new_none();
-			};
-			x0 / x1
+				Sum::new_none()
+			} else {
+				Sum::new_some(Value::new_number(
+					x0 / x1
+				))
+			}
 		}
 	}
 	std_fn!
 	{
-		Range div_rn(Range x0, Number x1)
+		Sum div_rn(Range x0, Number x1)
 		{
 			if x1 == 0 {
-				return Value::new_none();
-			};
-			x0 / x1
+				Sum::new_none()
+			} else {
+				Sum::new_some(Value::new_range(
+					x0 / x1
+				))
+			}
 		}
 	}
 }
@@ -138,25 +146,25 @@ std_mod!
 		use malachite::num::basic::traits::Zero;
 		use utils::coerce::Coerce;
 
-		use crate::datatypes::Range;
+		use crate::datatypes::{Sum, Range};
 	};
 	std_fn!
 	{
-		String idx_si(String x0, Number x1)
+		Sum idx_si(String x0, Number x1)
 		{
 			let i: usize = if x1 >= 0 {x1.to_usize()} else {x0.len() - x1.to_usize()};
 			match x0
 			.chars()
 			.collect::<Vec<char>>()
 			.get(i) {
-				Some(c) => c.to_string(),
-				None => return Value::new_none()
+				Some(c) => Sum::new_some(Value::new_string(c.to_string())),
+				None => Sum::new_none()
 			}
 		}
 	}
 	std_fn!
 	{
-		String idx_sr(String x0, Range x1)
+		Sum idx_sr(String x0, Range x1)
 		{
 			let chars = x0
 				.chars()
@@ -174,25 +182,25 @@ std_mod!
 					}
 				}
 			) {
-				Some(x) => x,
-				None => return Value::new_none()
+				Some(x) => Sum::new_some(Value::new_string(x)),
+				None => Sum::new_none()
 			}
 		}
 	}
 	std_fn!
 	{
-		Number idx_ri(Range x0, Number x1)
+		Sum idx_ri(Range x0, Number x1)
 		{
 			let i: usize = if x1 >= 0 {x1.to_usize()} else {x0.len() - x1.to_usize()};
 			match x0.get(i) {
-				Some(x) => x,
-				None => return Value::new_none()
+				Some(x) => Sum::new_some(Value::new_number(x)),
+				None => Sum::new_none()
 			}
 		}
 	}
 	std_fn!
 	{
-		Range idx_rr(Range x0, Range x1)
+		Sum idx_rr(Range x0, Range x1)
 		{
 			match x1.clone().try_fold(
 				Vec::new(),
@@ -211,9 +219,9 @@ std_mod!
 					let start = x.get(0).unwrap_or(&Rational::ZERO).clone();
 					let end = x.last().unwrap_or(&Rational::ZERO).clone();
 					let step = (&end - &start) / Rational::from(x.len() - 1);
-					Range::new(start, end, step)
+					Sum::new_some(Value::new_range(Range::new(start, end, step)))
 				},
-				None => return Value::new_none()
+				None => Sum::new_none()
 			}
 		}
 	}
@@ -317,15 +325,20 @@ std_mod!
 {
 	mdl: {
 		use utils::number::modulo;
+
+		use crate::datatypes::Sum;
 	};
 	std_fn!
 	{
-		Number mdl_b(Number x0, Number x1)
+		Sum mdl_b(Number x0, Number x1)
 		{
 			if x1 == 0 {
-				return Value::new_none();
-			};
-			modulo(x0, x1)
+				Sum::new_none()
+			} else {
+				Sum::new_some(Value::new_number(
+					modulo(x0, x1)
+				))
+			}
 		}
 	}
 }

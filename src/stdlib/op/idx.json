@@ -6,32 +6,28 @@
 				"String",
 				"Integer"
 			],
-			"returns": "String",
-			"partial": true
+			"returns": "String?"
 		},
         "idx_sr": {
 			"signature": [
 				"String",
 				"Range"
 			],
-			"returns": "String",
-			"partial": true
+			"returns": "String?"
 		},
         "idx_ri": {
 			"signature": [
 				"Range",
 				"Integer"
 			],
-			"returns": "Number",
-			"partial": true
+			"returns": "Number?"
 		},
         "idx_rr": {
 			"signature": [
 				"Range",
 				"Range"
 			],
-			"returns": "Range",
-			"partial": true
+			"returns": "Range?"
 		}
 	}
 }

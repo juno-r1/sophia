@@ -26,6 +26,12 @@ pub enum Instruction
 	// 	register: String,				// Readable address.
 	// 	typename: Option<String>, 		// Checked type.
 	// },
+	Constructor{
+		address: String,				// Destination register.
+		register: String,				// Source register.
+		constructor: String,			// Constructor name.
+		variant: Option<String>,		// Value register.
+	},
 	Continue,
 	// Function{
 	// 	name: String,					// Function name.
@@ -72,8 +78,8 @@ pub enum Instruction
 	},
 	// Use,
 	Write{
-		address: String, // Destination register.
-		register: String, // Source register.
+		address: String,				// Destination register.
+		register: String,				// Source register.
 	},
 	// Instruction labels.
 	// Labels aren't executed.
@@ -182,6 +188,15 @@ impl Instruction
 			args,
 			params,
 			types
+		}
+	}
+	pub fn new_constructor(address: &str, register: &str, constructor: &str, variant: Option<String>) -> Instruction
+	{
+		Instruction::Constructor{
+			address: address.into(),
+			register: register.into(),
+			constructor: constructor.into(),
+			variant
 		}
 	}
 	// pub fn new_check(address: &str, register: &str, typename: Option<String>) -> Instruction
@@ -410,6 +425,7 @@ impl Instruction {
 			Token::Receive(name) => Instruction::receive_end(name),
 			Token::Sequence(_) => Instruction::sequence_end(node),
 			// Token::Meta(_) 				=> Instruction::meta_end(node),
+			Token::Constructor => Instruction::constructor_end(node),
 			Token::Bind => Instruction::bind_end(node),
 			Token::RightConditional => Instruction::right_con_end(node),
 			Token::Call => Instruction::call_end(node),
@@ -511,13 +527,7 @@ impl Instruction {
 	}
 	fn return_end(node: &Node) -> Vec<Instruction>
 	{
-		vec![
-			Instruction::Return(
-				if node.nodes.is_empty()
-				{format!("-1")} else
-				{node.nodes[0].register.clone()},
-			),
-		]
+		vec![Instruction::Return(node.nodes[0].register.clone())]
 	}
 	fn link_end(links: &Vec<String>) -> Vec<Instruction>
 	{
@@ -559,7 +569,7 @@ impl Instruction {
 	}
 	fn sequence_end(node: &Node) -> Vec<Instruction>
 	{
-		match node.nodes[0].token {
+		match &node.nodes[0].token {
 			// Range constructor.
 			Token::Pair if node.nodes[0].nodes.len() == 3 => vec![
 				Instruction::new_range(
@@ -608,6 +618,17 @@ impl Instruction {
 	// 		)
 	// 	]
 	// }
+	fn constructor_end(node: &Node) -> Vec<Instruction>
+	{
+		vec![
+			Instruction::new_constructor(
+				&node.register,
+				&node.nodes[0].register,
+				&node.nodes[1].register,
+				node.nodes.get(2).and_then(|node| Some(node.register.clone()))
+			)
+		]
+	}
 	fn bind_end(node: &Node) -> Vec<Instruction>
 	{
 		vec![
@@ -630,21 +651,21 @@ impl Instruction {
 			)
 		]
 	}
-	fn pair_end(node: &Node) -> Vec<Instruction>
-	{
-		if node.nodes.len() == 3 {
-			vec![
-				Instruction::new_range(
-					&node.register,
-					&node.nodes[0].register,
-					&node.nodes[1].register,
-					&node.nodes[2].register
-				)
-			]
-		} else {
-			vec![]
-		}
-	}
+	// fn pair_end(node: &Node) -> Vec<Instruction>
+	// {
+	// 	if node.nodes.len() == 3 {
+	// 		vec![
+	// 			Instruction::new_range(
+	// 				&node.register,
+	// 				&node.nodes[0].register,
+	// 				&node.nodes[1].register,
+	// 				&node.nodes[2].register
+	// 			)
+	// 		]
+	// 	} else {
+	// 		vec![]
+	// 	}
+	// }
 	fn call_end(node: &Node) -> Vec<Instruction>
 	{
 		vec![
