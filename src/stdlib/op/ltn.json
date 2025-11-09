@@ -1,0 +1,12 @@
+{
+	"name": "<",
+	"methods": {
+		"ltn_b": {
+			"signature": [
+				"Number",
+                "Number"
+			],
+			"returns": "Boolean"
+		}
+	}
+}

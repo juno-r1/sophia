@@ -1,9 +1,0 @@
-// Anonymous routines, environment reference
-
-x: [1, 2, 3]
-
-bool a: map((num x => x + 1 => num), x) = [2, 3, 4]
-bool b: filter((extends int => @ % 2 = 1), x) = [1, 3]
-bool c: *(1 -> (awaits num x => x + 1 => num) <- ()) = 2
-
-return a and b and c

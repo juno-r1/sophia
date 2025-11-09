@@ -1,0 +1,12 @@
+{
+	"name": "xor",
+	"methods": {
+		"lxr_b": {
+			"signature": [
+				"Boolean",
+                "Boolean"
+			],
+			"returns": "Boolean"
+		}
+	}
+}

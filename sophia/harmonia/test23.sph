@@ -1,9 +1,0 @@
-// Prototypes
-
-type triple extends list with [0, 0, 0] => true
-x: new triple
-
-bool a: new int = 0
-bool b: triple(x)
-
-return a and b

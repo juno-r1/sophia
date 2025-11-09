@@ -1,0 +1,19 @@
+{
+	"name": "*",
+	"methods": {
+		"mul_b": {
+			"signature": [
+				"Number",
+				"Number"
+			],
+			"returns": "Number"
+		},
+		"mul_rn": {
+			"signature": [
+				"Range",
+				"Number"
+			],
+			"returns": "Range"
+		}
+	}
+}

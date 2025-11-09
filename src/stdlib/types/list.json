@@ -1,0 +1,11 @@
+{
+	"name": "List",
+	"methods": {
+		"list_t": {
+			"signature": [
+				"Type"
+			],
+			"returns": "Type"
+		}
+	}
+}

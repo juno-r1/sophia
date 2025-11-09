@@ -1,0 +1,38 @@
+{
+	"name": "+",
+	"methods": {
+		"add_u": {
+			"signature": [
+				"Number"
+			],
+			"returns": "Number"
+		},
+		"add_r": {
+			"signature": [
+				"Range"
+			],
+			"returns": "Range"
+		},
+		"add_b": {
+			"signature": [
+				"Number",
+				"Number"
+			],
+			"returns": "Number"
+		},
+		"add_rn": {
+			"signature": [
+				"Range",
+				"Number"
+			],
+			"returns": "Range"
+		},
+		"add_ss": {
+			"signature": [
+				"String",
+				"String"
+			],
+			"returns": "String"
+		}
+	}
+}

@@ -1,9 +1,0 @@
-// Use statement
-
-use increment from test16
-bool a: increment(1) = 0
-
-use test20
-bool b: even(2)
-
-return a and b

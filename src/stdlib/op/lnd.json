@@ -1,0 +1,12 @@
+{
+	"name": "and",
+	"methods": {
+		"lnd_b": {
+			"signature": [
+				"Boolean",
+                "Boolean"
+			],
+			"returns": "Boolean"
+		}
+	}
+}

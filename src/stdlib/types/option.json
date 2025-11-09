@@ -1,0 +1,11 @@
+{
+	"name": "Option",
+	"methods": {
+		"option_t": {
+			"signature": [
+				"Type"
+			],
+			"returns": "Type"
+		}
+	}
+}

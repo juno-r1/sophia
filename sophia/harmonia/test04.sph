@@ -1,7 +1,0 @@
-// Typed assignment, multiple assignment, downcasting
-
-num a: 0; num b: 1
-a: 0.5
-int a: 0
-a: b; b: a
-return [a, b]

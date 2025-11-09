@@ -1,0 +1,11 @@
+{
+	"name": "?",
+	"methods": {
+		"sfe_u": {
+			"signature": [
+				"Any"
+			],
+			"returns": "Type"
+		}
+	}
+}

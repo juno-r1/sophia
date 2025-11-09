@@ -1,8 +1,0 @@
-// Message operators
-
-num increment (num n):
-
-	return n + >m
-
-x: increment <- (1)
-return *(1 -> x) = 2

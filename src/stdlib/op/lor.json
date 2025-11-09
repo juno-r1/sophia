@@ -1,0 +1,12 @@
+{
+	"name": "or",
+	"methods": {
+		"lor_b": {
+			"signature": [
+				"Boolean",
+                "Boolean"
+			],
+			"returns": "Boolean"
+		}
+	}
+}

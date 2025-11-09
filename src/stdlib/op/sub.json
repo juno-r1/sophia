@@ -1,0 +1,38 @@
+{
+	"name": "-",
+	"methods": {
+		"sub_u": {
+			"signature": [
+				"Number"
+			],
+			"returns": "Number"
+		},
+		"sub_r": {
+			"signature": [
+				"Range"
+			],
+			"returns": "Range"
+		},
+		"sub_b": {
+			"signature": [
+				"Number",
+				"Number"
+			],
+			"returns": "Number"
+		},
+		"sub_rn": {
+			"signature": [
+				"Range",
+				"Number"
+			],
+			"returns": "Range"
+		},
+		"sub_ss": {
+			"signature": [
+				"String",
+				"String"
+			],
+			"returns": "String"
+		}
+	}
+}

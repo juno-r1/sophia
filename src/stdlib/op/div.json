@@ -1,0 +1,19 @@
+{
+	"name": "/",
+	"methods": {
+		"div_b": {
+			"signature": [
+				"Number",
+				"Number"
+			],
+			"returns": "Number?"
+		},
+		"div_rn": {
+			"signature": [
+				"Range",
+				"Number"
+			],
+			"returns": "Range?"
+		}
+	}
+}

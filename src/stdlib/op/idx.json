@@ -1,0 +1,33 @@
+{
+	"name": "[",
+	"methods": {
+		"idx_si": {
+			"signature": [
+				"String",
+				"Integer"
+			],
+			"returns": "String?"
+		},
+        "idx_sr": {
+			"signature": [
+				"String",
+				"Range"
+			],
+			"returns": "String?"
+		},
+        "idx_ri": {
+			"signature": [
+				"Range",
+				"Integer"
+			],
+			"returns": "Number?"
+		},
+        "idx_rr": {
+			"signature": [
+				"Range",
+				"Range"
+			],
+			"returns": "Range?"
+		}
+	}
+}

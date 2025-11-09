@@ -1,0 +1,19 @@
+workspace = { members = ["lib/macros", "lib/utils"] }
+
+[package]
+name = "sophia"
+version = "0.8.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+macros = {path = "./lib/macros"}
+malachite = "0.4.4"
+regex = "1.10.3"
+serde = {version = "1.0", features = ["derive"]}
+serde_json = "1.0"
+utils = {path = "./lib/utils"}
+
+[env]
+RUST_BACKTRACE = 1

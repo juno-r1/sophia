@@ -1,0 +1,19 @@
+{
+	"name": "&",
+	"methods": {
+		"ins_ss": {
+			"signature": [
+				"String",
+				"String"
+			],
+			"returns": "String"
+		},
+        "ins_rr": {
+			"signature": [
+				"Range",
+				"Range"
+			],
+			"returns": "Range"
+		}
+	}
+}

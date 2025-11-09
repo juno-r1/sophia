@@ -1,0 +1,449 @@
+{
+	"u_sub": {
+		"name": "-",
+		"signature": [
+			"number"
+		],
+		"last": "number",
+		"total": true
+	},
+	"b_sub": {
+		"name": "-",
+		"signature": [
+			"number",
+			"number"
+		],
+		"last": "number",
+		"total": true
+	},
+	"range_u_sub": {
+		"name": "-",
+		"signature": [
+			"range"
+		],
+		"last": "range",
+		"total": true
+	},
+	"range_b_sub": {
+		"name": "-",
+		"signature": [
+			"range",
+			"number"
+		],
+		"last": "range",
+		"total": true
+	},
+	"u_rsv": {
+		"name": "*",
+		"signature": [
+			"iterator(T)"
+		],
+		"last": "T",
+		"total": false
+	},
+	"b_mul": {
+		"name": "*",
+		"signature": [
+			"number",
+			"number"
+		],
+		"last": "number",
+		"total": true
+	},
+	"range_b_mul": {
+		"name": "*",
+		"signature": [
+			"range",
+			"number"
+		],
+		"last": "range",
+		"total": true
+	},
+	"b_div": {
+		"name": "/",
+		"signature": [
+			"number",
+			"number"
+		],
+		"last": "number",
+		"total": false
+	},
+	"range_b_div": {
+		"name": "/",
+		"signature": [
+			"range",
+			"number"
+		],
+		"last": "range",
+		"total": false
+	},
+	"b_exp": {
+		"name": "^",
+		"signature": [
+			"number",
+			"integer"
+		],
+		"last": "number",
+		"total": true
+	},
+	"b_mdl": {
+		"name": "%",
+		"signature": [
+			"number",
+			"number"
+		],
+		"last": "number",
+		"total": false
+	},
+	"b_eql": {
+		"name": "=",
+		"signature": [
+			"some",
+			"some"
+		],
+		"last": "boolean",
+		"total": true
+	},
+	"b_nql": {
+		"name": "!=",
+		"signature": [
+			"some",
+			"some"
+		],
+		"last": "boolean",
+		"total": true
+	},
+	"b_ltn": {
+		"name": "<",
+		"signature": [
+			"number",
+			"number"
+		],
+		"last": "boolean",
+		"total": true
+	},
+	"b_gtn": {
+		"name": ">",
+		"signature": [
+			"number",
+			"number"
+		],
+		"last": "boolean",
+		"total": true
+	},
+	"b_lql": {
+		"name": "<=",
+		"signature": [
+			"number",
+			"number"
+		],
+		"last": "boolean",
+		"total": true
+	},
+	"b_gql": {
+		"name": ">=",
+		"signature": [
+			"number",
+			"number"
+		],
+		"last": "boolean",
+		"total": true
+	},
+	"b_sbs_string": {
+		"name": "in",
+		"signature": [
+			"string",
+			"string"
+		],
+		"last": "boolean",
+		"total": true
+	},
+	"b_sbs_range": {
+		"name": "in",
+		"signature": [
+			"number",
+			"range"
+		],
+		"last": "boolean",
+		"total": true
+	},
+	"b_sbs_element": {
+		"name": "in",
+		"signature": [
+			"some",
+			"element"
+		],
+		"last": "boolean",
+		"total": true
+	},
+	"b_sbs_key": {
+		"name": "in",
+		"signature": [
+			"some",
+			"key"
+		],
+		"last": "boolean",
+		"total": true
+	},
+	"u_lnt": {
+		"name": "not",
+		"signature": [
+			"boolean"
+		],
+		"last": "boolean",
+		"total": true
+	},
+	"b_lnd": {
+		"name": "and",
+		"signature": [
+			"boolean",
+			"boolean"
+		],
+		"last": "boolean",
+		"total": true
+	},
+	"b_lor": {
+		"name": "or",
+		"signature": [
+			"boolean",
+			"boolean"
+		],
+		"last": "boolean",
+		"total": true
+	},
+	"b_lxr": {
+		"name": "xor",
+		"signature": [
+			"boolean",
+			"boolean"
+		],
+		"last": "boolean",
+		"total": true
+	},
+	"b_ins_string": {
+		"name": "&",
+		"signature": [
+			"string",
+			"string"
+		],
+		"last": "string",
+		"total": true
+	},
+	"b_ins_element": {
+		"name": "&",
+		"signature": [
+			"element(T1)",
+			"element(T2)"
+		],
+		"last": "element(T1 & T2)",
+		"total": true
+	},
+	"b_ins_index": {
+		"name": "&",
+		"signature": [
+			"index & element(T1)",
+			"index & element(T2)"
+		],
+		"last": "index & element(T1 & T2)",
+		"total": true
+	},
+	"b_ins_key": {
+		"name": "&",
+		"signature": [
+			"key(K1) & element(V1)",
+			"key(K2) & element(V2)"
+		],
+		"last": "key(K1 & K2) & element(V1 & V2)",
+		"total": true
+	},
+	"b_ins_type": {
+		"name": "&",
+		"signature": [
+			"type",
+			"type"
+		],
+		"last": "type",
+		"total": true
+	},
+	"b_uni_string": {
+		"name": "|",
+		"signature": [
+			"string",
+			"string"
+		],
+		"last": "string",
+		"total": true
+	},
+	"b_uni_element": {
+		"name": "|",
+		"signature": [
+			"element(T1)",
+			"element(T2)"
+		],
+		"last": "element(T1 | T2)",
+		"total": true
+	},
+	"b_uni_index": {
+		"name": "|",
+		"signature": [
+			"index & element(T1)",
+			"index & element(T2)"
+		],
+		"last": "index & element(T1 | T2)",
+		"total": true
+	},
+	"b_uni_key": {
+		"name": "|",
+		"signature": [
+			"key(K1) & element(V1)",
+			"key(K2) & element(V2)"
+		],
+		"last": "key(K1 | K2) & element(V1 | V2)",
+		"total": true
+	},
+	"b_uni_type": {
+		"name": "|",
+		"signature": [
+			"type",
+			"type"
+		],
+		"last": "type",
+		"total": true
+	},
+	"b_idx_string_integer": {
+		"name": "[",
+		"signature": [
+			"string & length(l)",
+			"integer"
+		],
+		"last": "string & length(1)",
+		"total": false
+	},
+	"b_idx_string_range": {
+		"name": "[",
+		"signature": [
+			"string & length(l)",
+			"range"
+		],
+		"last": "string",
+		"total": false
+	},
+	"b_idx_index_integer": {
+		"name": "[",
+		"signature": [
+			"index & element(T) & length(l)",
+			"integer"
+		],
+		"last": "T",
+		"total": false
+	},
+	"b_idx_index_range": {
+		"name": "[",
+		"signature": [
+			"index & element(T) & length(l)",
+			"range"
+		],
+		"last": "index & element(T)",
+		"total": false
+	},
+	"b_idx_key": {
+		"name": "[",
+		"signature": [
+			"key(K) & element(V)",
+			"K"
+		],
+		"last": "V",
+		"total": false
+	},
+	"u_sfe_none": {
+		"name": "?",
+		"signature": [
+			"none"
+		],
+		"last": "boolean",
+		"total": true
+	},
+	"u_sfe_some": {
+		"name": "?",
+		"signature": [
+			"some"
+		],
+		"last": "boolean",
+		"total": true
+	},
+	"b_sfe_some_some": {
+		"name": "?",
+		"signature": [
+			"some",
+			"some"
+		],
+		"last": "boolean",
+		"total": true
+	},
+	"b_sfe_none_some": {
+		"name": "?",
+		"signature": [
+			"none",
+			"some"
+		],
+		"last": "boolean",
+		"total": true
+	},
+	"u_usf": {
+		"name": "!",
+		"signature": [
+			"T"
+		],
+		"last": "T",
+		"total": true
+	},
+	"b_usf": {
+		"name": "!",
+		"signature": [
+			"T",
+			"string"
+		],
+		"last": "T",
+		"total": true
+	},
+	"b_snd": {
+		"name": "->",
+		"signature": [
+			"T1",
+			"send(T2)"
+		],
+		"last": "send(T2)",
+		"total": false
+	},
+	"u_new": {
+		"name": "new",
+		"signature": [
+			"type"
+		],
+		"last": "x0",
+		"total": false
+	},
+	"b_cmp": {
+		"name": ".",
+		"signature": [
+			"function",
+			"function & final(T)"
+		],
+		"last": "function & final(T)",
+		"total": false
+	},
+	"return_none": {
+		"name": "return",
+		"signature": [],
+		"last": "none",
+		"total": true
+	},
+	"return_any": {
+		"name": "return",
+		"signature": [
+			"any"
+		],
+		"last": "any",
+		"total": true
+	}
+}

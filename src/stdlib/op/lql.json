@@ -1,0 +1,12 @@
+{
+	"name": "<=",
+	"methods": {
+		"lql_b": {
+			"signature": [
+				"Number",
+                "Number"
+			],
+			"returns": "Boolean"
+		}
+	}
+}

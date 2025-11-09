@@ -1,0 +1,12 @@
+{
+	"name": "Result",
+	"methods": {
+		"result_tt": {
+			"signature": [
+				"Type",
+                "Type"
+			],
+			"returns": "Type"
+		}
+	}
+}
